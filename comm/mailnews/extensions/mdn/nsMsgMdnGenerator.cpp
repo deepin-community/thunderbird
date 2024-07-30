@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsMsgMdnGenerator.h"
+#include "MailNewsTypes.h"
 #include "nsImapCore.h"
 #include "nsIMsgImapMailFolder.h"
 #include "nsIMsgAccountManager.h"
@@ -15,10 +16,9 @@
 #include "nsMailHeaders.h"
 #include "nsMsgLocalFolderHdrs.h"
 #include "nsIHttpProtocolHandler.h"
-#include "nsISmtpService.h"  // for actually sending the message...
+#include "nsIMsgOutgoingServerService.h"  // for actually sending the message...
 #include "nsComposeStrings.h"
-#include "nsISmtpServer.h"
-#include "nsIPrompt.h"
+#include "nsIMsgOutgoingServer.h"
 #include "nsIMsgCompUtils.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
@@ -68,17 +68,11 @@ using namespace mozilla::mailnews;
 // String bundle for mdn. Class static.
 #define MDN_STRINGBUNDLE_URL "chrome://messenger/locale/msgmdn.properties"
 
-#if defined(DEBUG_jefft)
-#  define DEBUG_MDN(s) printf("%s\n", s)
-#else
-#  define DEBUG_MDN(s)
-#endif
-
 // machine parsible string; should not be localized
 char DispositionTypes[7][16] = {
     "displayed", "dispatched", "processed", "deleted", "denied", "failed", ""};
 
-NS_IMPL_ISUPPORTS(nsMsgMdnGenerator, nsIMsgMdnGenerator, nsIUrlListener)
+NS_IMPL_ISUPPORTS(nsMsgMdnGenerator, nsIMsgMdnGenerator, nsIRequestObserver)
 
 nsMsgMdnGenerator::nsMsgMdnGenerator()
     : m_disposeType(eDisplayed),
@@ -96,8 +90,6 @@ nsMsgMdnGenerator::~nsMsgMdnGenerator() {}
 nsresult nsMsgMdnGenerator::FormatStringFromName(const char* aName,
                                                  const nsString& aString,
                                                  nsAString& aResultString) {
-  DEBUG_MDN("nsMsgMdnGenerator::FormatStringFromName");
-
   nsCOMPtr<nsIStringBundleService> bundleService =
       mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
@@ -115,8 +107,6 @@ nsresult nsMsgMdnGenerator::FormatStringFromName(const char* aName,
 
 nsresult nsMsgMdnGenerator::GetStringFromName(const char* aName,
                                               nsAString& aResultString) {
-  DEBUG_MDN("nsMsgMdnGenerator::GetStringFromName");
-
   nsCOMPtr<nsIStringBundleService> bundleService =
       mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
@@ -133,8 +123,6 @@ nsresult nsMsgMdnGenerator::GetStringFromName(const char* aName,
 
 nsresult nsMsgMdnGenerator::StoreMDNSentFlag(nsIMsgFolder* folder,
                                              nsMsgKey key) {
-  DEBUG_MDN("nsMsgMdnGenerator::StoreMDNSentFlag");
-
   nsCOMPtr<nsIMsgDatabase> msgDB;
   nsresult rv = folder->GetMsgDatabase(getter_AddRefs(msgDB));
   NS_ENSURE_SUCCESS(rv, rv);
@@ -150,8 +138,6 @@ nsresult nsMsgMdnGenerator::StoreMDNSentFlag(nsIMsgFolder* folder,
 
 nsresult nsMsgMdnGenerator::ClearMDNNeededFlag(nsIMsgFolder* folder,
                                                nsMsgKey key) {
-  DEBUG_MDN("nsMsgMdnGenerator::ClearMDNNeededFlag");
-
   nsCOMPtr<nsIMsgDatabase> msgDB;
   nsresult rv = folder->GetMsgDatabase(getter_AddRefs(msgDB));
   NS_ENSURE_SUCCESS(rv, rv);
@@ -159,7 +145,6 @@ nsresult nsMsgMdnGenerator::ClearMDNNeededFlag(nsIMsgFolder* folder,
 }
 
 bool nsMsgMdnGenerator::ProcessSendMode() {
-  DEBUG_MDN("nsMsgMdnGenerator::ProcessSendMode");
   int32_t miscState = 0;
 
   if (m_identity) {
@@ -258,7 +243,6 @@ bool nsMsgMdnGenerator::MailAddrMatch(const char* addr1, const char* addr2) {
   // Comparing two email addresses returns true if matched; local/account
   // part comparison is case sensitive; domain part comparison is case
   // insensitive
-  DEBUG_MDN("nsMsgMdnGenerator::MailAddrMatch");
   bool isMatched = true;
   const char *atSign1 = nullptr, *atSign2 = nullptr;
   const char *lt = nullptr, *local1 = nullptr, *local2 = nullptr;
@@ -290,7 +274,6 @@ bool nsMsgMdnGenerator::MailAddrMatch(const char* addr1, const char* addr2) {
 }
 
 bool nsMsgMdnGenerator::NotInToOrCc() {
-  DEBUG_MDN("nsMsgMdnGenerator::NotInToOrCc");
   nsCString reply_to;
   nsCString to;
   nsCString cc;
@@ -315,7 +298,6 @@ bool nsMsgMdnGenerator::NotInToOrCc() {
 }
 
 bool nsMsgMdnGenerator::ValidateReturnPath() {
-  DEBUG_MDN("nsMsgMdnGenerator::ValidateReturnPath");
   // ValidateReturnPath applies to Automatic Send Mode only. If we were not
   // in auto send mode we simply by passing the check
   if (!m_autoSend) return m_reallySendMdn;
@@ -331,7 +313,6 @@ bool nsMsgMdnGenerator::ValidateReturnPath() {
 }
 
 nsresult nsMsgMdnGenerator::CreateMdnMsg() {
-  DEBUG_MDN("nsMsgMdnGenerator::CreateMdnMsg");
   nsresult rv;
 
   nsCOMPtr<nsIFile> tmpFile;
@@ -366,7 +347,6 @@ nsresult nsMsgMdnGenerator::CreateMdnMsg() {
 }
 
 nsresult nsMsgMdnGenerator::CreateFirstPart() {
-  DEBUG_MDN("nsMsgMdnGenerator::CreateFirstPart");
   char *convbuf = nullptr, *tmpBuffer = nullptr;
   char* parm = nullptr;
   nsString firstPart1;
@@ -558,7 +538,6 @@ report-type=disposition-notification;\r\n\tboundary=\"%s\"" CRLF CRLF,
 }
 
 nsresult nsMsgMdnGenerator::CreateSecondPart() {
-  DEBUG_MDN("nsMsgMdnGenerator::CreateSecondPart");
   char* tmpBuffer = nullptr;
   char* convbuf = nullptr;
   nsresult rv = NS_OK;
@@ -669,7 +648,6 @@ nsresult nsMsgMdnGenerator::CreateSecondPart() {
 }
 
 nsresult nsMsgMdnGenerator::CreateThirdPart() {
-  DEBUG_MDN("nsMsgMdnGenerator::CreateThirdPart");
   char* tmpBuffer = nullptr;
   nsresult rv = NS_OK;
 
@@ -701,7 +679,6 @@ nsresult nsMsgMdnGenerator::CreateThirdPart() {
 }
 
 nsresult nsMsgMdnGenerator::OutputAllHeaders() {
-  DEBUG_MDN("nsMsgMdnGenerator::OutputAllHeaders");
   nsCString all_headers;
   int32_t all_headers_size = 0;
   nsresult rv = NS_OK;
@@ -769,19 +746,25 @@ nsresult nsMsgMdnGenerator::OutputAllHeaders() {
 }
 
 nsresult nsMsgMdnGenerator::SendMdnMsg() {
-  DEBUG_MDN("nsMsgMdnGenerator::SendMdnMsg");
   nsresult rv;
-  nsCOMPtr<nsISmtpService> smtpService =
-      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv);
+  nsCOMPtr<nsIMsgOutgoingServerService> outgoingServerService = do_GetService(
+      "@mozilla.org/messengercompose/outgoingserverservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  nsCOMPtr<nsIURI> aUri;
   nsCOMPtr<nsIRequest> aRequest;
   nsCString identEmail;
   m_identity->GetEmail(identEmail);
-  smtpService->SendMailMessage(
-      m_file, m_dntRrt, m_identity, identEmail, EmptyString(), this, nullptr,
-      nullptr, false, ""_ns, getter_AddRefs(aUri), getter_AddRefs(aRequest));
+
+  nsCOMPtr<nsIMsgOutgoingServer> outgoingServer;
+  rv = outgoingServerService->GetServerByIdentity(
+      m_identity, getter_AddRefs(outgoingServer));
+  NS_ENSURE_SUCCESS(rv, rv);
+  NS_ASSERTION(
+      outgoingServer,
+      "there should be an outgoing server configured (or set as default)");
+
+  outgoingServer->SendMailMessage(m_file, m_dntRrt, m_identity, identEmail,
+                                  ""_ns, nullptr, false, ""_ns, this);
 
   return NS_OK;
 }
@@ -795,7 +778,6 @@ nsresult nsMsgMdnGenerator::WriteString(const char* str) {
 }
 
 nsresult nsMsgMdnGenerator::InitAndProcess(bool* needToAskUser) {
-  DEBUG_MDN("nsMsgMdnGenerator::InitAndProcess");
   nsresult rv = m_folder->GetServer(getter_AddRefs(m_server));
   nsCOMPtr<nsIMsgAccountManager> accountManager =
       do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
@@ -906,7 +888,6 @@ NS_IMETHODIMP nsMsgMdnGenerator::Process(EDisposeType type,
                                          nsIMsgFolder* folder, nsMsgKey key,
                                          nsIMimeHeaders* headers,
                                          bool autoAction, bool* _retval) {
-  DEBUG_MDN("nsMsgMdnGenerator::Process");
   NS_ENSURE_ARG_POINTER(folder);
   NS_ENSURE_ARG_POINTER(headers);
   NS_ENSURE_ARG_POINTER(aWindow);
@@ -924,13 +905,11 @@ NS_IMETHODIMP nsMsgMdnGenerator::Process(EDisposeType type,
 }
 
 NS_IMETHODIMP nsMsgMdnGenerator::UserAgreed() {
-  DEBUG_MDN("nsMsgMdnGenerator::UserAgreed");
   (void)NoteMDNRequestHandled();
   return CreateMdnMsg();
 }
 
 NS_IMETHODIMP nsMsgMdnGenerator::UserDeclined() {
-  DEBUG_MDN("nsMsgMdnGenerator::UserDeclined");
   return NoteMDNRequestHandled();
 }
 
@@ -946,16 +925,14 @@ nsresult nsMsgMdnGenerator::NoteMDNRequestHandled() {
   return rv;
 }
 
-NS_IMETHODIMP nsMsgMdnGenerator::OnStartRunningUrl(nsIURI* url) {
-  DEBUG_MDN("nsMsgMdnGenerator::OnStartRunningUrl");
+NS_IMETHODIMP nsMsgMdnGenerator::OnStartRequest(nsIRequest* req) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgMdnGenerator::OnStopRunningUrl(nsIURI* url,
-                                                  nsresult aExitCode) {
+NS_IMETHODIMP nsMsgMdnGenerator::OnStopRequest(nsIRequest* req,
+                                               nsresult aExitCode) {
   nsresult rv;
 
-  DEBUG_MDN("nsMsgMdnGenerator::OnStopRunningUrl");
   if (m_file) m_file->Remove(false);
 
   if (NS_SUCCEEDED(aExitCode)) return NS_OK;
@@ -985,18 +962,19 @@ NS_IMETHODIMP nsMsgMdnGenerator::OnStopRunningUrl(nsIURI* url,
       break;
   }
 
-  nsCOMPtr<nsISmtpService> smtpService(
-      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv));
+  nsCOMPtr<nsIMsgOutgoingServerService> outgoingServerService(do_GetService(
+      "@mozilla.org/messengercompose/outgoingserverservice;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  // Get the smtp hostname and format the string.
-  nsCString smtpHostName;
-  nsCOMPtr<nsISmtpServer> smtpServer;
-  rv = smtpService->GetServerByIdentity(m_identity, getter_AddRefs(smtpServer));
-  if (NS_SUCCEEDED(rv)) smtpServer->GetHostname(smtpHostName);
+  // Get the display name for the outgoing server and format the string.
+  nsCString outgoingDisplayName;
+  nsCOMPtr<nsIMsgOutgoingServer> outgoingServer;
+  rv = outgoingServerService->GetServerByIdentity(
+      m_identity, getter_AddRefs(outgoingServer));
+  if (NS_SUCCEEDED(rv)) outgoingServer->GetDisplayname(outgoingDisplayName);
 
   AutoTArray<nsString, 1> params;
-  CopyASCIItoUTF16(smtpHostName, *params.AppendElement());
+  CopyASCIItoUTF16(outgoingDisplayName, *params.AppendElement());
 
   nsCOMPtr<nsIStringBundle> bundle;
   nsCOMPtr<nsIStringBundleService> bundleService =

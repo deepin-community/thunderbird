@@ -10,17 +10,15 @@ ChromeUtils.defineESModuleGetters(lazy, {
     "resource:///modules/accountcreation/AccountCreationUtils.sys.mjs",
 });
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 /* eslint-disable complexity */
 /**
  * Takes an |AccountConfig| JS object and creates that account in the
  * Thunderbird backend (which also writes it to prefs).
  *
- * @param {AccountConfig} config - The account to create
- * @returns {nsIMsgAccount} - the newly created account
+ * @param {AccountConfig} config - The account to create.
+ * @returns {nsIMsgAccount} - The newly created account.
  */
 async function createAccountInBackend(config) {
   // incoming server
@@ -131,34 +129,59 @@ async function createAccountInBackend(config) {
   }
   inServer.valid = true;
 
+  if (config.incoming.handlesOutgoing) {
+    // If this type does not differentiate between incoming and outgoing
+    // configuration, then use the incoming settings to configure the outgoing
+    // server.
+    config.outgoing = config.incoming;
+    // This property does not exist on incoming configs.
+    config.outgoing.addThisServer = true;
+  }
+
   const username =
     config.outgoing.auth != Ci.nsMsgAuthMethod.none
       ? config.outgoing.username
       : null;
-  let outServer = MailServices.smtp.findServer(
+  let outServer = MailServices.outgoingServer.findServer(
     username,
-    config.outgoing.hostname
+    config.outgoing.hostname,
+    config.outgoing.type
   );
   lazy.AccountCreationUtils.assert(
     config.outgoing.addThisServer ||
       config.outgoing.useGlobalPreferredServer ||
       config.outgoing.existingServerKey,
-    "No SMTP server: inconsistent flags"
+    "No outgoing server: inconsistent flags"
   );
 
   if (
     config.outgoing.addThisServer &&
     !outServer &&
-    !config.incoming.useGlobalPreferredServer
+    !config.outgoing.useGlobalPreferredServer
   ) {
-    outServer = MailServices.smtp.createServer();
-    outServer.hostname = config.outgoing.hostname;
-    outServer.port = config.outgoing.port;
-    outServer.authMethod = config.outgoing.auth;
-    // Populate the clientid if it is enabled for this outgoing server.
-    if (outServer.clientidEnabled) {
-      outServer.clientid = newOutgoingClientid;
+    // Create the server and define some protocol-specific settings.
+    outServer = MailServices.outgoingServer.createServer(config.outgoing.type);
+    if (config.outgoing.type == "smtp") {
+      const smtpServer = outServer.QueryInterface(Ci.nsISmtpServer);
+      smtpServer.hostname = config.outgoing.hostname;
+      smtpServer.port = config.outgoing.port;
+      // Note: The client ID will only be set on the server if either its own
+      // `clientidEnabled` pref, or the default SMTP pref with the same name, is
+      // set to true.
+      smtpServer.clientid = newOutgoingClientid;
+    } else if (config.outgoing.type == "ews") {
+      const ewsServer = outServer.QueryInterface(Ci.nsIEwsServer);
+      ewsServer.ewsURL = config.outgoing.ewsURL;
+    } else {
+      // Note: createServer should already have thrown if given a type we don't
+      // support, so if we're able to reach this then something has gone very
+      // wrong.
+      throw new Error(
+        `unexpected outgoing server type ${config.outgoing.type}`
+      );
     }
+
+    outServer.authMethod = config.outgoing.auth;
     if (config.outgoing.auth != Ci.nsMsgAuthMethod.none) {
       outServer.username = username;
       outServer.password = config.outgoing.password;
@@ -184,10 +207,10 @@ async function createAccountInBackend(config) {
 
     // If this is the first SMTP server, set it as default
     if (
-      !MailServices.smtp.defaultServer ||
-      !MailServices.smtp.defaultServer.hostname
+      !MailServices.outgoingServer.defaultServer ||
+      !MailServices.outgoingServer.defaultServer.serverURI.host
     ) {
-      MailServices.smtp.defaultServer = outServer;
+      MailServices.outgoingServer.defaultServer = outServer;
     }
   }
 
@@ -295,8 +318,8 @@ async function rememberPassword(server, password) {
   let passwordURI;
   if (server instanceof Ci.nsIMsgIncomingServer) {
     passwordURI = server.localStoreType + "://" + server.hostName;
-  } else if (server instanceof Ci.nsISmtpServer) {
-    passwordURI = "smtp://" + server.hostname;
+  } else if (server instanceof Ci.nsIMsgOutgoingServer) {
+    passwordURI = server.type + "://" + server.serverURI.host;
   } else {
     throw new lazy.AccountCreationUtils.NotReached("Server type not supported");
   }
@@ -355,18 +378,19 @@ function checkIncomingServerAlreadyExists(config) {
  * which matches (hostname, port, username) the primary one
  * in the config.
  *
- * @param config {AccountConfig} filled in (no placeholders)
- * @returns {nsISmtpServer} If it already exists, the server
+ * @param {AccountConfig} config - filled in (no placeholders).
+ * @returns {nsIMsgOutgoingServer} If it already exists, the server
  *     object is returned.
  *     If it's a new server, |null| is returned.
  */
 function checkOutgoingServerAlreadyExists(config) {
   lazy.AccountCreationUtils.assert(config instanceof lazy.AccountConfig);
-  for (const existingServer of MailServices.smtp.servers) {
+  for (const existingServer of MailServices.outgoingServer.servers) {
     // TODO check username with full email address, too, like for incoming
     if (
-      existingServer.hostname == config.outgoing.hostname &&
-      existingServer.port == config.outgoing.port &&
+      existingServer.type == config.outgoing.type &&
+      existingServer.serverURI.host == config.outgoing.hostname &&
+      existingServer.serverURI.port == config.outgoing.port &&
       existingServer.username == config.outgoing.username
     ) {
       return existingServer;

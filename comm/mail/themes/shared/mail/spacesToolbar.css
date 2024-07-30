@@ -5,7 +5,7 @@
 /* Colors variables */
 
 :root {
-  --spaces-bg-color: #e8e8e8;
+  --spaces-bg-color: light-dark(#e8e8e8, #252525);
   --spaces-bg-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.05) 100%);
   --spaces-button-text-color: currentColor;
   --spaces-button-active-text-color: var(--button-primary-text-color);
@@ -20,12 +20,8 @@
     --spaces-bg-image: none;
   }
 
-  @media (prefers-color-scheme: dark) {
-    --spaces-bg-color: #252525;
-  }
-
   @media (prefers-contrast) {
-    &:not(:-moz-lwtheme) {
+    &:not([lwtheme]) {
       --spaces-bg-color: -moz-Dialog;
       --spaces-bg-image: none;
       --spaces-border-color: var(--splitter-color);

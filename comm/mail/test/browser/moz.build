@@ -3,6 +3,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, you can obtain one at http://mozilla.org/MPL/2.0/.
 
+with Files("**"):
+    BUG_COMPONENT = ("Thunderbird", "Testing Infrastructure")
+
 BROWSER_CHROME_MANIFESTS += [
     "account/browser-clear.ini",
     "account/browser.ini",
@@ -18,6 +21,7 @@ BROWSER_CHROME_MANIFESTS += [
     "folder-tree-modes/browser.ini",
     "folder-widget/browser.ini",
     "global-search-bar/browser.ini",
+    "global-ui/browser.ini",
     "im/browser.ini",
     "import/browser.ini",
     "junk-commands/browser.ini",
@@ -26,7 +30,6 @@ BROWSER_CHROME_MANIFESTS += [
     "message-reader/browser.ini",
     "message-window/browser.ini",
     "multiple-identities/browser.ini",
-    "newmailaccount/browser.ini",
     "notification/browser.ini",
     "openpgp/browser.ini",
     "openpgp/composition/browser.ini",
@@ -48,6 +51,7 @@ DIRS += [
 
 TEST_HARNESS_FILES.testing.mochitest.fakeserver += [
     "../../../mailnews/test/fakeserver/Auth.sys.mjs",
+    "../../../mailnews/test/fakeserver/EwsServer.sys.mjs",
     "../../../mailnews/test/fakeserver/Imapd.sys.mjs",
     "../../../mailnews/test/fakeserver/Maild.sys.mjs",
     "../../../mailnews/test/fakeserver/Nntpd.sys.mjs",

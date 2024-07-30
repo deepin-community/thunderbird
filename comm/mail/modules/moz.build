@@ -4,6 +4,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 EXTRA_JS_MODULES += [
+    "AccountManagerUtils.sys.mjs",
     "AttachmentChecker.worker.js",
     "AttachmentInfo.sys.mjs",
     "BrowserWindowTracker.sys.mjs",
@@ -12,7 +13,7 @@ EXTRA_JS_MODULES += [
     "DBViewWrapper.sys.mjs",
     "DisplayNameUtils.sys.mjs",
     "DNS.sys.mjs",
-    "dnsWorker.js",
+    "DNS.worker.mjs",
     "ExtensionsUI.sys.mjs",
     "ExtensionSupport.sys.mjs",
     "FolderPaneUtils.sys.mjs",
@@ -26,14 +27,13 @@ EXTRA_JS_MODULES += [
     "MailUtils.sys.mjs",
     "MailViewManager.sys.mjs",
     "MessageArchiver.sys.mjs",
-    "MsgHdrSyntheticView.sys.mjs",
     "PhishingDetector.sys.mjs",
     "PluralForm.sys.mjs",
     "QuickFilterManager.sys.mjs",
     "SearchSpec.sys.mjs",
     "SessionStoreManager.sys.mjs",
     "ShortcutsManager.sys.mjs",
-    "SmartServerUtils.sys.mjs",
+    "SmartMailboxUtils.sys.mjs",
     "SummaryFrameManager.sys.mjs",
     "TagUtils.sys.mjs",
     "TBDistCustomizer.sys.mjs",

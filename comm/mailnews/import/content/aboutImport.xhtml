@@ -18,6 +18,7 @@
   <link rel="localization" href="branding/brand.ftl" />
   <link rel="localization" href="messenger/aboutImport.ftl"/>
   <link rel="icon" href="chrome://messenger/skin/icons/new/compact/import.svg" sizes="any"/>
+  <script type="module" src="chrome://messenger/content/search-bar.mjs"></script>
   <script defer="" src="chrome://messenger/content/aboutImport.js"></script>
   <script defer="" src="chrome://messenger/content/csv-field-map.js"></script>
   <script defer="" src="chrome://calendar/content/widgets/calendar-item-summary.js"></script>
@@ -60,13 +61,6 @@
                    name="appSource"/>
             <p data-l10n-id="source-outlook"></p>
             <p class="tip-caption" data-l10n-id="source-outlook-description"></p>
-          </label>
-          <label class="toggle-container-with-text">
-            <input type="radio"
-                   value="Becky"
-                   name="appSource"/>
-            <p data-l10n-id="source-becky"></p>
-            <p class="tip-caption" data-l10n-id="source-becky-description"></p>
           </label>
 #endif
 #ifdef XP_MACOSX
@@ -358,12 +352,17 @@
         </dl>
         <h2 data-l10n-id="calendar-items-title"></h2>
         <div id="calendarItemsTools">
-          <input type="search"
-                 data-l10n-id="calendar-items-filter-input"
-                 oninput="calendarController.onFilterChange(this)"/>
-          <button data-l10n-id="calendar-deselect-all-items"
+          <search-bar id="calendarFilter"
+                      data-l10n-id="calendar-items-filter-input2"
+                      data-l10n-attrs="label, placeholder">
+            <img slot="clear-button" src="" alt="" />
+            <img slot="search-button" src="" alt="" />
+          </search-bar>
+          <button id="calendarDeselectAll"
+                  data-l10n-id="calendar-deselect-all-items"
                   onclick="calendarController.selectAllItems(false)"></button>
-          <button data-l10n-id="calendar-select-all-items"
+          <button id="calendarSelectAll"
+                  data-l10n-id="calendar-select-all-items"
                   onclick="calendarController.selectAllItems(true)"></button>
         </div>
         <div id="calendar-item-list"></div>
@@ -472,5 +471,6 @@
          href="https://support.mozilla.org/products/thunderbird"></a>
     </footer>
   </main>
+#include ../../../mail/base/content/widgets/search-bar.inc.xhtml
 </body>
 </html>

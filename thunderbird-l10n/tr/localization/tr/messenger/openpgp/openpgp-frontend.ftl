@@ -20,7 +20,7 @@ openpgp-ctx-verify-att =
 openpgp-has-sender-key = Bu ileti, gönderenin OpenPGP ortak anahtarını içerdiğini belirtiyor.
 # Variables:
 # $email (String) - Email address with the problematic public key.
-openpgp-be-careful-new-key = Uyarı: Bu iletideki yeni ortak genel anahtarı, daha önce { $email } için kabul ettiğiniz ortak anahtarlardan farklı.
+openpgp-be-careful-new-key = Uyarı: Bu iletideki yeni OpenPGP ortak anahtarı, daha önce { $email } için kabul ettiğiniz ortak anahtarlardan farklı.
 openpgp-import-sender-key =
     .label = İçe aktar…
 openpgp-search-keys-openpgp =
@@ -44,8 +44,8 @@ openpgp-cannot-decrypt-because-mdc =
     Bu riski önlemek için ileti içeriği gösterilmemektedir.
 openpgp-cannot-decrypt-because-missing-key = Bu iletinin şifresini çözmek için gereken gizli anahtar mevcut değil.
 openpgp-partially-signed =
-    Bu iletinin yalnızca bir alt kümesi ile kullanılarak dijital olarak imzalanmış.
-    Doğrula düğmesini tıklatırsanız, korunmayan parçalar gizlenir ve dijital imzanın durumu gösterilir.
+    Bu iletinin yalnızca bir alt kümesi OpenPGP kullanılarak dijital olarak imzalanmış.
+    Doğrula düğmesine tıklarsanız korunmayan parçalar gizlenir ve dijital imzanın durumu gösterilir.
 openpgp-partially-encrypted =
     Bu iletinin yalnızca bir alt kümesi OpenPGP ile şifrelenmiş.
     İletinin ekranda gördüğünüz okunabilir kısımları şifrelenmemiş.

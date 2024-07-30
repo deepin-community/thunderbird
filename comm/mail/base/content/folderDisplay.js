@@ -14,6 +14,10 @@ ChromeUtils.defineESModuleGetters(this, {
   DBViewWrapper: "resource:///modules/DBViewWrapper.sys.mjs",
 });
 
+const { ThreadPaneColumns } = ChromeUtils.importESModule(
+  "chrome://messenger/content/ThreadPaneColumns.mjs"
+);
+
 var gDBView;
 var nsMsgKey_None = 0xffffffff;
 var nsMsgViewIndex_None = 0xffffffff;
@@ -142,40 +146,28 @@ FolderDisplayWidget.prototype = {
   // @{
 
   /**
-   * The map of all stock sortable columns and their sortType. The key must
-   * match the column's xul <treecol> id.
+   * A Map of all stock sortable columns, mapping their column ids and their
+   * sortType. Since it only includes built-in columns, this can be cached.
+   *
+   * @type {Map<string, string>}
    */
-  COLUMNS_MAP: new Map([
-    ["accountCol", "byAccount"],
-    ["attachmentCol", "byAttachments"],
-    ["senderCol", "byAuthor"],
-    ["correspondentCol", "byCorrespondent"],
-    ["dateCol", "byDate"],
-    ["flaggedCol", "byFlagged"],
-    ["idCol", "byId"],
-    ["junkStatusCol", "byJunkStatus"],
-    ["locationCol", "byLocation"],
-    ["priorityCol", "byPriority"],
-    ["receivedCol", "byReceived"],
-    ["recipientCol", "byRecipient"],
-    ["sizeCol", "bySize"],
-    ["statusCol", "byStatus"],
-    ["subjectCol", "bySubject"],
-    ["tagsCol", "byTags"],
-    ["threadCol", "byThread"],
-    ["unreadButtonColHeader", "byUnread"],
-  ]),
+  BUILTIN_SORT_COLUMNS: new Map(
+    ThreadPaneColumns.getDefaultColumns()
+      .filter(c => !c.custom && c.sortKey)
+      .map(c => [c.id, c.sortKey])
+  ),
 
   /**
-   * The map of stock non-sortable columns. The key must match the column's
-   *  xul <treecol> id.
+   * A Set of all stock unsortable columns. Since it only includes built-in
+   * columns, this can be cached.
+   *
+   * @type {Set<string>}
    */
-  COLUMNS_MAP_NOSORT: new Set([
-    "selectCol",
-    "totalCol",
-    "unreadCol",
-    "deleteCol",
-  ]),
+  BUILTIN_NOSORT_COLUMNS: new Set(
+    ThreadPaneColumns.getDefaultColumns()
+      .filter(c => !c.custom && !c.sortKey)
+      .map(c => c.id)
+  ),
 
   // @}
 
@@ -233,7 +225,7 @@ FolderDisplayWidget.prototype = {
    *  to make us unresponsive and accordingly make it very hard for the user to
    *  change tabs.
    */
-  onFolderLoading(aFolderLoading) {},
+  onFolderLoading() {},
 
   /**
    * The view wrapper tells us when a search is active, and we mark the tab as
@@ -242,7 +234,7 @@ FolderDisplayWidget.prototype = {
    *  searches, mail views, plus the more obvious quick search are all based off
    *  of searches and we will receive a notification for them.
    */
-  onSearching(aIsSearching) {},
+  onSearching() {},
 
   /**
    * Things we do on creating a view:
@@ -278,7 +270,7 @@ FolderDisplayWidget.prototype = {
    * If our view is being destroyed and it is coming back, we want to save the
    *  current selection so we can restore it when the view comes back.
    */
-  onDestroyingView(aFolderIsComingBack) {
+  onDestroyingView() {
     gDBView = null; // eslint-disable-line no-global-assign
 
     // if we have no view, no messages could be loaded.
@@ -297,7 +289,7 @@ FolderDisplayWidget.prototype = {
    *  The column states will be set to default values in onDisplayingFolder in
    *  that case.
    */
-  onLoadingFolder(aDbFolderInfo) {},
+  onLoadingFolder() {},
 
   /**
    * We are entering the folder for display:
@@ -368,7 +360,10 @@ FolderDisplayWidget.prototype = {
    *  will not get this notification if the view was re-created, for example.
    */
   onSortChanged() {
-    UpdateSortIndicators(this.view.primarySortType, this.view.primarySortOrder);
+    UpdateSortIndicators(
+      this.view.primarySortColumnId,
+      this.view.primarySortOrder
+    );
   },
 
   /**
@@ -493,7 +488,7 @@ FolderDisplayWidget.prototype = {
    *     subject.
    * @param aKeywords The keywords, which roughly translates to message tags.
    */
-  displayMessageChanged(aFolder, aSubject, aKeywords) {},
+  displayMessageChanged() {},
 
   /**
    * This gets called as a hint that the currently selected message is junk and
@@ -590,7 +585,7 @@ FolderDisplayWidget.prototype = {
    *  This function hides some of the XPCOM-odditities of the getCommandStatus
    *  call.
    */
-  getCommandStatus(aCommandType, aEnabledObj, aCheckStatusObj) {
+  getCommandStatus(aCommandType) {
     // no view means not enabled
     if (!this.view.dbView) {
       return false;

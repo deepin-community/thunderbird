@@ -7,7 +7,6 @@
 #define nsOutlookImport_h___
 
 #include "nsIImportModule.h"
-#include "nsCOMPtr.h"
 
 #define NS_OUTLOOKIMPORT_CID                       \
   { /* 1DB469A0-8B00-11d3-A206-00A0CC26DA63 */     \
@@ -16,8 +15,7 @@
     }                                              \
   }
 
-#define kOutlookSupportsString \
-  NS_IMPORT_MAIL_STR "," NS_IMPORT_ADDRESS_STR "," NS_IMPORT_SETTINGS_STR
+#define kOutlookSupportsString "mail,addressbook,settings"
 
 class nsOutlookImport : public nsIImportModule {
  public:

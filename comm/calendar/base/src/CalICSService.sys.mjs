@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { ICAL, unwrapSetter, unwrapSingle, wrapGetter } = ChromeUtils.import(
-  "resource:///modules/calendar/Ical.jsm"
-);
+import ICAL from "resource:///modules/calendar/Ical.sys.mjs";
+
 import { cal } from "resource:///modules/calendar/calUtils.sys.mjs";
 
 const lazy = {};
@@ -99,29 +98,23 @@ CalIcalProperty.prototype = {
       val && typeof val == "object" && "icalclass" in val && val.icalclass == "icaltime";
     return isIcalTime ? new lazy.CalDateTime(val) : null;
   },
-  set valueAsDatetime(rawval) {
-    unwrapSetter(
-      ICAL.Time,
-      rawval,
-      function (val) {
-        if (
-          val &&
-          val.zone &&
-          val.zone != ICAL.Timezone.utcTimezone &&
-          val.zone != ICAL.Timezone.localTimezone
-        ) {
-          this.innerObject.setParameter("TZID", val.zone.tzid);
-          if (this.parent) {
-            const tzref = wrapGetter(lazy.CalTimezone, val.zone);
-            this.parent.addTimezoneReference(tzref);
-          }
-        } else {
-          this.innerObject.removeParameter("TZID");
-        }
-        this.innerObject.setValue(val);
-      },
-      this
-    );
+  set valueAsDatetime(val) {
+    val = val?.wrappedJSObject.innerObject;
+    if (
+      val &&
+      val.zone &&
+      val.zone != ICAL.Timezone.utcTimezone &&
+      val.zone != ICAL.Timezone.localTimezone
+    ) {
+      this.innerObject.setParameter("TZID", val.zone.tzid);
+      if (this.parent) {
+        const tzref = new lazy.CalTimezone(val.zone);
+        this.parent.addTimezoneReference(tzref);
+      }
+    } else {
+      this.innerObject.removeParameter("TZID");
+    }
+    this.innerObject.setValue(val);
   },
 
   get propertyName() {
@@ -252,7 +245,7 @@ calIcalComponent.prototype = {
   },
 
   get parent() {
-    return wrapGetter(calIcalComponent, this.innerObject.parent);
+    return this.innerObject.parent ? new calIcalComponent(this.innerObject.parent) : null;
   },
 
   get icalTimezone() {
@@ -390,70 +383,79 @@ calIcalComponent.prototype = {
       val.zone != ICAL.Timezone.localTimezone
     ) {
       prop.setParameter("TZID", val.zone.tzid);
-      this.addTimezoneReference(wrapGetter(lazy.CalTimezone, val.zone));
+      this.addTimezoneReference(new lazy.CalTimezone(val.zone));
     } else {
       prop.removeParameter("TZID");
     }
   },
 
   get startTime() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("dtstart"));
+    const val = this.innerObject.getFirstPropertyValue("dtstart");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set startTime(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "dtstart"), this);
+    this._setTimeAttr("dtstart", val.wrappedJSObject.innerObject);
   },
 
   get endTime() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("dtend"));
+    const val = this.innerObject.getFirstPropertyValue("dtend");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set endTime(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "dtend"), this);
+    this._setTimeAttr("dtend", val.wrappedJSObject.innerObject);
   },
 
   get duration() {
-    return wrapGetter(lazy.CalDuration, this.innerObject.getFirstPropertyValue("duration"));
+    const val = this.innerObject.getFirstPropertyValue("duration");
+    return val ? new lazy.CalDuration(val) : null;
   },
 
   get dueTime() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("due"));
+    const val = this.innerObject.getFirstPropertyValue("due");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set dueTime(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "due"), this);
+    this._setTimeAttr("due", val.wrappedJSObject.innerObject);
   },
 
   get stampTime() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("dtstamp"));
+    const val = this.innerObject.getFirstPropertyValue("dtstamp");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set stampTime(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "dtstamp"), this);
+    this._setTimeAttr("dtstamp", val.wrappedJSObject.innerObject);
   },
 
   get createdTime() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("created"));
+    const val = this.innerObject.getFirstPropertyValue("created");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set createdTime(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "created"), this);
+    this._setTimeAttr("created", val.wrappedJSObject.innerObject);
   },
 
   get completedTime() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("completed"));
+    const val = this.innerObject.getFirstPropertyValue("completed");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set completedTime(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "completed"), this);
+    this._setTimeAttr("completed", val.wrappedJSObject.innerObject);
   },
 
   get lastModified() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("last-modified"));
+    const val = this.innerObject.getFirstPropertyValue("last-modified");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set lastModified(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "last-modified"), this);
+    this._setTimeAttr("last-modified", val.wrappedJSObject.innerObject);
   },
 
   get recurrenceId() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getFirstPropertyValue("recurrence-id"));
+    const val = this.innerObject.getFirstPropertyValue("recurrence-id");
+    return val ? new lazy.CalDateTime(val) : null;
   },
   set recurrenceId(val) {
-    unwrapSetter(ICAL.Time, val, this._setTimeAttr.bind(this, "recurrence-id"), this);
+    this._setTimeAttr("recurrence-id", val.wrappedJSObject.innerObject);
   },
 
   serializeToICS() {
@@ -465,7 +467,7 @@ calIcalComponent.prototype = {
 
   addSubcomponent(comp) {
     comp.getReferencedTimezones().forEach(this.addTimezoneReference, this);
-    const jscomp = unwrapSingle(ICAL.Component, comp);
+    const jscomp = comp.wrappedJSObject.innerObject;
     this.innerObject.addSubcomponent(jscomp);
   },
 
@@ -533,7 +535,7 @@ calIcalComponent.prototype = {
       // that break adding the property.
     }
 
-    const jsprop = unwrapSingle(ICAL.Property, prop);
+    const jsprop = prop.wrappedJSObject.innerObject;
     this.innerObject.addProperty(jsprop);
   },
 
@@ -550,7 +552,7 @@ calIcalComponent.prototype = {
     }
   },
 
-  getReferencedTimezones(aCount) {
+  getReferencedTimezones() {
     return Object.keys(this.mReferencedZones).map(timezone => this.mReferencedZones[timezone]);
   },
 
@@ -578,7 +580,10 @@ CalICSService.prototype = {
   },
 
   parseICSAsync(serialized, listener) {
-    const worker = new ChromeWorker("resource:///components/calICSService-worker.js");
+    // XXX: should we cache the worker?
+    const worker = new ChromeWorker("resource:///modules/CalICSService.worker.mjs", {
+      type: "module",
+    });
     worker.onmessage = function (event) {
       const icalComp = new calIcalComponent(new ICAL.Component(event.data));
       listener.onParsingComplete(Cr.OK, icalComp);

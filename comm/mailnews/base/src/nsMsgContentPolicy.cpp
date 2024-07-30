@@ -4,13 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsMsgContentPolicy.h"
-#include "nsIMsgMailSession.h"
 #include "nsIPermissionManager.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
-#include "nsIAbManager.h"
-#include "nsIAbDirectory.h"
-#include "nsIAbCard.h"
 #include "nsIMsgWindow.h"
 #include "nsIMsgHdr.h"
 #include "nsIEncryptedSMIMEURIsSrvc.h"
@@ -28,7 +24,6 @@
 #include "nsINntpUrl.h"
 #include "nsILoadInfo.h"
 #include "nsSandboxFlags.h"
-#include "nsQueryObject.h"
 #include "mozilla/dom/WindowGlobalParent.h"
 #include "mozilla/SyncRunnable.h"
 #include "nsIObserverService.h"
@@ -95,7 +90,7 @@ bool nsMsgContentPolicy::ShouldAcceptRemoteContentForSender(
 
   // extract the e-mail address from the msg hdr
   nsCString author;
-  nsresult rv = aMsgHdr->GetAuthor(getter_Copies(author));
+  nsresult rv = aMsgHdr->GetAuthor(author);
   NS_ENSURE_SUCCESS(rv, false);
 
   nsCString emailAddress;
@@ -170,13 +165,6 @@ nsMsgContentPolicy::ShouldLoad(nsIURI* aContentLocation, nsILoadInfo* aLoadInfo,
 
   NS_ENSURE_ARG_POINTER(aContentLocation);
 
-#ifdef DEBUG_MsgContentPolicy
-  fprintf(stderr, "aContentType: %d\naContentLocation = %s\n", aContentType,
-          aContentLocation->GetSpecOrDefault().get());
-  fprintf(stderr, "aRequestingContext is %s\n",
-          aRequestingContext ? "not null" : "null");
-#endif
-
 #ifndef MOZ_THUNDERBIRD
   // Go find out if we are dealing with mailnews. Anything else
   // isn't our concern and we accept content.
@@ -230,11 +218,6 @@ nsMsgContentPolicy::ShouldLoad(nsIURI* aContentLocation, nsILoadInfo* aLoadInfo,
   // that can happen.  Also keep in mind that the default policy used for a
   // failure code is ACCEPT.
   if (!aRequestingLocation) return NS_ERROR_INVALID_POINTER;
-
-#ifdef DEBUG_MsgContentPolicy
-  fprintf(stderr, "aRequestingLocation = %s\n",
-          aRequestingLocation->GetSpecOrDefault().get());
-#endif
 
   // If the requesting location is safe, accept the content location request.
   if (IsSafeRequestingLocation(aRequestingLocation)) return rv;
@@ -299,7 +282,6 @@ nsMsgContentPolicy::ShouldLoad(nsIURI* aContentLocation, nsILoadInfo* aLoadInfo,
   }
 
   // Never load unexposed protocols except for web protocols and file.
-  // Protocols like ftp are always blocked.
   if (ShouldBlockUnexposedProtocol(aContentLocation)) return NS_OK;
 
   // Mailnews URIs are not loaded in child processes, so I think that beyond
@@ -334,11 +316,6 @@ nsMsgContentPolicy::ShouldLoad(nsIURI* aContentLocation, nsILoadInfo* aLoadInfo,
     *aDecision = nsIContentPolicy::ACCEPT;
     return NS_OK;
   }
-
-#ifdef DEBUG_MsgContentPolicy
-  fprintf(stderr, "originatorLocation = %s\n",
-          originatorLocation->GetSpecOrDefault().get());
-#endif
 
   // Don't load remote content for encrypted messages.
   nsCOMPtr<nsIEncryptedSMIMEURIsService> encryptedURIService = do_GetService(
@@ -532,11 +509,16 @@ bool nsMsgContentPolicy::ShouldBlockUnexposedProtocol(
   rv = aContentLocation->SchemeIs("blob", &isBlob);
   NS_ENSURE_SUCCESS(rv, true);
 
+  bool isJavaScript;
+  rv = aContentLocation->SchemeIs("javascript", &isJavaScript);
+  NS_ENSURE_SUCCESS(rv, true);
+
   bool isFile;
   rv = aContentLocation->SchemeIs("file", &isFile);
   NS_ENSURE_SUCCESS(rv, true);
 
-  return !isHttp && !isHttps && !isWs && !isWss && !isBlob && !isFile;
+  return !isHttp && !isHttps && !isWs && !isWss && !isBlob && !isJavaScript &&
+         !isFile;
 }
 
 /**

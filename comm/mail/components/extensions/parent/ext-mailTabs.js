@@ -6,9 +6,9 @@ var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  MailServices: "resource:///modules/MailServices.jsm",
-});
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
 
 ChromeUtils.defineESModuleGetters(this, {
   QuickFilterManager: "resource:///modules/QuickFilterManager.sys.mjs",
@@ -17,6 +17,9 @@ ChromeUtils.defineESModuleGetters(this, {
 
 var { getFolder } = ChromeUtils.importESModule(
   "resource:///modules/ExtensionAccounts.sys.mjs"
+);
+var { ThreadPaneColumns } = ChromeUtils.importESModule(
+  "chrome://messenger/content/ThreadPaneColumns.mjs"
 );
 
 XPCOMUtils.defineLazyPreferenceGetter(
@@ -50,37 +53,105 @@ const nsMsgViewIndex_None = 0xffffffff;
  * @returns {object}
  */
 function convertMailTab(tab, context) {
-  const mailTabObject = {
-    id: tab.id,
-    windowId: tab.windowId,
-    active: tab.active,
-    sortType: null,
-    sortOrder: null,
-    viewType: null,
-    layout: LAYOUTS[gDynamicPaneConfig],
-    folderPaneVisible: null,
-    messagePaneVisible: null,
-  };
-
   const about3Pane = tab.nativeTab.chromeBrowser.contentWindow;
   const { gViewWrapper, paneLayout } = about3Pane;
+
+  // The API uses "unified" instead of "smart".
+  const fixApiModeName = name => (name == "smart" ? "unified" : name);
+
+  const mailTabObject = {
+    windowId: tab.windowId,
+    active: tab.active,
+    layout: LAYOUTS[gDynamicPaneConfig],
+    folderMode: fixApiModeName(about3Pane.folderTree.selectedRow.modeName),
+    folderModesEnabled: about3Pane.folderPane.activeModes.map(fixApiModeName),
+  };
+
+  if (context.extension.manifest.manifest_version < 3) {
+    mailTabObject.id = tab.id;
+  } else {
+    mailTabObject.tabId = tab.id;
+  }
+
   mailTabObject.folderPaneVisible = paneLayout.folderPaneVisible;
   mailTabObject.messagePaneVisible = paneLayout.messagePaneVisible;
-  mailTabObject.sortType = SORT_TYPE_MAP.get(gViewWrapper?.primarySortType);
-  mailTabObject.sortOrder = SORT_ORDER_MAP.get(gViewWrapper?.primarySortOrder);
-  if (gViewWrapper?.showGroupedBySort) {
-    mailTabObject.viewType = "groupedBySortType";
-  } else if (gViewWrapper?.showThreaded) {
-    mailTabObject.viewType = "groupedByThread";
-  } else {
-    mailTabObject.viewType = "ungrouped";
+  const sortType = SORT_TYPE_MAP.get(gViewWrapper?.primarySortType);
+  if (sortType) {
+    mailTabObject.sortType = sortType;
   }
+  const sortOrder = SORT_ORDER_MAP.get(gViewWrapper?.primarySortOrder);
+  if (sortOrder) {
+    mailTabObject.sortOrder = sortOrder;
+  }
+
+  let groupType = "ungrouped";
+  if (gViewWrapper?.showGroupedBySort) {
+    groupType = "groupedBySortType";
+  } else if (gViewWrapper?.showThreaded) {
+    groupType = "groupedByThread";
+  }
+  if (context.extension.manifest.manifest_version < 3) {
+    mailTabObject.viewType = groupType;
+  } else {
+    mailTabObject.groupType = groupType;
+  }
+
   if (context.extension.hasPermission("accountsRead")) {
     mailTabObject.displayedFolder = context.extension.folderManager.convert(
       about3Pane.gFolder
     );
   }
   return mailTabObject;
+}
+
+/**
+ * Returns the actual selected messages. This is different from the menus API,
+ * which returns the selection with respect to the context action, which could be
+ * just the message being clicked, if that message is *not* part of the actually
+ * selected messages.
+ *
+ * @param {Window} about3PaneWindow
+ * @returns {nsIMsgDBHdr[]} The selected messages.
+ */
+function getActualSelectedMessages(about3PaneWindow) {
+  const dbView = about3PaneWindow?.gDBView;
+  if (!dbView) {
+    return [];
+  }
+
+  // Get the indicies which are considered to be selected by the UI, which
+  // could be the ones we are *not* interested in, if a context menu is
+  // opened and the UI is supressing the selection.
+  const selectedIndices = about3PaneWindow.threadTree.selectedIndices;
+
+  if (!about3PaneWindow.threadTree._selection._selectEventsSuppressed) {
+    return selectedIndices.map(idx => dbView.getMsgHdrAt(idx));
+  }
+
+  // Get the indicies, which are considered to be invalid by the UI, which
+  // includes *all* selected indices, if the UI is supressing the selection.
+  // Filter out the indicies we are not interested in.
+  const invalidIndices = [
+    ...about3PaneWindow.threadTree._selection._invalidIndices,
+  ];
+  return invalidIndices
+    .filter(idx => !selectedIndices.includes(idx))
+    .map(idx => dbView.getMsgHdrAt(idx));
+}
+
+/**
+ * Returns the actual selected folders. This is different from the menus API,
+ * which returns the selection with respect to the context action, which could be
+ * just the folder being clicked, if that folder is *not* part of the actually
+ * selected folder.
+ *
+ * @param {Window} about3PaneWindow
+ * @returns {nsIMsgFolder[]} The selected folders.
+ */
+function getActualSelectedFolders(about3PaneWindow) {
+  return [...about3PaneWindow.folderTree.selection.values()].map(row =>
+    MailServices.folderLookup.getFolderForURL(row.uri)
+  );
 }
 
 /**
@@ -99,8 +170,9 @@ var uiListener = new (class extends EventEmitter {
     const tabmail = browser.ownerGlobal.top.document.getElementById("tabmail");
     const nativeTab = tabmail.tabInfo.find(
       t =>
-        t.chromeBrowser == browser ||
-        t.chromeBrowser == browser.browsingContext.parent.embedderElement
+        t.chromeBrowser &&
+        (t.chromeBrowser == browser ||
+          t.chromeBrowser == browser.browsingContext.parent.embedderElement)
     );
 
     if (nativeTab.mode.name != "mail3PaneTab") {
@@ -119,9 +191,9 @@ var uiListener = new (class extends EventEmitter {
       this.lastSelected.set(tab, folder);
       this.emit("folder-changed", tab, folder);
     } else if (event.type == "messageURIChanged") {
-      const messages =
-        nativeTab.chromeBrowser.contentWindow.gDBView?.getSelectedMsgHdrs();
-      if (messages) {
+      const about3PaneWindow = nativeTab.chromeBrowser.contentWindow;
+      if (about3PaneWindow?.gDBView) {
+        const messages = getActualSelectedMessages(about3PaneWindow);
         this.emit("messages-changed", tab, messages);
       }
     }
@@ -150,7 +222,7 @@ this.mailTabs = class extends ExtensionAPIPersistent {
     // available after fire.wakeup() has fulfilled (ensuring the convert() function
     // has been called).
 
-    onDisplayedFolderChanged({ context, fire }) {
+    onDisplayedFolderChanged({ fire }) {
       const { extension } = this;
       const { tabManager, folderManager } = extension;
       async function listener(event, tab, folder) {
@@ -166,13 +238,12 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           uiListener.off("folder-changed", listener);
           uiListener.decrementListeners();
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onSelectedMessagesChanged({ context, fire }) {
+    onSelectedMessagesChanged({ fire }) {
       const { extension } = this;
       const { tabManager } = extension;
       async function listener(event, tab, messages) {
@@ -189,9 +260,8 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           uiListener.off("messages-changed", listener);
           uiListener.decrementListeners();
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
@@ -199,7 +269,7 @@ this.mailTabs = class extends ExtensionAPIPersistent {
 
   getAPI(context) {
     const { extension } = context;
-    const { tabManager } = extension;
+    const { tabManager, folderManager } = extension;
 
     /**
      * Gets the tab for the given tab id, or the active tab if the id is null.
@@ -227,34 +297,41 @@ this.mailTabs = class extends ExtensionAPIPersistent {
     }
 
     /**
-     * Set the currently displayed folder in the given tab.
+     * Set the currently selected folder row in the given tab.
      *
-     * @param {NativeTab} nativeTab
-     * @param {nsIMsgFolder} folder
-     * @param {boolean} restorePreviousSelection - Select the previously selected
+     * @param {Window} about3Pane
+     * @param {FolderTreeRow} row
+     * @param {boolean} [clearPreviousSelection] - Clears the previously selected
      *   messages of the folder, after it has been set.
      */
-    async function setFolder(nativeTab, folder, restorePreviousSelection) {
-      const about3Pane = nativeTab.chromeBrowser.contentWindow;
-      if (!nativeTab.folder || nativeTab.folder.URI != folder.URI) {
-        await new Promise(resolve => {
-          const listener = event => {
-            if (event.detail == folder.URI) {
-              about3Pane.removeEventListener("folderURIChanged", listener);
-              resolve();
-            }
-          };
-          about3Pane.addEventListener("folderURIChanged", listener);
-          if (restorePreviousSelection) {
-            about3Pane.restoreState({
-              folderURI: folder.URI,
-            });
-          } else {
-            about3Pane.threadPane.forgetSelection(folder.URI);
-            nativeTab.folder = folder;
-          }
-        });
+    async function selectFolderRow(about3Pane, row, clearPreviousSelection) {
+      const curRow = about3Pane.folderTree.selectedRow;
+      // Bail out, if invalid row, or row already selected.
+      if (
+        !row?.modeName ||
+        !row?.uri ||
+        (row.modeName == curRow?.modeName && row.uri == curRow?.uri)
+      ) {
+        return;
       }
+
+      // Make sure the row is actually visible.
+      about3Pane.ensureFolderTreeRowIsVisible(row);
+
+      if (clearPreviousSelection) {
+        about3Pane.threadPane.forgetSelection(row.uri);
+      }
+
+      await new Promise(resolve => {
+        const listener = event => {
+          if (event.detail == row.uri) {
+            about3Pane.removeEventListener("folderURIChanged", listener);
+            resolve();
+          }
+        };
+        about3Pane.addEventListener("folderURIChanged", listener);
+        about3Pane.folderTree.updateSelection(row);
+      });
     }
 
     /**
@@ -267,38 +344,162 @@ this.mailTabs = class extends ExtensionAPIPersistent {
      */
     async function updateMailTab(nativeTab, properties) {
       const about3Pane = nativeTab.chromeBrowser.contentWindow;
+      const selectedFolder = about3Pane.gFolder;
 
-      let {
+      // Thunderbird uses "smart" instead of "unified".
+      const fixTbModeName = name => (name == "unified" ? "smart" : name);
+
+      const {
+        // MV2
         displayedFolder,
+        viewType,
+        // MV3
+        displayedFolderId,
+        groupType,
+        // Common
         layout,
         folderPaneVisible,
         messagePaneVisible,
         sortOrder,
         sortType,
-        viewType,
+        folderModesEnabled,
+        folderMode,
       } = properties;
 
-      if (displayedFolder) {
-        const { folder } = getFolder(displayedFolder);
-        await setFolder(nativeTab, folder, true);
+      let folder;
+      if (displayedFolderId || displayedFolder) {
+        folder = getFolder(displayedFolderId || displayedFolder).folder;
       }
 
-      if (sortType) {
-        // Change "foo" to "byFoo".
-        sortType = "by" + sortType[0].toUpperCase() + sortType.substring(1);
+      const curFolderMode = about3Pane.folderTree.selectedRow.modeName;
+      const curFolderModes = about3Pane.folderPane.activeModes;
+      const newFolderMode = folderMode ? fixTbModeName(folderMode) : null;
+      let newFolderModes = folderModesEnabled
+        ? folderModesEnabled.map(fixTbModeName)
+        : null;
+
+      // Switching to a folder pane mode should always enable it, if needed.
+      if (
+        newFolderMode &&
+        !newFolderModes &&
+        !curFolderModes.includes(newFolderMode)
+      ) {
+        newFolderModes = [...curFolderModes, newFolderMode];
+      }
+      if (
+        newFolderMode &&
+        newFolderModes &&
+        !newFolderModes.includes(newFolderMode)
+      ) {
+        newFolderModes.push(newFolderMode);
+      }
+
+      if (newFolderModes) {
+        about3Pane.folderPane.activeModes = newFolderModes;
+        // TODO: How to properly wait for the updated modes?
+        await new Promise(r => about3Pane.setTimeout(r));
+
+        // If the current mode got disabled, and neither newFolderMode nor
+        // displayFolder are specified, attempt to select the same folder in
+        // one of the other enabled folder modes.
         if (
-          sortType in Ci.nsMsgViewSortType &&
-          sortOrder &&
-          sortOrder in Ci.nsMsgViewSortOrder
+          !newFolderModes.includes(curFolderMode) &&
+          !newFolderMode &&
+          !folder
         ) {
+          let row = about3Pane.folderPane.getRowForFolder(selectedFolder);
+          // Fallback to the first entry.
+          if (!row) {
+            row = about3Pane.folderTree.getRowAtIndex(0);
+          }
+          await selectFolderRow(about3Pane, row);
+        }
+      }
+
+      if (!folder && newFolderMode) {
+        let row = about3Pane.folderPane.getRowForFolder(
+          selectedFolder,
+          newFolderMode
+        );
+        // Fallback to the first entry of newFolderMode.
+        if (!row) {
+          row = about3Pane.folderPane.getFirstRowForMode(newFolderMode);
+        }
+        await selectFolderRow(about3Pane, row);
+      }
+
+      if (folder) {
+        let row;
+        // Must stay within the requested folder mode. Otherwise fallback to any
+        // of the other enabled folder modes.
+        if (newFolderMode) {
+          row = about3Pane.folderPane.getRowForFolder(folder, newFolderMode);
+          if (!row) {
+            throw new ExtensionError(
+              `Requested folder is not viewable in the requested folder mode`
+            );
+          }
+        } else {
+          row = about3Pane.folderPane.getRowForFolder(folder, curFolderMode);
+          if (!row) {
+            row = about3Pane.folderPane.getRowForFolder(folder);
+          }
+          if (!row) {
+            throw new ExtensionError(
+              `Requested folder is not viewable in any of the enabled folder modes`
+            );
+          }
+        }
+        await selectFolderRow(about3Pane, row);
+      }
+
+      const getColumnId = sortKey => {
+        if (sortKey == "byNone") {
+          return "idCol";
+        }
+
+        // TODO: Allow to specify *which* custom column. Evaluate to use
+        // columnIds here as well.
+        if (sortKey == "byCustom") {
+          const customColumn = about3Pane.gViewWrapper.dbView.curCustomColumn;
+          if (
+            ThreadPaneColumns.getDefaultColumns().some(
+              c => c.custom && c.id == customColumn
+            )
+          ) {
+            return customColumn;
+          }
+          dump(
+            `updateMailTab: custom sort type but no handler for column: ${customColumn} \n`
+          );
+          return null;
+        }
+
+        const column = ThreadPaneColumns.getDefaultColumns().find(
+          c => !c.custom && c.sortKey == sortKey
+        );
+        if (!column) {
+          return null;
+        }
+        return column.id;
+      };
+
+      if (sortType) {
+        const sortColumnId = getColumnId(
+          // Change "foo" to "byFoo".
+          "by" + sortType[0].toUpperCase() + sortType.substring(1)
+        );
+
+        if (sortColumnId && sortOrder && sortOrder in Ci.nsMsgViewSortOrder) {
           about3Pane.gViewWrapper.sort(
-            Ci.nsMsgViewSortType[sortType],
+            sortColumnId,
             Ci.nsMsgViewSortOrder[sortOrder]
           );
         }
       }
 
-      switch (viewType) {
+      const type = viewType || groupType;
+      switch (type) {
         case "groupedBySortType":
           about3Pane.gViewWrapper.showGroupedBySort = true;
           break;
@@ -377,15 +578,21 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           const tabParams = {};
 
           // Set folderURI parameter.
-          if (properties.displayedFolder) {
+          if (properties.displayedFolder || properties.displayedFolderId) {
             if (!extension.hasPermission("accountsRead")) {
               throw new ExtensionError(
                 'Setting the displayed folder requires the "accountsRead" permission'
               );
             }
-            const { folder } = getFolder(properties.displayedFolder);
+            const { folder } = getFolder(
+              properties.displayedFolder || properties.displayedFolderId
+            );
             tabParams.folderURI = folder.URI;
-            delete properties.displayedFolder;
+            if (properties.displayedFolder) {
+              delete properties.displayedFolder;
+            } else {
+              delete properties.displayedFolderId;
+            }
           }
 
           // Set pane visibility parameters.
@@ -441,11 +648,18 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           return messageListTracker.startList([], extension);
         },
 
+        async getSelectedFolders(tabId) {
+          const tab = await getTabOrActive(tabId);
+          const about3PaneWindow = tab.nativeTab.chromeBrowser.contentWindow;
+          const folders = getActualSelectedFolders(about3PaneWindow);
+          return folders.map(folder => folderManager.convert(folder));
+        },
+
         async getSelectedMessages(tabId) {
           const tab = await getTabOrActive(tabId);
-          const dbView = tab.nativeTab.chromeBrowser.contentWindow?.gDBView;
-          const messageList = dbView ? dbView.getSelectedMsgHdrs() : [];
-          return messageListTracker.startList(messageList, extension);
+          const about3PaneWindow = tab.nativeTab.chromeBrowser.contentWindow;
+          const messages = getActualSelectedMessages(about3PaneWindow);
+          return messageListTracker.startList(messages, extension);
         },
 
         async setSelectedMessages(tabId, messageIds) {
@@ -477,9 +691,9 @@ this.mailTabs = class extends ExtensionAPIPersistent {
               }
             };
 
-            const msgHdrs = messageIds.map(id =>
-              extension.messageManager.get(id)
-            );
+            const msgHdrs = messageIds
+              .map(id => extension.messageManager.get(id))
+              .filter(Boolean);
             const foundIndices = getIndices(msgHdrs);
             const allInCurrentView = foundIndices.length == msgHdrs.length;
             const allInSameFolder = msgHdrs.every(
@@ -488,7 +702,7 @@ this.mailTabs = class extends ExtensionAPIPersistent {
 
             if (!allInCurrentView && !allInSameFolder) {
               throw new ExtensionError(
-                `Requested messages are not in the same folder and are also not in the current view, cannot select all of them at the same time.`
+                `Requested messages are not in the same folder and are also not in the current view, cannot select all of them at the same time`
               );
             }
 
@@ -497,7 +711,22 @@ this.mailTabs = class extends ExtensionAPIPersistent {
             if (allInCurrentView) {
               selectedIndices = foundIndices;
             } else {
-              await setFolder(tab.nativeTab, msgHdrs[0].folder, false);
+              // Stay within the current folderMode, if possible.
+              const curFolderMode = about3Pane.folderTree.selectedRow.modeName;
+              let row = about3Pane.folderPane.getRowForFolder(
+                msgHdrs[0].folder,
+                curFolderMode
+              );
+              // Fallback to any other of the enabled folder modes.
+              if (!row) {
+                row = about3Pane.folderPane.getRowForFolder(msgHdrs[0].folder);
+              }
+              if (!row) {
+                throw new ExtensionError(
+                  `Folder of the requested message(s) is not viewable in any of the enabled folder modes`
+                );
+              }
+              await selectFolderRow(about3Pane, row, true);
               // Update indices after switching the folder.
               selectedIndices = getIndices(msgHdrs);
             }
@@ -515,6 +744,7 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           const about3Pane = nativeTab.chromeBrowser.contentWindow;
 
           const filterer = about3Pane.quickFilterBar.filterer;
+          const oldSearchTerm = filterer.filterValues.text.text;
           filterer.clear();
 
           // Map of QuickFilter state names to possible WebExtensions state names.
@@ -528,8 +758,11 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           filterer.visible = state.show !== false;
           for (const [key, name] of Object.entries(stateMap)) {
             filterer.setFilterValue(key, state[name]);
+            about3Pane.quickFilterBar.updateFiltersSettings(key, state[name]);
           }
 
+          // Filters we have to manually set the state of, since it is generated
+          // in onCommand for the UI based input.
           if (state.tags) {
             filterer.filterValues.tags = {
               mode: "OR",
@@ -547,17 +780,33 @@ this.mailTabs = class extends ExtensionAPIPersistent {
             }
           }
           if (state.text) {
-            filterer.filterValues.text = {
-              states: {
-                recipients: state.text.recipients || false,
-                sender: state.text.author || false,
-                subject: state.text.subject || false,
-                body: state.text.body || false,
-              },
-              text: state.text.text,
+            const states = {
+              recipients: state.text.recipients || false,
+              sender: state.text.author || false,
+              subject: state.text.subject || false,
+              body: state.text.body || false,
             };
+            if (
+              about3Pane.document
+                .getElementById("qfb-qs-textbox")
+                .overrideSearchTerm(state.text.text)
+            ) {
+              filterer.filterValues.text = {
+                states,
+                text: state.text.text,
+              };
+              about3Pane.document.getElementById(
+                "quick-filter-bar-filter-text-bar"
+              ).hidden = !state.text.text;
+            } else {
+              filterer.filterValues.text = {
+                states,
+                text: oldSearchTerm,
+              };
+            }
           }
 
+          about3Pane.quickFilterBar.reflectFiltererState();
           about3Pane.quickFilterBar.updateSearch();
         },
 

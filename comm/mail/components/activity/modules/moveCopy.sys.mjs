@@ -9,9 +9,7 @@ var nsActEvent = Components.Constructor(
   "init"
 );
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 import { PluralForm } from "resource:///modules/PluralForm.sys.mjs";
 
 // This module provides a link between the move/copy code and the activity
@@ -52,7 +50,7 @@ export var moveCopyModule = {
     }
   },
 
-  msgAdded(aMsg) {},
+  msgAdded() {},
 
   msgsDeleted(aMsgList) {
     this.log.info("in msgsDeleted");
@@ -184,7 +182,7 @@ export var moveCopyModule = {
     }
   },
 
-  folderAdded(aFolder) {},
+  folderAdded() {},
 
   folderDeleted(aFolder) {
     // When a new account is created we get this notification with an empty named

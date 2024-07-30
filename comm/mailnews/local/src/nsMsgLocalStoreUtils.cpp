@@ -6,9 +6,11 @@
 #include "msgCore.h"  // precompiled header...
 #include "nsMsgLocalStoreUtils.h"
 #include "nsIFile.h"
-#include "nsIDBFolderInfo.h"
 #include "nsIMsgDatabase.h"
 #include "HeaderReader.h"
+#include "nsMailHeaders.h"
+#include "nsMsgLocalFolderHdrs.h"
+#include "nsMsgMessageFlags.h"
 #include "nsPrintfCString.h"
 #include "nsReadableUtils.h"
 #include "mozilla/Buffer.h"
@@ -52,7 +54,7 @@ bool nsMsgLocalStoreUtils::nsShouldIgnoreFile(nsAString& name, nsIFile* path) {
       StringEndsWith(name, u".toc"_ns))
     return true;
 
-  // ignore RSS data source files (see FeedUtils.jsm)
+  // ignore RSS data source files (see FeedUtils.sys.mjs)
   if (name.LowerCaseEqualsLiteral("feeds.json") ||
       name.LowerCaseEqualsLiteral("feeds.json.tmp") ||
       name.LowerCaseEqualsLiteral("feeds.json.backup") ||

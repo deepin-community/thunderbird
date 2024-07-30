@@ -24,8 +24,25 @@ add_task(async function test_managers() {
         messages: [testMessage],
       } = await browser.messages.list(testFolder.id);
 
-      const messageCount = await browser.testapi.testCanGetFolder(testFolder);
-      browser.test.assertEq(5, messageCount);
+      const testFolderPrettyPath = await browser.testapi.testCanGetFolder(
+        testFolder
+      );
+      browser.test.assertEq("test1", testFolderPrettyPath);
+
+      // Check that Foldermanager.get() (used by testapi.testCanGetFolder()) also
+      // works for unified mailbox folders.
+      const [unifiedInbox] = await browser.folders.query({
+        isUnified: true,
+        specialUse: ["inbox"],
+      });
+      browser.test.assertTrue(
+        !!unifiedInbox,
+        "Should find the unified inbox folder"
+      );
+      const inboxFolderPrettyPath = await browser.testapi.testCanGetFolder(
+        unifiedInbox
+      );
+      browser.test.assertEq("Inbox", inboxFolderPrettyPath);
 
       const convertedFolder = await browser.testapi.testCanConvertFolder();
       browser.test.assertEq(testFolder.accountId, convertedFolder.accountId);
@@ -134,8 +151,8 @@ add_task(async function test_managers() {
         var { ExtensionCommon } = ChromeUtils.importESModule(
           "resource://gre/modules/ExtensionCommon.sys.mjs"
         );
-        var { MailServices } = ChromeUtils.import(
-          "resource:///modules/MailServices.jsm"
+        var { MailServices } = ChromeUtils.importESModule(
+          "resource:///modules/MailServices.sys.mjs"
         );
         this.testapi = class extends ExtensionCommon.ExtensionAPI {
           getAPI(context) {
@@ -146,7 +163,7 @@ add_task(async function test_managers() {
                     accountId,
                     path
                   );
-                  return realFolder.getTotalMessages(false);
+                  return realFolder.prettyPath;
                 },
                 async testCanConvertFolder() {
                   const realFolder = MailServices.accounts.allFolders.find(

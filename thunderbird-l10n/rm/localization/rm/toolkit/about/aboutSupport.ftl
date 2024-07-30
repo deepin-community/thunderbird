@@ -415,6 +415,20 @@ support-printing-modified-settings = Parameters da stampa modifitgads
 support-printing-prefs-name = Num
 support-printing-prefs-value = Valur
 
+## Remote Settings sections
+
+support-remote-settings-title = Parameters a distanza
+support-remote-settings-status = Status
+support-remote-settings-status-ok = OK
+# Status when synchronization is not working.
+support-remote-settings-status-broken = Na funcziuna betg
+support-remote-settings-last-check = Ultima controlla
+support-remote-settings-local-timestamp = Timestamp local
+support-remote-settings-sync-history = Cronologia
+support-remote-settings-sync-history-status = Status
+support-remote-settings-sync-history-datetime = Data
+support-remote-settings-sync-history-infos = Infus
+
 ## Normandy sections
 
 support-remote-experiments-title = Experiments a distanza
@@ -434,3 +448,12 @@ pointing-device-none = Nagins apparats d'indicaziun
 
 ## Content Analysis (DLP)
 
+# DLP stands for Data Loss Prevention, an industry term for external software
+# that enterprises can set up to prevent sensitive data from being transferred
+# to external websites.
+content-analysis-title = Analisa dal cuntegn (DLP)
+content-analysis-active = Activa
+content-analysis-connected-to-agent = Connectà cun l’agent
+content-analysis-agent-path = Percurs da l’agent
+content-analysis-agent-failed-signature-verification = Betg reussì da verifitgar la signatura da l’agent
+content-analysis-request-count = Dumber da dumondas

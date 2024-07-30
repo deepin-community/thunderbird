@@ -36,7 +36,7 @@
     }
     /* Apply only in unified toolbar */
     & .search-bar {
-      --windows-accent-outline-color: accentColorText;
+      --windows-accent-outline-color: var(--selected-item-text-color);
     }
   }
 }
@@ -71,6 +71,10 @@
 
   & .search-button-icon {
     content: var(--icon-search);
+  }
+
+  & .clear-button-icon {
+    content: var(--icon-clear);
   }
 
   & .button-icon {
@@ -150,7 +154,7 @@
   }
 
   & .compact .button-icon {
-    content: var(--icon-compress);
+    content: var(--icon-folder-compact-sm);
   }
 
   & .add-as-event .button-icon {
@@ -398,7 +402,7 @@ global-search-bar:not([hidden]) {
   display: block;
   color: var(--layout-color-0);
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     color: var(--toolbar-field-color);
     text-shadow: none;
   }

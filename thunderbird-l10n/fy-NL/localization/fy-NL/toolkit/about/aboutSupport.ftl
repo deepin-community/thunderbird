@@ -415,6 +415,20 @@ support-printing-modified-settings = Wizige ôfdrukynstellingen
 support-printing-prefs-name = Namme
 support-printing-prefs-value = Wearde
 
+## Remote Settings sections
+
+support-remote-settings-title = Eksterne ynstellingen
+support-remote-settings-status = Steat
+support-remote-settings-status-ok = OK
+# Status when synchronization is not working.
+support-remote-settings-status-broken = Wurket net
+support-remote-settings-last-check = Lêste kontrôle
+support-remote-settings-local-timestamp = Lokale tiidstimpel
+support-remote-settings-sync-history = Skiednis
+support-remote-settings-sync-history-status = Steat
+support-remote-settings-sync-history-datetime = Datum
+support-remote-settings-sync-history-infos = Ynformaasje
+
 ## Normandy sections
 
 support-remote-experiments-title = Eksterne eksperiminten

@@ -18,7 +18,7 @@ var {
   get_about_3pane,
   make_message_sets_in_folders,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var {
   assert_results_label_count,
@@ -32,11 +32,11 @@ var {
   toggle_text_constraints,
   cleanup_qfb_button,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/QuickFilterBarHelpers.sys.mjs"
+  "resource://testing-common/mail/QuickFilterBarHelpers.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 add_setup(async function () {

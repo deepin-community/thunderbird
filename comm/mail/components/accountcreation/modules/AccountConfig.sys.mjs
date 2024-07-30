@@ -78,7 +78,7 @@ AccountConfig.prototype = {
    */
   createNewIncoming() {
     return {
-      // { String-enum: "pop3", "imap", "nntp", "exchange" }
+      // { String-enum: "pop3", "imap", "nntp", "exchange", "ews" }
       type: null,
       hostname: null,
       // { Integer }
@@ -133,6 +133,9 @@ AccountConfig.prototype = {
       easURL: null,
       // for when an addon overrides the account type. Optional.
       addonAccountType: null,
+
+      // Whether to use this config for the outgoing server as well.
+      handlesOutgoing: false,
     };
   },
   /**
@@ -140,7 +143,8 @@ AccountConfig.prototype = {
    */
   createNewOutgoing() {
     return {
-      type: "smtp",
+      // { String-enum: "smtp" }
+      type: null,
       hostname: null,
       port: null, // see incoming
       username: null, // see incoming. may be null, if auth is 0.
@@ -149,11 +153,11 @@ AccountConfig.prototype = {
       badCert: false, // see incoming
       auth: 0, // see incoming
       authAlternatives: null, // see incoming
-      addThisServer: true, // if we already have an SMTP server, add this
-      // if we already have an SMTP server, use it.
+      addThisServer: true, // if we already have a server, add this
+      // if we already have a server, use it.
       useGlobalPreferredServer: false,
-      // we should reuse an already configured SMTP server.
-      // nsISmtpServer.key
+      // we should reuse an already configured server.
+      // nsIMsgOutgoingServer.key
       existingServerKey: null,
       // user display value for existingServerKey
       existingServerLabel: null,
@@ -326,6 +330,12 @@ AccountConfig.prototype = {
   /**
    * Sort the config alternatives such that exchange is the last of the
    * alternatives.
+   *
+   * Note this method is expected to be called in the final stages of the
+   * Exchange Autodiscover process, before we set a specific server type if we
+   * natively support the specific flavour of Exchange, so filtering on
+   * "exchange" should work regardless of whether we support the server natively
+   * or through an addon.
    */
   preferStandardProtocols() {
     const alternatives = this.incomingAlternatives;

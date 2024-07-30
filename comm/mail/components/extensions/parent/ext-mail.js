@@ -27,10 +27,6 @@ var { AccountManager, FolderManager } = ChromeUtils.importESModule(
 var { MessageListTracker, MessageTracker, MessageManager } =
   ChromeUtils.importESModule("resource:///modules/ExtensionMessages.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  MailServices: "resource:///modules/MailServices.jsm",
-});
-
 XPCOMUtils.defineLazyGlobalGetters(this, [
   "IOUtils",
   "PathUtils",
@@ -72,7 +68,11 @@ const NOTIFICATION_COLLAPSE_TIME = 200;
       }
 
       if (MESSAGE_PROTOCOLS.includes(windowContext.documentURI?.scheme)) {
-        return script.extension.hasPermission("messagesModify");
+        return (
+          script.extension.hasPermission("messagesModify") ||
+          (script.extension.hasPermission("messagesRead") &&
+            script.extension.hasPermission("scripting"))
+        );
       }
 
       return matchesWindowGlobal.apply(script, arguments);
@@ -644,16 +644,16 @@ class TabTracker extends TabTrackerBase {
       onLoadWindow(window) {
         window.gTabmail.registerTabMonitor({
           monitorName: "extensionSession",
-          onTabTitleChanged(aTab) {},
-          onTabClosing(aTab) {},
+          onTabTitleChanged() {},
+          onTabClosing() {},
           onTabPersist(aTab) {
             return aTab._ext.extensionSession;
           },
           onTabRestored(aTab, aState) {
             aTab._ext.extensionSession = aState;
           },
-          onTabSwitched(aNewTab, aOldTab) {},
-          onTabOpened(aTab) {},
+          onTabSwitched() {},
+          onTabOpened() {},
         });
       },
     });
@@ -976,10 +976,41 @@ class TabTracker extends TabTrackerBase {
    * @returns {{ tabId:Integer, windowId:Integer }} The browsing data for the element
    */
   getBrowserData(browser) {
+    const window = browser.ownerGlobal;
+    if (window?.top.document.documentURI === "about:addons") {
+      // When we're loaded into a <browser> inside about:addons, we need to go up
+      // one more level.
+      browser = window.docShell.chromeEventHandler;
+    }
+    // Detect windowless windows, mostly for the background page and xpcshell
+    // tests, where m-c expects -1.
+    if (
+      !window ||
+      window.location.href == "chrome://extensions/content/dummy.xhtml"
+    ) {
+      return { tabId: -1, windowId: -1 };
+    }
+
+    let windowId = windowTracker.getId(browser.ownerGlobal);
+    // Do not return invalid windowIds. windowTracker.getId() just pulls the
+    // outerWindowID, while windowTracker.getWindow() does more checks on the
+    // validity.
+    try {
+      windowTracker.getWindow(windowId);
+    } catch (ex) {
+      windowId = -1;
+    }
     return {
       tabId: this.getBrowserTabId(browser),
-      windowId: windowTracker.getId(browser.ownerGlobal),
+      windowId,
     };
+  }
+
+  getBrowserDataForContext(context) {
+    if (["background", "tab", "popup"].includes(context.viewType)) {
+      return this.getBrowserData(context.xulBrowser);
+    }
+    return { tabId: -1, windowId: -1 };
   }
 
   /**
@@ -1057,7 +1088,9 @@ class Tab extends TabBase {
     const result = super.convert(fallback);
     result.spaceId = this.spaceId;
     result.type = this.type;
-    result.mailTab = result.type == "mail";
+    if (this.extension.manifestVersion < 3) {
+      result.mailTab = result.type == "mail";
+    }
 
     // These properties are not useful to Thunderbird extensions and are not returned.
     for (const key of [
@@ -1314,8 +1347,6 @@ class TabmailTab extends Tab {
         const currentURI = this.nativeTab.browser.currentURI;
         if (currentURI?.schemeIs("about")) {
           switch (currentURI.filePath) {
-            case "accountprovisioner":
-              return "accountProvisioner";
             case "blank":
               return "content";
             default:
@@ -1333,7 +1364,6 @@ class TabmailTab extends Tab {
       case "tasks":
       case "chat":
         return this.nativeTab.mode.name;
-      case "provisionerCheckoutTab":
       case "glodaFacet":
       case "preferencesTab":
         return "special";
@@ -1729,7 +1759,7 @@ class TabManager extends TabManagerBase {
    * @returns {boolean}
    *        True if the extension has permissions for this tab.
    */
-  canAccessTab(nativeTab) {
+  canAccessTab() {
     return true;
   }
 
@@ -1841,7 +1871,7 @@ async function getNormalWindowReady(context, windowId) {
   // Wait for session restore.
   await new Promise(resolve => {
     if (!window.SessionStoreManager._restored) {
-      const obs = (observedWindow, topic, data) => {
+      const obs = observedWindow => {
         if (observedWindow != window) {
           return;
         }
@@ -1908,7 +1938,8 @@ extensions.on("startup", (type, extension) => {
         findMailingListById: this.addressBookCache.findMailingListById.bind(
           this.addressBookCache
         ),
-        convert: this.addressBookCache.convert.bind(this.addressBookCache),
+        convert: (element, complete) =>
+          this.addressBookCache.convert(element, extension, complete),
       };
     });
   }

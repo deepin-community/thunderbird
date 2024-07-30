@@ -2,12 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
+
+var parserUtils = Cc["@mozilla.org/parserutils;1"].getService(
+  Ci.nsIParserUtils
 );
 
 this.messengerUtilities = class extends ExtensionAPIPersistent {
-  getAPI(context) {
+  getAPI() {
     const messenger = Cc["@mozilla.org/messenger;1"].createInstance(
       Ci.nsIMessenger
     );
@@ -24,6 +28,21 @@ this.messengerUtilities = class extends ExtensionAPIPersistent {
               group: hdr.group || undefined,
               email: hdr.email || undefined,
             }));
+        },
+        async convertToPlainText(body, options) {
+          let wrapWidth = 0;
+          let flags =
+            Ci.nsIDocumentEncoder.OutputLFLineBreak |
+            Ci.nsIDocumentEncoder.OutputDisallowLineBreaking;
+
+          if (options?.flowed) {
+            wrapWidth = 72;
+            flags |=
+              Ci.nsIDocumentEncoder.OutputFormatted |
+              Ci.nsIDocumentEncoder.OutputFormatFlowed;
+          }
+
+          return parserUtils.convertToPlainText(body, flags, wrapWidth).trim();
         },
       },
     };

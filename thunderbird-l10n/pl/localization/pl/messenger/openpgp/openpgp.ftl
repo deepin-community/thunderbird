@@ -4,6 +4,37 @@
 
 e2e-intro-description = Do wysyłania zaszyfrowanych lub cyfrowo podpisanych wiadomości wymagana jest konfiguracja technologii szyfrowania OpenPGP lub S/MIME.
 e2e-intro-description-more = Wybierz swój klucz osobisty, aby umożliwić korzystanie z OpenPGP, lub certyfikat osobisty, aby umożliwić korzystanie z S/MIME. Dla klucza lub certyfikatu osobistego posiadasz odpowiedni tajny klucz.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = Aby uzyskać nowy osobisty certyfikat S/MIME, wygeneruj żądanie podpisania certyfikatu (CSR) i prześlij je do organu certyfikacji (CA).
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = Wybierz katalog lokalny i nazwę dla pliku CSR oraz odpowiedz na poniższe pytania dotyczące ustawiania algorytmu i mocy.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = Wygeneruj CSR
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Kontynuuj
+# A label for a button that goes back one step
+e2e-csr-back = Wstecz
+# Do not translate: CSR
+e2e-csr-button =
+    .label = Wygeneruj i zapisz plik CSR jako…
+# Do not translate: CSR
+e2e-csr-select-title = Algorytm CSR
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = Wybierz RSA (zalecany) lub ECC jako algorytm kryptograficzny dla nowego certyfikatu S/MIME.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Wybierz żądaną moc kryptograficzną (szybsza przy niższych liczbach lub bezpieczniejsza przy wyższych liczbach) dla nowego certyfikatu S/MIME lub zachowaj ustawienie domyślne.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = Nowy tajny klucz { $type } ({ $strength }) zostanie wygenerowany w ustawieniach { -brand-short-name(case: "gen") }. Proces ten może zająć trochę czasu i spowodować tymczasowy brak reakcji — prosimy o cierpliwość na tym etapie. W międzyczasie zostanie utworzony plik żądania podpisania certyfikatu (CSR), zapisany jako { $file }.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = Dołącz adres e-mail ({ $email }) do CSR (zalecane)
+# $file A filename
+e2e-csr-success = CSR zostało pomyślnie zapisane w pliku { $file }
+# $file A filename
+e2e-csr-failure = Nie można zapisać CSR w pliku { $file }
 e2e-signing-description = Podpis cyfrowy umożliwia odbiorcom sprawdzenie, czy wiadomość została wysłana przez Ciebie, a jej treść nie została zmieniona. Zaszyfrowane wiadomości są zawsze domyślnie podpisane.
 e2e-sign-message =
     .label = Podpisz niezaszyfrowane wiadomości
@@ -505,6 +536,7 @@ key-man-button-export-pub-key = E&ksportuj tylko klucze publiczne
 key-man-button-refresh-all = &Odśwież wszystkie klucze
 key-man-loading-keys = Wczytywanie kluczy, proszę czekać…
 ascii-armor-file = Pliki zakodowanego ASCII (*.asc)
+text-file = Pliki tekstowe (*.txt)
 no-key-selected = Aby wykonać wybrane działanie, należy wybrać co najmniej jeden klucz
 export-to-file = Eksportuj klucz publiczny do pliku
 export-keypair-to-file = Eksportuj tajny i publiczny klucz do pliku
@@ -627,6 +659,9 @@ no-update-found = Masz już klucze, które zostały wykryte w Internecie.
 
 ## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
 
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Błąd: polecenie odczytu klucza się nie powiodło
 
 ## Strings used in keyRing.jsm
@@ -646,6 +681,10 @@ confirm-permissive-import = Zaimportowanie się nie powiodło. Importowany klucz
 
 ## Strings used in trust.jsm
 
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Część zaimportowanych tajnych kluczy ogłasza nieobsługiwaną funkcję. Jeśli użyjesz takiego klucza jako klucza osobistego, rozmówcy mogą wysyłać Ci wiadomości lub klucze publiczne w niezgodnym formacie. Dotyczy to importowanych tajnych kluczy z następującymi odciskami: { $fingerprints }.
+help-button = Pomoc
 
 ## Strings used in trust.sys.mjs
 

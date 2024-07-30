@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Özellikleri keşfet
     .accesskey = Ö
+menu-help-get-release-help =
+    .label = { -brand-short-name } hakkında yardım al
+    .accesskey = r
 menu-help-shortcuts =
     .label = Klavye kısayolları
     .accesskey = K
@@ -65,6 +68,9 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } uygulamasından çık
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -92,8 +98,8 @@ menu-view-repair-text-encoding =
 ## View / Folders
 
 menu-view-folders-toggle-header =
-    .label = Dizin bölmesi başlığı
-    .accesskey = D
+    .label = Klasör bölmesi başlığı
+    .accesskey = K
 
 ## View / Layout
 
@@ -130,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = E-posta hesabı…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Haber grubu hesabı…
     .accesskey = H

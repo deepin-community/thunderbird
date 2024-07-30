@@ -5,6 +5,16 @@
 :root {
   --vcard-delete-button-color: light-dark(var(--color-red-60), var(--color-red-40));
   --vcard-remove-color: light-dark(var(--color-red-60), var(--color-red-40));
+
+  --vcard-edit-row-gap: 30px;
+
+  &[uidensity="compact"] {
+    --vcard-edit-row-gap: 21px;
+  }
+
+  &[uidensity="touch"] {
+    --vcard-edit-row-gap: 33px;
+  }
 }
 
 .addr-book-edit-display-nickname {
@@ -22,16 +32,19 @@ vcard-edit input[type="date"],
 vcard-edit .vcard-type-selection,
 vcard-tz select:not([size], [multiple]),
 vcard-special-date select:not([size], [multiple]) {
-  line-height: 1;
-  padding-inline: 6px;
   margin: 0;
   border: var(--input-border-density) solid var(--toolbar-field-border-color);
+  padding-block: 0;
   min-height: initial;
-  height: var(--in-content-button-height);
+  height: calc(var(--in-content-button-height) - 2px);
   color: inherit;
   margin-block-end: 3px;
   margin-inline-end: 3px;
   font-weight: normal;
+
+  &:not(select) {
+    padding-inline: 6px;
+  }
 }
 
 vcard-edit {
@@ -39,22 +52,13 @@ vcard-edit {
   grid-template-columns: repeat(auto-fill, minmax(30em, 1fr));
   column-gap: 2em;
   grid-template-rows: masonry;
-  row-gap: 30px;
+  row-gap: var(--vcard-edit-row-gap);
   color: var(--sidebar-text-color);
   --input-border-density: 1px;
 
   & label[for] {
     margin-block-end: 6px;
     font-weight: 600;
-  }
-
-  & input[type="text"],
-  & input[type="email"],
-  & input[type="url"],
-  & input[type="tel"],
-  & input[type="date"] {
-    /* it should be 2em but input doesn't include the border */
-    height: calc(var(--in-content-button-height) - 2px);
   }
 
   & vcard-impp input[type="text"] {
@@ -74,27 +78,21 @@ vcard-edit {
     padding-inline-end: 0;
   }
 
-  & select:not([size]) {
+  & select:not([size], [multiple]) {
     border-color: var(--in-content-button-border-color);
     -moz-context-properties: stroke;
     stroke: currentColor;
     background-position-x: right 6px;
-    padding-inline-end: 15px;
-  }
+    --logical-padding: 5px;
 
     &:dir(rtl) {
       background-position-x: left 6px;
     }
 
-  & select:not([size], [multiple]) {
-    padding-inline: 6px 22px;
-    padding-block: 0;
-    margin-block-end: 0;
-  }
-
-  & select:user-invalid {
-    outline: 2px solid var(--in-content-border-invalid);
-    outline-offset: -1px;
+    &:user-invalid {
+      outline: 2px solid var(--in-content-border-invalid);
+      outline-offset: -1px;
+    }
   }
 
   & textarea {
@@ -339,7 +337,6 @@ vcard-special-date {
 
   & select:not([size], [multiple]),
   & input[type="number"] {
-    margin-block-end: 0;
     margin-inline: 0;
     background-color: var(--in-content-box-background);
     border-color: var(--toolbar-field-border-color);
@@ -380,12 +377,15 @@ vcard-adr select {
 }
 
 .addr-book-edit-fieldset-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background-color: transparent;
   padding: 3px;
   border: none;
   font-size: 1rem;
   font-weight: 500;
-  border-radius: 3px;
+  border-radius: var(--button-border-radius);
   min-height: auto;
   width: fit-content;
 
@@ -394,12 +394,19 @@ vcard-adr select {
       background-color: var(--in-content-button-background);
     }
   }
+
+  &[hidden] {
+    display: none;
+  }
 }
 
 .add-property-button {
-  -moz-context-properties: fill;
-  color: var(--in-content-primary-button-background);
-  fill: var(--in-content-primary-button-text-color);
+
+  &.button {
+    -moz-context-properties: fill;
+    color: var(--in-content-primary-button-background);
+    fill: var(--in-content-primary-button-text-color);
+  }
 
   &:enabled {
     &:is(:hover, :active, :hover:active) {
@@ -426,6 +433,7 @@ vcard-adr select {
 }
 
 .remove-property-button {
+  min-width: 0;
   color: var(--vcard-remove-color);
   margin-block-end: 3px;
   -moz-context-properties: fill, stroke;
@@ -433,7 +441,15 @@ vcard-adr select {
   stroke: currentColor;
   align-self: center;
 
+  &.only-icon {
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+  }
+
   &::before {
+    content: "";
     width: 12px;
     height: 12px;
     background-image: var(--icon-subtract-circle-sm);

@@ -92,12 +92,15 @@ function run_test() {
   return true;
 }
 
+/** @implements {nsIMsgCopyServiceListener} */
 var copyListener = {
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {},
-  SetMessageId(aMessageId) {},
-  OnStopCopy(aStatus) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey() {},
+  getMessageId() {
+    return null;
+  },
+  onStopCopy() {
     continue_test();
   },
 };
@@ -139,10 +142,10 @@ function continue_test() {
 
 function TestSearchx(aFolder, aValue, aAttrib, aOp, aHitCount, onDone) {
   var searchListener = {
-    onSearchHit(dbHdr, folder) {
+    onSearchHit() {
       hitCount++;
     },
-    onSearchDone(status) {
+    onSearchDone() {
       print("Finished search does " + aHitCount + " equal " + hitCount + "?");
       searchSession = null;
       Assert.equal(aHitCount, hitCount);

@@ -32,10 +32,10 @@ function setupServerDaemon(handler) {
 
 function getBasicSmtpServer(port = 1, hostname = "localhost") {
   const server = localAccountUtils.create_outgoing_server(
-    port,
+    "smtp",
     "user",
     "password",
-    hostname
+    { port, hostname }
   );
 
   // Override the default greeting so we get something predictable
@@ -111,7 +111,7 @@ async function runTest(config) {
           to: [`test${i}@test.invalid`],
           subject: `Test${i} save as ${config.expected.mode}`,
           additionalFccFolder:
-            config.expected.fcc.length > 1 ? fccFolder : null,
+            config.expected.fcc.length > 1 ? fccFolder : undefined,
         });
       }
 
@@ -257,7 +257,7 @@ async function runTest(config) {
         null,
         true,
         false,
-        { OnStopCopy: resolve },
+        { onStopCopy: resolve },
         false
       );
     });

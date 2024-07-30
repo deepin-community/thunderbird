@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Funkcije wuslědźić
     .accesskey = F
+menu-help-get-release-help =
+    .label = Pomoc za { -brand-short-name } dóstać
+    .accesskey = P
 menu-help-shortcuts =
     .label = Tastowe skrótšenki
     .accesskey = T
@@ -44,9 +47,6 @@ menu-help-enter-troubleshoot-mode =
 menu-help-exit-troubleshoot-mode =
     .label = Modus za rozrisanje problemow znjemóžnić
     .accesskey = m
-menu-help-more-troubleshooting-info =
-    .label = Dalše informacije za rozrisowanje problemow
-    .accesskey = D
 menu-help-troubleshooting-info =
     .label = Informacije za rozrisowanje problemow
     .accesskey = I
@@ -68,6 +68,9 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } skónčić
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = s
 
@@ -121,12 +124,6 @@ mail-uidensity-label =
 mail-uidensity-compact =
     .label = Kompaktny
     .accesskey = K
-mail-uidensity-normal =
-    .label = Normalny
-    .accesskey = N
-mail-uidensity-touch =
-    .label = Dótk
-    .accesskey = D
 mail-uidensity-default =
     .label = Standard
     .accesskey = S
@@ -139,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = E-mejlowe konto…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Konto za diskusijnu skupinu…
     .accesskey = d

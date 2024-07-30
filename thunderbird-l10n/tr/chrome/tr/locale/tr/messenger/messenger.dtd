@@ -6,8 +6,8 @@
 <!ENTITY titleSeparator.label " - ">
 
 <!-- File Menu -->
-<!ENTITY newFolderCmd.label "Dizin…">
-<!ENTITY newFolderCmd.accesskey "D">
+<!ENTITY newFolderCmd.label "Klasör…">
+<!ENTITY newFolderCmd.accesskey "K">
 <!ENTITY closeTabCmd2.label "Sekmeyi kapat">
 <!ENTITY closeTabCmd2.accesskey "S">
 <!ENTITY closeOtherTabsCmd2.label "Diğer sekmeleri kapat">
@@ -23,7 +23,7 @@
 <!ENTITY moveToNewWindow.label "Yeni pencereye taşı">
 <!ENTITY moveToNewWindow.accesskey "n">
 <!ENTITY newVirtualFolderCmd.label "Kayıtlı arama…">
-<!ENTITY newVirtualFolderCmd.accesskey "y">
+<!ENTITY newVirtualFolderCmd.accesskey "a">
 <!ENTITY newCreateEmailAccountCmd.label "Yeni e-posta hesabı al…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "Y">
 <!ENTITY newExistingEmailAccountCmd.label "Mevcut e-posta hesabı…">
@@ -61,14 +61,14 @@
 <!ENTITY sendUnsentCmd.accesskey "d">
 <!ENTITY subscribeCmd.label "Abone ol…">
 <!ENTITY subscribeCmd.accesskey "A">
-<!ENTITY deleteFolder.label "Dizini sil">
-<!ENTITY deleteFolder.accesskey "i">
-<!ENTITY renameFolder.label "Dizinin adını değiştir…">
-<!ENTITY renameFolder.accesskey "i">
+<!ENTITY deleteFolder.label "Klasörü sil">
+<!ENTITY deleteFolder.accesskey "ö">
+<!ENTITY renameFolder.label "Klasörü yeniden adlandır…">
+<!ENTITY renameFolder.accesskey "e">
 <!ENTITY renameFolder.key "VK_F2">
-<!ENTITY compactFolders.label "Dizinleri sıkıştır">
-<!ENTITY compactFolders.accesskey "D">
-<!ENTITY emptyTrashCmd.label "Çöpü boşalt">
+<!ENTITY compactFolders.label "Klasörleri sıkıştır">
+<!ENTITY compactFolders.accesskey "a">
+<!ENTITY emptyTrashCmd.label "Çöp kutusunu boşalt">
 <!ENTITY emptyTrashCmd.accesskey "p">
 <!ENTITY offlineMenu.label "Çevrimdışı">
 <!ENTITY offlineMenu.accesskey "m">
@@ -96,7 +96,7 @@
 <!ENTITY selectThreadCmd.key "a">
 <!ENTITY selectFlaggedCmd.label "Yıldızlı iletiler">
 <!ENTITY selectFlaggedCmd.accesskey "l">
-<!ENTITY menuFavoriteFolder.label "Dizini favorilere ekle">
+<!ENTITY menuFavoriteFolder.label "Klasörü favorilere ekle">
 <!ENTITY menuFavoriteFolder.accesskey "e">
 <!ENTITY undoDeleteMsgCmd.label "Silinen iletiyi geri al">
 <!ENTITY redoDeleteMsgCmd.label "İletiyi tekrar sil">
@@ -127,12 +127,12 @@
 <!ENTITY messagePaneWide.accesskey "n">
 <!ENTITY messagePaneVertical.label "Dikey görünüm">
 <!ENTITY messagePaneVertical.accesskey "k">
-<!ENTITY showFolderPaneCmd.label "Dizin bölmesi">
+<!ENTITY showFolderPaneCmd.label "Klasör bölmesi">
 <!ENTITY showFolderPaneCmd.accesskey "D">
 <!ENTITY showMessageCmd.label "İleti bölmesi">
 <!ENTITY showMessageCmd.accesskey "B">
 
-<!ENTITY folderView.label "Dizinler">
+<!ENTITY folderView.label "Klasörler">
 <!ENTITY folderView.accesskey "D">
 <!ENTITY unifiedFolders.label "Birleşik">
 <!ENTITY unifiedFolders.accesskey "B">
@@ -155,7 +155,7 @@
 <!ENTITY sortByReceivedCmd.label "Alınma tarihi">
 <!ENTITY sortByReceivedCmd.accesskey "A">
 <!ENTITY sortByStarCmd.label "Yıldız">
-<!ENTITY sortByStarCmd.accesskey "z">
+<!ENTITY sortByStarCmd.accesskey "Y">
 <!ENTITY sortByAttachmentsCmd.label "Ekler">
 <!ENTITY sortByAttachmentsCmd.accesskey "k">
 <!ENTITY sortByPriorityCmd.label "Öncelik">
@@ -187,7 +187,7 @@
 <!ENTITY sortThreaded.label "Dizili">
 <!ENTITY sortThreaded.accesskey "D">
 <!ENTITY sortUnthreaded.label "Dizisiz">
-<!ENTITY sortUnthreaded.accesskey "D">
+<!ENTITY sortUnthreaded.accesskey "i">
 <!ENTITY groupBySort.label "Sıralamaya göre grupla">
 <!ENTITY groupBySort.accesskey "g">
 <!ENTITY msgsMenu.label "İletiler">
@@ -300,7 +300,7 @@
 <!ENTITY goChatCmd.accesskey "b">
 <!ENTITY prevStarredMsgCmd.label "Yıldızlı ileti">
 <!ENTITY prevStarredMsgCmd.accesskey "d">
-<!ENTITY folderMenu.label "Dizin">
+<!ENTITY folderMenu.label "Klasör">
 <!ENTITY folderMenu.accesskey "D">
 <!ENTITY goRecentlyClosedTabs.label "Yeni kapatılan sekmeler">
 <!ENTITY goRecentlyClosedTabs.accesskey "r">
@@ -354,7 +354,7 @@
 <!ENTITY createFilter.accesskey "s">
 <!ENTITY moveMsgToMenu.label "Taşı">
 <!ENTITY moveMsgToMenu.accesskey "T">
-<!ENTITY moveCopyMsgRecentMenu.label "Son kullanılan">
+<!ENTITY moveCopyMsgRecentMenu.label "Son kullanılanlar">
 <!ENTITY moveCopyMsgRecentMenu.accesskey "n">
 <!ENTITY copyMessageLocation.label "İleti konumunu kopyala">
 <!ENTITY copyMessageLocation.accesskey "i">
@@ -455,13 +455,13 @@
 <!ENTITY savedFiles.key "j">
 <!ENTITY filtersCmd2.label "İleti süzgeçleri">
 <!ENTITY filtersCmd2.accesskey "s">
-<!ENTITY filtersApply.label "Dizinde süzgeç çalıştır">
+<!ENTITY filtersApply.label "Klasörde süzgeç çalıştır">
 <!ENTITY filtersApply.accesskey "r">
 <!ENTITY filtersApplyToSelection.label "Seçili iletilerde süzgeçleri çalıştır">
 <!ENTITY filtersApplyToSelection.accesskey "S">
 <!ENTITY filtersApplyToMessage.label "İletide süzgeçleri çalıştır">
 <!ENTITY filtersApplyToMessage.accesskey "s">
-<!ENTITY runJunkControls.label "Dizinde gereksiz posta denetimini çalıştır">
+<!ENTITY runJunkControls.label "Klasörde gereksiz e-posta denetimini çalıştır">
 <!ENTITY runJunkControls.accesskey "D">
 <!ENTITY deleteJunk.label "Gereksiz olarak işaretlenen iletileri sil">
 <!ENTITY deleteJunk.accesskey "s">
@@ -520,7 +520,7 @@
 <!ENTITY glodaSearch.title "Global arama">
 <!ENTITY searchItem.title "Hızlı arama">
 <!ENTITY mailViewsToolbarItem.title "Posta görünümleri">
-<!ENTITY folderLocationToolbarItem.title "Dizin konumu">
+<!ENTITY folderLocationToolbarItem.title "Klasör konumu">
 <!ENTITY tagButton.label "Etiketle">
 <!ENTITY compactButton.label "Sıkıştır">
 <!ENTITY appmenuButton.label "Uygulama Menüsü">
@@ -552,7 +552,7 @@
 <!ENTITY addressBookButton.tooltip "Adres defterine git">
 <!ENTITY chatButton.tooltip "Sohbet sekmesini göster">
 <!ENTITY tagButton.tooltip "İletileri etiketle">
-<!ENTITY compactButton.tooltip "Seçilen dizinden silinmiş iletileri kaldır">
+<!ENTITY compactButton.tooltip "Seçilen klasörden silinmiş iletileri kaldır">
 <!ENTITY appmenuButton1.tooltip "&brandShortName; menüsünü göster">
 
 <!-- Toolbar Button Popup -->
@@ -595,7 +595,7 @@
 <!-- Folder Pane Context Menu -->
 <!ENTITY folderContextGetMessages.label "İletileri indir">
 <!ENTITY folderContextGetMessages.accesskey "n">
-<!ENTITY folderContextMarkAllFoldersRead.label "Tüm dizinleri okundu olarak işaretle">
+<!ENTITY folderContextMarkAllFoldersRead.label "Tüm klasörleri okundu olarak işaretle">
 <!ENTITY folderContextPauseAllUpdates.label "Tüm güncellemeleri duraklat">
 <!ENTITY folderContextPauseUpdates.label "Güncellemeleri duraklat">
 <!ENTITY folderContextPauseUpdates.accesskey "d">
@@ -603,15 +603,15 @@
 <!ENTITY folderContextOpenInNewWindow.accesskey "Y">
 <!ENTITY folderContextOpenNewTab.label "Yeni sekmede aç">
 <!ENTITY folderContextOpenNewTab.accesskey "s">
-<!ENTITY folderContextNew.label "Yeni alt dizin…">
-<!ENTITY folderContextNew.accesskey "d">
+<!ENTITY folderContextNew.label "Yeni alt klasör…">
+<!ENTITY folderContextNew.accesskey "Y">
 <!ENTITY folderContextRename.label "Adını değiştir">
 <!ENTITY folderContextRename.accesskey "d">
 <!ENTITY folderContextRemove.label "Sil">
 <!ENTITY folderContextRemove.accesskey "S">
 <!ENTITY folderContextCompact.label "Sıkıştır">
 <!ENTITY folderContextCompact.accesskey "S">
-<!ENTITY folderContextEmptyTrash.label "Çöpü boşalt">
+<!ENTITY folderContextEmptyTrash.label "Çöp kutusunu boşalt">
 <!ENTITY folderContextEmptyTrash.accesskey "Ç">
 <!ENTITY folderContextEmptyJunk.label "Gereksiz iletileri sil">
 <!ENTITY folderContextEmptyJunk.accesskey "G">
@@ -621,7 +621,7 @@
 <!ENTITY folderContextUnsubscribe.accesskey "b">
 <!ENTITY folderContextMarkNewsgroupRead.label "Haber grubunu okundu olarak işaretle">
 <!ENTITY folderContextMarkNewsgroupRead.accesskey "o">
-<!ENTITY folderContextMarkMailFolderRead.label "Dizini okundu olarak işaretle">
+<!ENTITY folderContextMarkMailFolderRead.label "Klasörü okundu olarak işaretle">
 <!ENTITY folderContextMarkMailFolderRead.accesskey "D">
 <!ENTITY folderContextSubscribe.label "Abone ol…">
 <!ENTITY folderContextSubscribe.accesskey "A">
@@ -629,8 +629,8 @@
 <!ENTITY folderContextSearchForMessages.accesskey "a">
 <!ENTITY folderContextProperties2.label "Özellikler">
 <!ENTITY folderContextProperties2.accesskey "Ö">
-<!ENTITY folderContextFavoriteFolder.label "Favori dizinler">
-<!ENTITY folderContextFavoriteFolder.accesskey "e">
+<!ENTITY folderContextFavoriteFolder.label "Klasörü favorilere ekle">
+<!ENTITY folderContextFavoriteFolder.accesskey "f">
 <!ENTITY folderContextSettings2.label "Ayarlar">
 <!ENTITY folderContextSettings2.accesskey "A">
 
@@ -648,7 +648,7 @@
 <!ENTITY searchRecipient.label "Kime veya Cc">
 <!ENTITY searchSubjectOrRecipientMenu.label "Konu, kime veya Cc">
 <!ENTITY searchMessageBody.label "Tüm ileti">
-<!ENTITY saveAsVirtualFolderMenu.label "Aramayı dizin olarak kaydet…">
+<!ENTITY saveAsVirtualFolderMenu.label "Aramayı klasör olarak kaydet…">
 
 <!-- Thread Pane -->
 <!ENTITY selectColumn.label "İletileri seç">
@@ -711,7 +711,7 @@
 <!ENTITY contextOpenNewTab.accesskey "ç">
 <!ENTITY contextOpenConversation.label "İletiyi dizi görünümünde aç">
 <!ENTITY contextOpenConversation.accesskey "d">
-<!ENTITY contextOpenContainingFolder.label "İletiyi dizin içinde aç">
+<!ENTITY contextOpenContainingFolder.label "İletiyi ilgili klasörde aç">
 <!ENTITY contextOpenContainingFolder.accesskey "a">
 <!ENTITY contextEditMsgAsNew.label "Yeni ileti olarak düzenle">
 <!ENTITY contextEditMsgAsNew.accesskey "o">
@@ -740,7 +740,7 @@
 <!ENTITY contextMultiForwardAsAttachment.accesskey "o">
 <!ENTITY contextMoveMsgMenu.label "Taşı">
 <!ENTITY contextMoveMsgMenu.accesskey "T">
-<!ENTITY contextMoveCopyMsgRecentMenu.label "Son kullanılan">
+<!ENTITY contextMoveCopyMsgRecentMenu.label "Son kullanılanlar">
 <!ENTITY contextMoveCopyMsgRecentMenu.accesskey "k">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Sık kullanılanlar">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "S">
@@ -780,7 +780,7 @@
      that the user selects using the same widget as the move to/copy to
      mechanism (via a series of popups).
   -->
-<!ENTITY columnPicker.applyToFolder.label "Dizin…">
+<!ENTITY columnPicker.applyToFolder.label "Klasör…">
 <!-- LOCALIZATION NOTE (columnPicker.applyToFolderAndChildren.label):
      This option in the thread pane column picker is found on a sub-menu beneath
      the "columnPicker.applyTo.label" alongside
@@ -789,7 +789,7 @@
      of its descendents. The user selects the folder using the same widget as the
      move to/copy to mechanism (via a series of popups).
   -->
-<!ENTITY columnPicker.applyToFolderAndChildren.label "Dizin ve alt dizinlerine…">
+<!ENTITY columnPicker.applyToFolderAndChildren.label "Klasör ve alt klasörlerinde…">
 <!-- LOCALIZATION NOTE (columnPicker.thisFolder.label):
      This is used in the folder selection widget for the
      "columnPicker.applyToFolder.label" and
@@ -801,7 +801,7 @@
      items are "This folder", "B", and "C". This is the equivalent of the
      "File here" option for the move to/copy to widget.
   -->
-<!ENTITY columnPicker.thisFolder.label "Bu dizin">
+<!ENTITY columnPicker.thisFolder.label "Bu klasör">
 
 <!-- Media (video/audio) controls -->
 <!ENTITY contextPlay.label "Yürüt">
@@ -857,7 +857,7 @@
 <!ENTITY SendMessageTo.accesskey "o">
 <!ENTITY CopyEmailAddress.label "E-posta adresini kopyala">
 <!ENTITY CopyEmailAddress.accesskey "k">
-<!ENTITY CopyNameAndEmailAddress.label "İsmi ve e-posta adresini kopyala">
+<!ENTITY CopyNameAndEmailAddress.label "Adı ve e-posta adresini kopyala">
 <!ENTITY CopyNameAndEmailAddress.accesskey "m">
 <!ENTITY CopyNewsgroupName.label "Haber grubu adını kopyala">
 <!ENTITY CopyNewsgroupName.accesskey "b">

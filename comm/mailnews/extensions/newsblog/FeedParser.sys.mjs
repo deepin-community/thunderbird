@@ -134,6 +134,10 @@ FeedParser.prototype = {
     aFeed.description = this.getNodeValueFormatted(tags ? tags[0] : null);
     tags = this.childrenByTagNameNS(channel, nsURI, "link");
     aFeed.link = this.validLink(this.getNodeValue(tags ? tags[0] : null));
+    if (!(aFeed.title || aFeed.description) && aFeed.link) {
+      const url = new URL(aFeed.link);
+      aFeed.title = `${url.hostname} - ${url.pathname}`;
+    }
 
     if (!(aFeed.title || aFeed.description)) {
       lazy.FeedUtils.log.error(
@@ -1292,7 +1296,7 @@ FeedParser.prototype = {
   },
 
   /**
-   * Returns first matching descendent of element, or null.
+   * Returns first matching descendant of element, or null.
    *
    * @param {Element} element - DOM element to search.
    * @param {string} namespace - Namespace of the search tag.

@@ -4,9 +4,9 @@
 
 <!ENTITY messageStorage.label "Сховішча лістоў">
 <!ENTITY securitySettings.label "Наладжванні бяспекі">
-<!ENTITY serverSettings.label "Наладжванні паслугача">
-<!ENTITY serverType.label "Тып паслугача:">
-<!ENTITY serverName.label "Назва паслугача:">
+<!ENTITY serverSettings.label "Налады сервера">
+<!ENTITY serverType.label "Тып сервера:">
+<!ENTITY serverName.label "Назва сервера:">
 <!ENTITY serverName.accesskey "Н">
 <!ENTITY userName.label "Імя карыстальніка:">
 <!ENTITY userName.accesskey "і">
@@ -31,7 +31,7 @@
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Метад апазнавання:">
 <!ENTITY authMethod.accesskey "з">
-<!ENTITY leaveOnServer.label "Пакідаць лісты на паслугачы">
+<!ENTITY leaveOnServer.label "Пакідаць паведамленні на серверы">
 <!ENTITY leaveOnServer.accesskey "п">
 <!ENTITY headersOnly.label "Атрымліваць толькі загалоўкі">
 <!ENTITY headersOnly.accesskey "т">
@@ -52,7 +52,7 @@
 <!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Прыбраць (&quot;Знішчыць&quot;) папку Атрыманыя перад выхадам">
 <!ENTITY expungeOnExit.accesskey "П">
-<!ENTITY emptyTrashOnExit.label "Выкідаць смецце перад выхадам">
+<!ENTITY emptyTrashOnExit.label "Ачышчаць сметніцу перад выхадам">
 <!ENTITY emptyTrashOnExit.accesskey "ы">
 <!ENTITY loginAtStartup.label "Правяраць, ці ёсць новыя лісты, пасля запуску">
 <!ENTITY loginAtStartup.accesskey "у">
@@ -78,8 +78,8 @@
 <!ENTITY browseNewsrc.label "Агляд…">
 <!ENTITY browseNewsrc.accesskey "г">
 
-<!ENTITY accountTitle.label "Наладжванні рахунку">
-<!ENTITY accountSettingsDesc.label "Гэта адмысловы рахунак.  Няма адметаў, злучаных з ім.">
+<!ENTITY accountTitle.label "Налады ўліковага запісу">
+<!ENTITY accountSettingsDesc.label "Гэта асаблівы ўліковы запіс.  З ім не звязаны ніякія ідэнтыфікацыйныя даныя.">
 <!ENTITY storeType.label "Тып захоўвання паведамленняў:">
 <!ENTITY storeType.accesskey "Т">
 <!ENTITY mboxStore2.label "Адзін файл на папку (mbox)">

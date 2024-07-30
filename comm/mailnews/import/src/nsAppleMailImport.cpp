@@ -3,6 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "ImportDebug.h"
 #include "nsString.h"
 #include "nsCOMPtr.h"
 #include "nsISupportsPrimitives.h"
@@ -49,40 +50,6 @@ nsAppleMailImportModule::~nsAppleMailImportModule() {
 }
 
 NS_IMPL_ISUPPORTS(nsAppleMailImportModule, nsIImportModule)
-
-NS_IMETHODIMP nsAppleMailImportModule::GetName(char16_t** aName) {
-  if (!mBundle) {
-    return NS_ERROR_FAILURE;
-  }
-  nsAutoString name;
-  nsresult rv = mBundle->GetStringFromName("ApplemailImportName", name);
-  NS_ENSURE_SUCCESS(rv, rv);
-  *aName = ToNewUnicode(name);
-  return rv;
-}
-
-NS_IMETHODIMP nsAppleMailImportModule::GetDescription(char16_t** aName) {
-  if (!mBundle) {
-    return NS_ERROR_FAILURE;
-  }
-  nsAutoString name;
-  nsresult rv = mBundle->GetStringFromName("ApplemailImportDescription", name);
-  NS_ENSURE_SUCCESS(rv, rv);
-  *aName = ToNewUnicode(name);
-  return rv;
-}
-
-NS_IMETHODIMP nsAppleMailImportModule::GetSupports(char** aSupports) {
-  NS_ENSURE_ARG_POINTER(aSupports);
-  *aSupports = strdup(NS_IMPORT_MAIL_STR);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsAppleMailImportModule::GetSupportsUpgrade(bool* aUpgrade) {
-  NS_ENSURE_ARG_POINTER(aUpgrade);
-  *aUpgrade = false;
-  return NS_OK;
-}
 
 NS_IMETHODIMP nsAppleMailImportModule::GetImportInterface(
     const char* aImportType, nsISupports** aInterface) {
@@ -143,16 +110,10 @@ nsAppleMailImportMail::~nsAppleMailImportMail() {
 
 NS_IMPL_ISUPPORTS(nsAppleMailImportMail, nsIImportMail)
 
-NS_IMETHODIMP nsAppleMailImportMail::GetDefaultLocation(nsIFile** aLocation,
-                                                        bool* aFound,
-                                                        bool* aUserVerify) {
-  NS_ENSURE_ARG_POINTER(aFound);
+NS_IMETHODIMP nsAppleMailImportMail::GetDefaultLocation(nsIFile** aLocation) {
   NS_ENSURE_ARG_POINTER(aLocation);
-  NS_ENSURE_ARG_POINTER(aUserVerify);
 
   *aLocation = nullptr;
-  *aFound = false;
-  *aUserVerify = true;
 
   // try to find current user's top-level Mail folder
   nsCOMPtr<nsIFile> mailFolder(do_CreateInstance(NS_LOCAL_FILE_CONTRACTID));
@@ -160,8 +121,6 @@ NS_IMETHODIMP nsAppleMailImportMail::GetDefaultLocation(nsIFile** aLocation,
     nsresult rv =
         mailFolder->InitWithNativePath(nsLiteralCString(DEFAULT_MAIL_FOLDER));
     if (NS_SUCCEEDED(rv)) {
-      *aFound = true;
-      *aUserVerify = false;
       mailFolder.forget(aLocation);
     }
   }

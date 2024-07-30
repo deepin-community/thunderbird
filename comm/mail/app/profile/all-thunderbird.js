@@ -98,7 +98,7 @@ pref("app.update.notifyDuringDownload", false);
 // default value to migrate to the new location that this data is now stored
 // (which is in a file in the update directory). Because of this, this pref
 // should no longer be used directly. Instead, getAppUpdateAutoEnabled and
-// getAppUpdateAutoEnabled from UpdateUtils.jsm should be used.
+// getAppUpdateAutoEnabled from UpdateUtils.sys.mjs should be used.
 #ifndef XP_WIN
  pref("app.update.auto", true);
 #endif
@@ -167,12 +167,6 @@ pref("app.use_without_mail_account", false);
 // Show error messages in error console.
 pref("javascript.options.showInConsole", true);
 
-#ifdef NIGHTLY_BUILD
-pref("signon.management.page.os-auth.enabled", true);
-#else
-pref("signon.management.page.os-auth.enabled", false);
-#endif
-
 // Controls enabling of the extension system logging (can reduce performance)
 pref("extensions.logging.enabled", false);
 pref("extensions.overlayloader.loglevel", "warn");
@@ -192,7 +186,7 @@ pref("extensions.systemAddon.update.enabled", true);  // See bug 1462160.
 
 // Disable add-ons installed into the shared user and shared system areas by
 // default. This does not include the application directory. See the SCOPE
-// constants in AddonManager.jsm for values to use here
+// constants in AddonManager.sys.mjs for values to use here
 pref("extensions.autoDisableScopes", 15);
 
 // Enable add-ons installed and owned by the application, like the default theme.
@@ -200,9 +194,6 @@ pref("extensions.startupScanScopes", 4);
 
 // Gecko Profiler
 pref("extensions.geckoProfiler.acceptedExtensionIds", "geckoprofiler@mozilla.com,quantum-foxfooding@mozilla.com,raptor@mozilla.org");
-
-// Allow "legacy" XUL/XPCOM extensions.
-pref("extensions.legacy.enabled", true);
 
 // Preferences for AMO integration
 pref("extensions.getAddons.cache.enabled", true);
@@ -523,11 +514,6 @@ pref("profile.force.migration", "");
 pref("alerts.totalOpenTime", 10000);
 #endif
 
-// Disable new windows notifications until they are fully supported by Thunderbird (bug 1838139).
-#ifdef XP_WIN
-pref("alerts.useSystemBackend", false);
-#endif
-
 // analyze urls in mail messages for scams
 pref("mail.phishing.detection.enabled", true);
 pref("mail.phishing.detection.disallow_form_actions", true);
@@ -543,8 +529,8 @@ pref("dom.disable_window_status_change",          true);
 // 2 - open it in a new tab
 pref("mail.openMessageBehavior", 2);
 // If messages or folders are opened using the context menu or a middle click,
-// should we open them in the foreground or in the background?
-pref("mail.tabs.loadInBackground", true);
+// we open them in the background.
+pref("mail.tabs.loadInBackground", false);
 
 // Tabs
 pref("mail.tabs.tabMinWidth", 100);
@@ -698,7 +684,7 @@ pref("font.size.monospace.el", 12);
 #endif
 
 // Since different versions of Windows need different settings, we'll handle
-// this in MailMigrator.jsm.
+// this in MailMigrator.sys.mjs.
 
 // Linux, in other words.  Other OSes may wish to override.
 #ifdef UNIX_BUT_NOT_MAC
@@ -799,12 +785,6 @@ pref("places.loglevel", "Error");
 pref("mail.taskbar.lists.enabled", true);
 pref("mail.taskbar.lists.tasks.enabled", true);
 #endif
-
-// Account provisioner.
-pref("mail.provider.providerList", "https://broker.thunderbird.net/provider/list");
-pref("mail.provider.suggestFromName", "https://broker.thunderbird.net/provider/suggest");
-pref("mail.provider.enabled", true);
-pref("mail.provider.loglevel", "Warn");
 
 pref("mail.chat.enabled", true);
 // Whether to show chat notifications or not.
@@ -918,7 +898,8 @@ pref("devtools.toolbox.previousHost", "right");
 pref("devtools.toolbox.selectedTool", "inspector");
 pref("devtools.toolbox.sideEnabled", true);
 pref("devtools.toolbox.zoomValue", "1");
-pref("devtools.toolbox.splitconsoleEnabled", false);
+pref("devtools.toolbox.splitconsole.enabled", true);
+pref("devtools.toolbox.splitconsole.open", false);
 pref("devtools.toolbox.splitconsoleHeight", 100);
 pref("devtools.toolbox.tabsOrder", "");
 pref("devtools.netmonitor.features.newEditAndResend", false);
@@ -942,7 +923,6 @@ pref("devtools.browsertoolbox.scope", "everything");
 // Toolbox Button preferences
 pref("devtools.command-button-pick.enabled", true);
 pref("devtools.command-button-frames.enabled", true);
-pref("devtools.command-button-splitconsole.enabled", true);
 pref("devtools.command-button-responsive.enabled", true);
 pref("devtools.command-button-screenshot.enabled", false);
 pref("devtools.command-button-rulers.enabled", false);
@@ -1326,7 +1306,6 @@ pref("mail.minimizeToTray", false);
 #endif
 
 pref("prompts.defaultModalType", 3);
-pref("prompts.contentPromptSubDialog", false);
 
 // The URL for the privacy policy related to recommended extensions.
 pref("extensions.recommendations.privacyPolicyUrl", "https://www.mozilla.org/en-US/privacy/thunderbird/#addons");
@@ -1372,8 +1351,18 @@ pref("identity.fxaccounts.autoconfig.uri", "https://accounts.stage.mozaws.net");
 pref("identity.fxaccounts.remote.root", "https://accounts.stage.mozaws.net");
 // The value of the context query parameter passed in FxA requests.
 pref("identity.fxaccounts.contextParam", "fx_desktop_v3");
+// Whether to use the oauth flow for desktop or not
+pref("identity.fxaccounts.oauth.enabled", false);
+// The remote URL of the FxA Profile Server
+pref("identity.fxaccounts.remote.profile.uri", "https://profile.stage.mozaws.net/v1");
+// The remote URL of the FxA OAuth Server
+pref("identity.fxaccounts.remote.oauth.uri", "https://oauth.stage.mozaws.net/v1");
+#endif
 // Token server used by the FxA Sync identity.
+// This pref exists on all channels to keep a test working.
 pref("identity.sync.tokenserver.uri", "https://token.stage.mozaws.net/1.0/sync/1.5");
+
+#ifdef NIGHTLY_BUILD
 // Adds stage server to the white list, because we need it.
 pref("webchannel.allowObject.urlWhitelist", "https://content.cdn.mozilla.net https://support.mozilla.org https://install.mozilla.org https://accounts.stage.mozaws.net");
 // Adds Firefox/10x.0 to the User-Agent string, because we need it.
@@ -1381,7 +1370,6 @@ pref("webchannel.allowObject.urlWhitelist", "https://content.cdn.mozilla.net htt
 pref("general.useragent.compatMode.firefox", true);
 
 // Enable the sync engines we want, and disable the ones we don't want.
-pref("services.sync.engine.accounts", true);
 pref("services.sync.engine.addons", false);
 pref("services.sync.engine.addressbooks", true);
 pref("services.sync.engine.addresses", false);
@@ -1389,12 +1377,13 @@ pref("services.sync.engine.calendars", true);
 pref("services.sync.engine.creditcards", false);
 pref("services.sync.engine.identities", true);
 pref("services.sync.engine.prefs", false);
+pref("services.sync.engine.servers", true);
 #endif
 
 // Donation appeal.
-pref("app.donation.eoy.version", 4);
+pref("app.donation.eoy.version", 6);
 pref("app.donation.eoy.version.viewed", 0);
-pref("app.donation.eoy.url", "https://www.thunderbird.net/thunderbird/115.0/holidayeoy/");
+pref("app.donation.eoy.url", "https://www.thunderbird.net/thunderbird/128.0/appeal/");
 
 // IMAP-JS disabled, Bug 1707547.
 pref("mailnews.imap.jsmodule", false);
@@ -1407,6 +1396,24 @@ pref("mailnews.imap.jsmodule", false);
 // 3: text only
 pref("toolbar.unifiedtoolbar.buttonstyle", 0);
 
+// Enable on macOS the non-native context menus
+pref("widget.macos.native-context-menus", false);
+
+#ifdef XP_MACOSX
+#ifdef NIGHTLY_BUILD
+pref("mail.theme.macos.native-theme", true);
+#else
+pref("mail.theme.macos.native-theme", false);
+#endif
+#endif
+
 // Bug 1773079 : check if true causes issues for Thunderbird
 // prevent JS from monkeying with window focus, etc
 pref("dom.disable_window_flip", true);
+
+// LightweightThemeConsumer.sys.mjs needs this pref, even if it has no effect in
+// Thunderbird.
+pref("browser.theme.dark-private-windows", true);
+
+// In-app notifications are disabled while the feature is being implemented.
+pref("mail.inappnotifications.enabled", false);

@@ -42,7 +42,8 @@ async function subtest_action_menu(
   target,
   expectedInfo,
   expectedTab,
-  manifest
+  manifest,
+  terminateBackground
 ) {
   function checkVisibility(menu, visible) {
     const removeExtension = menu.querySelector(
@@ -66,7 +67,7 @@ async function subtest_action_menu(
     info(
       `Choosing 'Remove Extension' in ${menu.id} should show confirm dialog.`
     );
-    await rightClick(menu, element);
+    await openMenuPopup(menu, element, { type: "contextmenu" });
     await extension.awaitMessage("onShown");
     const removeExtension = menu.querySelector(
       ".customize-context-removeExtension"
@@ -100,7 +101,7 @@ async function subtest_action_menu(
         },
       }
     );
-    await clickItemInMenuPopup(menu, removeExtension);
+    await clickItemInMenuPopup(removeExtension);
     await promptPromise;
   }
 
@@ -111,13 +112,13 @@ async function subtest_action_menu(
     info(
       `Choosing 'Manage Extension' in ${menu.id} should load the management page.`
     );
-    await rightClick(menu, element);
+    await openMenuPopup(menu, element, { type: "contextmenu" });
     await extension.awaitMessage("onShown");
     const manageExtension = menu.querySelector(
       ".customize-context-manageExtension"
     );
     const addonManagerPromise = contentTabOpenPromise(tabmail, "about:addons");
-    await clickItemInMenuPopup(menu, manageExtension);
+    await clickItemInMenuPopup(manageExtension);
     const managerTab = await addonManagerPromise;
 
     // Check the UI to make sure that the correct view is loaded.
@@ -143,7 +144,7 @@ async function subtest_action_menu(
   const element = testWindow.document.querySelector(target.elementSelector);
   const menu = testWindow.document.getElementById(target.menuId);
 
-  await rightClick(menu, element);
+  await openMenuPopup(menu, element, { type: "contextmenu" });
   await checkVisibility(menu, true);
   await checkShownEvent(
     extension,
@@ -151,23 +152,40 @@ async function subtest_action_menu(
     expectedTab
   );
 
+  if (terminateBackground) {
+    await extension.terminateBackground({
+      disableResetIdleForTest: true,
+    });
+    await extension.awaitMessage("suspended-test_menu_onclick");
+    assertPersistentListeners(extension, "menus", "onClicked", {
+      primed: true,
+    });
+  }
+
   const clickedPromise = checkClickedEvent(
     extension,
     expectedInfo,
     expectedTab
   );
   await clickItemInMenuPopup(
-    menu,
     menu.querySelector(`#menus_mochi_test-menuitem-_${target.context}`)
   );
   await clickedPromise;
+
+  if (terminateBackground) {
+    // The extension will re-add menu entries on wakeup (ignored if they already
+    // exist).
+    await extension.awaitMessage("menus-created");
+  }
 
   // Test the non actionButton element for visibility of the management menu entries.
   if (target.nonActionButtonSelector) {
     const nonActionButtonElement = testWindow.document.querySelector(
       target.nonActionButtonSelector
     );
-    await rightClick(menu, nonActionButtonElement);
+    await openMenuPopup(menu, nonActionButtonElement, {
+      type: "contextmenu",
+    });
     await checkVisibility(menu, false);
     await closeMenuPopup(menu);
   }
@@ -188,7 +206,7 @@ add_task(async function test_browser_action_menu_mv2() {
     {
       menuItemId: "browser_action",
     },
-    { active: true, index: 0, mailTab: true },
+    { active: true, index: 0, type: "mail" },
     {
       manifest_version: 2,
       browser_action: {
@@ -212,7 +230,7 @@ add_task(async function test_message_display_action_menu_pane_mv2() {
       pageUrl: /^mailbox\:/,
       menuItemId: "message_display_action",
     },
-    { active: true, index: 1, mailTab: false },
+    { active: true, index: 1, type: "messageDisplay" },
     {
       manifest_version: 2,
       message_display_action: {
@@ -238,7 +256,7 @@ add_task(async function test_message_display_action_menu_window_mv2() {
       pageUrl: /^mailbox\:/,
       menuItemId: "message_display_action",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageDisplay" },
     {
       manifest_version: 2,
       message_display_action: {
@@ -263,7 +281,7 @@ add_task(async function test_compose_action_menu_mv2() {
       pageUrl: "about:blank?compose",
       menuItemId: "compose_action",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageCompose" },
     {
       manifest_version: 2,
       compose_action: {
@@ -287,7 +305,7 @@ add_task(async function test_compose_action_menu_formattoolbar_mv2() {
       pageUrl: "about:blank?compose",
       menuItemId: "compose_action",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageCompose" },
     {
       manifest_version: 2,
       compose_action: {
@@ -311,13 +329,14 @@ add_task(async function test_browser_action_menu_mv3() {
     {
       menuItemId: "action",
     },
-    { active: true, index: 0, mailTab: true },
+    { active: true, index: 0, type: "mail" },
     {
       manifest_version: 3,
       action: {
         default_title: "This is a test",
       },
-    }
+    },
+    true
   );
 });
 add_task(async function test_message_display_action_menu_pane_mv3() {
@@ -335,7 +354,7 @@ add_task(async function test_message_display_action_menu_pane_mv3() {
       pageUrl: /^mailbox\:/,
       menuItemId: "message_display_action",
     },
-    { active: true, index: 1, mailTab: false },
+    { active: true, index: 1, type: "messageDisplay" },
     {
       manifest_version: 3,
       message_display_action: {
@@ -361,7 +380,7 @@ add_task(async function test_message_display_action_menu_window_mv3() {
       pageUrl: /^mailbox\:/,
       menuItemId: "message_display_action",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageDisplay" },
     {
       manifest_version: 3,
       message_display_action: {
@@ -386,7 +405,7 @@ add_task(async function test_compose_action_menu_mv3() {
       pageUrl: "about:blank?compose",
       menuItemId: "compose_action",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageCompose" },
     {
       manifest_version: 3,
       compose_action: {
@@ -410,7 +429,7 @@ add_task(async function test_compose_action_menu_formattoolbar_mv3() {
       pageUrl: "about:blank?compose",
       menuItemId: "compose_action",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageCompose" },
     {
       manifest_version: 3,
       compose_action: {

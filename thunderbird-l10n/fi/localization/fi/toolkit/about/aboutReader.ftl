@@ -26,6 +26,18 @@ about-reader-color-theme-contrast = Kontrasti
     .title = Väriteema kontrasti
 about-reader-color-theme-custom = Mukautetut värit
     .title = Väriteema mukautettu
+about-reader-color-light-theme = Vaalea
+    .title = Vaalea teema
+about-reader-color-dark-theme = Tumma
+    .title = Tumma teema
+about-reader-color-sepia-theme = Seepia
+    .title = Seepia teema
+about-reader-color-auto-theme = Automaattinen
+    .title = Automaattinen teema
+about-reader-color-gray-theme = Harmaa
+    .title = Harmaa teema
+about-reader-color-contrast-theme = Kontrasti
+    .title = Kontrastiteema
 # An estimate for how long it takes to read an article,
 # expressed as a range covering both slow and fast readers.
 # Variables:
@@ -56,12 +68,15 @@ about-reader-toolbar-lineheightplus =
 
 about-reader-font-type-serif = Serif
 about-reader-font-type-sans-serif = Sans-serif
+about-reader-font-type-monospace = Tasavälinen
 
 ## Reader View toolbar buttons
 
 about-reader-toolbar-close = Sulje lukunäkymä
 about-reader-toolbar-type-controls = Kirjasinasetukset
 about-reader-toolbar-color-controls = Värit
+about-reader-toolbar-text-layout-controls = Teksti ja asettelu
+about-reader-toolbar-theme-controls = Teema
 about-reader-toolbar-savetopocket = Tallenna { -pocket-brand-name }iin
 
 ## Reader View colors menu
@@ -85,3 +100,36 @@ about-reader-custom-colors-visited-links = Avatut linkit
 about-reader-custom-colors-selection-highlight = Korostus ääneen lukua varten
     .title = Muokkaa väriä
 about-reader-custom-colors-reset-button = Palauta oletukset
+about-reader-reset-button = Palauta oletukset
+
+## Reader View improved text and layout menu
+
+about-reader-text-header = Teksti
+about-reader-text-size-label = Tekstin koko
+about-reader-font-type-selector-label = Kirjasin
+about-reader-font-weight-selector-label = Kirjasimen paino
+about-reader-font-weight-light = Kevyt
+about-reader-font-weight-regular = Normaali
+about-reader-font-weight-bold = Lihavoitu
+about-reader-layout-header = Asettelu
+about-reader-slider-label-spacing-standard = Vakio
+about-reader-slider-label-spacing-wide = Leveä
+about-reader-content-width-label =
+    .label = Sisällön leveys
+about-reader-line-spacing-label =
+    .label = Riviväli
+about-reader-advanced-layout-header = Lisäasetukset
+about-reader-slider-label-width-narrow = Kapea
+about-reader-slider-label-width-wide = Leveä
+about-reader-slider-label-spacing-narrow = Kapea
+about-reader-character-spacing-label =
+    .label = Merkkien väli
+about-reader-word-spacing-label =
+    .label = Sanaväli
+about-reader-text-alignment-label = Tekstin tasaus
+about-reader-text-alignment-left =
+    .title = Tasaa teksti vasemmalle
+about-reader-text-alignment-center =
+    .title = Tasaa teksti keskelle
+about-reader-text-alignment-right =
+    .title = Tasaa teksti oikealle

@@ -909,8 +909,6 @@
 <!ENTITY deleteColumn.tooltip "Delete a message">
 <!ENTITY contextReplyNewsgroup2.label "Followup to Newsgroup">
 <!ENTITY contextReplyNewsgroup2.accesskey "u">
-<!ENTITY contextForwardAsInline.label "Inline">
-<!ENTITY contextForwardAsInline.accesskey "I">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Favorites">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "F">
 <!ENTITY contextKillSubthreadMenu.accesskey "b">

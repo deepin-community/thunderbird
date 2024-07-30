@@ -49,7 +49,9 @@ async function subtest_message_panes(manifest) {
   const threadTree = about3Pane.document.getElementById("threadTree");
   let menu = about3Pane.document.getElementById("mailContext");
   threadTree.selectedIndex = 0;
-  await rightClick(menu, threadTree.getRowAtIndex(0));
+  await openMenuPopup(menu, threadTree.getRowAtIndex(0), {
+    type: "contextmenu",
+  });
   Assert.ok(menu.querySelector("#menus_mochi_test-menuitem-_message_list"));
   await closeMenuPopup(menu);
 
@@ -65,7 +67,7 @@ async function subtest_message_panes(manifest) {
         ? { id: null, messages: [{ subject: gMessage.subject }] }
         : undefined,
     },
-    { active: true, index: 0, mailTab: true }
+    { active: true, index: 0, type: "mail" }
   );
 
   info("Test the message pane in the 3-pane tab.");
@@ -81,7 +83,7 @@ async function subtest_message_panes(manifest) {
     {
       active: true,
       index: 0,
-      mailTab: true,
+      type: "mail",
     }
   );
 
@@ -101,7 +103,7 @@ async function subtest_message_panes(manifest) {
     {
       active: true,
       index: 1,
-      mailTab: false,
+      type: "messageDisplay",
     }
   );
 
@@ -124,7 +126,7 @@ async function subtest_message_panes(manifest) {
     {
       active: true,
       index: 0,
-      mailTab: false,
+      type: "messageDisplay",
     }
   );
 

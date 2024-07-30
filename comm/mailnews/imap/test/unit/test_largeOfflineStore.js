@@ -20,6 +20,7 @@ Services.prefs.setCharPref(
 );
 
 var gOfflineStoreSize;
+var storageOk = true;
 
 add_setup(async function () {
   setupIMAPPump();
@@ -48,15 +49,17 @@ add_setup(async function () {
     0x10000000f
   );
   const freeDiskSpace = inboxFile.diskSpaceAvailable;
-  Assert.ok(
-    isFileSparse && freeDiskSpace > neededFreeSpace,
-    "This test needs " +
-      mailTestUtils.toMiBString(neededFreeSpace) +
-      " free space to run."
-  );
+  storageOk = isFileSparse && freeDiskSpace > neededFreeSpace;
+  if (!storageOk) {
+    console.warn(
+      "This test needs " +
+        mailTestUtils.toMiBString(neededFreeSpace) +
+        " free space to run."
+    );
+  }
 });
 
-add_task(async function addOfflineMessages() {
+add_task({ skip_if: () => !storageOk }, async function addOfflineMessages() {
   // Create a couple test messages on the IMAP server.
   let messages = [];
   const messageGenerator = new MessageGenerator();
@@ -101,7 +104,7 @@ add_task(async function addOfflineMessages() {
   await listener.promise;
 });
 
-add_task(async function check_result() {
+add_task({ skip_if: () => !storageOk }, async function check_result() {
   // Call downloadAllForOffline() a second time.
   const listener = new PromiseTestUtils.PromiseUrlListener();
   IMAPPump.inbox.downloadAllForOffline(listener, null);

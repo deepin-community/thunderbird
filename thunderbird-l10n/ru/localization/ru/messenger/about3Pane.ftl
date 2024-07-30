@@ -122,6 +122,8 @@ quick-filter-bar-textbox =
     .placeholder = Фильтровать эти сообщения <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = Фильтрация сообщений:
+quick-filter-bar-search2 =
+    .label = Фильтрация сообщений
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -541,3 +543,18 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Меню сообщений
+message-list-placeholder-no-messages = Сообщений не найдено
+message-list-placeholder-multiple-folders = Выбрано несколько папок
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Отметить папку как прочитанную
+            [few] Отметить папки как прочитанные
+           *[many] Отметить папки как прочитанные
+        }
+    .accesskey = л

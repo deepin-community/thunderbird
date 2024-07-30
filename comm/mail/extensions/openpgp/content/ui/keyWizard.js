@@ -4,14 +4,11 @@
 
 "use strict";
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { AppConstants } = ChromeUtils.importESModule(
   "resource://gre/modules/AppConstants.sys.mjs"
-);
-var { EnigmailCryptoAPI } = ChromeUtils.importESModule(
-  "chrome://openpgp/content/modules/cryptoAPI.sys.mjs"
 );
 var { OpenPGPMasterpass } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/masterpass.sys.mjs"
@@ -33,6 +30,9 @@ var { PgpSqliteDb2 } = ChromeUtils.importESModule(
 );
 var { EnigmailCore } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/core.sys.mjs"
+);
+var { RNP } = ChromeUtils.importESModule(
+  "chrome://openpgp/content/modules/RNP.sys.mjs"
 );
 
 ChromeUtils.defineESModuleGetters(this, {
@@ -101,8 +101,8 @@ async function initKeyWiz() {
   // Switch directly to the create screen if requested by the user.
   if (window.arguments[0].isCreate) {
     document.getElementById("openPgpKeyChoices").value = 0;
-
     switchSection(true);
+    return;
   }
 
   // Switch directly to the import screen if requested by the user.
@@ -578,11 +578,15 @@ async function validateExpiration() {
 function resizeDialog() {
   // Check if the attribute is not null. This can be removed after the full
   // conversion of the Key Manager into a SubDialog in Bug 1652537.
-  if (gSubDialog && gSubDialog._topDialog) {
+  if (gSubDialog?._topDialog) {
     gSubDialog._topDialog.resizeVertically();
-  } else {
-    window.sizeToContent();
+    return;
   }
+
+  window.resizeTo(
+    window.outerWidth,
+    document.body.scrollHeight + window.outerHeight - window.innerHeight + 6
+  );
 }
 
 /**
@@ -650,7 +654,6 @@ async function openPgpKeygenConfirm() {
   kGenerating = true;
 
   let password;
-  const cApi = EnigmailCryptoAPI();
   let newId = null;
 
   const sepPassphraseEnabled = Services.prefs.getBoolPref(
@@ -665,7 +668,7 @@ async function openPgpKeygenConfirm() {
   } else {
     password = document.getElementById("passwordInput").value;
   }
-  newId = await cApi.genKey(
+  newId = await RNP.genKey(
     `${gIdentity.fullName} <${gIdentity.email}>`,
     document.getElementById("keyType").value,
     Number(document.getElementById("keySize").value),
@@ -675,6 +678,7 @@ async function openPgpKeygenConfirm() {
           Number(document.getElementById("timeScale").value),
     password
   );
+  await RNP.saveKeyRings();
 
   gGeneratedKey = newId;
 
@@ -702,7 +706,7 @@ async function openPgpKeygenConfirm() {
   closeOverlay();
   EnigmailKeyRing.clearCache();
 
-  const rev = await cApi.unlockAndGetNewRevocation(
+  const rev = await RNP.unlockAndGetNewRevocation(
     `0x${gGeneratedKey}`,
     password,
     true
@@ -976,7 +980,9 @@ async function openPgpImportStart() {
         await addImportWarningNotification(),
         "openpgp-import-keys-failed",
         {
-          error: errorMsgObj.value,
+          // We must at least provide an empty string to avoid
+          // a crash in the Rust Fluent code.
+          error: errorMsgObj.value ? errorMsgObj.value : "",
         }
       );
       continue;

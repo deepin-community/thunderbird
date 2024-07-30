@@ -172,22 +172,27 @@ function togglePaneSplitter(splitterId) {
 function openLinkText(event, what) {
   switch (what) {
     case "getInvolvedURL":
-      openUILink("https://www.thunderbird.net/get-involved/", event);
+      openUILink("https://www.thunderbird.net/participate/", event);
       break;
     case "keyboardShortcutsURL":
       openUILink("https://support.mozilla.org/kb/keyboard-shortcuts/", event);
       break;
     case "donateURL":
       openUILink(
-        "https://give.thunderbird.net/?utm_source=thunderbird-client&utm_medium=referral&utm_content=help-menu",
+        "https://www.thunderbird.net/donate/?utm_source=thunderbird-client&utm_medium=referral&utm_content=help-menu",
         event
       );
       break;
-    case "tourURL":
-      openUILink("https://www.thunderbird.net/features/", event);
-      break;
     case "feedbackURL":
       openUILink("https://connect.mozilla.org/", event);
+      break;
+    case "releaseSupportURL":
+      if (AppConstants.NIGHTLY_BUILD) {
+        openUILink("https://support.mozilla.org/kb/thunderbird-daily", event);
+        break;
+      }
+
+      openUILink("https://support.mozilla.org/kb/thunderbird-beta", event);
       break;
   }
 }
@@ -346,13 +351,7 @@ function openWebLinkIn(url, where, params = {}) {
 // parameters including "where" and always open the link externally. We don't
 // want to open donation pages in a tab due to their complexity, and we don't
 // want to handle them inside Thunderbird.
-function openUILinkIn(
-  url,
-  where,
-  aAllowThirdPartyFixup,
-  aPostData,
-  aReferrerInfo
-) {
+function openUILinkIn(url) {
   openLinkExternally(url);
 }
 

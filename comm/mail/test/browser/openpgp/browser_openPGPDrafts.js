@@ -5,7 +5,7 @@
 "use strict";
 
 const { save_compose_message } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 const {
   open_message_from_file,
@@ -15,14 +15,14 @@ const {
   select_click_row,
   open_selected_message,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 const { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 function waitForComposeWindow() {
@@ -103,7 +103,7 @@ add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
           null,
           true,
           false,
-          { OnStopCopy: resolve },
+          { onStopCopy: resolve },
           false
         );
       })
@@ -126,6 +126,14 @@ add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
     await BrowserTestUtils.closeWindow(msgc);
 
     const replyWindow = await replyWindowPromise;
+
+    // Without the delay, the saving attempt that follows sometimes
+    // fails. The code to save the encrypted draft fails, because
+    // it finds no recipients. Maybe after opening the window,
+    // some time is needed to correctly populate the reply window.
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     await save_compose_message(replyWindow);
     replyWindow.close();
 

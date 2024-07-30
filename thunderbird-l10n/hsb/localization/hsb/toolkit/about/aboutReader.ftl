@@ -26,6 +26,18 @@ about-reader-color-theme-contrast = Kontrast
     .title = Barbna drasta Kontrast
 about-reader-color-theme-custom = Swójske barby
     .title = Barbna drasta Swójske
+about-reader-color-light-theme = Swětły
+    .title = Swětła drasta
+about-reader-color-dark-theme = Ćmowy
+    .title = Ćmowa drasta
+about-reader-color-sepia-theme = Sepija
+    .title = Sepijowa drasta
+about-reader-color-auto-theme = Awtomatiski
+    .title = Awtomatiska drasta
+about-reader-color-gray-theme = Šěry
+    .title = Šěra drasta
+about-reader-color-contrast-theme = Kontrast
+    .title = Kontrastowa drasta
 # An estimate for how long it takes to read an article,
 # expressed as a range covering both slow and fast readers.
 # Variables:
@@ -58,12 +70,15 @@ about-reader-toolbar-lineheightplus =
 
 about-reader-font-type-serif = Serif
 about-reader-font-type-sans-serif = Sans-serif
+about-reader-font-type-monospace = Monospace
 
 ## Reader View toolbar buttons
 
 about-reader-toolbar-close = Čitanski napohlad začinić
 about-reader-toolbar-type-controls = Pismowe elementy
 about-reader-toolbar-color-controls = Barby
+about-reader-toolbar-text-layout-controls = Tekst a wuhotowanje
+about-reader-toolbar-theme-controls = Drasta
 about-reader-toolbar-savetopocket = Do { -pocket-brand-name } składować
 
 ## Reader View colors menu
@@ -87,3 +102,36 @@ about-reader-custom-colors-visited-links = Wopytane wotkazy
 about-reader-custom-colors-selection-highlight = Tekstowy marker za wótře čitać
     .title = Barbu wobdźěłać
 about-reader-custom-colors-reset-button = Na standard wróćo stajić
+about-reader-reset-button = Na standard wróćo stajić
+
+## Reader View improved text and layout menu
+
+about-reader-text-header = Tekst
+about-reader-text-size-label = Tekstowa wulkosć
+about-reader-font-type-selector-label = Pismo
+about-reader-font-weight-selector-label = Pismowa waha
+about-reader-font-weight-light = Swětły
+about-reader-font-weight-regular = Normalny
+about-reader-font-weight-bold = Tučny
+about-reader-layout-header = Wuhotowanje
+about-reader-slider-label-spacing-standard = Standard
+about-reader-slider-label-spacing-wide = Šěroki
+about-reader-content-width-label =
+    .label = Šěrokosć wobsaha
+about-reader-line-spacing-label =
+    .label = Linkowy wotstup
+about-reader-advanced-layout-header = Rozšěrjene
+about-reader-slider-label-width-narrow = Wuski
+about-reader-slider-label-width-wide = Šěroki
+about-reader-slider-label-spacing-narrow = Wuski
+about-reader-character-spacing-label =
+    .label = Znamješkowy wotstup
+about-reader-word-spacing-label =
+    .label = Słowny wotstup
+about-reader-text-alignment-label = Tekstowe wusměrjenje
+about-reader-text-alignment-left =
+    .title = Tekst nalěwo wusměrić
+about-reader-text-alignment-center =
+    .title = Tekst centrowano wusměrić
+about-reader-text-alignment-right =
+    .title = Tekst naprawo wusměrić

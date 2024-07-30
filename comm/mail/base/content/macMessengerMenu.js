@@ -5,8 +5,8 @@
 
 /* import-globals-from mailCore.js */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 // Load and add the menu item to the OS X Dock icon menu.
@@ -32,7 +32,7 @@ addEventListener(
  * When the Preferences window is actually loaded, this Listener is called.
  * Not doing this way could make DOM elements not available.
  */
-function loadListener(event) {
+function loadListener() {
   setTimeout(function () {
     const prefWin = Services.wm.getMostRecentWindow("Mail:Preferences");
     prefWin.gSubDialog.open(
@@ -46,7 +46,7 @@ function loadListener(event) {
  * This is done so subdialog opens as a child of it.
  */
 function PrefWindowObserver() {
-  this.observe = function (aSubject, aTopic, aData) {
+  this.observe = function (aSubject, aTopic) {
     if (aTopic == "domwindowopened") {
       aSubject.addEventListener("load", loadListener, {
         capture: false,

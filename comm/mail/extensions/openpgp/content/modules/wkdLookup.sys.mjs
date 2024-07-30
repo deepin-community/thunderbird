@@ -3,21 +3,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /**
- *  Lookup keys by email addresses using WKD. A an email address is lookep up at most
- *  once a day. (see https://tools.ietf.org/html/draft-koch-openpgp-webkey-service)
+ * Lookup keys by email addresses using WKD. A an email address is lookep up at most
+ * once a day. (see https://tools.ietf.org/html/draft-koch-openpgp-webkey-service)
  */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   DNS: "resource:///modules/DNS.sys.mjs",
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
   EnigmailZBase32: "chrome://openpgp/content/modules/zbase32.sys.mjs",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
 });
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
+ChromeUtils.defineLazyGetter(lazy, "log", () => {
+  return console.createInstance({
+    prefix: "openpgp",
+    maxLogLevel: "Warn",
+    maxLogLevelPref: "openpgp.loglevel",
+  });
 });
 
 // Those domains are not expected to have WKD:
@@ -257,17 +258,15 @@ export var EnigmailWkdLookup = {
   },
 
   /**
-   * Download a key for an email address
+   * Download a key for an email address.
    *
-   * @param {string} url - URL from getDownloadUrlFromEmail()
-   * @returns {Promise<string>} key data (or null if not possible)
+   * @param {string} url - URL from getDownloadUrlFromEmail().
+   * @returns {Promise<string>} key data (or null if not possible).
    */
   async downloadKey(url) {
     let response;
     try {
-      lazy.EnigmailLog.DEBUG(
-        "wkdLookup.jsm: downloadKey: requesting " + url + "\n"
-      );
+      lazy.log.debug(`Requesting key from ${url}`);
       response = await fetch(url, {
         method: "GET",
         headers: {
@@ -288,9 +287,7 @@ export var EnigmailWkdLookup = {
         return null;
       }
     } catch (ex) {
-      lazy.EnigmailLog.DEBUG(
-        "wkdLookup.jsm: downloadKey: error " + ex.toString() + "\n"
-      );
+      lazy.log.warn(`Requesting key from ${url} FAILED.`, ex);
       return null;
     }
     const uint8Array = new Uint8Array(await response.arrayBuffer());

@@ -14,15 +14,15 @@ var {
   open_advanced_settings,
   remove_account,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/AccountManagerHelpers.sys.mjs"
+  "resource://testing-common/mail/AccountManagerHelpers.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var { content_tab_e } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
+  "resource://testing-common/mail/ContentTabHelpers.sys.mjs"
 );
 
 var gPopAccount, gOriginalAccountCount;
@@ -120,14 +120,14 @@ async function subtest_check_account_open_state(tab, wishedState) {
 
 /**
  * Bug 740617.
- * Check if the default account is styled in bold.
+ * Check if the default account is set.
  */
 add_task(async function test_default_account_highlight() {
   await open_advanced_settings(subtest_check_default_account_highlight);
 });
 
 /**
- * Check if the default account is styled in bold and another account is not.
+ * Check if only one account is set as default.
  *
  * @param {object} tab - The account manager tab.
  */

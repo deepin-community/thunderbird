@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { ICAL, unwrapSetter, wrapGetter } = ChromeUtils.import(
-  "resource:///modules/calendar/Ical.jsm"
-);
+import ICAL from "resource:///modules/calendar/Ical.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
@@ -39,38 +37,27 @@ CalPeriod.prototype = {
   },
 
   get start() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.start);
+    const val = this.innerObject.start;
+    return val ? new lazy.CalDateTime(val) : null;
   },
-  set start(rawval) {
-    unwrapSetter(
-      ICAL.Time,
-      rawval,
-      function (val) {
-        this.innerObject.start = val;
-      },
-      this
-    );
+  set start(val) {
+    this.innerObject.start = val.wrappedJSObject.innerObject;
   },
 
   get end() {
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getEnd());
+    const val = this.innerObject.getEnd();
+    return val ? new lazy.CalDateTime(val) : null;
   },
-  set end(rawval) {
-    unwrapSetter(
-      ICAL.Time,
-      rawval,
-      function (val) {
-        if (this.innerObject.duration) {
-          this.innerObject.duration = null;
-        }
-        this.innerObject.end = val;
-      },
-      this
-    );
+  set end(val) {
+    if (this.innerObject.duration) {
+      this.innerObject.duration = null;
+    }
+    this.innerObject.end = val.wrappedJSObject.innerObject;
   },
 
   get duration() {
-    return wrapGetter(lazy.CalDuration, this.innerObject.getDuration());
+    const val = this.innerObject.getDuration();
+    return val ? new lazy.CalDuration(val) : null;
   },
 
   get icalString() {

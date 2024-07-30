@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Tutustu ominaisuuksiin
     .accesskey = F
+menu-help-get-release-help =
+    .label = Apua { -brand-short-name }in käyttöön
+    .accesskey = ä
 menu-help-shortcuts =
     .label = Pikanäppäimet
     .accesskey = k
@@ -133,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Sähköpostitili…
+    .accesskey = S
 file-new-newsgroup-account =
     .label = Keskusteluryhmätili…
     .accesskey = r

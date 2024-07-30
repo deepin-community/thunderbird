@@ -9,6 +9,7 @@
 #filter substitution
 
 [localization] @AB_CD@.jar:
+  preview/accountSetup-preview.ftl                                      (../components/accountcreation/content/accountSetup-preview.ftl)
   browser                                                               (%browser/**/*.ftl)
   messenger                                                             (%messenger/**/*.ftl)
 
@@ -94,7 +95,6 @@
   locale/@AB_CD@/messenger/markByDate.dtd                               (%chrome/messenger/markByDate.dtd)
   locale/@AB_CD@/messenger/am-mdn.dtd                                   (%chrome/messenger/am-mdn.dtd)
   locale/@AB_CD@/messenger/am-mdn.properties                            (%chrome/messenger/am-mdn.properties)
-  locale/@AB_CD@/messenger/am-archiveoptions.dtd                        (%chrome/messenger/am-archiveoptions.dtd)
   locale/@AB_CD@/messenger/msgmdn.properties                            (%chrome/messenger/msgmdn.properties)
   locale/@AB_CD@/messenger/mailviews.properties                         (%chrome/messenger/mailviews.properties)
   locale/@AB_CD@/messenger/msgViewPickerOverlay.dtd                     (%chrome/messenger/msgViewPickerOverlay.dtd)
@@ -108,7 +108,6 @@
   locale/@AB_CD@/messenger/appleMailImportMsgs.properties               (%chrome/messenger/appleMailImportMsgs.properties)
   locale/@AB_CD@/messenger/wmImportMsgs.properties                      (%chrome/messenger/wmImportMsgs.properties)
   locale/@AB_CD@/messenger/outlookImportMsgs.properties                 (%chrome/messenger/outlookImportMsgs.properties)
-  locale/@AB_CD@/messenger/beckyImportMsgs.properties                   (%chrome/messenger/beckyImportMsgs.properties)
   locale/@AB_CD@/messenger/seamonkeyImportMsgs.properties               (%chrome/messenger/seamonkeyImportMsgs.properties)
   locale/@AB_CD@/messenger/shutdownWindow.properties                    (%chrome/messenger/shutdownWindow.properties)
   locale/@AB_CD@/messenger/configEditorOverlay.dtd                      (%chrome/messenger/configEditorOverlay.dtd)

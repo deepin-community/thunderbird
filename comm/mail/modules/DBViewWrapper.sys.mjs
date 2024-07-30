@@ -2,22 +2,45 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
+
 import {
   MailViewConstants,
   MailViewManager,
 } from "resource:///modules/MailViewManager.sys.mjs";
 import { SearchSpec } from "resource:///modules/SearchSpec.sys.mjs";
+import { ThreadPaneColumns } from "chrome://messenger/content/ThreadPaneColumns.mjs";
+import { FolderUtils } from "resource:///modules/FolderUtils.sys.mjs";
 
-const { VirtualFolderHelper } = ChromeUtils.import(
-  "resource:///modules/VirtualFolderWrapper.jsm"
-);
+import { VirtualFolderHelper } from "resource:///modules/VirtualFolderWrapper.sys.mjs";
 
 var MSG_VIEW_FLAG_DUMMY = 0x20000000;
 
 var nsMsgViewIndex_None = 0xffffffff;
+
+function getSortStatusFromView(dbView) {
+  const primarySort = [
+    dbView.sortType,
+    dbView.sortOrder,
+    dbView.curCustomColumn,
+  ];
+  const secondarySort = [
+    dbView.secondarySortType,
+    dbView.secondarySortOrder,
+    dbView.secondaryCustomColumn,
+  ];
+  // Ignore secondary sort, if it is for the same column, or byNone.
+  if (
+    secondarySort[0] == Ci.nsMsgViewSortType.byNone ||
+    (secondarySort[0] != Ci.nsMsgViewSortType.byCustom &&
+      secondarySort[0] == primarySort[0]) ||
+    (secondarySort[0] == Ci.nsMsgViewSortType.byCustom &&
+      secondarySort[2] == primarySort[2])
+  ) {
+    return [primarySort];
+  }
+  return [primarySort, secondarySort];
+}
 
 /**
  * Helper singleton for DBViewWrapper that tells instances when something
@@ -87,6 +110,7 @@ var FolderNotificationHelper = {
     try {
       aFolder.updateFolder(aMsgWindow);
     } catch (ex) {
+      console.warn(`Update folder ${folderURI} failed.`, ex);
       // uh-oh, that didn't work.  tear down the data structure...
       wrappers.pop();
       if (wrappers.length == 0) {
@@ -201,6 +225,12 @@ var FolderNotificationHelper = {
     }
   },
 
+  /**
+   * @param {nsIMsgFolder} aFolder - The folder that the event is for.
+   * @param {string} aEvent - The event: "FolderLoaded", "AboutToCompact",
+   *   "CompactCompleted", "DeleteOrMoveMsgCompleted", "DeleteOrMoveMsgFailed",
+   *   "RenameCompleted" are handled.
+   */
   onFolderEvent(aFolder, aEvent) {
     if (aEvent == "FolderLoaded") {
       const folderURI = aFolder.URI;
@@ -213,19 +243,7 @@ var FolderNotificationHelper = {
           try {
             widget._folderLoaded(aFolder);
           } catch (ex) {
-            dump(
-              "``` EXCEPTION DURING NOTIFY: " +
-                ex.fileName +
-                ":" +
-                ex.lineNumber +
-                ": " +
-                ex +
-                "\n"
-            );
-            if (ex.stack) {
-              dump("STACK: " + ex.stack + "\n");
-            }
-            console.error(ex);
+            console.error(`_folderLoaded for ${folderURI} failed.`, ex);
           }
         }
         delete this._pendingFolderUriToViewWrapperLists[folderURI];
@@ -243,7 +261,7 @@ var FolderNotificationHelper = {
     }
   },
 
-  onFolderIntPropertyChanged(aFolder, aProperty, aOldValue, aNewValue) {
+  onFolderIntPropertyChanged(aFolder, aProperty) {
     if (aProperty == "TotalMessages" || aProperty == "TotalUnreadMessages") {
       this._notifyHelper(aFolder, "_messageCountsChanged");
     }
@@ -344,13 +362,13 @@ IDBViewWrapperListener.prototype = {
    *  time to mess with the hour-glass cursor machinery if you are inclined to
    *  do so.
    */
-  onFolderLoading(aIsFolderLoading) {},
+  onFolderLoading() {},
 
   /**
    * We tell you when we start and stop searching.  This is a good time to mess
    *  with progress spinners (meteors) and the like, if you are so inclined.
    */
-  onSearching(aIsSearching) {},
+  onSearching() {},
 
   /**
    * This event is generated when a new view has been created.  It is intended
@@ -371,7 +389,7 @@ IDBViewWrapperListener.prototype = {
    *     will be the case unless we are switching to display a new folder or
    *     closing the view wrapper entirely.
    */
-  onDestroyingView(aFolderIsComingBack) {},
+  onDestroyingView() {},
 
   /**
    * Generated when we are loading information about the folder from its
@@ -383,7 +401,7 @@ IDBViewWrapperListener.prototype = {
    * |onDisplayingFolder| is the next expected notification following this
    *  notification.
    */
-  onLoadingFolder(aDbFolderInfo) {},
+  onLoadingFolder() {},
 
   /**
    * Generated when the folder is being entered for display.  This is the chance
@@ -411,7 +429,7 @@ IDBViewWrapperListener.prototype = {
    * the view is opened. You will definitely get onMessagesLoaded(true)
    * when we've finished getting the headers for the view.
    */
-  onMessagesLoaded(aAll) {},
+  onMessagesLoaded() {},
 
   /**
    * The mail view changed.  The mail view widget is likely to care about this.
@@ -516,6 +534,22 @@ DBViewWrapper.prototype = {
    *  not just a bunch of message headers randomly crammed in.
    */
   kUnderlyingSearchView: 4,
+
+  /**
+   * Returns the sortType of the column assoziated with the given columnId.
+   *
+   * @param {string} columnId
+   * @returns {integer?} the sort type as defined by Ci.nsMsgViewSortType, if any
+   */
+  getSortType(columnId) {
+    const column = ThreadPaneColumns.getDefaultColumns().find(
+      c => c.sortKey && c.id == columnId
+    );
+    if (column) {
+      return Ci.nsMsgViewSortType[column.sortKey];
+    }
+    return undefined;
+  },
 
   /**
    * @returns true if the folder being displayed is backed by a single 'real'
@@ -717,12 +751,12 @@ DBViewWrapper.prototype = {
 
     // kill off the view and its search association
     if (this.dbView) {
-      this.listener.onDestroyingView(false);
       this.search.dissociateView(this.dbView);
       this.dbView.setTree(null);
       this.dbView.setJSTree(null);
       this.dbView.selection = null;
       this.dbView.close();
+      this.listener.onDestroyingView(false);
       this.dbView = null;
     }
 
@@ -809,8 +843,8 @@ DBViewWrapper.prototype = {
       this._prepareToLoadView(msgDatabase, aFolder);
     }
 
+    this.folderLoading = true;
     if (!this.isVirtual) {
-      this.folderLoading = true;
       FolderNotificationHelper.updateFolderAndNotifyOnLoad(
         this.displayedFolder,
         this,
@@ -818,10 +852,12 @@ DBViewWrapper.prototype = {
       );
     }
 
-    // we do this after kicking off the update because this could initiate a
-    //  search which could fight our explicit updateFolder call if the search
-    //  is already outstanding.
-    if (this.shouldShowMessagesForFolderImmediately()) {
+    // We do this after kicking off the update because this could initiate a
+    // search which could fight our explicit updateFolderAndNotifyOnLoad call
+    // if the search is already outstanding.
+    // If folder loaded directly from the updateFolderAndNotifyOnLoad above
+    // no need to enter it once again now.
+    if (this.folderLoading && this.shouldShowMessagesForFolderImmediately()) {
       this._enterFolder();
     }
   },
@@ -837,6 +873,11 @@ DBViewWrapper.prototype = {
 
     this.search = new SearchSpec(this);
     this._sort = this._syntheticView.defaultSort.concat();
+
+    this._threadExpandAll = Boolean(
+      Services.prefs.getIntPref("mailnews.default_view_flags", 1) &
+        Ci.nsMsgViewFlagsType.kExpandAll
+    );
 
     this._applyViewChanges();
     FolderNotificationHelper.noteCuriosity(this);
@@ -925,10 +966,10 @@ DBViewWrapper.prototype = {
    *   there is an obvious hole in this logic because of the virtual folder case
    *   above.
    *
-   * @pre this.folderDisplayed is the folder we are talking about.
+   * Note: this.folderDisplayed is the folder we are talking about.
    *
-   * @returns true if the folder should be shown immediately, false if we should
-   *     wait for updateFolder to complete.
+   * @returns {boolean} true if the folder should be shown immediately
+   *   false if we should wait for updateFolder to complete.
    */
   shouldShowMessagesForFolderImmediately() {
     return (
@@ -1081,17 +1122,10 @@ DBViewWrapper.prototype = {
       this.__viewFlags ??
       Services.prefs.getIntPref("mailnews.default_view_flags", 1);
 
-    if (this.showGroupedBySort && this.isVirtual) {
-      if (this.isSingleFolder) {
-        // The expand flag must be set when opening a single virtual folder
-        // (quicksearch) in grouped view. The user's last set expand/collapse
-        // state for grouped/threaded in this use case is restored later.
-        viewFlags |= Ci.nsMsgViewFlagsType.kExpandAll;
-      } else {
-        // For performance reasons, cross-folder views should be opened with
-        // all groups collapsed.
-        viewFlags &= ~Ci.nsMsgViewFlagsType.kExpandAll;
-      }
+    if (this.showGroupedBySort && (this.isMultiFolder || this.isSynthetic)) {
+      // For performance reasons, cross-folder views should be opened with
+      // all groups collapsed.
+      viewFlags &= ~Ci.nsMsgViewFlagsType.kExpandAll;
     }
 
     // real folders are subject to the most interest set of possibilities...
@@ -1132,7 +1166,8 @@ DBViewWrapper.prototype = {
       viewFlags & Ci.nsMsgViewFlagsType.kGroupBySort
         ? 0
         : this._sort.length - 1;
-    let [sortType, sortOrder, sortCustomCol] = this._getSortDetails(index);
+    const [sortType, sortOrder] = this._sort[index];
+
     // when the underlying folder is a single real folder (virtual or no), we
     //  tell the view about the underlying folder.
     if (this.isSingleFolder) {
@@ -1167,9 +1202,6 @@ DBViewWrapper.prototype = {
       // and for a synthetic folder, displayedFolder is null anyways
       dbView.open(this.displayedFolder, sortType, sortOrder, viewFlags);
     }
-    if (sortCustomCol) {
-      dbView.curCustomColumn = sortCustomCol;
-    }
 
     // we all know it's a tree view, make sure the interface is available
     //  so no one else has to do this.
@@ -1180,12 +1212,16 @@ DBViewWrapper.prototype = {
     if (!(viewFlags & Ci.nsMsgViewFlagsType.kGroupBySort)) {
       // clock through the rest of the sorts, if there are any
       for (let iSort = this._sort.length - 2; iSort >= 0; iSort--) {
-        [sortType, sortOrder, sortCustomCol] = this._getSortDetails(iSort);
-        if (sortCustomCol) {
-          dbView.curCustomColumn = sortCustomCol;
-        }
-        dbView.sort(sortType, sortOrder);
+        const [_sortType, _sortOrder, _sortColumnId] = this._sort[iSort];
+        dbView.curCustomColumn =
+          _sortType == Ci.nsMsgViewSortType.byCustom ? _sortColumnId : "";
+        dbView.sort(_sortType, _sortOrder);
       }
+      this._sort = getSortStatusFromView(dbView);
+    } else {
+      // We currently do not cache any secondary sort information for group sorts
+      // in this._sort, which is tested by test_viewWrapper_logic.js.
+      this._sort = getSortStatusFromView(dbView).slice(0, 1);
     }
 
     return dbView;
@@ -1342,7 +1378,7 @@ DBViewWrapper.prototype = {
    *  not initiate the move / deletion but has kicked off its own about the
    *  completion and confuse it.  However, that's on the view code.
    */
-  _deleteCompleted(aFolder) {
+  _deleteCompleted() {
     if (this.dbView) {
       this.dbView.onDeleteCompleted(true);
     }
@@ -1352,7 +1388,7 @@ DBViewWrapper.prototype = {
   /**
    * See _deleteCompleted for an explanation of what is going on.
    */
-  _deleteFailed(aFolder) {
+  _deleteFailed() {
     if (this.dbView) {
       this.dbView.onDeleteCompleted(false);
     }
@@ -1402,17 +1438,10 @@ DBViewWrapper.prototype = {
   /**
    * Update the view flags to use on the view.  If we are in a view update or
    *  currently don't have a view, we save the view flags for later usage when
-   *  the view gets (re)built.  If we have a view, depending on what's happening
-   *  we may re-create the view or just set the bits.  The rules/reasons are:
-   * - XFVF views can handle the flag changes, just set the flags.
-   * - XFVF threaded/unthreaded change must re-sort, the backend forgot.
-   * - Single-folder virtual folders (quicksearch) can handle viewFlag changes,
-   *    to/from grouped included, so set it.
-   * - Single-folder threaded/unthreaded can handle a change to/from unthreaded/
-   *    threaded, so set it.
-   * - Single-folder can _not_ handle a change between grouped and not-grouped,
-   *    so re-generate the view. Also it can't handle a change involving
-   *    kUnreadOnly or kShowIgnored.
+   *  the view gets (re)built.  If we have a view, depending on what's
+   *  happening we may re-create the view or just set the bits.
+   *
+   * @param {nsMsgViewFlagsTypeValue} aViewFlags
    */
   set _viewFlags(aViewFlags) {
     if (this._viewUpdateDepth || !this.dbView) {
@@ -1426,57 +1455,42 @@ DBViewWrapper.prototype = {
       this.dbView.selection.currentIndex = -1;
     }
 
-    let setViewFlags = true;
-    let reSort = false;
-    const oldFlags = this.dbView.viewFlags;
-    const changedFlags = oldFlags ^ aViewFlags;
-
-    if (this.isVirtual) {
-      if (
-        this.isMultiFolder &&
-        changedFlags & Ci.nsMsgViewFlagsType.kThreadedDisplay &&
-        !(changedFlags & Ci.nsMsgViewFlagsType.kGroupBySort)
-      ) {
-        reSort = true;
-      }
-      if (this.isSingleFolder) {
-        // ugh, and the single folder case needs us to re-apply his sort...
-        reSort = true;
-      }
-    } else {
-      // The regular single folder case.
-      if (
-        changedFlags &
+    // Single-folder can _not_ handle a change between grouped and not-grouped,
+    // so re-generate the view. Also it can't handle a change involving
+    // kUnreadOnly or kShowIgnored (which are not available in virtual
+    // folders).
+    const changedFlags = this.dbView.viewFlags ^ aViewFlags;
+    if (
+      !this.isVirtual &&
+      changedFlags &
         (Ci.nsMsgViewFlagsType.kGroupBySort |
           Ci.nsMsgViewFlagsType.kUnreadOnly |
           Ci.nsMsgViewFlagsType.kShowIgnored)
-      ) {
-        setViewFlags = false;
-      }
-      // ugh, and the single folder case needs us to re-apply his sort...
-      reSort = true;
-    }
-
-    if (setViewFlags) {
-      this.dbView.viewFlags = aViewFlags;
-      if (reSort) {
-        this.dbView.sort(this.dbView.sortType, this.dbView.sortOrder);
-      }
-      this.listener.onSortChanged();
-    } else {
+    ) {
       this.__viewFlags = aViewFlags;
       this._applyViewChanges();
+      return;
     }
+
+    // XFVF views can handle the flag changes, just set the flags.
+    // Single-folder virtual folders (quicksearch) can handle viewFlag changes,
+    // to/from grouped included, so set it.
+    // Single-folder threaded/unthreaded can handle a change to/from
+    // unthreaded/threaded, so set it.
+    this.dbView.viewFlags = aViewFlags;
+    // ugh, and the single folder case needs us to re-apply his sort...
+    if (this.isSingleFolder) {
+      this.dbView.sort(this.dbView.sortType, this.dbView.sortOrder);
+    }
+    this.listener.onSortChanged();
   },
 
   /**
-   * Apply accumulated changes to the view.  If we are in a batch, we do
-   *  nothing, relying on endDisplayUpdate to call us.
+   * Apply accumulated changes to the view.
    */
   _applyViewChanges() {
-    // if we are in a batch, wait for endDisplayUpdate to be called to get us
-    //  out to zero.
     if (this._viewUpdateDepth) {
+      // In a batch, do nothing.
       return;
     }
     // make the dbView stop being a search listener if it is one
@@ -1540,11 +1554,6 @@ DBViewWrapper.prototype = {
     );
   },
 
-  OUTGOING_FOLDER_FLAGS:
-    Ci.nsMsgFolderFlags.SentMail |
-    Ci.nsMsgFolderFlags.Drafts |
-    Ci.nsMsgFolderFlags.Queue |
-    Ci.nsMsgFolderFlags.Templates,
   /**
    * @returns true if the folder is an outgoing folder by virtue of being a
    *     sent mail folder, drafts folder, queue folder, or template folder,
@@ -1553,7 +1562,10 @@ DBViewWrapper.prototype = {
   get isOutgoingFolder() {
     return (
       this.displayedFolder &&
-      this.displayedFolder.isSpecialFolder(this.OUTGOING_FOLDER_FLAGS, true)
+      this.displayedFolder.isSpecialFolder(
+        FolderUtils.OUTGOING_FOLDER_FLAGS,
+        true
+      )
     );
   },
   /**
@@ -1591,7 +1603,7 @@ DBViewWrapper.prototype = {
    *  reached 0 with this call, the view will be re-created with the current
    *  settings.
    */
-  endViewUpdate(aForceLevel) {
+  endViewUpdate() {
     if (--this._viewUpdateDepth == 0) {
       this._applyViewChanges();
     }
@@ -1599,6 +1611,42 @@ DBViewWrapper.prototype = {
     if (this._viewUpdateDepth < 0) {
       this._viewUpdateDepth = 0;
     }
+  },
+
+  get primarySortColumnId() {
+    const sortType = this.primarySortType;
+    const defaultSortType = "dateCol";
+
+    // Handle special cases first.
+    if (sortType == Ci.nsMsgViewSortType.byNone) {
+      // In the case of None, we default to the date column. This appears to be
+      // the case in such instances as Global search, so don't complain about
+      // it.
+      return defaultSortType;
+    }
+
+    if (sortType == Ci.nsMsgViewSortType.byCustom) {
+      const curCustomColumn = this.dbView.curCustomColumn;
+      if (
+        ThreadPaneColumns.getCustomColumns().some(c => c.id == curCustomColumn)
+      ) {
+        return curCustomColumn;
+      }
+      dump(
+        `primarySortColumnId: custom sort type but no handler for column: ${curCustomColumn} \n`
+      );
+      return defaultSortType;
+    }
+
+    const column = ThreadPaneColumns.getDefaultColumns().find(
+      c => !c.custom && Ci.nsMsgViewSortType[c.sortKey] == sortType
+    );
+    if (column) {
+      return column.id;
+    }
+
+    dump(`primarySortColumnId: unsupported sort type: ${sortType} \n`);
+    return defaultSortType;
   },
 
   /**
@@ -1622,7 +1670,8 @@ DBViewWrapper.prototype = {
    */
   get isSortedAscending() {
     return (
-      this._sort.length && this._sort[0][1] == Ci.nsMsgViewSortOrder.ascending
+      this._sort.length &&
+      this.primarySortOrder == Ci.nsMsgViewSortOrder.ascending
     );
   },
   /**
@@ -1630,7 +1679,8 @@ DBViewWrapper.prototype = {
    */
   get isSortedDescending() {
     return (
-      this._sort.length && this._sort[0][1] == Ci.nsMsgViewSortOrder.descending
+      this._sort.length &&
+      this.primarySortOrder == Ci.nsMsgViewSortOrder.descending
     );
   },
   /**
@@ -1642,7 +1692,7 @@ DBViewWrapper.prototype = {
     if (!this._sort.length) {
       return false;
     }
-    const sortType = this._sort[0][0];
+    const sortType = this.primarySortType;
     return (
       sortType == Ci.nsMsgViewSortType.byDate ||
       sortType == Ci.nsMsgViewSortType.byReceived ||
@@ -1653,12 +1703,15 @@ DBViewWrapper.prototype = {
 
   sortAscending() {
     if (!this.isSortedAscending) {
-      this.magicSort(this._sort[0][0], Ci.nsMsgViewSortOrder.ascending);
+      this.magicSort(this.primarySortColumnId, Ci.nsMsgViewSortOrder.ascending);
     }
   },
   sortDescending() {
     if (!this.isSortedDescending) {
-      this.magicSort(this._sort[0][0], Ci.nsMsgViewSortOrder.descending);
+      this.magicSort(
+        this.primarySortColumnId,
+        Ci.nsMsgViewSortOrder.descending
+      );
     }
   },
 
@@ -1669,33 +1722,42 @@ DBViewWrapper.prototype = {
    *  on the underlying db view!  If you do not, make sure to fight us every
    *   step of the way, because we will keep clobbering your manually applied
    *   sort.
-   * For secondary and multiple custom column support, a byCustom aSortType and
-   *  aSecondaryType must be the column name string.
+   *
+   * @param {string} aSortColumnId
+   * @param {nsMsgViewSortOrderValue} aSortOrder
+   * @param {string} aSecondaryColumnId
+   * @param {nsMsgViewSortOrderValue} aSecondaryOrder
    */
-  sort(aSortType, aSortOrder, aSecondaryType, aSecondaryOrder) {
+  sort(aSortColumnId, aSortOrder, aSecondaryColumnId, aSecondaryOrder) {
     // For sort changes, do not make a random selection if there is not
     // actually anything selected; some views do this (looking at xfvf).
     if (this.dbView.selection && this.dbView.selection.count == 0) {
       this.dbView.selection.currentIndex = -1;
     }
 
-    this._sort = [[aSortType, aSortOrder]];
-    if (aSecondaryType != null && aSecondaryOrder != null) {
-      this._sort.push([aSecondaryType, aSecondaryOrder]);
+    // Convert sortTypes to columnIds for dbView.sort().
+    this._sort = [[this.getSortType(aSortColumnId), aSortOrder, aSortColumnId]];
+    if (aSecondaryColumnId) {
+      this._sort.push([
+        this.getSortType(aSecondaryColumnId),
+        aSecondaryOrder,
+        aSecondaryColumnId,
+      ]);
     }
+
     // make sure the sort won't make the view angry...
     this._ensureValidSort();
     // if we are not in a view update, invoke the sort.
     if (this._viewUpdateDepth == 0 && this.dbView) {
       for (let iSort = this._sort.length - 1; iSort >= 0; iSort--) {
         // apply them in the reverse order
-        const [sortType, sortOrder, sortCustomCol] =
-          this._getSortDetails(iSort);
-        if (sortCustomCol) {
-          this.dbView.curCustomColumn = sortCustomCol;
-        }
+        const [sortType, sortOrder, sortColumnId] = this._sort[iSort];
+        this.dbView.curCustomColumn =
+          sortType == Ci.nsMsgViewSortType.byCustom ? sortColumnId : "";
         this.dbView.sort(sortType, sortOrder);
       }
+      this._sort = getSortStatusFromView(this.dbView);
+
       // (only generate the event since we're not in a update batch)
       this.listener.onSortChanged();
     }
@@ -1704,35 +1766,16 @@ DBViewWrapper.prototype = {
   },
 
   /**
-   * Logic that compensates for custom column identifiers being provided as
-   *  sort types.
-   *
-   * @returns [sort type, sort order, sort custom column name]
-   */
-  _getSortDetails(aIndex) {
-    let [sortType, sortOrder] = this._sort[aIndex];
-    let sortCustomColumn = null;
-    const sortTypeType = typeof sortType;
-    if (sortTypeType != "number") {
-      sortCustomColumn = sortTypeType == "string" ? sortType : sortType.id;
-      sortType = Ci.nsMsgViewSortType.byCustom;
-      // Set correct sortType.
-      this._sort[aIndex][0] = sortType;
-    }
-
-    return [sortType, sortOrder, sortCustomColumn];
-  },
-
-  /**
    * Accumulates implied secondary sorts based on multiple calls to this method.
    *  This is intended to be hooked up to be controlled by the UI.
    * Because we are lazy, we actually just poke the view's sort method and save
    *  the apparent secondary sort.  This also allows perfect compliance with the
    *  way this used to be implemented!
-   * For secondary and multiple custom column support, a byCustom aSortType must
-   *  be the column name string.
+   *
+   * @param {string} aSortColumnId
+   * @param {nsMsgViewSortOrderValue} aSortOrder
    */
-  magicSort(aSortType, aSortOrder) {
+  magicSort(aSortColumnId, aSortOrder) {
     if (this.dbView) {
       // For sort changes, do not make a random selection if there is not
       // actually anything selected; some views do this (looking at xfvf).
@@ -1740,30 +1783,19 @@ DBViewWrapper.prototype = {
         this.dbView.selection.currentIndex = -1;
       }
 
-      // so, the thing we just set obviously will be there
-      this._sort = [[aSortType, aSortOrder]];
-      // (make sure it is valid...)
+      // So, the thing we just set obviously will be there.
+      this._sort = [
+        [this.getSortType(aSortColumnId), aSortOrder, aSortColumnId],
+      ];
+      // Make sure it is valid...
       this._ensureValidSort();
-      // get sort details, handle custom column as string sortType
-      const [sortType, sortOrder, sortCustomCol] = this._getSortDetails(0);
-      if (sortCustomCol) {
-        this.dbView.curCustomColumn = sortCustomCol;
-      }
-      // apply the sort to see what happens secondary-wise
+      const [sortType, sortOrder, sortColumnId] = this._sort[0];
+      this.dbView.curCustomColumn =
+        sortType == Ci.nsMsgViewSortType.byCustom ? sortColumnId : "";
       this.dbView.sort(sortType, sortOrder);
-      // there is only a secondary sort if it's not none and not the same.
-      if (
-        this.dbView.secondarySortType != Ci.nsMsgViewSortType.byNone &&
-        (this.dbView.secondarySortType != sortType ||
-          (this.dbView.secondarySortType == Ci.nsMsgViewSortType.byCustom &&
-            this.dbView.secondaryCustomColumn != sortCustomCol))
-      ) {
-        this._sort.push([
-          this.dbView.secondaryCustomColumn || this.dbView.secondarySortType,
-          this.dbView.secondarySortOrder,
-        ]);
-      }
-      // only tell our listener if we're not in a view update batch
+      this._sort = getSortStatusFromView(this.dbView);
+
+      // Only tell our listener if we're not in a view update batch.
       if (this._viewUpdateDepth == 0) {
         this.listener.onSortChanged();
       }
@@ -1783,19 +1815,19 @@ DBViewWrapper.prototype = {
       (aViewFlags != null ? aViewFlags : this._viewFlags) &
       Ci.nsMsgViewFlagsType.kGroupBySort
     ) {
-      // We cannot be sorting by thread, id, none, or size.  If we are, switch
-      //  to sorting by date.
-      for (const sortPair of this._sort) {
-        const sortType = sortPair[0];
-        if (
-          sortType == Ci.nsMsgViewSortType.byThread ||
-          sortType == Ci.nsMsgViewSortType.byId ||
-          sortType == Ci.nsMsgViewSortType.byNone ||
-          sortType == Ci.nsMsgViewSortType.bySize
-        ) {
-          this._sort = [[Ci.nsMsgViewSortType.byDate, this._sort[0][1]]];
-          break;
-        }
+      // There is no secondary sort in Grouped-By, as the groups themselves are
+      // always sorted by date. So we validate only the primary sort.
+      const sortType = this._sort[0][0];
+      if (
+        sortType == Ci.nsMsgViewSortType.byThread ||
+        sortType == Ci.nsMsgViewSortType.byId ||
+        sortType == Ci.nsMsgViewSortType.byNone ||
+        sortType == Ci.nsMsgViewSortType.bySize ||
+        sortType == Ci.nsMsgViewSortType.byUnread ||
+        sortType == Ci.nsMsgViewSortType.byJunkStatus ||
+        (sortType == Ci.nsMsgViewSortType.byLocation && this.isSingleFolder)
+      ) {
+        this._sort = [[Ci.nsMsgViewSortType.byDate, this.primarySortOrder]];
       }
     }
   },
@@ -1817,12 +1849,10 @@ DBViewWrapper.prototype = {
   set showGroupedBySort(aShowGroupBySort) {
     if (this.showGroupedBySort != aShowGroupBySort) {
       if (aShowGroupBySort) {
-        // For virtual single folders, the kExpandAll flag must be set.
         // Do not apply the flag change until we have made the sort safe.
         const viewFlags =
           this._viewFlags |
           Ci.nsMsgViewFlagsType.kGroupBySort |
-          Ci.nsMsgViewFlagsType.kExpandAll |
           Ci.nsMsgViewFlagsType.kThreadedDisplay;
         this._ensureValidSort(viewFlags);
         this._viewFlags = viewFlags;

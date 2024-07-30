@@ -7,14 +7,13 @@
 #include "nsIMsgHdr.h"
 #include "nsImapUndoTxn.h"
 #include "nsIMsgIncomingServer.h"
+#include "nsImapCore.h"
 #include "nsImapMailFolder.h"
 #include "nsIImapService.h"
 #include "nsIDBFolderInfo.h"
 #include "nsIMsgDatabase.h"
 #include "nsMsgUtils.h"
-#include "nsThreadUtils.h"
 #include "nsServiceManagerUtils.h"
-#include "nsComponentManagerUtils.h"
 
 nsImapMoveCopyMsgTxn::nsImapMoveCopyMsgTxn()
     : m_idsAreUids(false), m_isMove(false), m_srcIsPop3(false) {}
@@ -63,7 +62,7 @@ nsresult nsImapMoveCopyMsgTxn::Init(nsIMsgFolder* srcFolder,
           m_dupKeyArray[i] = pseudoKey;
         }
       }
-      srcHdr->GetMessageId(getter_Copies(messageId));
+      srcHdr->GetMessageId(messageId);
       m_srcMessageIds.AppendElement(messageId);
     }
   }

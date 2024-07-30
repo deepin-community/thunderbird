@@ -9,7 +9,7 @@
  */
 
 const { TreeSelection } = ChromeUtils.importESModule(
-  "chrome://messenger/content/tree-selection.mjs"
+  "chrome://messenger/content/TreeSelection.mjs"
 );
 var { MailServices } = ChromeUtils.importESModule(
   "resource:///modules/MailServices.sys.mjs"
@@ -61,7 +61,7 @@ CommandUpdaterWithPromise.prototype = {
     // when the # of items in the selection has actually changed.
   },
 
-  displayMessageChanged(aFolder, aSubject, aKeywords) {},
+  displayMessageChanged() {},
 
   updateNextMessageAfterDelete() {},
   summarizeSelection() {

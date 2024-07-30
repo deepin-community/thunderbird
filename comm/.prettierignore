@@ -1,7 +1,6 @@
 # Exclude everything by default, then include all the formats we support.
 *.*
 !*.js
-!*.jsm
 !*.json
 !*.mjs
 !*.jsx
@@ -103,6 +102,7 @@ mailnews/base/prefs/content/removeAccount.xhtml
 
 # Documentation Jinja templates
 docs/_templates/**
+docs/_build/**
 
 ##############################################################################
 # The list below is copied from ThirdPartyPaths.txt. Prettier doesn't currently
@@ -110,7 +110,7 @@ docs/_templates/**
 # When this is implemented, we'll update the configuration below (bug 1825508)
 ##############################################################################
 
-calendar/base/modules/Ical.jsm
+calendar/base/modules/Ical.sys.mjs
 chat/protocols/matrix/lib/**
 chat/protocols/xmpp/lib/**
 mail/base/content/protovis-r2.6-modded.js
@@ -129,3 +129,4 @@ mailnews/extensions/newsblog/test/unit/resources/feeds-missing-timestamp/feeds.j
 mailnews/extensions/newsblog/test/unit/resources/feeds-simple/feeditems.json
 mailnews/extensions/newsblog/test/unit/resources/feeds-simple/feeds.json
 rust/checksums.json
+mail/app/settings/dumps/

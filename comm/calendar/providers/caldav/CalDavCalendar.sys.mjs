@@ -26,6 +26,7 @@ import { CalReadableStreamFactory } from "resource:///modules/CalReadableStreamF
 
 var XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n';
 var MIME_TEXT_XML = "text/xml; charset=utf-8";
+var FORBIDDEN_PATH_CHARACTERS = /[^a-zA-Z0-9_\-\.]/g;
 
 var cIOL = Ci.calIOperationListener;
 
@@ -466,7 +467,7 @@ CalDavCalendar.prototype = {
       return this.mItemInfoCache[aItem.id].locationPath;
     }
     // New items just use id.ics
-    return aItem.id + ".ics";
+    return aItem.id.replaceAll(FORBIDDEN_PATH_CHARACTERS, "_") + ".ics";
   },
 
   getProperty(aName) {
@@ -1232,7 +1233,7 @@ CalDavCalendar.prototype = {
       const self = this;
       const opListener = {
         QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-        onGetResult(calendar, status, itemType, detail, items) {
+        onGetResult() {
           cal.ASSERT(false, "unexpected!");
         },
         onOperationComplete(opCalendar, opStatus, opType, opId, opDetail) {
@@ -1407,7 +1408,7 @@ CalDavCalendar.prototype = {
 
   /**
    * @see nsIInterfaceRequestor
-   * @see calProviderUtils.jsm
+   * @see calProviderUtils.sys.mjs
    */
   getInterface: cal.provider.InterfaceRequestor_getInterface,
 
@@ -2184,13 +2185,7 @@ CalDavCalendar.prototype = {
     const self = this;
     const modListener = {};
     modListener.QueryInterface = ChromeUtils.generateQI(["calIOperationListener"]);
-    modListener.onOperationComplete = function (
-      aCalendar,
-      aStatus,
-      aOperationType,
-      aItemId,
-      aDetail
-    ) {
+    modListener.onOperationComplete = function (aCalendar, aStatus) {
       cal.LOG(`CalDAV: status ${aStatus} while processing iTIP REPLY for ${self.name}`);
       // don't delete the REPLY item from inbox unless modifying the master
       // item was successful
@@ -2228,7 +2223,7 @@ CalDavCalendar.prototype = {
     );
   },
 
-  canNotify(aMethod, aItem) {
+  canNotify(aMethod) {
     // canNotify should return false if the imip transport should takes care of notifying cal
     // users
     if (this.getProperty("forceEmailScheduling")) {

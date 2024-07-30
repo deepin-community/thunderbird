@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-nn-NO@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Nynorsk (Norwegian Nynorsk)",
   "description": "Thunderbird Language Pack for Nynorsk (nn-NO) – Norwegian Nynorsk",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "nn-NO": {
-      "version": "20240423195530",
+      "version": "20240718002832",
       "chrome_resources": {
         "alerts": "chrome/nn-NO/locale/nn-NO/alerts/",
         "autoconfig": "chrome/nn-NO/locale/nn-NO/autoconfig/",
         "branding": "chrome/nn-NO/locale/branding/",
         "calendar": "chrome/nn-NO/locale/nn-NO/calendar/",
-        "chat": "chrome/nn-NO/locale/nn-NO/chat/",
         "communicator": "chrome/nn-NO/locale/nn-NO/communicator/",
         "devtools": "chrome/nn-NO/locale/nn-NO/devtools/client/",
         "devtools-shared": "chrome/nn-NO/locale/nn-NO/devtools/shared/",

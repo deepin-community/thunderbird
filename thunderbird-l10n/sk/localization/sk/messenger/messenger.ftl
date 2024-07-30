@@ -215,6 +215,23 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Preposlať a presmerovať
     .accesskey = r
+mail-context-menu-forward-forward =
+    .label = Odoslať ďalej
+    .accesskey = l
+mail-context-menu-forward-inline =
+    .label = Ako súčasť textu
+    .accesskey = x
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Ako prílohu
+            [few] Ako prílohy
+            [many] Ako prílohy
+           *[other] Ako prílohy
+        }
+    .accesskey = A
 mail-context-menu-organize =
     .label = Usporiadať
     .accesskey = U

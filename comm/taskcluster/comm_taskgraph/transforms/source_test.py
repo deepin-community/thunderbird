@@ -8,12 +8,7 @@ import shlex
 
 import taskgraph
 from taskgraph.transforms.base import TransformSequence
-from taskgraph.util.path import join as join_path
 from taskgraph.util.path import match as match_path
-
-from gecko_taskgraph.util.hg import get_json_automationrelevance
-
-from comm_taskgraph.files_changed import get_changed_files
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +23,26 @@ def get_patterns(job):
     return []
 
 
-def shlex_join(split_command):
-    """shlex.join from Python 3.8+"""
-    return " ".join(shlex.quote(arg) for arg in split_command)
+@transforms.add
+def remove_optimization_on_comm(config, jobs):
+    """
+    For pushes to comm-central run all source-test tasks that are enabled for
+    code-review in order to have the code-review bot populate the DB according
+    with the push hash.
+    """
+    if config.params["project"] != "comm-central" or config.params["tasks_for"] != "hg-push":
+        yield from jobs
+        return
+
+    for job in jobs:
+        if not job.get("attributes", {}).get("code-review", False):
+            yield job
+            continue
+        if "when" in job:
+            del job["when"]
+        if "optimization" in job:
+            del job["optimization"]
+        yield job
 
 
 @transforms.add
@@ -42,13 +54,11 @@ def changed_clang_format(config, jobs):
     """
     for job in jobs:
         if job.get("name", "") == "clang-format":
-            repository = config.params.get("comm_head_repository")
-            revision = config.params.get("comm_head_rev")
+            prefix = config.params.get("comm_src_path")
+            files_changed = config.params.get("files_changed")
 
             match_patterns = get_patterns(job)
-            changed_files = {
-                join_path("comm", file) for file in get_changed_files(repository, revision)
-            }
+            changed_files = {file for file in files_changed if file.startswith(prefix)}
 
             cpp_files = []
             for pattern in match_patterns:
@@ -62,7 +72,7 @@ def changed_clang_format(config, jobs):
             if cpp_files:
                 job["task-context"] = {
                     "from-object": {
-                        "changed_files": shlex_join(cpp_files),
+                        "changed_files": shlex.join(cpp_files),
                     },
                     "substitution-fields": [
                         "run.command",
@@ -74,15 +84,12 @@ def changed_clang_format(config, jobs):
 
 @transforms.add
 def set_base_revision_in_tgdiff(config, jobs):
-    # Don't attempt to download 'json-automation' locally as the revision may
-    # not exist in the repository.
     if not os.environ.get("MOZ_AUTOMATION") or taskgraph.fast:
         yield from jobs
         return
 
-    data = get_json_automationrelevance(
-        config.params["comm_head_repository"], config.params["comm_head_rev"]
-    )
+    comm_base_rev = config.params.get("comm_base_rev")
+
     for job in jobs:
         if job["name"] != "taskgraph-diff":
             yield job
@@ -90,7 +97,7 @@ def set_base_revision_in_tgdiff(config, jobs):
 
         job["task-context"] = {
             "from-object": {
-                "base_rev": data["changesets"][0]["parents"][0],
+                "base_rev": comm_base_rev,
             },
             "substitution-fields": [
                 "run.command",

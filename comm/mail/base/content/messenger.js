@@ -6,7 +6,6 @@
 /* import-globals-from ../../../mailnews/base/prefs/content/accountUtils.js */
 /* import-globals-from ../../components/addrbook/content/addressBookTab.js */
 /* import-globals-from ../../components/customizableui/content/panelUI.js */
-/* import-globals-from ../../components/newmailaccount/content/provisionerCheckout.js */
 /* import-globals-from ../../components/preferences/preferencesTab.js */
 /* import-globals-from glodaFacetTab.js */
 /* import-globals-from mailCore.js */
@@ -26,8 +25,8 @@
 ChromeUtils.importESModule(
   "resource:///modules/activity/activityModules.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { AppConstants } = ChromeUtils.importESModule(
   "resource://gre/modules/AppConstants.sys.mjs"
@@ -38,12 +37,9 @@ ChromeUtils.defineESModuleGetters(this, {
   Color: "resource://gre/modules/Color.sys.mjs",
   MailConsts: "resource:///modules/MailConsts.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
+  PeriodicFilterManager: "resource:///modules/PeriodicFilterManager.sys.mjs",
   SessionStoreManager: "resource:///modules/SessionStoreManager.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  msgDBCacheManager: "resource:///modules/MsgDBCacheManager.jsm",
-  PeriodicFilterManager: "resource:///modules/PeriodicFilterManager.jsm",
+  msgDBCacheManager: "resource:///modules/MsgDBCacheManager.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(this, "PopupNotifications", function () {
@@ -70,9 +66,6 @@ ChromeUtils.defineLazyGetter(this, "PopupNotifications", function () {
 });
 
 /* This is where functions related to the 3 pane window are kept */
-
-// from MailNewsTypes.h
-var kMailCheckOncePrefName = "mail.startup.enabledMailCheckOnce";
 
 /**
  * Tracks whether the right mouse button changed the selection or not.  If the
@@ -181,8 +174,6 @@ var gMailInit = {
     specialTabs.openSpecialTabsOnStartup();
     tabmail.registerTabType(addressBookTabType);
     tabmail.registerTabType(preferencesTabType);
-    // provisionerCheckoutTabType is defined in provisionerCheckout.js
-    tabmail.registerTabType(provisionerCheckoutTabType);
 
     // Depending on the pref, hide/show the gloda toolbar search widgets.
     XPCOMUtils.defineLazyPreferenceGetter(
@@ -226,7 +217,6 @@ var gMailInit = {
     switch (event.data) {
       case "account-created":
       case "account-created-in-backend":
-      case "account-created-from-provisioner":
         // Set the pref to false in case it was previously changed.
         Services.prefs.setBoolPref("app.use_without_mail_account", false);
         loadPostAccountWizard();
@@ -467,8 +457,7 @@ function switchToMailTab() {
 
 /**
  * Trigger the initialization of the entire UI. Called after the okCallback of
- * the emailWizard during a first run, or directly from the accountProvisioner
- * in case a user configures a new email account on first run.
+ * the emailWizard during a first run.
  */
 async function loadPostAccountWizard() {
   InitMsgWindow();
@@ -528,7 +517,6 @@ function showSystemIntegrationDialog() {
       shellService.shouldCheckDefaultClient &&
       !shellService.isDefaultClient(true, Ci.nsIShellService.MAIL)) ||
     (SearchIntegration &&
-      !SearchIntegration.osVersionTooLow &&
       !SearchIntegration.osComponentsNotRunning &&
       !SearchIntegration.firstRunDone)
   ) {
@@ -749,14 +737,6 @@ async function loadStartFolder(initialUri) {
 
       startFolder = rootMsgFolder;
 
-      // Enable check new mail once by turning checkmail pref 'on' to bring
-      // all users to one plane. This allows all users to go to Inbox. User can
-      // always go to server settings panel and turn off "Check for new mail at startup"
-      if (!Services.prefs.getBoolPref(kMailCheckOncePrefName)) {
-        Services.prefs.setBoolPref(kMailCheckOncePrefName, true);
-        defaultServer.loginAtStartUp = true;
-      }
-
       // Get the user pref to see if the login at startup is enabled for default account
       isLoginAtStartUpEnabled = defaultServer.loginAtStartUp;
 
@@ -835,9 +815,9 @@ function OpenMessageInNewTab(msgHdr, tabParams = {}) {
     tabParams.background = Services.prefs.getBoolPref(
       "mail.tabs.loadInBackground"
     );
-    if (tabParams.event?.shiftKey) {
-      tabParams.background = !tabParams.background;
-    }
+  }
+  if (tabParams.event?.shiftKey) {
+    tabParams.background = !tabParams.background;
   }
 
   const tabmail = document.getElementById("tabmail");
@@ -858,7 +838,7 @@ function GetSelectedMsgFolders() {
   return [];
 }
 
-function SelectFolder(folderUri) {
+function SelectFolder() {
   // TODO: Replace this.
 }
 
@@ -869,7 +849,7 @@ function messageFlavorDataProvider() {}
 messageFlavorDataProvider.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIFlavorDataProvider"]),
 
-  getFlavorData(aTransferable, aFlavor, aData) {
+  getFlavorData(aTransferable, aFlavor) {
     if (aFlavor !== "application/x-moz-file-promise") {
       return;
     }
@@ -957,7 +937,7 @@ var TabsInTitlebar = {
     return document.documentElement.getAttribute("tabsintitlebar") == "true";
   },
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     if (topic == "nsPref:changed") {
       this._readPref();
     }

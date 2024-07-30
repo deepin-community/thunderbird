@@ -198,7 +198,7 @@ export const MailUsageTelemetry = {
     Services.obs.removeObserver(this, DOMWINDOW_OPENED_TOPIC);
   },
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     switch (topic) {
       case DOMWINDOW_OPENED_TOPIC:
         this._onWindowOpen(subject);
@@ -371,7 +371,7 @@ export const MailUsageTelemetry = {
   /**
    * Tracks the window count and registers the listeners for the tab count.
    *
-   * @param{Object} win The window object.
+   * @param {object} win - The window object.
    */
   _onWindowOpen(win) {
     // Make sure to have a |nsIDOMWindow|.

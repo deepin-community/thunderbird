@@ -8,7 +8,7 @@
 
 "use strict";
 var { content_tab_e } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
+  "resource://testing-common/mail/ContentTabHelpers.sys.mjs"
 );
 var {
   be_in_folder,
@@ -20,11 +20,11 @@ var {
   switch_tab,
   wait_for_popup_to_open,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence, wait_for_browser_load } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+    "resource://testing-common/mail/WindowHelpers.sys.mjs"
   );
 var { MockFilePicker } = SpecialPowers;
 
@@ -53,7 +53,7 @@ var downloadsView = {
     this.items.set(aDownload, aDownload.target.path);
   },
 
-  onDownloadChanged(aDownload) {},
+  onDownloadChanged() {},
 
   onDownloadRemoved(aDownload) {
     this.removedItems.push(aDownload.target.path);
@@ -132,7 +132,7 @@ add_setup(async function () {
   downloadsTab = await open_about_downloads();
 });
 
-function setupTest(test) {
+function setupTest() {
   downloadsView.init();
 }
 

@@ -399,7 +399,7 @@ var gXPInstallObserver = {
     return !!notifications.length;
   },
 
-  async observe(aSubject, aTopic, aData) {
+  async observe(aSubject, aTopic) {
     const installInfo = aSubject.wrappedJSObject;
     const browser = installInfo.browser;
 
@@ -487,8 +487,6 @@ var gXPInstallObserver = {
         break;
       }
       case "addon-install-blocked": {
-        const window = getTopWindow();
-        await window.ensureCustomElements("moz-support-link");
         // Dismiss the progress notification.  Note that this is bad if
         // there are multiple simultaneous installs happening, see
         // bug 1329884 for a longer explanation.
@@ -975,7 +973,7 @@ export var ExtensionsUI = {
     );
   },
 
-  async observe(subject, topic, data) {
+  async observe(subject, topic) {
     if (topic == "webextension-permission-prompt") {
       const { target, info } = subject.wrappedJSObject;
 
@@ -1396,7 +1394,7 @@ EventEmitter.decorate(ExtensionsUI);
  * by assigning to innerHTML. Fluent can probably replace this when
  * it is in use everywhere.
  *
- * Lifted from BrowserUIUtils.jsm.
+ * Lifted from BrowserUIUtils.sys.mjs.
  *
  * @param {Document} doc
  * @param {string}   msg

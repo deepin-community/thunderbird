@@ -6,10 +6,9 @@
 
 .mail-toolbox,
 .contentTabToolbox {
-  appearance: none;
   background-color: var(--toolbar-bgcolor);
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     color: var(--toolbar-color, inherit);
     background-color: var(--lwt-accent-color);
     background-image: linear-gradient(var(--lwt-selected-tab-background-color, transparent),
@@ -98,6 +97,10 @@
     list-style-image: var(--icon-app-menu-badged);
   }
 
+  &[badge-status="addon-alert"] {
+    list-style-image: var(--icon-app-menu-addon);
+  }
+
   & .toolbarbutton-text {
     display: none;
   }
@@ -167,8 +170,7 @@
   fill-opacity: var(--toolbarbutton-icon-fill-opacity);
 }
 
-#button-getAllNewMsg,
-#menu_getnewmsgs_all_accounts {
+#button-getAllNewMsg {
   list-style-image: var(--icon-download);
 }
 

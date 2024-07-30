@@ -14,12 +14,10 @@
 #include "nsMsgSearchTerm.h"
 #include "nsIMsgAccountManager.h"
 #include "nsIMsgIncomingServer.h"
-#include "nsMsgSearchValue.h"
 #include "nsMsgI18N.h"
 #include "nsNativeCharsetUtils.h"
 #include "nsIOutputStream.h"
 #include "nsIStringBundle.h"
-#include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsIMsgFilterService.h"
 #include "nsIMsgNewsFolder.h"
@@ -509,7 +507,7 @@ nsresult nsMsgFilter::LogRuleHitGeneric(nsIMsgRuleAction* aFilterAction,
     aFilterAction->GetTargetFolderUri(actionFolderUri);
 
     nsCString msgId;
-    aMsgHdr->GetMessageId(getter_Copies(msgId));
+    aMsgHdr->GetMessageId(msgId);
 
     AutoTArray<nsString, 2> logMoveFormatStrings;
     CopyUTF8toUTF16(msgId, *logMoveFormatStrings.AppendElement());

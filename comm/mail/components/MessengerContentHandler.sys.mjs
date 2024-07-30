@@ -3,21 +3,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
+  FeedUtils: "resource:///modules/FeedUtils.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
+  MimeParser: "resource:///modules/mimeParser.sys.mjs",
   NetUtil: "resource://gre/modules/NetUtil.sys.mjs",
 });
 
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  FeedUtils: "resource:///modules/FeedUtils.jsm",
-  MimeParser: "resource:///modules/mimeParser.jsm",
+ChromeUtils.defineLazyGetter(lazy, "windowsAlertsService", () => {
+  // We might not have the Windows alerts service: e.g., on Windows 7 and Windows 8.
+  if (!("nsIWindowsAlertsService" in Ci)) {
+    return null;
+  }
+  return Cc["@mozilla.org/system-alerts-service;1"]
+    ?.getService(Ci.nsIAlertsService)
+    ?.QueryInterface(Ci.nsIWindowsAlertsService);
 });
 
 function resolveURIInternal(aCmdLine, aArgument) {
@@ -61,7 +65,7 @@ function handleIndexerResult(aFile) {
 
   // If we found a message header, open it, otherwise throw an exception
   if (msgHdr) {
-    getOrOpen3PaneWindow().then(win => {
+    getOrOpen3PaneWindow().then(() => {
       lazy.MailUtils.displayMessage(msgHdr);
     });
   } else {
@@ -137,11 +141,11 @@ export function openURI(uri) {
   );
 
   var loadlistener = {
-    onStartRequest(aRequest) {
+    onStartRequest() {
       Services.startup.enterLastWindowClosingSurvivalArea();
     },
 
-    onStopRequest(aRequest, aStatusCode) {
+    onStopRequest() {
       Services.startup.exitLastWindowClosingSurvivalArea();
     },
 
@@ -154,20 +158,20 @@ export function openURI(uri) {
   loadgroup.groupObserver = loadlistener;
 
   var listener = {
-    doContent(ctype, preferred, request, handler) {
+    doContent(ctype, preferred, request) {
       var newHandler = Cc[
         "@mozilla.org/uriloader/content-handler;1?type=application/x-message-display"
       ].createInstance(Ci.nsIContentHandler);
       newHandler.handleContent("application/x-message-display", this, request);
       return true;
     },
-    isPreferred(ctype, desired) {
+    isPreferred(ctype) {
       if (ctype == "message/rfc822") {
         return true;
       }
       return false;
     },
-    canHandleContent(ctype, preferred, desired) {
+    canHandleContent() {
       return false;
     },
     loadCookie: null,
@@ -211,6 +215,43 @@ export class MessengerContentHandler {
     // is already removed by toolkit. We don't want any other windows.
     if (isMigration) {
       return;
+    }
+
+    if (AppConstants.platform == "win") {
+      const tag = cmdLine.handleFlagWithParam("notification-windowsTag", false);
+      if (
+        tag &&
+        cmdLine.handleFlagWithParam("notification-windowsAction", false) &&
+        // Windows itself does disk I/O when the notification service is
+        // initialized, so make sure that is lazy.
+        lazy.windowsAlertsService
+      ) {
+        if (cmdLine.state == Ci.nsICommandLine.STATE_INITIAL_LAUNCH) {
+          Services.startup.enterLastWindowClosingSurvivalArea();
+        }
+        lazy.windowsAlertsService
+          .handleWindowsTag(tag)
+          .then(async ({ tagWasHandled }) => {
+            if (!tagWasHandled) {
+              // The tag received is associated with a notification created
+              // during a different session. This shouldn't happen as all
+              // notifications are removed on close, but just in case...
+              await getOrOpen3PaneWindow();
+            }
+          })
+          .catch(e =>
+            console.error(
+              `Error handling Windows notification with tag '${tag}':`,
+              e
+            )
+          )
+          .finally(() => {
+            if (cmdLine.state == Ci.nsICommandLine.STATE_INITIAL_LAUNCH) {
+              Services.startup.exitLastWindowClosingSurvivalArea();
+            }
+          });
+        return;
+      }
     }
 
     if (
@@ -436,7 +477,7 @@ export class MessengerContentHandler {
       // Check for protocols first then look at the file ending.
       // Protocols are able to contain file endings like '.ics'.
       if (/^https?:/i.test(uri) || /^feed:/i.test(uri)) {
-        getOrOpen3PaneWindow().then(win => {
+        getOrOpen3PaneWindow().then(() => {
           lazy.FeedUtils.subscribeToFeed(uri, null);
         });
       } else if (/^webcals?:\/\//i.test(uri)) {
@@ -450,19 +491,23 @@ export class MessengerContentHandler {
           )
         );
       } else if (/^mid:/i.test(uri)) {
-        getOrOpen3PaneWindow().then(win => {
-          lazy.MailUtils.openMessageByMessageId(uri.slice(4));
+        getOrOpen3PaneWindow().then(() => {
+          lazy.MailUtils.openMessageForMessageId(uri.slice(4));
         });
       } else if (/^(mailbox|imap|news)-message:\/\//.test(uri)) {
-        getOrOpen3PaneWindow().then(win => {
+        getOrOpen3PaneWindow().then(() => {
           const messenger = Cc["@mozilla.org/messenger;1"].createInstance(
             Ci.nsIMessenger
           );
           lazy.MailUtils.displayMessage(messenger.msgHdrFromURI(uri));
         });
-      } else if (/^imap:/i.test(uri) || /^s?news:/i.test(uri)) {
-        getOrOpen3PaneWindow().then(win => {
+      } else if (/^imap:/i.test(uri)) {
+        getOrOpen3PaneWindow().then(() => {
           openURI(cmdLine.resolveURI(uri));
+        });
+      } else if (/^s?news:/i.test(uri)) {
+        getOrOpen3PaneWindow().then(win => {
+          lazy.MailUtils.handleNewsUri(uri, win);
         });
       } else if (
         // While the leading web+ and ext+ identifiers may be case insensitive,
@@ -576,15 +621,7 @@ export class MessengerContentHandler {
         // An .ics calendar file! Open the ics file dialog.
         const file = cmdLine.resolveFile(uri);
         if (file.exists() && file.fileSize > 0) {
-          getOrOpen3PaneWindow().then(win =>
-            Services.ww.openWindow(
-              win,
-              "chrome://calendar/content/calendar-ics-file-dialog.xhtml",
-              "_blank",
-              "chrome,titlebar,modal,centerscreen",
-              file
-            )
-          );
+          getOrOpen3PaneWindow().then(win => win.toImport("calendar", file));
         }
       } else if (uri.toLowerCase().endsWith(".vcf")) {
         // A VCard! Be smart and open the "add contact" dialog.
@@ -759,7 +796,7 @@ export class MessengerProfileMigrator {
   QueryInterface = ChromeUtils.generateQI(["nsIProfileMigrator"]);
 
   /** @see {nsIProfileMigrator} */
-  migrate(startup, key, profileName) {
+  migrate() {
     isMigration = true;
     getOrOpen3PaneWindow().then(win => {
       win.toImport();

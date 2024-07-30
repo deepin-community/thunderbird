@@ -212,6 +212,21 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Transférer et rediriger
     .accesskey = T
+mail-context-menu-forward-forward =
+    .label = Transférer
+    .accesskey = f
+mail-context-menu-forward-inline =
+    .label = Intégré
+    .accesskey = I
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] En pièce jointe
+           *[other] En pièces jointes
+        }
+    .accesskey = E
 mail-context-menu-organize =
     .label = Organiser
     .accesskey = O

@@ -32,10 +32,10 @@ function setupServerDaemon(handler) {
 
 function getBasicSmtpServer(port = 1, hostname = "localhost") {
   const server = localAccountUtils.create_outgoing_server(
-    port,
+    "smtp",
     "user",
     "password",
-    hostname
+    { port, hostname }
   );
 
   // Override the default greeting so we get something predictable
@@ -149,7 +149,7 @@ add_task(async function test_compose_action_status_after_save() {
     },
   });
 
-  extension.onMessage("checkStatus", async windowId => {
+  extension.onMessage("checkStatus", async () => {
     const composeWindow = Services.wm.getMostRecentWindow("msgcompose");
     const button = composeWindow.document.querySelector(
       "[id$=_-composeAction-toolbarbutton]"
@@ -167,7 +167,7 @@ add_task(async function test_compose_action_status_after_save() {
         null,
         true,
         false,
-        { OnStopCopy: resolve },
+        { onStopCopy: resolve },
         false
       );
     });

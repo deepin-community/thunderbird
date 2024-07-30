@@ -270,18 +270,11 @@ export class MessageSend {
   }
 
   // nsIWebProgressListener.
-  onLocationChange(webProgress, request, location, flags) {}
-  onProgressChange(
-    webProgress,
-    request,
-    curSelfProgress,
-    maxSelfProgress,
-    curTotalProgress,
-    maxTotalProgress
-  ) {}
-  onStatusChange(webProgress, request, status, message) {}
-  onSecurityChange(webProgress, request, state) {}
-  onContentBlockingEvent(webProgress, request, event) {}
+  onLocationChange() {}
+  onProgressChange() {}
+  onStatusChange() {}
+  onSecurityChange() {}
+  onContentBlockingEvent() {}
   onStateChange(webProgress, request, stateFlags, status) {
     if (
       stateFlags & Ci.nsIWebProgressListener.STATE_STOP &&
@@ -345,7 +338,7 @@ export class MessageSend {
     return exitCode;
   }
 
-  getPartForDomIndex(domIndex) {
+  getPartForDomIndex() {
     throw Components.Exception(
       "getPartForDomIndex not implemented",
       Cr.NS_ERROR_NOT_IMPLEMENTED
@@ -370,14 +363,14 @@ export class MessageSend {
   notifyListenerOnStartCopy() {
     lazy.MsgUtils.sendLogger.debug("notifyListenerOnStartCopy");
     if (this._sendListener instanceof Ci.nsIMsgCopyServiceListener) {
-      this._sendListener.OnStartCopy();
+      this._sendListener.onStartCopy();
     }
   }
 
   notifyListenerOnProgressCopy(progress, progressMax) {
     lazy.MsgUtils.sendLogger.debug("notifyListenerOnProgressCopy");
     if (this._sendListener instanceof Ci.nsIMsgCopyServiceListener) {
-      this._sendListener.OnProgress(progress, progressMax);
+      this._sendListener.onProgress(progress, progressMax);
     }
   }
 
@@ -1062,7 +1055,7 @@ export class MessageSend {
     lazy.setTimeout(() => {
       try {
         if (this._sendListener instanceof Ci.nsIMsgCopyServiceListener) {
-          this._sendListener.OnStopCopy(0);
+          this._sendListener.onStopCopy(0);
         }
       } catch (e) {
         // Ignore the return value of OnStopCopy. Non-zero nsresult will throw
@@ -1142,7 +1135,7 @@ export class MessageSend {
     this._smtpRequest = {};
     // Do async call. This is necessary to ensure _smtpRequest is set so that
     // cancel function can be obtained.
-    await MailServices.smtp.wrappedJSObject.sendMailMessage(
+    await MailServices.outgoingServer.wrappedJSObject.sendMailMessage(
       this._deliveryFile,
       encodedRecipients,
       this._userIdentity,
@@ -1150,10 +1143,8 @@ export class MessageSend {
       this._smtpPassword,
       deliveryListener,
       msgStatus,
-      null,
       this._compFields.DSN,
       this._compFields.messageId,
-      {},
       this._smtpRequest
     );
   }
@@ -1272,12 +1263,12 @@ export class MessageSend {
       } else {
         continue;
       }
-      let acceptObject = false;
+      let shouldEmbed = false;
       // Before going further, check what scheme we're dealing with. Files need to
       // be converted to data URLs during composition. "Attaching" means
       // sending as a cid: part instead of original URL.
       if (/^https?:\/\//i.test(url)) {
-        acceptObject =
+        shouldEmbed =
           (isImage &&
             Services.prefs.getBoolPref(
               "mail.compose.attach_http_images",
@@ -1285,10 +1276,13 @@ export class MessageSend {
             )) ||
           mozDoNotSend == "false";
       }
-      if (/^(data|news|snews|nntp):/i.test(url)) {
-        acceptObject = true;
+      if (/^(data|nntp):/i.test(url)) {
+        shouldEmbed = true;
       }
-      if (!acceptObject) {
+      if (/^(news|snews):/i.test(url)) {
+        shouldEmbed = mozDoNotSend == "false";
+      }
+      if (!shouldEmbed) {
         continue;
       }
 
@@ -1411,7 +1405,7 @@ class MsgDeliveryListener {
     this._isNewsDelivery = isNewsDelivery;
   }
 
-  OnStartRunningUrl(url) {
+  OnStartRunningUrl() {
     this._msgSend.notifyListenerOnStartSending(null, 0);
   }
 

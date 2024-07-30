@@ -247,6 +247,14 @@ interface nsIMsgDatabase : nsIDBChangeAnnouncer {
    * @returns the message, or null if not found (without throwing an error).
    */
   nsIMsgDBHdr getMsgHdrForGMMsgID(in string aGmailMessageID);
+
+  /**
+   * Get a message header based on its Exchange Web Services item ID.
+   *
+   * @param itemID - The item ID as provided by EWS.
+   */
+  nsIMsgDBHdr getMsgHdrForEwsItemID(in AUTF8String itemID);
+
   //Returns whether or not this database contains the given key
   boolean containsKey(in nsMsgKey key);
 
@@ -314,7 +322,7 @@ interface nsIMsgDatabase : nsIDBChangeAnnouncer {
   void markMDNNeeded(in nsMsgKey key, in boolean bNeeded,
                            in nsIDBChangeListener instigator);
 
-  void markMDNSent(in nsMsgKey key, in boolean bNeeded,
+  void markMDNSent(in nsMsgKey key, in boolean bSent,
                          in nsIDBChangeListener instigator);
   boolean isMDNSent(in nsMsgKey key);
 

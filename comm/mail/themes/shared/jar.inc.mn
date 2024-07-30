@@ -107,6 +107,7 @@
 % override chrome://global/skin/icons/check.svg chrome://messenger/skin/icons/new/compact/check.svg
 # End Supernova icon overrides
 
+  skin/classic/messenger/abContactsPanel.css                  (../shared/mail/abContactsPanel.css)
   skin/classic/messenger/abFormFields.css                     (../shared/mail/abFormFields.css)
   skin/classic/messenger/about3Pane.css                       (../shared/mail/about3Pane.css)
   skin/classic/messenger/aboutAddonsExtra.css                 (../shared/mail/aboutAddonsExtra.css)
@@ -114,7 +115,6 @@
   skin/classic/messenger/aboutImport.css                      (../shared/mail/aboutImport.css)
   skin/classic/messenger/aboutPolicies.css                    (../shared/mail/aboutPolicies.css)
   skin/classic/messenger/aboutSupport.css                     (../shared/mail/aboutSupport.css)
-
   skin/classic/messenger/abSearchDialog.css                   (../shared/mail/abSearchDialog.css)
   skin/classic/messenger/accountHub.css                       (../shared/mail/accountHub.css)
   skin/classic/messenger/accountHubForms.css                  (../shared/mail/accountHubForms.css)
@@ -123,6 +123,7 @@
   skin/classic/messenger/autocomplete.css                     (../shared/mail/autocomplete.css)
   skin/classic/messenger/cloudfileSelectDialog.css            (../shared/mail/cloudfileSelectDialog.css)
   skin/classic/messenger/compactFoldersDialog.css             (../shared/mail/compactFoldersDialog.css)
+  skin/classic/messenger/containers.css                       (../shared/mail/containers.css)
   skin/classic/messenger/extensionPopup.css                   (../shared/mail/extensionPopup.css)
   skin/classic/messenger/folderProps.css                      (../shared/mail/folderProps.css)
   skin/classic/messenger/imMenulist.css                       (../shared/mail/imMenulist.css)
@@ -350,7 +351,6 @@
   skin/classic/messenger/icons/zoomout.svg                    (../shared/mail/icons/zoomout.svg)
   skin/classic/messenger/preferences/dialog.css               (../shared/mail/preferences/dialog.css)
   skin/classic/messenger/shared/aboutDownloads.css            (../shared/mail/aboutDownloads.css)
-  skin/classic/messenger/shared/abContactsPanel.css           (../shared/mail/abContactsPanel.css)
   skin/classic/messenger/shared/abPrint.css                   (../shared/mail/abPrint.css)
   skin/classic/messenger/shared/accountCentral.css            (../shared/mail/accountCentral.css)
   skin/classic/messenger/shared/accountManage.css             (../shared/mail/accountManage.css)
@@ -386,6 +386,7 @@
   skin/classic/messenger/shared/preferences/chat.svg          (../shared/mail/preferences/chat.svg)
   skin/classic/messenger/shared/preferences/general.svg       (../shared/mail/preferences/general.svg)
   skin/classic/messenger/shared/preferences/privacy-security.svg  (../shared/mail/preferences/privacy-security.svg)
+  skin/classic/messenger/shared/list-container.css            (../shared/mail/list-container.css)
   skin/classic/messenger/shared/mailWindow1.css               (../shared/mail/mailWindow1.css)
   skin/classic/messenger/shared/menulist.css                  (../shared/mail/menulist.css)
   skin/classic/messenger/shared/messageBody.css               (../shared/mail/messageBody.css)
@@ -405,6 +406,7 @@
   skin/classic/messenger/shared/spacesToolbar.css             (../shared/mail/spacesToolbar.css)
   skin/classic/messenger/shared/tabmail.css                   (../shared/mail/tabmail.css)
   skin/classic/messenger/shared/themeableDialog.css           (../shared/mail/themeableDialog.css)
+  skin/classic/messenger/shared/threadCard.css                (../shared/mail/threadCard.css)
   skin/classic/messenger/shared/threadPane.css                (../shared/mail/threadPane.css)
   skin/classic/messenger/shared/tree-listbox.css              (../shared/mail/tree-listbox.css)
   skin/classic/messenger/shared/panelUI.css                   (../shared/mail/panelUI.css)
@@ -477,6 +479,7 @@
   skin/classic/messenger/icons/new/compact/add-circle.svg     (../shared/mail/icons/new/compact/add-circle.svg)
   skin/classic/messenger/icons/new/compact/address-book.svg   (../shared/mail/icons/new/compact/address-book.svg)
   skin/classic/messenger/icons/new/compact/app-menu.svg       (../shared/mail/icons/new/compact/app-menu.svg)
+  skin/classic/messenger/icons/new/compact/app-menu-addon.svg (../shared/mail/icons/new/compact/app-menu-addon.svg)
   skin/classic/messenger/icons/new/compact/app-menu-badged.svg (../shared/mail/icons/new/compact/app-menu-badged.svg)
   skin/classic/messenger/icons/new/compact/archive.svg        (../shared/mail/icons/new/compact/archive.svg)
   skin/classic/messenger/icons/new/compact/attachment.svg     (../shared/mail/icons/new/compact/attachment.svg)
@@ -486,6 +489,7 @@
   skin/classic/messenger/icons/new/compact/chat.svg           (../shared/mail/icons/new/compact/chat.svg)
   skin/classic/messenger/icons/new/compact/check.svg          (../shared/mail/icons/new/compact/check.svg)
   skin/classic/messenger/icons/new/compact/checkbox.svg       (../shared/mail/icons/new/compact/checkbox.svg)
+  skin/classic/messenger/icons/new/compact/clear.svg          (../shared/mail/icons/new/compact/clear.svg)
   skin/classic/messenger/icons/new/compact/clock.svg          (../shared/mail/icons/new/compact/clock.svg)
   skin/classic/messenger/icons/new/compact/close.svg          (../shared/mail/icons/new/compact/close.svg)
   skin/classic/messenger/icons/new/compact/cloud-download.svg (../shared/mail/icons/new/compact/cloud-download.svg)
@@ -737,6 +741,7 @@
 
 # SM - 16x16px icons
   skin/classic/messenger/icons/sm/dot.svg                      (../shared/mail/icons/sm/dot.svg)
+  skin/classic/messenger/icons/sm/folder-compact.svg           (../shared/mail/icons/sm/folder-compact.svg)
   skin/classic/messenger/icons/sm/sparkle-star.svg             (../shared/mail/icons/sm/sparkle-star.svg)
 
-  skin/classic/messenger/icons/new/supernova-logo.webp          (../shared/mail/icons/new/supernova-logo.webp)
+  skin/classic/messenger/icons/brand/nebula-logo.webp          (../shared/mail/icons/brand/nebula-logo.webp)

@@ -16,12 +16,15 @@ openpgp-key-assistant-key-source =
         [one] Kjelder
        *[other] Kjelder
     }
+openpgp-key-assistant-key-collected-attachment = e-postvedlegg
+openpgp-key-assistant-key-collected-keyserver = nøkkelsørvar
 
 ## Discovery section
 
 
 ## Dialog buttons
 
+openpgp-key-assistant-issue-resolve-button = Løys…
 openpgp-key-assistant-view-key-button = Vis nøkkel…
 openpgp-key-assistant-recipients-show-button = Vis
 openpgp-key-assistant-recipients-hide-button = Gøym

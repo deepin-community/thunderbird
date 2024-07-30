@@ -22,17 +22,17 @@ const {
   //  smimeUtils_loadCertificateAndKey,
   //  smimeUtils_loadPEMCertificate,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 const { promise_new_window, wait_for_window_focused } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+    "resource://testing-common/mail/WindowHelpers.sys.mjs"
   );
 const { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var { MailConsts } = ChromeUtils.importESModule(
@@ -640,9 +640,11 @@ add_task(async function testOuterSmimeSigInnerPgpEncryptedInsideMixed() {
   const aboutMessage = get_about_message(msgc);
 
   Assert.ok(!getMsgBodyTxt(msgc).includes(MSG_TEXT), "message text is in body");
+  // Note this is an S/MIME signature status, at the time of writing
+  // this test, string "mismatch" is used for status "notok".
   Assert.ok(
-    OpenPGPTestUtils.hasNoSignedIconState(aboutMessage.document),
-    "signed icon is not displayed"
+    OpenPGPTestUtils.hasSignedIconState(aboutMessage.document, "mismatch"),
+    "signed icon with a mismatch status is displayed"
   );
   Assert.ok(
     !OpenPGPTestUtils.hasEncryptedIconState(aboutMessage.document, "ok"),

@@ -11,7 +11,7 @@
 
 var { close_compose_window, compose_window_ready, get_compose_body } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+    "resource://testing-common/mail/ComposeHelpers.sys.mjs"
   );
 var {
   assert_selected_and_displayed,
@@ -22,10 +22,10 @@ var {
   select_click_row,
   wait_for_message_display_completion,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { promise_new_window } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 var folder;
@@ -38,7 +38,6 @@ add_setup(async function () {
   folder = await create_folder("FwdedEmlTest");
 
   const source =
-    "From - Mon Apr  16 22:55:33 2012\n" +
     "Date: Mon, 16 Apr 2012 22:55:33 +0300\n" +
     "From: Mr Example <example@invalid>\n" +
     "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:14.0) Gecko/20120331 Thunderbird/14.0a1\n" +

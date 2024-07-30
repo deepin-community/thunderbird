@@ -211,6 +211,20 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = 轉寄並重新導向
     .accesskey = F
+mail-context-menu-forward-forward =
+    .label = 轉寄
+    .accesskey = F
+mail-context-menu-forward-inline =
+    .label = 引入內文
+    .accesskey = I
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+           *[other] 以附件轉寄
+        }
+    .accesskey = A
 mail-context-menu-organize =
     .label = 管理
     .accesskey = g
@@ -227,8 +241,8 @@ context-menu-cancel-msg =
 mail-context-delete-messages =
     .label =
         { $count ->
-            [one] 刪除訊息
-           *[other] 刪除選擇的訊息
+            [one] 刪除郵件
+           *[other] 刪除選擇的郵件
         }
 # Variables:
 # $count (Number) - Number of selected messages.
@@ -243,6 +257,7 @@ mail-context-undelete-messages =
 mail-context-messages-delete =
     .label =
         { $count ->
+            [one] 刪除郵件
            *[other] 刪除選擇的郵件
         }
     .tooltiptext = { mail-context-messages-delete.label }
@@ -251,6 +266,7 @@ mail-context-messages-delete =
 mail-context-messages-undelete =
     .label =
         { $count ->
+            [one] 救回郵件
            *[other] 救回選擇的郵件
         }
     .tooltiptext = { mail-context-messages-undelete.label }

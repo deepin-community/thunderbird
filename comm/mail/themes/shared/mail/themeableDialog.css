@@ -8,11 +8,6 @@
 
 :host,
 :root {
-  --button-background-color: color-mix(in srgb, currentColor 13%, transparent);
-  --button-hover-background-color: color-mix(in srgb, currentColor 17%, transparent);
-  --button-active-background-color: color-mix(in srgb, currentColor 30%, transparent);
-  --button-border-color: color-mix(in srgb, currentColor 17%, transparent);
-  --button-border-radius: 3px;
   --box-text-color: MenuText;
   --box-background-color: Menu;
   --box-border-color: ThreeDShadow;
@@ -20,14 +15,16 @@
   --field-background-color: Field;
   --field-border-color: rgba(128, 128, 128, 0.6);
   --field-border-hover-color: rgba(128, 128, 128, 0.8);
-  --selected-item-color: var(--focus-outline-color);
   --primary-focus-border: -moz-Dialog;
   --richlist-button-background: -moz-Dialog;
   --tab-hover-background: hsla(0, 0%, 50%, 0.15);
   --tab-selected-background: hsla(0, 0%, 50%, 0.25);
 }
 
-:root:-moz-lwtheme {
+:root[lwtheme] {
+  background-color: var(--lwt-accent-color);
+  color: var(--lwt-text-color);
+
   --box-text-color: var(--color-ink-90);
   --box-background-color: var(--color-white);
   --box-border-color: var(--color-gray-40);
@@ -36,48 +33,46 @@
   --field-border-color: rgba(0, 0, 0, 0.3);
   --field-border-hover-color: rgba(0, 0, 0, 0.4);
   --primary-focus-border: var(--lwt-accent-color);
-  background-color: var(--lwt-accent-color);
-  color: var(--lwt-text-color);
+
+  &[lwtheme-image]:not([lwt-tree]) {
+    background-image: var(--lwt-header-image) !important;
+    background-repeat: no-repeat;
+    background-position: right top !important;
+  }
+
+  &:not([lwt-tree]):-moz-window-inactive {
+    background-color: var(--lwt-accent-color-inactive, var(--lwt-accent-color));
+  }
+
+  &:not([lwt-tree]) dialog,
+  & #calendar-event-dialog-inner:not([lwt-tree]),
+  & #calendar-task-dialog-inner:not([lwt-tree]) {
+    background-color: -moz-Dialog;
+    color: -moz-DialogText;
+    text-shadow: none !important;
+
+    --box-text-color: MenuText;
+    --box-background-color: Menu;
+    --box-border-color: ThreeDShadow;
+    --field-text-color: FieldText;
+    --field-background-color: Field;
+    --field-border-color: rgba(128, 128, 128, 0.6);
+    --field-border-hover-color: rgba(128, 128, 128, 0.8);
+    --lwt-accent-color: -moz-Dialog;
+    --richlist-button-background: -moz-Dialog;
+    --tab-hover-background: hsla(0, 0%, 50%, 0.15);
+    --tab-selected-background: hsla(0, 0%, 50%, 0.25);
+  }
 }
 
 :root[lwt-tree] {
   --richlist-button-background: var(--sidebar-background-color);
 }
 
-:root:not([lwt-tree]):-moz-lwtheme[lwtheme-image] {
-  background-image: var(--lwt-header-image) !important;
-  background-repeat: no-repeat;
-  background-position: right top !important;
-}
-
-:root:not([lwt-tree]):-moz-lwtheme:-moz-window-inactive {
-  background-color: var(--lwt-accent-color-inactive, var(--lwt-accent-color));
-}
-
-:root:not([lwt-tree]):-moz-lwtheme dialog,
-#calendar-event-dialog-inner:not([lwt-tree]):-moz-lwtheme,
-#calendar-task-dialog-inner:not([lwt-tree]):-moz-lwtheme {
-  background-color: -moz-Dialog;
-  color: -moz-DialogText;
-  text-shadow: none !important;
-
-  --box-text-color: MenuText;
-  --box-background-color: Menu;
-  --box-border-color: ThreeDShadow;
-  --field-text-color: FieldText;
-  --field-background-color: Field;
-  --field-border-color: rgba(128, 128, 128, 0.6);
-  --field-border-hover-color: rgba(128, 128, 128, 0.8);
-  --lwt-accent-color: -moz-Dialog;
-  --richlist-button-background: -moz-Dialog;
-  --tab-hover-background: hsla(0, 0%, 50%, 0.15);
-  --tab-selected-background: hsla(0, 0%, 50%, 0.25);
-}
-
 @media (prefers-color-scheme: dark) {
   :host,
-  :root:-moz-lwtheme,
-  :root:not([lwt-tree]):-moz-lwtheme dialog {
+  :root[lwtheme],
+  :root[lwtheme]:not([lwt-tree]) dialog {
     --box-text-color: var(--color-ink-10);
     --box-background-color: var(--color-ink-80);
     --box-border-color: rgba(249, 249, 250, 0.3);
@@ -93,15 +88,10 @@
 
 @media (prefers-contrast) {
   :host,
-  :root:not(:-moz-lwtheme) {
-    --button-background-color: ButtonFace;
-    --button-hover-background-color: SelectedItem;
-    --button-active-background-color: SelectedItem;
+  :root:not([lwtheme]) {
     --button-text-active: SelectedItemText;
-    --button-border-color: ThreeDShadow;
     --field-border-color: ThreeDShadow;
     --field-border-hover-color: SelectedItemText;
-    --selected-item-color: SelectedItem;
     --tab-hover-background: SelectedItem;
     --tab-selected-background: SelectedItem;
   }
@@ -111,6 +101,7 @@
   button:not([disabled="true"]):hover:active,
   menulist:not([disabled="true"],[open="true"]):hover,
   menulist[open="true"]:not([disabled="true"]),
+  select:not([size], [multiple], [disabled]):is(:hover, :active),
   tab:hover,
   tab[visuallyselected="true"] {
     color: var(--button-text-active) !important;
@@ -186,9 +177,15 @@ html|input[type="number"] {
   }
 }
 
+html|input[type="radio"],
+html|input[type="checkbox"] {
+  appearance: auto;
+}
+
 button,
 menulist,
-html|input[type="color"] {
+html|input[type="color"],
+select:not([size], [multiple]) {
   appearance: none;
   min-height: 24px;
   /* !important overrides button.css for disabled and default XUL buttons: */
@@ -237,7 +234,8 @@ button:focus-visible {
 button:not([disabled="true"]):hover,
 menulist:not([disabled="true"],[open="true"]):hover,
 menulist[open="true"]:not([disabled="true"]),
-html|input[type="color"]:not([disabled="true"]):hover {
+html|input[type="color"]:not([disabled="true"]):hover,
+select:not([size], [multiple]):is(:hover, :active) {
   background-color: var(--button-hover-background-color);
 }
 
@@ -275,7 +273,8 @@ button > .button-box > dropmarker {
 }
 
 button[disabled="true"],
-menulist[disabled="true"] {
+menulist[disabled="true"],
+select[disabled]:not([size], [multiple]) {
   opacity: 0.4;
 }
 
@@ -324,6 +323,11 @@ menulist {
       outline: 1px solid var(--selected-item-color);
     }
   }
+}
+
+select:not([size], [multiple]) {
+  /* Padding to account for the 12px dropmarker plus an extra gap to the content. */
+  padding-inline-end: 28px;
 }
 
 .menu-iconic-left {
@@ -394,7 +398,8 @@ checkbox {
     outline-offset: -1px;
 
     & button,
-    & menulist {
+    & menulist,
+    & select:not([size], [multiple]) {
       color: var(--sidebar-text-color) !important;
     }
   }
@@ -413,11 +418,11 @@ checkbox {
 richlistitem[selected="true"] {
   background-color: var(--tab-selected-background);
   color: inherit;
-}
 
-richlistbox:where(:focus) > richlistitem[selected="true"] {
-  background-color: var(--selected-item-color);
-  color: var(--selected-item-text-color);
+  richlistbox:where(:focus) > & {
+    background-color: var(--selected-item-color);
+    color: var(--selected-item-text-color);
+  }
 }
 
 richlistbox[seltype="multiple"]:focus > richlistitem[current="true"] {
@@ -438,7 +443,7 @@ richlistbox > richlistitem {
                                       var(--button-background-color));
     color: var(--field-text-color) !important;
 
-    &:-moz-lwtheme {
+    :root[lwtheme] & {
       color: var(--lwt-text-color) !important;
     }
   }
@@ -461,7 +466,8 @@ richlistbox > richlistitem {
 }
 
 menulist[open="true"],
-menulist:not([disabled="true"], [open="true"]):hover {
+menulist:not([disabled="true"], [open="true"]):hover,
+select:not([size], [multiple]):is(:hover, :active) {
   border-color: var(--button-border-color);
 }
 
@@ -506,11 +512,11 @@ tabpanels {
   padding-top: 6px;
 }
 
-fieldset:-moz-lwtheme {
+:root[lwtheme] fieldset {
   border: 1px solid var(--field-border-color);
 }
 
-legend:-moz-lwtheme {
+:root[lwtheme] legend {
   background-color: var(--lwt-accent-color);
 }
 

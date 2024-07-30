@@ -27,28 +27,32 @@ if (AppConstants.NIGHTLY_BUILD) {
 ChromeUtils.defineESModuleGetters(lazy, {
   ActorManagerParent: "resource://gre/modules/ActorManagerParent.sys.mjs",
   AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+  cal: "resource:///modules/calendar/calUtils.sys.mjs",
   ChatCore: "resource:///modules/chatHandler.sys.mjs",
   ExtensionSupport: "resource:///modules/ExtensionSupport.sys.mjs",
-
+  InAppNotifications: "resource:///modules/InAppNotifications.sys.mjs",
   LightweightThemeConsumer:
     "resource://gre/modules/LightweightThemeConsumer.sys.mjs",
-
   MailMigrator: "resource:///modules/MailMigrator.sys.mjs",
+  MailServices: "resource:///modules/MailServices.sys.mjs",
   MailUsageTelemetry: "resource:///modules/MailUsageTelemetry.sys.mjs",
+  OAuth2Providers: "resource:///modules/OAuth2Providers.sys.mjs",
   OsEnvironment: "resource://gre/modules/OsEnvironment.sys.mjs",
   PdfJs: "resource://pdf.js/PdfJs.sys.mjs",
-
   RemoteSecuritySettings:
     "resource://gre/modules/psm/RemoteSecuritySettings.sys.mjs",
-
   TBDistCustomizer: "resource:///modules/TBDistCustomizer.sys.mjs",
   XULStoreUtils: "resource:///modules/XULStoreUtils.sys.mjs",
-  cal: "resource:///modules/calendar/calUtils.sys.mjs",
 });
 
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailServices: "resource:///modules/MailServices.jsm",
-  OAuth2Providers: "resource:///modules/OAuth2Providers.jsm",
+ChromeUtils.defineLazyGetter(lazy, "windowsAlertsService", () => {
+  // We might not have the Windows alerts service: e.g., on Windows 7 and Windows 8.
+  if (!("nsIWindowsAlertsService" in Ci)) {
+    return null;
+  }
+  return Cc["@mozilla.org/system-alerts-service;1"]
+    ?.getService(Ci.nsIAlertsService)
+    ?.QueryInterface(Ci.nsIWindowsAlertsService);
 });
 
 if (AppConstants.MOZ_UPDATER) {
@@ -266,7 +270,7 @@ const STARTUP_CRASHES_END_DELAY_MS = 30 * 1000;
 /**
  * Glue code that should be executed before any windows are opened. Any
  * window-independent helper methods (a la nsBrowserGlue.js) should go in
- * MailUtils.jsm instead.
+ * MailUtils.sys.mjs instead.
  */
 
 export function MailGlue() {
@@ -413,6 +417,13 @@ MailGlue.prototype = {
         Services.startup.trackStartupCrashEnd();
         if (AppConstants.MOZ_UPDATER) {
           lazy.UpdateListener.reset();
+        }
+        if (AppConstants.platform == "win") {
+          // Windows itself does disk I/O when the notification service is
+          // initialized, so make sure that is lazy. Hopefully we're not
+          // using it for the first time at shut-down, but that would be very
+          // difficult to avoid.
+          lazy.windowsAlertsService.removeAllNotificationsForInstall();
         }
         break;
       case "mail-startup-done":
@@ -588,6 +599,7 @@ MailGlue.prototype = {
         millisecondsIn24Hours;
 
       if (buildDate + acceptableAge < today) {
+        // This is asynchronous, but just kick it off rather than waiting.
         Cc["@mozilla.org/updates/update-service;1"]
           .getService(Ci.nsIApplicationUpdateService)
           .checkForBackgroundUpdates();
@@ -663,7 +675,7 @@ MailGlue.prototype = {
     }
 
     this._scheduleStartupIdleTasks();
-    this._lateTasksIdleObserver = (idleService, topic, data) => {
+    this._lateTasksIdleObserver = (idleService, topic) => {
       if (topic == "idle") {
         idleService.removeIdleObserver(
           this._lateTasksIdleObserver,
@@ -718,7 +730,9 @@ MailGlue.prototype = {
       {
         task() {
           // Make sure Gloda's up and running.
-          ChromeUtils.import("resource:///modules/gloda/GlodaPublic.jsm");
+          ChromeUtils.importESModule(
+            "resource:///modules/gloda/GlodaPublic.sys.mjs"
+          );
         },
       },
       {
@@ -746,10 +760,10 @@ MailGlue.prototype = {
           const Weave = lazy.WeaveService.Weave;
 
           for (const [moduleName, engineName] of [
-            ["accounts", "AccountsEngine"],
+            ["servers", "ServersEngine"],
+            ["identities", "IdentitiesEngine"],
             ["addressBooks", "AddressBooksEngine"],
             ["calendars", "CalendarsEngine"],
-            ["identities", "IdentitiesEngine"],
           ]) {
             const ns = ChromeUtils.importESModule(
               `resource://services-sync/engines/${moduleName}.sys.mjs`
@@ -777,6 +791,15 @@ MailGlue.prototype = {
         condition: AppConstants.MOZ_UPDATER,
         task: () => {
           lazy.UpdateListener.maybeShowUnsupportedNotification();
+        },
+      },
+      {
+        condition: Services.prefs.getBoolPref(
+          "mail.inappnotifications.enabled",
+          false
+        ),
+        task: () => {
+          lazy.InAppNotifications.init().catch(console.error);
         },
       },
       // This implements a special pref that allows used to launch the
@@ -1081,7 +1104,7 @@ function reportAccountSizes() {
 /**
  * Report addressbook count and contact count to telemetry, keyed by addressbook
  * type. Type is one of ["jsaddrbook", "jscarddav", "moz-abldapdirectory"], see
- * AddrBookManager.jsm for more details.
+ * AddrBookManager.sys.mjs for more details.
  *
  * NOTE: We didn't use `dir.dirType` because it's just an integer, instead we
  * use the scheme of `dir.URI` as the type.
@@ -1182,6 +1205,7 @@ function reportPreferences() {
     "mail.mailnews.scroll_to_new_message",
     "mail.prompt_purge_threshhold",
     "mail.purge.ask",
+    "mail.addressDisplayFormat",
     "mail.showCondensedAddresses",
     "mailnews.database.global.indexer.enabled",
     "mailnews.mark_message_read.auto",

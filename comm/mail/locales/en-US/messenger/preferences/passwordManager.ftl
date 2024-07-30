@@ -3,8 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 saved-logins-title = Saved Logins
-window-close =
-    .key = w
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -82,3 +80,11 @@ password-os-auth-dialog-message-macosx = reveal the saved passwords
 
 # Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
+
+# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
+# This message can be seen when attempting to disable osauth in about:preferences.
+password-os-auth-change-dialog-message=
+  { PLATFORM() ->
+    [macos] change the settings for passwords
+    *[other] { -brand-short-name } is trying to change the settings for passwords. Use your device sign in to allow this.
+  }

@@ -16,7 +16,7 @@ var {
   save_compose_message,
   setup_msg_contents,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var {
   be_in_folder,
@@ -25,10 +25,10 @@ var {
   press_delete,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { delete_all_existing } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/KeyboardHelpers.sys.mjs"
+  "resource://testing-common/mail/KeyboardHelpers.sys.mjs"
 );
 var {
   assert_notification_displayed,
@@ -38,7 +38,7 @@ var {
   wait_for_notification_to_show,
   wait_for_notification_to_stop,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
+  "resource://testing-common/mail/NotificationBoxHelpers.sys.mjs"
 );
 var {
   click_menus_in_sequence,
@@ -46,11 +46,11 @@ var {
   promise_new_window,
   wait_for_window_focused,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const aboutMessage = get_about_message();
@@ -451,15 +451,25 @@ add_task(async function test_manual_attachment_reminder() {
   const buttonSend = cwc.document.getElementById("button-send");
   EventUtils.synthesizeMouseAtCenter(buttonSend, {}, buttonSend.ownerGlobal);
   await dialogPromise;
-  await new Promise(resolve => setTimeout(resolve));
+  await TestUtils.waitForCondition(
+    () =>
+      cwc.document.getElementById("cmd_remindLater").getAttribute("checked") ==
+      "false",
+    "The manual reminder should get disabled"
+  );
 
   // We were alerted once and the manual reminder is automatically turned off.
   assert_manual_reminder_state(cwc, false);
 
   // Enable the manual reminder and disable it again to see if it toggles right.
   await click_manual_reminder(cwc, true);
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await TestUtils.waitForCondition(
+    () =>
+      cwc.document.getElementById("cmd_remindLater").getAttribute("checked") ==
+      "true",
+    "The manual reminder should get enabled"
+  );
+
   await click_manual_reminder(cwc, false);
 
   // Now try to send again, there should be no more alert.
@@ -469,7 +479,7 @@ add_task(async function test_manual_attachment_reminder() {
 
   // Delete the leftover draft message.
   await press_delete();
-}).__skipMe = AppConstants.platform == "linux"; // See bug 1535292.
+});
 
 /**
  * Bug 938759

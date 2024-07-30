@@ -10,12 +10,9 @@ ChromeUtils.defineESModuleGetters(lazy, {
   DownloadPaths: "resource://gre/modules/DownloadPaths.sys.mjs",
   Downloads: "resource://gre/modules/Downloads.sys.mjs",
   FileUtils: "resource://gre/modules/FileUtils.sys.mjs",
+  GlodaUtils: "resource:///modules/gloda/GlodaUtils.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
   NetUtil: "resource://gre/modules/NetUtil.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  GlodaUtils: "resource:///modules/gloda/GlodaUtils.jsm",
 });
 
 XPCOMUtils.defineLazyServiceGetters(lazy, {
@@ -67,7 +64,7 @@ export class AttachmentInfo {
    *   been detached to file or is a link attachment.
    * @param {object} options.message - The message object associated to this
    *   attachment.
-   * @param {function} [updateAttachmentsDisplayFn] - An optional callback
+   * @param {Function} [updateAttachmentsDisplayFn] - An optional callback
    *   function that is called to update the attachment display at appropriate
    *   times.
    */
@@ -381,7 +378,7 @@ export class AttachmentInfo {
           MIMEInfo: mimeInfo,
           source: Services.io.newURI(this.url),
           suggestedFileName: this.name,
-          cancel(reason) {},
+          cancel() {},
           promptForSaveDestination() {
             appLauncherDialog.promptForSaveToFileAsync(
               this,
@@ -394,7 +391,7 @@ export class AttachmentInfo {
           launchLocalFile() {
             openLocalFile(mimeInfo);
           },
-          async setDownloadToLaunch(handleInternally, file) {
+          async setDownloadToLaunch() {
             await createTemporaryFileAndOpen(mimeInfo);
           },
           async saveDestinationAvailable(file) {
@@ -402,7 +399,7 @@ export class AttachmentInfo {
               await saveToFile(file.path);
             }
           },
-          setWebProgressListener(webProgressListener) {},
+          setWebProgressListener() {},
           targetFile: null,
           targetFileIsExecutable: null,
           timeDownloadStarted: null,
@@ -506,7 +503,7 @@ export class AttachmentInfo {
    * is accessible. For http and file urls, fetch() will have the size
    * in the content-length header.
    *
-   * @returns {Boolean}
+   * @returns {boolean}
    *   true if the attachment is empty or error, false otherwise.
    */
   async isEmpty() {

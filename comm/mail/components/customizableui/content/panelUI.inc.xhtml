@@ -194,13 +194,9 @@
                class="PanelUI-subView">
       <vbox id="appMenu-newViewItems"
             class="panel-subview-body">
-        <toolbarbutton id="appmenu_newCreateEmailAccountMenuItem"
-                       class="subviewbutton subviewbutton-iconic"
-                       data-l10n-id="appmenu-create-new-mail-account"
-                       oncommand="openAccountProvisionerTab();"/>
         <toolbarbutton id="appmenu_newMailAccountMenuItem"
                        class="subviewbutton subviewbutton-iconic"
-                       data-l10n-id="appmenu-new-mail-account"
+                       data-l10n-id="appmenu-new-email-account"
                        oncommand="openAccountSetupTab();"/>
 #ifdef MAIN_WINDOW
         <toolbarbutton id="appmenu_calendar-new-calendar-menu-item"
@@ -565,10 +561,12 @@
                        data-l10n-id="appmenu-help-get-help"
                        key="key_openHelp"
                        oncommand="openSupportURL();"/>
-        <toolbarbutton id="appmenu_openTour"
+#if MOZ_UPDATE_CHANNEL == beta || defined(NIGHTLY_BUILD)
+        <toolbarbutton id="appmenu_openReleaseHelp"
                        class="subviewbutton subviewbutton-iconic"
-                       data-l10n-id="appmenu-help-explore-features"
-                       oncommand="openLinkText(event, 'tourURL');"/>
+                       data-l10n-id="appmenu-help-get-release-help"
+                       oncommand="openLinkText(event, 'releaseSupportURL');" />
+#endif
         <toolbarbutton id="appmenu_keyboardShortcuts"
                        class="subviewbutton subviewbutton-iconic"
                        data-l10n-id="appmenu-help-shortcuts"

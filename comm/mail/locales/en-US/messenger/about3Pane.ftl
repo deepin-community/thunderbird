@@ -122,8 +122,8 @@ quick-filter-bar-results =
         *[other] { $count } messages
     }
 
-quick-filter-bar-search =
-    .label = Filter messages:
+quick-filter-bar-search2 =
+    .label = Filter messages
 
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
@@ -586,5 +586,41 @@ apply-current-view-to-folder-message = Apply the current folder’s view to { $n
 #  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Apply the current folder’s view to { $name } and its children?
 
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+  { $unread ->
+    [one] <span>1</span> unread
+    *[other] <span>{ $unread }</span> unread
+  } of { $total ->
+    [one] <span>1</span> message
+    *[other] <span>{ $total }</span> messages
+  }
+
+# Variables:
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-count =
+  { $total ->
+    [one] <span>1</span> message
+    *[other] <span>{ $total }</span> messages
+  }
+
 threadpane-card-menu-button =
   .title = Message menu
+
+message-list-placeholder-no-messages = No message found
+
+message-list-placeholder-multiple-folders = Multiple folders selected
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+  .label =
+    { $count ->
+      [one] Mark Folder Read
+      *[other] Mark Folders Read
+    }
+  .accesskey = k

@@ -4,8 +4,8 @@
 
 requestLongerTimeout(2);
 
-var { CalendarTestUtils } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarTestUtils.jsm"
+var { CalendarTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarTestUtils.sys.mjs"
 );
 var { MockRegistrar } = ChromeUtils.importESModule(
   "resource://testing-common/MockRegistrar.sys.mjs"
@@ -21,15 +21,15 @@ var { AddrBookCard } = ChromeUtils.importESModule(
 /** @implements {nsIExternalProtocolService} */
 const mockExternalProtocolService = {
   _loadedURLs: [],
-  externalProtocolHandlerExists(aProtocolScheme) {},
-  getApplicationDescription(aScheme) {},
-  getProtocolHandlerInfo(aProtocolScheme) {},
-  getProtocolHandlerInfoFromOS(aProtocolScheme, aFound) {},
-  isExposedProtocol(aProtocolScheme) {},
-  loadURI(aURI, aWindowContext) {
+  externalProtocolHandlerExists() {},
+  getApplicationDescription() {},
+  getProtocolHandlerInfo() {},
+  getProtocolHandlerInfoFromOS() {},
+  isExposedProtocol() {},
+  loadURI(aURI) {
     this._loadedURLs.push(aURI.spec);
   },
-  setProtocolHandlerDefaults(aHandlerInfo, aOSHandlerExists) {},
+  setProtocolHandlerDefaults() {},
   urlLoaded(aURL) {
     return this._loadedURLs.includes(aURL);
   },
@@ -100,7 +100,7 @@ add_setup(async function () {
  */
 add_task(async function testDisplay() {
   const abWindow = await openAddressBookWindow();
-  openDirectory(personalBook);
+  await openDirectory(personalBook);
 
   const abDocument = abWindow.document;
   const cardsList = abDocument.getElementById("cards");
@@ -172,10 +172,9 @@ add_task(async function testDisplay() {
 
   let composeWindowPromise = BrowserTestUtils.domWindowOpened();
   EventUtils.synthesizeMouseAtCenter(items[0].querySelector("a"), {}, abWindow);
-  await checkComposeWindow(
-    await composeWindowPromise,
-    "basic person <basic@invalid>"
-  );
+  await checkComposeWindow(await composeWindowPromise, [
+    "basic person <basic@invalid>",
+  ]);
 
   // Other sections.
   Assert.ok(BrowserTestUtils.isHidden(phoneNumbersSection));
@@ -234,10 +233,9 @@ add_task(async function testDisplay() {
 
   composeWindowPromise = BrowserTestUtils.domWindowOpened();
   EventUtils.synthesizeMouseAtCenter(items[2].querySelector("a"), {}, abWindow);
-  await checkComposeWindow(
-    await composeWindowPromise,
-    "complex person <tertiary@invalid>"
-  );
+  await checkComposeWindow(await composeWindowPromise, [
+    "complex person <tertiary@invalid>",
+  ]);
 
   // Phone numbers section.
   Assert.ok(BrowserTestUtils.isVisible(phoneNumbersSection));
@@ -623,7 +621,7 @@ add_task(async function testReadOnlyActions() {
 
   // Check contacts with the book displayed.
 
-  openDirectory(readOnlyBook);
+  await openDirectory(readOnlyBook);
   Assert.equal(cardsList.view.rowCount, 3);
   Assert.ok(BrowserTestUtils.isHidden(detailsPane));
 
@@ -721,7 +719,7 @@ add_task(async function testReadOnlyActions() {
 
   // Check contacts with the list displayed.
 
-  openDirectory(readOnlyList);
+  await openDirectory(readOnlyList);
   Assert.equal(cardsList.view.rowCount, 1);
   Assert.ok(BrowserTestUtils.isHidden(detailsPane));
 
@@ -734,7 +732,7 @@ add_task(async function testReadOnlyActions() {
 
   // Check contacts with All Address Books displayed.
 
-  openAllAddressBooks();
+  await openAllAddressBooks();
   Assert.equal(cardsList.view.rowCount, 6);
   Assert.ok(BrowserTestUtils.isHidden(detailsPane));
 
@@ -807,11 +805,14 @@ add_task(async function testGoogleEscaping() {
   const otherInfoSection = abDocument.getElementById("otherInfo");
   const selectedCardsSection = abDocument.getElementById("selectedCards");
 
-  openDirectory(googleBook);
+  await openDirectory(googleBook);
   Assert.equal(cardsList.view.rowCount, 1);
   Assert.ok(BrowserTestUtils.isHidden(detailsPane));
 
-  EventUtils.synthesizeMouseAtCenter(cardsList.getRowAtIndex(0), {}, abWindow);
+  const row = await TestUtils.waitForCondition(() =>
+    cardsList.getRowAtIndex(0)
+  );
+  EventUtils.synthesizeMouseAtCenter(row, {}, abWindow);
   await TestUtils.waitForCondition(() =>
     BrowserTestUtils.isVisible(detailsPane)
   );
@@ -937,10 +938,9 @@ async function checkActionButtons(
 
     const composeWindowPromise = BrowserTestUtils.domWindowOpened();
     EventUtils.synthesizeMouseAtCenter(writeButton, {}, abWindow);
-    await checkComposeWindow(
-      await composeWindowPromise,
-      `${displayName} <${primaryEmail}>`
-    );
+    await checkComposeWindow(await composeWindowPromise, [
+      `${displayName} <${primaryEmail}>`,
+    ]);
 
     // Search. Do this before the event test to stop a strange macOS failure.
     Assert.ok(

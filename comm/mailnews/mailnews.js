@@ -10,8 +10,6 @@
 // SpaceHit() function: whether spacebar advances to next unread message.
 pref("mail.advance_on_spacebar", true);
 
-pref("mailnews.logComposePerformance", false);
-
 pref("mail.wrap_long_lines", true);
 
 // Show attachments of supported types rendered directly in the message body view.
@@ -82,7 +80,7 @@ pref("mailnews.messageid.openInNewWindow", false);
 
 // hidden pref for url which will be used to open  message-ids
 // in browser (%mid ist replaced with the message-id)
-pref("mailnews.messageid_browser.url", "chrome://messenger-region/locale/region.properties");
+pref("mailnews.messageid_browser.url", "https://groups.google.com/search?q=messageid%3A%mid");
 
 // hidden pref for whether or not to warn when deleting filters. Default YES
 pref("mailnews.filters.confirm_delete", true);
@@ -235,6 +233,8 @@ pref("mail.addr_book.mapit_url.5.name", "chrome://messenger-region/locale/region
 pref("mail.addr_book.mapit_url.5.format", "chrome://messenger-region/locale/region.properties");
 pref("mailnews.start_page.url", "chrome://messenger-region/locale/region.properties");
 pref("mail.accountwizard.deferstorage", false);
+// 0: name + email | 1: email only | 2: name only.
+pref("mail.addressDisplayFormat", 0);
 // |false|: Show both name and address, even for people in my addressbook.
 pref("mail.showCondensedAddresses", false);
 #endif
@@ -350,7 +350,7 @@ pref("mailnews.nntp.loglevel", "Warn");
 
 pref("mailnews.pop3.loglevel", "Warn");
 
-// If true, ImapService.jsm is used. Otherwise, nsImapService.cpp is used.
+// If true, ImapService.sys.mjs is used. Otherwise, nsImapService.cpp is used.
 pref("mailnews.imap.jsmodule", false);
 pref("mailnews.imap.loglevel", "Warn");
 
@@ -485,6 +485,7 @@ pref("mail.identity.default.archive_enabled", true);
 // archive into 0: single folder, 1: yearly folder, 2: year/year-month folder
 pref("mail.identity.default.archive_granularity", 1);
 pref("mail.identity.default.archive_keep_folder_structure", false);
+pref("mail.identity.default.archive_recreate_inbox", false);
 
 // keep these defaults for backwards compatibility and migration
 
@@ -715,7 +716,7 @@ pref("mail.smtp.useMatchingHostNameServer", false);
 pref("mail.smtp.useSenderForSmtpMailFrom", true);
 // cleartext password. @see nsIMsgIncomingServer.authMethod.
 pref("mail.smtpserver.default.authMethod", 3);
-// @see nsISmtpServer.socketType
+// @see nsIMsgOutgoingServer.socketType
 pref("mail.smtpserver.default.try_ssl", 0);
 
 // If true, SMTP LOGIN auth and POP3 USER/PASS auth, the last of the methods to try, will use Latin1.
@@ -801,7 +802,6 @@ pref("mail.forward_add_extension", true);
 // Prefix of for mail forwards. E.g. "Fwd" -> subject will be Fwd: <subject>
 pref("mail.forward_subject_prefix", "Fwd");
 
-pref("mail.startup.enabledMailCheckOnce", false);
 // RFC 2646=======
 pref("mailnews.send_plaintext_flowed", true);
 pref("mailnews.display.disable_format_flowed_support", false);
@@ -875,10 +875,13 @@ pref("mail.biff.show_alert", true);
 pref("mail.biff.show_badge", true);
 pref("mail.biff.show_tray_icon", true);
 pref("mail.biff.show_tray_icon_always", false);
-pref("mail.biff.use_system_alert", false);
 #elifdef XP_MACOSX
 pref("mail.biff.animate_dock_icon", false);
-#elifdef XP_UNIX
+#endif
+
+// Use native OS notifications for Linux and Windows by default.
+// macOS only uses native notifications and it can't be changed.
+#ifndef XP_MACOSX
 pref("mail.biff.use_system_alert", true);
 #endif
 
@@ -1169,3 +1172,8 @@ pref("mail.export.loglevel", "Warn");
 // When true, disk cache is used for messages not in offline store. If false,
 // memory cache is used instead. Both use the cache2 implementation.
 pref("mail.imap.use_disk_cache2", true);
+
+#ifdef MOZ_THUNDERBIRD_RUST
+// Enable support for Microsoft Exchange via Exchange Web Services.
+pref("experimental.mail.ews.enabled", false);
+#endif

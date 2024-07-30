@@ -3,6 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "MailNewsTypes.h"
 #include "msgCore.h"  // precompiled header...
 
 #include "nsIURI.h"
@@ -26,7 +27,6 @@
 // the real fix is to attach the URI to the URL as it runs through netlib
 // then grab it and use it on the other side
 #include "nsCOMPtr.h"
-#include "nsIMsgAccountManager.h"
 #include "nsMsgUtils.h"
 #include "mozilla/Components.h"
 
@@ -405,7 +405,7 @@ char* extractAttributeValue(const char* searchString,
       }  // if we have a attribute value
 
     }  // if we have a attribute name
-  }    // if we got non-null search string and attribute name values
+  }  // if we got non-null search string and attribute name values
 
   return attributeValue;
 }
@@ -420,7 +420,11 @@ nsresult nsMailboxUrl::GetFolder(nsIMsgFolder** msgFolder) {
   NS_ENSURE_TRUE(!uri.IsEmpty(), NS_ERROR_FAILURE);
   nsCOMPtr<nsIMsgDBHdr> msg;
   GetMsgDBHdrFromURI(uri, getter_AddRefs(msg));
-  if (!msg) return NS_ERROR_FAILURE;
+  if (!msg) {
+    // E.g. the folder no longer exists. That's ok.
+    *msgFolder = nullptr;
+    return NS_OK;
+  }
   return msg->GetFolder(msgFolder);
 }
 

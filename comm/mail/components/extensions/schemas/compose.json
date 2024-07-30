@@ -21,14 +21,20 @@
         "choices": [
           {
             "type": "string",
-            "description": "A name and email address in the format <value>Name <email@example.com></value>, or just an email address."
+            "description": "A name and email address in the format <var>Name <email@example.com></var>, or just an email address."
           },
           {
             "type": "object",
             "properties": {
               "id": {
                 "type": "string",
-                "description": "The ID of a contact or mailing list from the :doc:`contacts` and :doc:`mailingLists`."
+                "max_manifest_version": 2,
+                "description": "The ID of a contact or mailing list from the $(doc:contacts) or $(doc:mailingLists)."
+              },
+              "nodeId": {
+                "type": "string",
+                "min_manifest_version": 3,
+                "description": "The ID of a contact or mailing list node from the $(doc:addressBook.contacts) or $(doc:addressBook.mailingLists)."
               },
               "type": {
                 "type": "string",
@@ -73,7 +79,14 @@
         "type": "object",
         "description": "Used by various functions to represent the state of a message being composed. Note that functions using this type may have a partial implementation.",
         "properties": {
+          "additionalFccFolderId": {
+            "min_manifest_version": 3,
+            "$ref": "folders.MailFolderId",
+            "description": "An additional fcc folder which can be selected while composing the message. Cleared when set to <var>null</var>. The permission <permission>accountsRead</permission> is required to use this property.",
+            "optional": "omit-key-if-missing"
+          },
           "additionalFccFolder": {
+            "max_manifest_version": 2,
             "choices": [
               {
                 "$ref": "folders.MailFolderId"
@@ -86,8 +99,13 @@
                 "enum": [""]
               }
             ],
-            "description": "An additional fcc folder which can be selected while composing the message, an empty string if not used.",
+            "description": "An additional fcc folder which can be selected while composing the message, an empty string if not used. The permission <permission>accountsRead</permission> is required to use this property.",
             "optional": true
+          },
+          "attachPublicPGPKey": {
+            "type": "boolean",
+            "optional": true,
+            "description": "Whether the public OpenPGP key of the sending identity should be attached to the message."
           },
           "attachVCard": {
             "type": "boolean",
@@ -133,7 +151,7 @@
           "deliveryFormat": {
             "type": "string",
             "enum": ["auto", "plaintext", "html", "both"],
-            "description": "Defines the MIME format of the sent message (ignored on plain text messages). Defaults to <value>auto</value>, which will send html messages as plain text, if they do not include any formatting, and as <value>both</value> otherwise (a multipart/mixed message).",
+            "description": "Defines the MIME format of the sent message (ignored on plain text messages). Defaults to <var>auto</var>, which will send html messages as plain text, if they do not include any formatting, and as <var>both</var> otherwise (a multipart/mixed message).",
             "optional": true
           },
           "deliveryStatusNotification": {
@@ -141,18 +159,30 @@
             "optional": true,
             "description": "Let the sender know when the recipient's server received the message. Not supported by all servers."
           },
+          "selectedEncryptionTechnology": {
+            "choices": [
+              {
+                "$ref": "compose.EncryptionPropertiesSMIME"
+              },
+              {
+                "$ref": "compose.EncryptionPropertiesOpenPGP"
+              }
+            ],
+            "optional": true,
+            "description": "The selected encryption technology (<var>OpenPGP</var> or <var>S/MIME</var>) which is to be used to sign and/or encrypt the message. If the sending identity does not support encryption at all, this will be <var>undefined</var>."
+          },
           "followupTo": {
             "$ref": "ComposeRecipientList",
             "optional": true
           },
           "from": {
             "$ref": "ComposeRecipient",
-            "description": "*Caution*: Setting a value for ``from`` does not change the used identity, it overrides the <value>From</value> header. Many email servers do not accept emails where the <value>From</value> header does not match the sender identity. Must be set to exactly one valid email address.",
+            "description": "*Caution*: Setting a value for <var>from</var> does not change the used identity, it overrides the <em>From</em> header. Many email servers do not accept emails where the <em>From</em> header does not match the sender identity. Must be set to exactly one valid email address.",
             "optional": true
           },
           "identityId": {
             "type": "string",
-            "description": "The ID of an identity from the :doc:`accounts`. The settings from the identity will be used in the composed message. If ``replyTo`` is also specified, the ``replyTo`` property of the identity is overridden. The permission <permission>accountsRead</permission> is required to include the ``identityId``.",
+            "description": "The ID of an identity from the $(doc:accounts). The settings from the identity will be used in the composed message. If <var>replyTo</var> is also specified, the <var>replyTo</var> property of the identity is overridden. The permission <permission>accountsRead</permission> is required to include the <var>identityId</var>.",
             "optional": true
           },
           "isModified": {
@@ -181,11 +211,13 @@
             "optional": true
           },
           "overrideDefaultFcc": {
+            "max_manifest_version": 2,
             "type": "boolean",
             "optional": true,
-            "description": "Indicates whether the default fcc setting (defined by the used identity) is being overridden for this message. Setting <value>false</value> will clear the override. Setting <value>true</value> will throw an <em>ExtensionError</em>, if ``overrideDefaultFccFolder`` is not set as well."
+            "description": "Indicates whether the default fcc setting (defined by the used identity) is being overridden for this message. Setting <var>false</var> will clear the override. Setting <var>true</var> will throw an <em>ExtensionError</em>, if <var>overrideDefaultFccFolder</var> is not set as well. The permission <permission>accountsRead</permission> is required to use this property."
           },
           "overrideDefaultFccFolder": {
+            "max_manifest_version": 2,
             "choices": [
               {
                 "$ref": "folders.MailFolderId"
@@ -199,7 +231,13 @@
               }
             ],
             "optional": true,
-            "description": " This value overrides the default fcc setting (defined by the used identity) for this message only. Either a :ref:`folders.MailFolder` specifying the folder for the copy of the sent message, or an empty string to not save a copy at all."
+            "description": " This value overrides the default fcc setting (defined by the used identity) for this message only. Either a $(ref:folders.MailFolder) specifying the folder for the copy of the sent message, or an empty string to not save a copy at all. The permission <permission>accountsRead</permission> is required to use this property."
+          },
+          "overrideDefaultFccFolderId": {
+            "min_manifest_version": 3,
+            "$ref": "folders.MailFolderId",
+            "description": " This value overrides the default fcc setting (defined by the used identity) for this message only. Either a $(ref:folders.MailFolderId) specifying the folder for the copy of the sent message, or an empty string to not save a copy at all. Reset when set to <var>null</var>. The permission <permission>accountsRead</permission> is required to use this property.",
+            "optional": "omit-key-if-missing"
           },
           "plainTextBody": {
             "type": "string",
@@ -213,7 +251,7 @@
             "optional": true
           },
           "relatedMessageId": {
-            "description": "The id of the original message (in case of draft, template, forward or reply). Read-only. Is <value>null</value> in all other cases or if the original message was opened from file.",
+            "description": "The id of the original message (in case of draft, template, forward or reply). Read-only. Is <var>null</var> in all other cases or if the original message was opened from file.",
             "$ref": "messages.MessageId",
             "optional": true
           },
@@ -256,7 +294,7 @@
           },
           "name": {
             "type": "string",
-            "description": "The new name for the attachment, as displayed to the user. If not specified, the name of the provided ``file`` object is used.",
+            "description": "The new name for the attachment, as displayed to the user. If not specified, the name of the provided <var>file</var> object is used.",
             "optional": true
           }
         }
@@ -289,7 +327,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Name of a custom header, must be prefixed by <value>X-</value> (but not by <value>X-Mozilla-</value>) or be one of the explicitly allowed headers (<value>MSIP_Labels</value>)"
+            "description": "Name of a custom header, must be prefixed by <var>X-</var> (but not by <var>X-Mozilla-</var>) or be one of the explicitly allowed headers (<var>MSIP_Labels</var>)"
           },
           "value": {
             "type": "string"
@@ -302,14 +340,54 @@
         "additionalProperties": {
           "type": "boolean"
         },
-        "description": "A <em>dictionary object</em> with entries for all installed dictionaries, having a language identifier as <em>key</em> (for example <value>en-US</value>) and a boolean expression as <em>value</em>, indicating whether that dictionary is enabled for spellchecking or not."
+        "description": "A <em>dictionary object</em> with entries for all installed dictionaries, having a language identifier as <em>key</em> (for example <var>en-US</var>) and a boolean expression as <em>value</em>, indicating whether that dictionary is enabled for spellchecking or not."
+      },
+      {
+        "id": "EncryptionPropertiesOpenPGP",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^OpenPGP$"
+          },
+          "encryptBody": {
+            "type": "boolean",
+            "description": "Whether encryption of the message body using the OpenPGP technology is enabled. **Note:** If encryption is enabled, but the <a href='url-help-cannot-encrypt'>preconditions</a> for sending an encrypted message are not met, the message cannot be sent."
+          },
+          "encryptSubject": {
+            "type": "boolean",
+            "description": "Whether encryption of the message subject using the OpenPGP technology is enabled (only supported if encryption of the body is enabled a well)."
+          },
+          "signMessage": {
+            "type": "boolean",
+            "description": "Whether the message will be signed using the OpenPGP technology."
+          }
+        }
+      },
+      {
+        "id": "EncryptionPropertiesSMIME",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^S/MIME$"
+          },
+          "encryptBody": {
+            "type": "boolean",
+            "description": "Whether encryption of the message body using the S/MIME technology is enabled. **Note:** If encryption is enabled, but the <a href='url-help-cannot-encrypt'>preconditions</a> for sending an encrypted message are not met, the message cannot be sent."
+          },
+          "signMessage": {
+            "type": "boolean",
+            "description": "Whether the message will be signed using the S/MIME technology"
+          }
+        }
       }
     ],
     "events": [
       {
         "name": "onBeforeSend",
         "type": "function",
-        "description": "Fired when a message is about to be sent from the compose window. This is a user input event handler. For asynchronous listeners some `restrictions <|link-user-input-restrictions|>`__ apply.",
+        "description": "Fired when a message is about to be sent from the compose window. This is a user input event handler. For asynchronous listeners some <a href='url-user-input-restrictions'>restrictions</a> apply.",
         "permissions": ["compose"],
         "parameters": [
           {
@@ -319,7 +397,7 @@
           {
             "name": "details",
             "$ref": "ComposeDetails",
-            "description": "The current state of the compose window. This is functionally the same as calling the :ref:`compose.getComposeDetails` function."
+            "description": "The current state of the compose window. This is functionally the same as calling the $(ref:compose.getComposeDetails) function."
           }
         ],
         "returns": {
@@ -333,7 +411,7 @@
             "details": {
               "$ref": "ComposeDetails",
               "optional": true,
-              "description": "Updates the compose window. This is functionally the same as calling the :ref:`compose.setComposeDetails` function."
+              "description": "Updates the compose window. This is functionally the same as calling the $(ref:compose.setComposeDetails) function."
             }
           }
         }
@@ -496,7 +574,7 @@
       {
         "name": "beginNew",
         "type": "function",
-        "description": "Open a new message compose window.\n\n**Note:** The compose format can be set by ``details.isPlainText`` or by specifying only one of ``details.body`` or ``details.plainTextBody``. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying ``details.body`` and ``details.plainTextBody`` without also specifying ``details.isPlainText`` threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching ``details.body`` or ``details.plainTextBody`` value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
+        "description": "Open a new message compose window.\n\n**Note:** The compose format can be set by <var>details.isPlainText</var> or by specifying only one of <var>details.body</var> or <var>details.plainTextBody</var>. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying <var>details.body</var> and <var>details.plainTextBody</var> without also specifying <var>details.isPlainText</var> threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching <var>details.body</var> or <var>details.plainTextBody</var> value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
         "async": "callback",
         "parameters": [
           {
@@ -526,7 +604,7 @@
       {
         "name": "beginReply",
         "type": "function",
-        "description": "Open a new message compose window replying to a given message.\n\n**Note:** The compose format can be set by ``details.isPlainText`` or by specifying only one of ``details.body`` or ``details.plainTextBody``. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying ``details.body`` and ``details.plainTextBody`` without also specifying ``details.isPlainText`` threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching ``details.body`` or ``details.plainTextBody`` value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
+        "description": "Open a new message compose window replying to a given message.\n\n**Note:** The compose format can be set by <var>details.isPlainText</var> or by specifying only one of <var>details.body</var> or <var>details.plainTextBody</var>. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying <var>details.body</var> and <var>details.plainTextBody</var> without also specifying <var>details.isPlainText</var> threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching <var>details.body</var> or <var>details.plainTextBody</var> value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
         "async": "callback",
         "parameters": [
           {
@@ -561,7 +639,7 @@
       {
         "name": "beginForward",
         "type": "function",
-        "description": "Open a new message compose window forwarding a given message.\n\n**Note:** The compose format can be set by ``details.isPlainText`` or by specifying only one of ``details.body`` or ``details.plainTextBody``. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying ``details.body`` and ``details.plainTextBody`` without also specifying ``details.isPlainText`` threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching ``details.body`` or ``details.plainTextBody`` value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
+        "description": "Open a new message compose window forwarding a given message.\n\n**Note:** The compose format can be set by <var>details.isPlainText</var> or by specifying only one of <var>details.body</var> or <var>details.plainTextBody</var>. Otherwise the default compose format of the selected identity is used.\n\n**Note:** Specifying <var>details.body</var> and <var>details.plainTextBody</var> without also specifying <var>details.isPlainText</var> threw an exception in Thunderbird up to version 97. Since Thunderbird 98, this combination creates a compose window with the compose format of the selected identity, using the matching <var>details.body</var> or <var>details.plainTextBody</var> value.\n\n**Note:** If no identity is specified, this function is using the default identity and not the identity of the referenced message.",
         "async": "callback",
         "parameters": [
           {
@@ -621,7 +699,7 @@
         "name": "setComposeDetails",
         "type": "function",
         "async": true,
-        "description": "Updates the compose window. The properties of the given :ref:`compose.ComposeDetails` object will be used to overwrite the current values of the specified compose window, so only properties that are to be changed should be included.\n\nWhen updating any of the array properties (``customHeaders`` and most address fields), make sure to first get the current values to not accidentally remove all existing entries when setting the new value.\n\n**Note:** The compose format of an existing compose window cannot be changed. Since Thunderbird 98, setting conflicting values for ``details.body``, ``details.plainTextBody`` or ``details.isPlaintext`` no longer throws an exception, instead the compose window chooses the matching ``details.body`` or ``details.plainTextBody`` value and ignores the other.",
+        "description": "Updates the compose window. The properties of the given $(ref:compose.ComposeDetails) object will be used to overwrite the current values of the specified compose window, so only properties that are to be changed should be included. Modified settings will be treated as user initiated, and turn off further automatic changes on these settings.\n\nWhen updating any of the array properties (<var>customHeaders</var> and most address fields), make sure to first get the current values to not accidentally remove all existing entries when setting the new value.\n\n**Note:** The compose format of an existing compose window cannot be changed. Since Thunderbird 98, setting conflicting values for <var>details.body</var>, <var>details.plainTextBody</var> or <var>details.isPlaintext</var> no longer throws an exception, instead the compose window chooses the matching <var>details.body</var> or <var>details.plainTextBody</var> value and ignores the other.",
         "permissions": ["compose"],
         "parameters": [
           {
@@ -639,7 +717,7 @@
         "name": "getActiveDictionaries",
         "type": "function",
         "async": "callback",
-        "description": "Returns a :ref:`compose.ComposeDictionaries` object, listing all installed dictionaries, including the information whether they are currently enabled or not.",
+        "description": "Returns a $(ref:compose.ComposeDictionaries) object, listing all installed dictionaries, including the information whether they are currently enabled or not.",
         "permissions": ["compose"],
         "parameters": [
           {
@@ -663,7 +741,7 @@
         "name": "setActiveDictionaries",
         "type": "function",
         "async": true,
-        "description": "Updates the active dictionaries. Throws if the ``activeDictionaries`` array contains unknown or invalid language identifiers.",
+        "description": "Updates the active dictionaries. Throws if the <var>activeDictionaries</var> array contains unknown or invalid language identifiers.",
         "permissions": ["compose"],
         "parameters": [
           {
@@ -709,7 +787,7 @@
       {
         "name": "getAttachmentFile",
         "type": "function",
-        "description": "Gets the content of a :ref:`compose.ComposeAttachment` as a |File| object.",
+        "description": "Gets the content of a $(ref:compose.ComposeAttachment) as a <a href='url-dom-file'>File</a> object.",
         "async": "callback",
         "parameters": [
           {
@@ -817,7 +895,7 @@
         "name": "sendMessage",
         "permissions": ["compose.send"],
         "type": "function",
-        "description": "Sends the message currently being composed. If the send mode is not specified or set to <value>default</value>, the message will be send directly if the user is online and placed in the users outbox otherwise. The returned Promise fulfills once the message has been successfully sent or placed in the user's outbox. Throws when the send process has been aborted by the user, by an :ref:`compose.onBeforeSend` event or if there has been an error while sending the message to the outgoing mail server.",
+        "description": "Sends the message currently being composed. If the send mode is not specified or set to <var>default</var>, the message will be send directly if the user is online and placed in the users outbox otherwise. The returned Promise fulfills once the message has been successfully sent or placed in the user's outbox. Throws when the send process has been aborted by the user, by an $(ref:compose.onBeforeSend) event or if there has been an error while sending the message to the outgoing mail server.",
         "async": "callback",
         "parameters": [
           {

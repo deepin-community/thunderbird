@@ -64,10 +64,10 @@ def initialize(topsrcdir, args=()):
     COMM_MACH_COMMANDS = {
         "commlint": MachCommandReference("comm/tools/lint/mach_commands.py"),
         "tb-add-missing-ftls": MachCommandReference("comm/python/l10n/mach_commands.py"),
+        "tb-doc": MachCommandReference("comm/docs/mach_commands.py"),
         "tb-fluent-migration-test": MachCommandReference("comm/python/l10n/mach_commands.py"),
         "tb-l10n-quarantine-to-strings": MachCommandReference("comm/python/l10n/mach_commands.py"),
         "tb-l10n-x-channel": MachCommandReference("comm/python/l10n/mach_commands.py"),
-        "tb-esmify": MachCommandReference("comm/tools/esmify/mach_commands.py"),
         "tb-rust": MachCommandReference("comm/rust/mach_commands.py"),
         "tb-storybook": MachCommandReference("comm/mail/components/storybook/mach_commands.py"),
     }

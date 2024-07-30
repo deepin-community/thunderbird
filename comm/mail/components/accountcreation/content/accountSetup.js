@@ -18,20 +18,19 @@ var { XPCOMUtils } = ChromeUtils.importESModule(
 ChromeUtils.defineESModuleGetters(this, {
   AccountConfig: "resource:///modules/accountcreation/AccountConfig.sys.mjs",
   AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
-  cal: "resource:///modules/calendar/calUtils.sys.mjs",
+  CardDAVUtils: "resource:///modules/CardDAVUtils.sys.mjs",
   ConfigVerifier: "resource:///modules/accountcreation/ConfigVerifier.sys.mjs",
+
   CreateInBackend:
     "resource:///modules/accountcreation/CreateInBackend.sys.mjs",
+
   FetchConfig: "resource:///modules/accountcreation/FetchConfig.sys.mjs",
   GuessConfig: "resource:///modules/accountcreation/GuessConfig.sys.mjs",
+  OAuth2Providers: "resource:///modules/OAuth2Providers.sys.mjs",
   Sanitizer: "resource:///modules/accountcreation/Sanitizer.sys.mjs",
   UIDensity: "resource:///modules/UIDensity.sys.mjs",
   UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CardDAVUtils: "resource:///modules/CardDAVUtils.jsm",
-  OAuth2Providers: "resource:///modules/OAuth2Providers.jsm",
+  cal: "resource:///modules/calendar/calUtils.sys.mjs",
 });
 
 var {
@@ -43,6 +42,7 @@ var {
   Exception,
   gAccountSetupLogger,
   NotReached,
+  ParallelAbortable,
   PriorityOrderAbortable,
   UserCancelledException,
 } = AccountCreationUtils;
@@ -248,12 +248,6 @@ var gAccountSetup = {
     // the various validation methods.
     this._okCallback = onSetupComplete;
     this._msgWindow = gMainWindow.msgWindow;
-
-    // If the account provisioner is preffed off, don't display the account
-    // provisioner button.
-    if (!Services.prefs.getBoolPref("mail.provider.enabled")) {
-      document.getElementById("provisionerButton").hidden = true;
-    }
 
     // Disable the remember password checkbox if the pref is false.
     if (!Services.prefs.getBoolPref("signon.rememberSignons")) {
@@ -614,7 +608,6 @@ var gAccountSetup = {
 
     document.getElementById("continueButton").disabled = !isValidForm;
     document.getElementById("manualConfigButton").hidden = !isValidForm;
-    document.getElementById("provisionerButton").hidden = email.value;
   },
 
   /**
@@ -640,33 +633,85 @@ var gAccountSetup = {
     this.switchToMode("find-config");
     this.startLoadingState("account-setup-looking-up-settings");
 
-    const self = this;
-    let call = null;
-    let fetch = null;
+    // We use several discovery mechanisms running in parallel in order to avoid
+    // excess delays if several of them in a row fail to find an appropriate
+    // configuration.
+    const discoveryTasks = new ParallelAbortable();
+    this._abortable = discoveryTasks;
 
-    const priority = (this._abortable = new PriorityOrderAbortable(
-      function (config, call) {
-        // success
-        self._abortable = null;
-        self.stopLoadingState(self._getConfigSourceStringName(config));
-        self.foundConfig(config);
-      },
-      function (e, allErrors) {
-        // all failed
-        if (e instanceof CancelledException) {
-          self.onStartOver();
+    // Set up abortable calls before kicking off tasks so that our observer is
+    // guaranteed to not miss completion of any of them.
+    const priorityCall = discoveryTasks.addCall();
+    const autodiscoverCall = discoveryTasks.addCall();
+
+    // Wait for both our priority discovery and Autodiscover search to complete
+    // before deciding on a configuration to ensure we get an Exchange config if
+    // one exists.
+    discoveryTasks.addAllFinishedObserver(() => {
+      let config;
+
+      // All abortable tasks have completed.
+      this._abortable = null;
+
+      if (priorityCall.succeeded) {
+        // One of the priority-ordered discovery mechanisms has succeeded. If
+        // that mechanism did not produce an Exchange configuration and
+        // Autodiscover also succeeded, we will add any Exchange configuration
+        // it produced as an alternative.
+        config = priorityCall.result;
+
+        const hasExchangeConfigAlready = [
+          config.incoming,
+          ...config.incomingAlternatives,
+        ].some(incoming => incoming.type == "exchange");
+
+        if (!hasExchangeConfigAlready && autodiscoverCall.succeeded) {
+          const autodiscoverConfig = autodiscoverCall.result;
+
+          const exchangeIncoming = [
+            autodiscoverConfig.incoming,
+            ...autodiscoverConfig.incomingAlternatives,
+          ].find(incoming => incoming.type == "exchange");
+
+          if (exchangeIncoming) {
+            config.incomingAlternatives.push(exchangeIncoming);
+          }
+        }
+      } else {
+        // None of the priority-ordered mechanisms produced a config. If
+        // Autodiscover also produced nothing, we make a best effort to guess a
+        // valid configuration.
+        if (!autodiscoverCall.succeeded) {
+          const initialConfig = new AccountConfig();
+          this._prefillConfig(initialConfig);
+          // `_guessConfig()` will call `foundConfig()` for us if it succeeds.
+          this._guessConfig(domain, initialConfig);
           return;
         }
 
-        // guess config
-        const initialConfig = new AccountConfig();
-        self._prefillConfig(initialConfig);
-        self._guessConfig(domain, initialConfig);
+        config = autodiscoverCall.result;
       }
-    ));
+
+      this.stopLoadingState(this._getConfigSourceStringName(config));
+      this.foundConfig(config);
+    });
+
+    // We prefer some discovery mechanisms over others to allow for local
+    // configuration and to attempt to favor more up-to-date/accurate configs.
+    // These will be run in parallel for speed, with successful discovery from a
+    // source resulting in all lower-priority sources being cancelled. The
+    // highest-priority mechanism to succeed wins.
+    const priorityQueue = new PriorityOrderAbortable(
+      priorityCall.successCallback(),
+      priorityCall.errorCallback()
+    );
+    priorityCall.setAbortable(priorityQueue);
 
     try {
-      call = priority.addCall();
+      let call = null;
+      let fetch = null;
+
+      call = priorityQueue.addCall();
       gAccountSetupLogger.debug(
         "Looking up configuration: Thunderbird installation…"
       );
@@ -677,7 +722,7 @@ var gAccountSetup = {
       );
       call.setAbortable(fetch);
 
-      call = priority.addCall();
+      call = priorityQueue.addCall();
       gAccountSetupLogger.debug("Looking up configuration: Email provider…");
       fetch = FetchConfig.fromISP(
         domain,
@@ -687,7 +732,7 @@ var gAccountSetup = {
       );
       call.setAbortable(fetch);
 
-      call = priority.addCall();
+      call = priorityQueue.addCall();
       gAccountSetupLogger.debug(
         "Looking up configuration: Thunderbird installation…"
       );
@@ -698,7 +743,7 @@ var gAccountSetup = {
       );
       call.setAbortable(fetch);
 
-      call = priority.addCall();
+      call = priorityQueue.addCall();
       gAccountSetupLogger.debug(
         "Looking up configuration: Incoming mail domain…"
       );
@@ -710,18 +755,21 @@ var gAccountSetup = {
       );
       call.setAbortable(fetch);
 
-      call = priority.addCall();
+      // Microsoft Autodiscover is outside the priority ordering, as most of
+      // those mechanisms are unlikely to produce an Exchange configuration even
+      // when using Exchange is possible. Autodiscover should always produce an
+      // Exchange config if available, so we want it to always complete.
       gAccountSetupLogger.debug("Looking up configuration: Exchange server…");
-      fetch = fetchConfigFromExchange(
+      const autodiscoverTask = fetchConfigFromExchange(
         domain,
         emailAddress,
         this._exchangeUsername,
         this._password,
         confirmExchange,
-        call.successCallback(),
+        autodiscoverCall.successCallback(),
         (e, allErrors) => {
           // Must call error callback in any case to stop the discover mode.
-          const errorCallback = call.errorCallback();
+          const errorCallback = autodiscoverCall.errorCallback();
           if (e instanceof CancelledException) {
             errorCallback(e);
           } else if (allErrors && allErrors.some(e => e.code == 401)) {
@@ -743,7 +791,7 @@ var gAccountSetup = {
           }
         }
       );
-      call.setAbortable(fetch);
+      autodiscoverCall.setAbortable(autodiscoverTask);
     } catch (e) {
       this.onStop();
       // e.g. when entering an invalid domain like "c@c.-com"
@@ -776,6 +824,9 @@ var gAccountSetup = {
       case AccountConfig.kSourceExchange: {
         return "account-setup-success-settings-exchange";
       }
+      case AccountConfig.kSourceGuess: {
+        return "account-setup-success-guess";
+      }
       default: {
         throw new Error(`Unexpected source: ${config.source}`);
       }
@@ -790,7 +841,7 @@ var gAccountSetup = {
     const self = this;
     self._abortable = GuessConfig.guessConfig(
       domain,
-      function (type, hostname, port, socketType, done, config) {
+      function (type, hostname, port, socketType) {
         // progress
         gAccountSetupLogger.debug(
           `${hostname}:${port} socketType=${socketType} ${type}: progress callback`
@@ -806,7 +857,7 @@ var gAccountSetup = {
             : "account-setup-success-guess"
         );
       },
-      function (e, config) {
+      function (e) {
         // guessconfig failed
         if (e instanceof CancelledException) {
           return;
@@ -840,6 +891,10 @@ var gAccountSetup = {
       return;
     }
 
+    if (Services.prefs.getBoolPref("experimental.mail.ews.enabled", false)) {
+      this._ewsifyConfig(config);
+    }
+
     config.addons = [];
     const successCallback = () => {
       this._abortable = null;
@@ -851,6 +906,59 @@ var gAccountSetup = {
       successCallback();
       this.showErrorNotification(e, true);
     });
+  },
+
+  /**
+   * Makes a configuration including an "exchange" incoming server suitable for
+   * use with our internal Exchange Web Services implementation.
+   *
+   * @param {AccountConfig} config - The configuration to revise.
+   */
+  _ewsifyConfig(config) {
+    // At present, account setup code uses the "exchange" incoming server type
+    // to store a configuration suitable for OWL. In order to avoid breaking
+    // OWL (which uses some config fields in an idiosyncratic manner), we use
+    // the "ews" type. So that both are presented in the UI, we duplicate the
+    // "exchange" config and adjust its fields as needed.
+    const exchangeIncoming = [
+      config.incoming,
+      ...config.incomingAlternatives,
+    ].find(incoming => incoming.type == "exchange");
+    if (!exchangeIncoming) {
+      return;
+    }
+
+    const ewsIncoming = structuredClone(exchangeIncoming);
+    ewsIncoming.type = "ews";
+    // When using the native EWS support, we want to reuse the incoming config
+    // for the outgoing server, since there is no difference in settings between
+    // receiving and sending mail.
+    ewsIncoming.handlesOutgoing = true;
+    // When using an add-on for Exchange, we need to explicitly tell the
+    // CreateInBackend module to create an outgoing server because the addon
+    // will not create one (and instead override the `nsIMsgSend` instance used
+    // to send a message). This is not the case here, so we explicitly set this
+    // to false. We do it on the incoming config, as at this point we don't have
+    // an outgoing one, and we've just toggled `handlesOutgoing`.
+    ewsIncoming.useGlobalPreferredServer = false;
+
+    if (ewsIncoming.oauthSettings) {
+      // OWL uses these fields in such a way that their values won't work with
+      // our OAuth2 implementation. Replace them with settings from our OAuth2
+      // implementation.
+      const oauthSettings = OAuth2Providers.getHostnameDetails(
+        ewsIncoming.hostname
+      );
+
+      if (oauthSettings) {
+        [ewsIncoming.oauthSettings.issuer, ewsIncoming.oauthSettings.scope] =
+          oauthSettings;
+      } else {
+        ewsIncoming.oauthSettings = null;
+      }
+    }
+
+    config.incomingAlternatives.push(ewsIncoming);
   },
 
   /**
@@ -1118,7 +1226,7 @@ var gAccountSetup = {
 
     // Filter out Protcols we don't currently support
     let protocols = config.incomingAlternatives.filter(protocol =>
-      ["imap", "pop3", "exchange"].includes(protocol.type)
+      ["imap", "pop3", "exchange", "ews"].includes(protocol.type)
     );
     protocols.unshift(config.incoming);
     protocols = protocols.reduce((found, nextEl) => {
@@ -1258,7 +1366,7 @@ var gAccountSetup = {
                   return;
                 }
                 const listener = {
-                  onUpdateAvailable(addon, install) {
+                  onUpdateAvailable() {
                     button.disabled = false;
                   },
                   onNoUpdateAvailable() {},
@@ -1386,28 +1494,30 @@ var gAccountSetup = {
     const outgoingInfo = document.getElementById(
       `outgoingInfo-${protocolType}`
     );
-    if (!config.outgoing.existingServerKey) {
-      if (configFilledIn.outgoing.hostname) {
-        _makeHostDisplayString(configFilledIn.outgoing, outgoingInfo);
+    if (protocolType != "ews") {
+      if (!config.outgoing.existingServerKey) {
+        if (configFilledIn.outgoing.hostname) {
+          _makeHostDisplayString(configFilledIn.outgoing, outgoingInfo);
+        }
+        const container = document.getElementById(
+          `outgoingTitle-${protocolType}`
+        );
+        // No need to show the protocol type if it's exchange, and the socket span
+        // is generated somewhere else specifically for exchange.
+        if (protocolType != "exchange") {
+          const span = _protocolTypeSpan();
+          span.textContent = configFilledIn.outgoing.type;
+          container.appendChild(span);
+          container.appendChild(_socketTypeSpan(config.outgoing.socketType));
+        }
+      } else {
+        const span = document.createElement("span");
+        document.l10n.setAttributes(
+          span,
+          "account-setup-result-outgoing-existing"
+        );
+        outgoingInfo.appendChild(span);
       }
-      const container = document.getElementById(
-        `outgoingTitle-${protocolType}`
-      );
-      // No need to show the protocol type if it's exchange, and the socket span
-      // is generated somewhere else specifically for exchange.
-      if (protocolType != "exchange") {
-        const span = _protocolTypeSpan();
-        span.textContent = configFilledIn.outgoing.type;
-        container.appendChild(span);
-        container.appendChild(_socketTypeSpan(config.outgoing.socketType));
-      }
-    } else {
-      const span = document.createElement("span");
-      document.l10n.setAttributes(
-        span,
-        "account-setup-result-outgoing-existing"
-      );
-      outgoingInfo.appendChild(span);
     }
 
     const usernameInfo = document.getElementById(
@@ -1528,7 +1638,7 @@ var gAccountSetup = {
       {
         1: "imap",
         2: "pop3",
-        3: "exchange",
+        3: "exchange", // This is for any external Exchange plugins.
         0: null,
       }
     );
@@ -1547,6 +1657,7 @@ var gAccountSetup = {
       document.getElementById("outgoingUsername").value;
 
     // The user specified a custom SMTP server.
+    config.outgoing.type = "smtp";
     config.outgoing.existingServerKey = null;
     config.outgoing.addThisServer = true;
     config.outgoing.useGlobalPreferredServer = false;
@@ -2052,7 +2163,7 @@ var gAccountSetup = {
     const self = this;
     this._abortable = GuessConfig.guessConfig(
       this._domain,
-      function (type, hostname, port, ssl, done, config) {
+      function (type, hostname, port) {
         // Progress.
         gAccountSetupLogger.debug(
           `progress callback host: ${hostname}, port: ${port}, type: ${type}`
@@ -2065,7 +2176,7 @@ var gAccountSetup = {
         self.stopLoadingState("account-setup-success-half-manual");
         self.validateManualEditComplete();
       },
-      function (e, config) {
+      function (e) {
         // guessConfig failed.
         if (e instanceof CancelledException) {
           return;
@@ -2277,7 +2388,7 @@ var gAccountSetup = {
 
     const self = this;
     const verifier = new ConfigVerifier(this._msgWindow);
-    window.addEventListener("unload", event => {
+    window.addEventListener("unload", () => {
       verifier.cleanup();
     });
     verifier
@@ -2463,11 +2574,11 @@ var gAccountSetup = {
     // Detect linked address books.
     await this.fetchAddressBooks();
 
-    // Update the notification and start detecting linked calendars.
     document.l10n.setAttributes(
       notification.messageText,
       "account-setup-looking-up-calendars"
     );
+    // Detect linked calendars.
     await this.fetchCalendars();
 
     // Update the connected services description if we have at least one address
@@ -2497,7 +2608,10 @@ var gAccountSetup = {
         false
       );
     } catch (ex) {
-      gAccountSetupLogger.error(ex);
+      gAccountSetupLogger.debug(
+        `Found no address books for ${this._email} on ${this._hostname}.`,
+        ex
+      );
     }
 
     const hideAddressBookUI = !this.addressBooks.length;
@@ -2619,7 +2733,10 @@ var gAccountSetup = {
         {}
       );
     } catch (ex) {
-      gAccountSetupLogger.error(ex);
+      gAccountSetupLogger.debug(
+        `Found no calendars for ${this._email} on ${this._hostname}.`,
+        ex
+      );
     }
 
     const hideCalendarUI = !this.calendars.size;

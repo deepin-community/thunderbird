@@ -6,7 +6,6 @@
 #define nsImapMailFolder_h__
 
 #include "mozilla/Attributes.h"
-#include "nsImapCore.h"  // so that consumers including ImapMailFolder.h also get the kImapMsg* constants
 #include "nsMsgDBFolder.h"
 #include "nsIImapMailFolderSink.h"
 #include "nsIImapMessageSink.h"
@@ -23,11 +22,9 @@
 #include "nsIMsgThread.h"
 #include "nsIImapMailFolderSink.h"
 #include "nsIMsgFilterPlugin.h"
-#include "nsISimpleEnumerator.h"
 #include "nsIStringEnumerator.h"
 #include "nsTHashMap.h"
 #include "nsITimer.h"
-#include "nsCOMArray.h"
 #include "nsAutoSyncState.h"
 
 class nsImapMoveCoalescer;
@@ -422,7 +419,7 @@ class nsImapMailFolder : public nsMsgDBFolder,
   virtual bool DeleteIsMoveToTrash();
   nsresult GetFolder(const nsACString& name, nsIMsgFolder** pFolder);
   nsresult GetTrashFolder(nsIMsgFolder** pTrashFolder);
-  bool TrashOrDescendentOfTrash(nsIMsgFolder* folder);
+  bool TrashOrDescendantOfTrash(nsIMsgFolder* folder);
   static bool ShouldCheckAllFolders(nsIImapIncomingServer* imapServer);
   nsresult GetServerKey(nsACString& serverKey);
   nsresult DisplayStatusMsg(nsIImapUrl* aImapUrl, const nsAString& msg);

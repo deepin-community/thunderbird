@@ -172,7 +172,7 @@
 <!ENTITY addressBookCmd.label "Адрасная кніга">
 <!ENTITY addressBookCmd.accesskey "а">
 <!ENTITY addressBookCmd.key "B">
-<!ENTITY accountManagerCmd2.label "Наладжванні рахунку">
+<!ENTITY accountManagerCmd2.label "Налады ўліковага запісу">
 <!ENTITY accountManagerCmd2.accesskey "Н">
 <!ENTITY accountManagerCmdUnix2.accesskey "Н">
 
@@ -246,7 +246,7 @@
 <!ENTITY pasteQuote.accesskey "В">
 
 <!-- Attachment Item and List Context Menus -->
-<!ENTITY openAttachment.label "Адчыніць">
+<!ENTITY openAttachment.label "Адкрыць">
 <!ENTITY openAttachment.accesskey "А">
 <!ENTITY delete.label "Выдаліць">
 <!ENTITY delete.accesskey "д">

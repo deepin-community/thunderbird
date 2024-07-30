@@ -11,9 +11,7 @@
 #include "nsMsgFolderFlags.h"
 #include "nsIMsgHdr.h"
 #include "nsIMsgImapMailFolder.h"
-#include "nsThreadUtils.h"
 #include "nsServiceManagerUtils.h"
-#include "nsComponentManagerUtils.h"
 #include "mozilla/ArrayUtils.h"
 
 NS_IMPL_ISUPPORTS(nsImapMoveCoalescer, nsIUrlListener)
@@ -154,23 +152,19 @@ NS_IMETHODIMP nsMoveCoalescerCopyListener::OnStartCopy() {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-/* void OnProgress (in uint32_t aProgress, in uint32_t aProgressMax); */
 NS_IMETHODIMP nsMoveCoalescerCopyListener::OnProgress(uint32_t aProgress,
                                                       uint32_t aProgressMax) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-/* void SetMessageKey (in uint32_t aKey); */
 NS_IMETHODIMP nsMoveCoalescerCopyListener::SetMessageKey(uint32_t aKey) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-/* void GetMessageId (in nsACString aMessageId); */
 NS_IMETHODIMP nsMoveCoalescerCopyListener::GetMessageId(nsACString& messageId) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-/* void OnStopCopy (in nsresult aStatus); */
 NS_IMETHODIMP nsMoveCoalescerCopyListener::OnStopCopy(nsresult aStatus) {
   nsresult rv = NS_OK;
   if (NS_SUCCEEDED(aStatus)) {

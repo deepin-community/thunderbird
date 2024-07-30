@@ -13,7 +13,7 @@ ChromeUtils.defineESModuleGetters(this, {
   XULStoreUtils: "resource:///modules/XULStoreUtils.sys.mjs",
 });
 
-import("chrome://messenger/content/search-bar.mjs");
+import("chrome://messenger/content/search-bar.mjs").catch(console.error);
 
 class ToggleButton extends HTMLButtonElement {
   constructor() {
@@ -235,7 +235,7 @@ var quickFilterBar = {
       let handlerDomId, handlerMenuItems;
 
       if (!("onCommand" in filterDef)) {
-        handlerDomId = event => {
+        handlerDomId = () => {
           try {
             const postValue = domNode.pressed ? true : null;
             this.filterer.setFilterValue(filterDef.name, postValue);
@@ -245,7 +245,7 @@ var quickFilterBar = {
             console.error(ex);
           }
         };
-        handlerMenuItems = event => {
+        handlerMenuItems = () => {
           try {
             const postValue = menuItemNode.hasAttribute("checked")
               ? true
@@ -432,7 +432,10 @@ var quickFilterBar = {
 
     this.reflectFiltererResults();
 
-    this.domNode.hidden = !this.filterer.visible;
+    if (this.domNode.hidden == this.filterer.visible) {
+      this.domNode.hidden = !this.filterer.visible;
+      window.dispatchEvent(new Event("qfbtoggle"));
+    }
   },
 
   /**
@@ -501,10 +504,7 @@ var quickFilterBar = {
    */
   deferredUpdateSearch(activeElement) {
     clearTimeout(this.searchTimeoutID);
-    this.searchTimeoutID = setTimeout(
-      () => this.updateSearch(activeElement),
-      100
-    );
+    this.searchTimeoutID = setTimeout(() => this.updateSearch(activeElement));
   },
 
   /**
@@ -567,8 +567,6 @@ var quickFilterBar = {
     if (!init) {
       threadTree.table.body.focus();
     }
-
-    window.dispatchEvent(new Event("qfbtoggle"));
   },
 
   /**

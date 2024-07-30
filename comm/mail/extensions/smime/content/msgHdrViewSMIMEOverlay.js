@@ -20,6 +20,11 @@ var gSMIMEBundle = null;
 var gSignatureStatusForURI = null;
 var gEncryptionStatusForURI = null;
 
+const lazy = {};
+ChromeUtils.defineESModuleGetters(lazy, {
+  EnigmailFuncs: "chrome://openpgp/content/modules/funcs.sys.mjs",
+});
+
 // Get the necko URL for the message URI.
 function neckoURLForMessageURI(aMessageURI) {
   const msgSvc = MailServices.messageServiceFromURI(aMessageURI);
@@ -42,8 +47,8 @@ function setIgnoreStatusFromMimePart(mimePart) {
  *   for the message.
  * @param {"ok"|"notok"|null} encryptedState - The encrypted state of the
  *   message.
- * @param {"ok"|"notok"|"verified"|"unverified"|"unknown"|"mismatch"|null}
- *   signedState - The signed state of the message.
+ * @param {"ok"|"notok"|"verified"|"unverified"|"unknown"|"mismatch"|null} signedState -
+     The signed state of the message.
  * @param {boolean} forceShow - Show the box if unsigned and unencrypted.
  * @param {string} mimePartNumber - Should be set to the MIME part number
  *   that triggers this status update. If the value matches a currently
@@ -226,7 +231,7 @@ var smimeSink = {
       return;
     }
 
-    if (aMsgNeckoURL != this.getSelectedMessageURI()) {
+    if (!lazy.EnigmailFuncs.isCurrentMessage(gMessageURI, aMsgNeckoURL)) {
       // Status isn't for selected message.
       return;
     }
@@ -320,7 +325,7 @@ var smimeSink = {
       return;
     }
 
-    if (aMsgNeckoURL != this.getSelectedMessageURI()) {
+    if (!lazy.EnigmailFuncs.isCurrentMessage(gMessageURI, aMsgNeckoURL)) {
       // Status isn't for selected message.
       return;
     }
@@ -446,7 +451,7 @@ function onSMIMEBeforeShowHeaderPane() {
   }
 }
 
-function msgHdrViewSMIMEOnLoad(event) {
+function msgHdrViewSMIMEOnLoad() {
   window.crypto.enableSmartCardEvents = true;
   document.addEventListener("smartcard-insert", onSmartCardChange);
   document.addEventListener("smartcard-remove", onSmartCardChange);
@@ -470,7 +475,7 @@ function msgHdrViewSMIMEOnLoad(event) {
   ].getService(Ci.nsIEncryptedSMIMEURIsService);
 }
 
-function msgHdrViewSMIMEOnUnload(event) {
+function msgHdrViewSMIMEOnUnload() {
   window.crypto.enableSmartCardEvents = false;
   document.removeEventListener("smartcard-insert", onSmartCardChange);
   document.removeEventListener("smartcard-remove", onSmartCardChange);

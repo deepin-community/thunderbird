@@ -11,7 +11,7 @@
 
 var { close_compose_window, open_compose_from_draft } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+    "resource://testing-common/mail/ComposeHelpers.sys.mjs"
   );
 var {
   assert_selected_and_displayed,
@@ -21,15 +21,15 @@ var {
   press_delete,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { assert_notification_displayed, wait_for_notification_to_show } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
+    "resource://testing-common/mail/NotificationBoxHelpers.sys.mjs"
   );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const aboutMessage = get_about_message();
@@ -85,7 +85,6 @@ add_setup(async function () {
 function create_draft(aFrom, aIdKey) {
   const msgCount = gDrafts.getTotalMessages(false);
   const source =
-    "From - Wed Mar 01 01:02:03 2017\n" +
     "X-Mozilla-Status: 0000\n" +
     "X-Mozilla-Status2: 00000000\n" +
     "X-Mozilla-Keys:\n" +

@@ -110,14 +110,10 @@ export var CardDAVUtils = {
     headers["Content-Type"] = contentType;
     if (oAuth) {
       headers.Authorization = await new Promise((resolve, reject) => {
-        oAuth.connect(true, {
+        oAuth.getAccessToken({
           onSuccess(token) {
-            resolve(
-              // `token` is a base64-encoded string for SASL XOAUTH2. That is
-              // not what we want, extract just the Bearer token part.
-              // (See OAuth2Module.connect.)
-              atob(token).split("\x01")[1].slice(5)
-            );
+            // Format the token as an HTTP Authorization header value.
+            resolve(`Bearer ${token}`);
           },
           onFailure: reject,
         });
@@ -294,7 +290,6 @@ export var CardDAVUtils = {
         log.log(`Found a DNS SRV record pointing to ${url.host}`);
 
         let txtRecords = await DNS.txt(domain);
-        txtRecords.sort((a, b) => a.prio - b.prio || b.weight - a.weight);
         txtRecords = txtRecords.filter(result =>
           result.data.startsWith("path=")
         );
@@ -370,13 +365,9 @@ export var CardDAVUtils = {
       // Implement msgIOAuth2Module.connect, which CardDAVUtils.makeRequest expects.
       requestParams.oAuth = {
         QueryInterface: ChromeUtils.generateQI(["msgIOAuth2Module"]),
-        connect(withUI, listener) {
-          oAuth.connect(withUI, false).then(
-            () =>
-              listener.onSuccess(
-                // String format based on what OAuth2Module has.
-                btoa(`\x01auth=Bearer ${oAuth.accessToken}`)
-              ),
+        getAccessToken(listener) {
+          oAuth.connect(true, false).then(
+            () => listener.onSuccess(oAuth.accessToken),
             () => listener.onFailure(Cr.NS_ERROR_ABORT)
           );
         },
@@ -421,6 +412,14 @@ export var CardDAVUtils = {
         </prop>
       </propfind>`;
       await tryURL(`${url.origin}/.well-known/carddav`);
+      // The request may have been successfull, returning a 207 status, but it
+      // could still not contain any useful information.
+      if (
+        !response?.dom?.querySelector("resourcetype addressbook") &&
+        !response?.dom?.querySelector("current-user-principal href")
+      ) {
+        response = null;
+      }
     }
     if (!response) {
       // Auto-discovery at the root of the domain.

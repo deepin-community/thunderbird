@@ -23,10 +23,10 @@ var {
   select_click_row,
   delete_messages,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 // needed to zero inter-folder processing delay
@@ -34,12 +34,12 @@ var { MailUtils } = ChromeUtils.importESModule(
   "resource:///modules/MailUtils.sys.mjs"
 );
 
-var { GlodaSyntheticView } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaSyntheticView.jsm"
+var { GlodaSyntheticView } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/GlodaSyntheticView.sys.mjs"
 );
 
 var { ThreadPaneColumns } = ChromeUtils.importESModule(
-  "chrome://messenger/content/thread-pane-columns.mjs"
+  "chrome://messenger/content/ThreadPaneColumns.mjs"
 );
 
 var folderInbox, folderSent, folderVirtual, folderA, folderB;
@@ -47,7 +47,7 @@ var folderInbox, folderSent, folderVirtual, folderA, folderB;
 var columnsB;
 
 // these are for the reset/apply to other/apply to other+child tests.
-var folderSource, folderParent, folderChild1, folderChild2;
+var folderSource, folderParent, folderChild1, folderChild2, folderParentOut;
 
 var useCorrespondent;
 var INBOX_DEFAULTS;
@@ -79,6 +79,7 @@ add_setup(async function () {
     "dateCol",
     "tagsCol",
     "totalCol",
+    "unreadCol",
   ];
   SENT_DEFAULTS = [
     "threadCol",
@@ -96,6 +97,7 @@ add_setup(async function () {
     "dateCol",
     "tagsCol",
     "totalCol",
+    "unreadCol",
   ];
   VIRTUAL_DEFAULTS = [
     "threadCol",
@@ -132,6 +134,14 @@ add_setup(async function () {
   );
   registerCleanupFunction(async () => {
     await delete_messages(messageSet);
+    folderSource.deleteSelf(null);
+    // "?" to allow easier .only() debugging
+    folderParent?.deleteSelf(null);
+    folderSent?.deleteSelf(null);
+    folderVirtual?.deleteSelf(null);
+    folderA?.deleteSelf(null);
+    folderB?.deleteSelf(null);
+    folderParentOut?.deleteSelf(null);
   });
 });
 
@@ -248,6 +258,15 @@ add_task(async function test_column_defaults_inbox() {
   folderInbox = inboxFolder;
   await enter_folder(folderInbox);
 
+  // If columns for FolderDisplayHelpers inboxFolder were not quite
+  // as they should starting off, make sure they are.
+  const columnIds = get_visible_threadtree_columns();
+  for (const colId of columnIds) {
+    if (!INBOX_DEFAULTS.includes(colId)) {
+      await toggleColumn(colId);
+    }
+  }
+
   assert_visible_columns(INBOX_DEFAULTS);
   assert_visible_cards_columns(CARDS_INBOX_DEFAULT);
 });
@@ -261,7 +280,9 @@ add_task(async function test_keypress_on_columns() {
   const about3Pane = tabmail.currentAbout3Pane;
 
   // Select the first row.
-  const row = about3Pane.threadTree.getRowAtIndex(0);
+  const row = await TestUtils.waitForCondition(() =>
+    about3Pane.threadTree.getRowAtIndex(0)
+  );
   EventUtils.synthesizeMouseAtCenter(row, {}, about3Pane);
 
   // Press SHIFT+TAB and LEFT to focus on the column picker.
@@ -548,6 +569,38 @@ add_task(async function test_column_reordering_persists() {
   close_tab(tabB);
 });
 
+/**
+ * Tests that right-clicking on a column header opens the picker popup.
+ */
+add_task(async function test_column_picker_from_header() {
+  const tabmail = document.getElementById("tabmail");
+  const about3Pane = tabmail.currentAbout3Pane;
+
+  const colPickerPopup = about3Pane.document.querySelector(
+    `th[is="tree-view-table-column-picker"] menupopup`
+  );
+
+  EventUtils.synthesizeMouseAtCenter(
+    about3Pane.document.getElementById("subjectColButton"),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(colPickerPopup, "shown");
+
+  colPickerPopup.hidePopup();
+  await BrowserTestUtils.waitForPopupEvent(colPickerPopup, "hidden");
+
+  EventUtils.synthesizeMouseAtCenter(
+    about3Pane.document.getElementById("dateColButton"),
+    { type: "contextmenu" },
+    about3Pane
+  );
+  await BrowserTestUtils.waitForPopupEvent(colPickerPopup, "shown");
+
+  colPickerPopup.hidePopup();
+  await BrowserTestUtils.waitForPopupEvent(colPickerPopup, "hidden");
+});
+
 async function open_column_picker() {
   const tabmail = document.getElementById("tabmail");
   const about3Pane = tabmail.currentAbout3Pane;
@@ -588,7 +641,7 @@ add_task(async function test_reset_to_inbox() {
   assert_visible_columns(conExtra);
 
   // Trigger a reset.
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
   // Ensure the default set was restored.
   assert_visible_columns(INBOX_DEFAULTS);
 });
@@ -777,7 +830,7 @@ add_task(async function test_apply_to_folder_no_children() {
   await be_in_folder(folderSource);
 
   // reset!
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
 
   // permute!
   const conExtra = INBOX_DEFAULTS.concat(["sizeCol"]);
@@ -809,7 +862,7 @@ add_task(async function test_apply_to_folder_and_children() {
   await be_in_folder(folderSource);
 
   // reset!
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
   const cols = get_visible_threadtree_columns();
 
   // permute!
@@ -834,17 +887,17 @@ add_task(async function test_apply_to_folder_and_children() {
  * also has children. Make sure the folder changes but the children do not.
  */
 add_task(async function test_apply_to_folder_no_children_swapped() {
-  folderParent = await create_folder("ColumnsApplyParentOutgoing");
-  folderParent.setFlag(Ci.nsMsgFolderFlags.SentMail);
-  folderParent.createSubfolder("Child1", null);
-  folderChild1 = folderParent.getChildNamed("Child1");
-  folderParent.createSubfolder("Child2", null);
-  folderChild2 = folderParent.getChildNamed("Child2");
+  folderParentOut = await create_folder("ColumnsApplyParentOutgoing");
+  folderParentOut.setFlag(Ci.nsMsgFolderFlags.SentMail);
+  folderParentOut.createSubfolder("Child1", null);
+  folderChild1 = folderParentOut.getChildNamed("Child1");
+  folderParentOut.createSubfolder("Child2", null);
+  folderChild2 = folderParentOut.getChildNamed("Child2");
 
   await be_in_folder(folderSource);
 
   // reset!
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
 
   // permute!
   const conExtra = [...INBOX_DEFAULTS];
@@ -860,12 +913,12 @@ add_task(async function test_apply_to_folder_no_children_swapped() {
   assert_visible_columns(conExtra);
 
   // Apply to the one dude.
-  await _apply_to_folder_common(false, folderParent);
+  await _apply_to_folder_common(false, folderParentOut);
 
   // Make sure it copied to the parent.
   const conExtraSwapped = [...SENT_DEFAULTS];
   conExtraSwapped[5] = useCorrespondent ? "recipientCol" : "correspondentCol";
-  await be_in_folder(folderParent);
+  await be_in_folder(folderParentOut);
   assert_visible_columns(conExtraSwapped);
 
   // But not the children.
@@ -886,7 +939,7 @@ add_task(async function test_apply_to_folder_and_children_swapped() {
   await be_in_folder(folderSource);
 
   // reset order!
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
 
   // permute!
   const conExtra = [...INBOX_DEFAULTS];
@@ -902,12 +955,12 @@ add_task(async function test_apply_to_folder_and_children_swapped() {
   assert_visible_columns(conExtra);
 
   // Apply to the dude and his offspring.
-  await _apply_to_folder_common(true, folderParent);
+  await _apply_to_folder_common(true, folderParentOut);
 
   // Make sure it copied to the parent and his children.
   const conExtraSwapped = [...SENT_DEFAULTS];
   conExtraSwapped[5] = useCorrespondent ? "recipientCol" : "correspondentCol";
-  await be_in_folder(folderParent);
+  await be_in_folder(folderParentOut);
   assert_visible_columns(conExtraSwapped);
   await be_in_folder(folderChild1);
   assert_visible_columns(conExtraSwapped);
@@ -926,7 +979,7 @@ add_task(async function test_apply_to_root_folder_and_children() {
   await be_in_folder(folderSource);
 
   // Reset!
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
   const cols = get_visible_threadtree_columns();
 
   // Permute!
@@ -1039,7 +1092,7 @@ add_task(async function test_reset_columns_gloda_collection() {
   assert_visible_columns(glodaColumns);
 
   // reset order!
-  await invoke_column_picker_option([{ label: "Restore column order" }]);
+  await invoke_column_picker_option([{ label: "Restore default columns" }]);
 
   assert_visible_columns(GLODA_DEFAULTS);
 
@@ -1113,4 +1166,5 @@ add_task(async function test_double_click_column_picker() {
     currentTabInfo,
     "No message was opened in a tab"
   );
+  doubleClickFolder.deleteSelf(null);
 });

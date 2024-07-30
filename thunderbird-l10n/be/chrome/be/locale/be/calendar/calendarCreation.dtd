@@ -6,7 +6,7 @@
 <!ENTITY wizard.label             "Стварыць новы каляндар" >
 <!ENTITY wizard.description       "Размясціце ваш каляндар" >
 
-<!ENTITY initialpage.description    "Вы можаце трымаць ваш каляндар на вашым камп'ютары або на серверы, каб мець да яго аддалены доступ ці падзяліцца ім са сваімі сябрамі або калегамі." >
+<!ENTITY initialpage.description    "Вы можаце захоўваць новы каляндар на вашым камп'ютары або на серверы, каб мець да яго аддалены доступ ці падзяліцца ім са сваімі сябрамі або калегамі." >
 <!ENTITY initialpage.computer.label  "На камп'ютары">
 <!ENTITY initialpage.network.label  "У сетцы">
 
@@ -26,27 +26,27 @@
 <!ENTITY sourcetabs.other.label  "Іншае">
 
 <!ENTITY buttons.create.label "Стварыць каляндар">
+<!ENTITY buttons.create.accesskey "С">
 
 <!ENTITY buttons.find.label "Знайсці календары">
+<!ENTITY buttons.find.accesskey "З">
 
 <!ENTITY buttons.back.label "Назад">
+<!ENTITY buttons.back.accesskey "Н">
 
 <!ENTITY buttons.subscribe.label "Падпісацца">
+<!ENTITY buttons.subscribe.accesskey "П">
 
 <!ENTITY calendartype.label "Тып календара:">
-<!ENTITY location.label "Размяшчэнне:">
+<!ENTITY location.label "Адрас:">
 <!ENTITY location.placeholder "URL або імя хоста сервера календара">
 
-<!ENTITY network.nocredentials.label "Для гэтага размяшчэння не патрабуюцца ўліковыя даныя">
+<!ENTITY network.nocredentials.label "Для гэтага адраса не патрабуюцца ўліковыя даныя">
 <!ENTITY network.loading.description "Калі ласка, дачакайцеся, пакуль знойдуцца вашы календары.">
-<!ENTITY network.notfound.description "Не атрымалася знайсці календары ў гэтым размяшчэнні. Калі ласка, праверце свае налады.">
+<!ENTITY network.notfound.description "Не атрымалася знайсці календары па гэтым адрасе. Калі ласка, праверце свае налады.">
 <!ENTITY network.authfail.description "Уліковыя даныя, якія вы ўвялі, не былі прыняты. Калі ласка, праверце вашы налады.">
 
 <!ENTITY network.subscribe.single.description "Калі ласка, выберыце календары, на якія жадаеце падпісацца.">
+<!ENTITY network.subscribe.multiple.description "Па гэтым адрасе даступныя календары некалькіх тыпаў. Калі ласка, выберыце тып календара, а потом пазначце календары, на якія вы жадаеце падпісацца.">
 
 <!ENTITY custompage.longdescription   "You can give your calendar a nickname and colorize the events from this calendar." >
-<!ENTITY buttons.create.accesskey "r">
-<!ENTITY buttons.find.accesskey "F">
-<!ENTITY buttons.back.accesskey "B">
-<!ENTITY buttons.subscribe.accesskey "S">
-<!ENTITY network.subscribe.multiple.description "Multiple calendar types are available for this location. Please select the calendar type, then mark the calendars you would like to subscribe to.">

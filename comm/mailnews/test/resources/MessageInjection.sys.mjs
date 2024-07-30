@@ -302,7 +302,7 @@ export class MessageInjection {
       // Circumvent this scoping.
       const mis = this._mis;
       const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener({
-        OnStopRunningUrl: (url, exitCode) => {
+        OnStopRunningUrl: () => {
           // get the newly created nsIMsgFolder folder
           const msgFolder = mis.rootFolder.getChildNamed(folderName);
 
@@ -357,13 +357,15 @@ export class MessageInjection {
         MessageInjection.get_nsIMsgFolder(source),
         MessageInjection.get_nsIMsgFolder(target),
         true,
+        /** @implements {nsIMsgCopyServiceListener} */
         {
-          /* nsIMsgCopyServiceListener implementation */
-          OnStartCopy() {},
-          OnProgress(progress, progressMax) {},
-          SetMessageKey(key) {},
-          SetMessageId(messageId) {},
-          OnStopCopy(status) {
+          onStartCopy() {},
+          onProgress() {},
+          setMessageKey() {},
+          getMessageId() {
+            return null;
+          },
+          onStopCopy(status) {
             if (Components.isSuccessCode(status)) {
               resolve();
             } else {
@@ -962,7 +964,7 @@ export class MessageInjection {
   get messageGenerator() {
     if (this.msgGen === undefined) {
       throw new Error(
-        "MessageInjection.jsm needs a MessageGenerator for new messages. " +
+        "MessageInjection.sys.mjs needs a MessageGenerator for new messages. " +
           "The MessageGenerator helps you with threaded messages. If you use " +
           "two different MessageGenerators the behaviour with threads are complicated."
       );

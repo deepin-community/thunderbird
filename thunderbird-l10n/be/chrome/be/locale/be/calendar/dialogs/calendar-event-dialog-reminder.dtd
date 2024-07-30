@@ -3,9 +3,11 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY reminder.add.label                                "Дадаць">
+<!ENTITY reminder.add.accesskey                            "Д">
 <!ENTITY reminder.remove.label                             "Выдаліць">
+<!ENTITY reminder.remove.accesskey                         "В">
 
-<!ENTITY reminder.action.label                             "Выберыце дзеянне для напаміну">
+<!ENTITY reminder.action.label                             "Выберыце дзеянне для напамінку">
 
 <!ENTITY reminder.action.alert.label                       "Паказаць абвестку">
 <!ENTITY reminder.action.email.label                       "Адправіць электронны ліст">
@@ -15,6 +17,4 @@
 <!ENTITY alarm.units.days                                  "дзён" >
 
 <!ENTITY reminderdialog.title                              "Set up Reminders">
-<!ENTITY reminder.add.accesskey                            "A">
-<!ENTITY reminder.remove.accesskey                         "R">
 <!ENTITY reminder.reminderDetails.label                    "Reminder Details">

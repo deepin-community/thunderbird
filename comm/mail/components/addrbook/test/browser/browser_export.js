@@ -60,6 +60,7 @@ add_setup(async function () {
   registerCleanupFunction(async function () {
     await closeAddressBookWindow();
     await promiseDirectoryRemoved(book.URI);
+    MockFilePicker.cleanup();
   });
 });
 
@@ -94,7 +95,7 @@ async function exportFromBooksContext(directory, extension) {
 async function exportFromCardsContext(directory, extension) {
   const exportPromise = promiseExport(directory, extension);
 
-  openDirectory(book);
+  await openDirectory(book);
   // The list is the fourth item, after the contacts.
   await showCardsContext(3, "cardContextExport");
 

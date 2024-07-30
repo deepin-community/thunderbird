@@ -75,9 +75,9 @@
       }
     }
 
-    onError(calendar, errNo, message) {}
+    onError() {}
 
-    onPropertyChanged(calendar, name, value, oldValue) {
+    onPropertyChanged(calendar, name, value) {
       switch (name) {
         case "disabled":
           if (value) {
@@ -106,7 +106,7 @@
       this.tree.onCalendarRemoved(calendar);
     }
 
-    onDefaultCalendarChanged(newDefaultCalendar) {}
+    onDefaultCalendarChanged() {}
 
     // End calICompositeObserver Methods
   }
@@ -226,11 +226,11 @@
         }
       });
 
-      this.addEventListener("focus", event => {
+      this.addEventListener("focus", () => {
         this.updateFocus();
       });
 
-      this.addEventListener("blur", event => {
+      this.addEventListener("blur", () => {
         this.updateFocus();
       });
 
@@ -373,9 +373,9 @@
      * state of the columns across restarts. Used with `persistTaskTreeColumnState` function.
      */
     restoreColumnState() {
-      const visibleColumns = this.getAttribute("visible-columns").split(" ");
-      const ordinals = this.getAttribute("ordinals").split(" ");
-      const widths = this.getAttribute("widths").split(" ");
+      const visibleColumns = this.getAttribute("visible-columns")?.split(" ") || [];
+      const ordinals = this.getAttribute("ordinals")?.split(" ") || [];
+      const widths = this.getAttribute("widths")?.split(" ") || [];
       const sorted = this.getAttribute("sort-active");
       const sortDirection = this.getAttribute("sort-direction") || "ascending";
 
@@ -386,10 +386,10 @@
         } else {
           col.setAttribute("hidden", "true");
         }
-        if (ordinals && ordinals.length > 0) {
+        if (ordinals.length > 0) {
           col.ordinal = ordinals.shift();
         }
-        if (widths && widths.length > 0) {
+        if (widths.length > 0) {
           col.style.width = Number(widths.shift()) + "px";
         }
         if (sorted && sorted == itemProperty) {
@@ -463,7 +463,7 @@
      * Return the task object related to a given event.
      *
      * @param {Event} event - The event.
-     * @returns {object | false} The task object related to the event or false if none found.
+     * @returns {?calITodo} the task object related to the event, if any.
      */
     getTaskFromEvent(event) {
       return this.mTreeView.getItemFromEvent(event);

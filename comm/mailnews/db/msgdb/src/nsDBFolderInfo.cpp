@@ -7,13 +7,7 @@
 #include "nsDBFolderInfo.h"
 #include "nsMsgDatabase.h"
 #include "nsMsgFolderFlags.h"
-#include "nsIPrefService.h"
-#include "nsIPrefBranch.h"
-#include "nsIPrefLocalizedString.h"
-#include "nsIObserver.h"
-#include "nsIObserverService.h"
 #include "nsIMsgDBView.h"
-#include "nsServiceManagerUtils.h"
 #include "nsImapCore.h"
 
 static const char* kDBFolderInfoScope = "ns:msg:db:row:scope:dbfolderinfo:all";
@@ -344,9 +338,6 @@ NS_IMETHODIMP nsDBFolderInfo::ChangeNumUnreadMessages(int32_t delta) {
   m_numUnreadMessages += delta;
   // m_numUnreadMessages can never be set to negative.
   if (m_numUnreadMessages < 0) {
-#ifdef DEBUG_bienvenu1
-    NS_ASSERTION(false, "Hardcoded assertion");
-#endif
     m_numUnreadMessages = 0;
   }
   return SetUint32PropertyWithToken(m_numUnreadMessagesColumnToken,
@@ -357,9 +348,6 @@ NS_IMETHODIMP nsDBFolderInfo::ChangeNumMessages(int32_t delta) {
   m_numMessages += delta;
   // m_numMessages can never be set to negative.
   if (m_numMessages < 0) {
-#ifdef DEBUG_bienvenu
-    NS_ASSERTION(false, "num messages can't be < 0");
-#endif
     m_numMessages = 0;
   }
   return SetUint32PropertyWithToken(m_numMessagesColumnToken, m_numMessages);

@@ -28,14 +28,17 @@ function run_test() {
   );
 }
 
+/** @implements {nsIMsgCopyServiceListener} */
 var copyListener = {
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey(aKey) {
     gHdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
   },
-  SetMessageId(aMessageId) {},
-  OnStopCopy(aStatus) {
+  getMessageId() {
+    return null;
+  },
+  onStopCopy() {
     continue_test();
   },
 };

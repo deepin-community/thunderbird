@@ -3,20 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "msgCore.h"  // precompiled header...
+#include "plstr.h"
 #include "prlog.h"
 
-#include "MailNewsTypes.h"
 #include "nsMsgKeySet.h"
 #include "prprf.h"
 #include "prmem.h"
 #include "nsTArray.h"
-#include "nsMemory.h"
 #include <ctype.h>
-
-#if defined(DEBUG_seth_) || defined(DEBUG_sspitzer_)
-#  define DEBUG_MSGKEYSET 1
-#endif
 
 /* A compressed encoding for sets of article.  This is usually for lines from
    the newsrc, which have article lists like
@@ -184,10 +178,6 @@ nsMsgKeySet* nsMsgKeySet::Create(/*MSG_NewsHost* host*/) {
 }
 
 nsMsgKeySet* nsMsgKeySet::Create(const char* value /* , MSG_NewsHost* host */) {
-#ifdef DEBUG_MSGKEYSET
-  printf("create from %s\n", value);
-#endif
-
   nsMsgKeySet* set = new nsMsgKeySet(value /* , host */);
   if (set && set->m_data == NULL) {
     delete set;
@@ -583,10 +573,6 @@ int nsMsgKeySet::Add(int32_t number) {
   int32_t* tail;
   int32_t* end;
 
-#ifdef DEBUG_MSGKEYSET
-  printf("add %d\n", number);
-#endif
-
   size = m_length;
   head = m_data;
   tail = head;
@@ -675,9 +661,6 @@ int nsMsgKeySet::Remove(int32_t number) {
   int32_t* head;
   int32_t* tail;
   int32_t* end;
-#ifdef DEBUG_MSGKEYSET
-  printf("remove %d\n", number);
-#endif
 
   size = m_length;
   head = m_data;

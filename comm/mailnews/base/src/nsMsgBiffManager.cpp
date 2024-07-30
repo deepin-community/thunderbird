@@ -5,14 +5,12 @@
 
 #include "nsMsgBiffManager.h"
 #include "nsIMsgAccountManager.h"
-#include "nsStatusBarBiffManager.h"
 #include "nsCOMArray.h"
 #include "mozilla/Logging.h"
 #include "nspr.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsIObserverService.h"
-#include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsMsgUtils.h"
 #include "nsITimer.h"
@@ -328,10 +326,6 @@ nsresult nsMsgBiffManager::PerformBiff() {
         SetNextBiffTime(current, currentTime);
         AddBiffEntry(current);
       }
-#ifdef DEBUG_David_Bienvenu
-      else
-        printf("dest account performing biff\n");
-#endif
     } else
       // since we're in biff order, there's no reason to keep checking
       break;

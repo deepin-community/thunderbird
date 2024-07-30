@@ -2,11 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "GlodaMsgSearcher",
-  "resource:///modules/gloda/GlodaMsgSearcher.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  GlodaMsgSearcher: "resource:///modules/gloda/GlodaMsgSearcher.sys.mjs",
+});
 
 var glodaFacetTabType = {
   name: "glodaFacet",
@@ -98,11 +96,11 @@ var glodaFacetTabType = {
 
     this.lastTabId++;
   },
-  closeTab(aTab) {},
-  saveTabState(aTab) {
+  closeTab() {},
+  saveTabState() {
     // nothing to do; we are not multiplexed
   },
-  showTab(aTab) {
+  showTab() {
     // nothing to do; we are not multiplexed
   },
   getBrowser(aTab) {

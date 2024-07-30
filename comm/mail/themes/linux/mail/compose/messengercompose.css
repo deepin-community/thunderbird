@@ -11,7 +11,7 @@
 
 @namespace html url("http://www.w3.org/1999/xhtml");
 
-#mail-menubar:-moz-lwtheme {
+:root[lwtheme] #mail-menubar {
   color: inherit;
 }
 
@@ -19,7 +19,7 @@
   border-bottom: 1px solid var(--chrome-content-separator-color);
 }
 
-#composeToolbar2:not(:-moz-lwtheme) {
+:root:not([lwtheme]) #composeToolbar2 {
   appearance: none;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .address-container {
-  padding: 1px 4px;
+  padding-block: 1px;
 }
 
 .address-label-container {
@@ -121,7 +121,6 @@
 /* ::::: format toolbar ::::: */
 
 #FormatToolbar {
-  appearance: none;
   color: WindowText;
   margin-inline: 3px;
   padding-block: 4px;

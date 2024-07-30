@@ -111,7 +111,7 @@ min-size-none =
 
 font-control-legend = Yazı tipi denetimi
 use-document-fonts-checkbox =
-    .label = İletilerin diğer yazıtiplerini kullanmasına izin ver
+    .label = İletilerin diğer yazı tiplerini kullanmasına izin ver
     .accesskey = a
 use-fixed-width-plain-checkbox =
     .label = Düz metin iletilerde sabit genişlikli yazı tipi kullan
@@ -122,7 +122,7 @@ use-fixed-width-plain-checkbox =
 text-encoding-legend = Metin Kodlaması
 text-encoding-description = E-posta alma ve gönderme için varsayılan metin kodlamasını ayarla
 font-outgoing-email-label =
-    .value = Giden posta:
+    .value = Giden e-posta:
     .accesskey = n
 font-incoming-email-label =
     .value = Gelen posta:

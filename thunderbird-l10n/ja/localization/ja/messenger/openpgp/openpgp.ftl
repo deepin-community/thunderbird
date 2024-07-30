@@ -4,6 +4,37 @@
 
 e2e-intro-description = 暗号化またはデジタル署名されたメッセージを送信するには、OpenPGP あるいは S/MIME のどちらかの暗号化技術を設定する必要があります。
 e2e-intro-description-more = OpenPGP を有効化するためのあなたの個人鍵か、S/MIME を有効化するためのあなたの個人証明書を選択してください。どちらの場合にも、対応する秘密鍵を所有している必要があります。
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = 個人用の S/MIME 証明書を新たに取得するには、証明書署名要求 (CSR) を生成し、それを認証局 (CA) に送って証明書の発行を請求してください。
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = CSR ファイルが保存されたローカルディレクトリーとファイル名を選択し、アルゴリズムと強度を設定するため、次の質問に回答してください。
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = 証明書署名要求 (CSR) の生成
+# A label for a button that proceeds to the next step
+e2e-csr-continue = 次へ
+# A label for a button that goes back one step
+e2e-csr-back = 戻る
+# Do not translate: CSR
+e2e-csr-button =
+    .label = CSR を生成してファイルに保存...
+# Do not translate: CSR
+e2e-csr-select-title = CSR アルゴリズム
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = 新しい S/MIME 証明書の暗号アルゴリズムを RSA (推奨) と ECC のどちらかから選んでください。
+# Do not translate: S/MIME
+e2e-csr-select-strength = 新しい S/MIME 証明書の暗号の強度を指定するか、既定の設定を選んでください (数値が低いほど高速で、高いほど安全です)。
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = 新しい { $type } { $strength } の秘密鍵を { -brand-short-name } の設定内で生成します。この処理には時間がかかるため、一時的に応答がなくなる場合があります。ご不便をおかけしますがしばらくお待ちください。その間に証明書署名要求 (CSR) が { $file } のファイル名で作成されます。
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = メールアドレス ({ $email }) を CSR に含める (推奨)
+# $file A filename
+e2e-csr-success = CSR を { $file } ファイルに保存しました:
+# $file A filename
+e2e-csr-failure = CSR を { $file } ファイルに保存できませんでした
 e2e-signing-description = デジタル署名により、メッセージがあなたにより送信され内容が改変されていないことを受信者が検証できます。暗号化されたメッセージは既定で常に署名されます。
 e2e-sign-message =
     .label = 暗号化されていないメッセージに署名する
@@ -46,7 +77,10 @@ openpgp-key-man-gen-revoke =
     .label = 失効証明書
     .accesskey = R
 openpgp-key-man-ctx-gen-revoke-label =
-    .label = 失効証明書を生成し保存します
+    .label = 失効証明書を生成して保存
+openpgp-key-man-gen-revocation =
+    .label = 失効証明書をファイルに保存
+    .accesskey = C
 openpgp-key-man-file-menu =
     .label = ファイル
     .accesskey = F
@@ -263,7 +297,7 @@ openpgp-key-details-expiry-label =
     .label = 有効期限
 openpgp-key-details-expiry-header = 有効期限
 openpgp-key-details-usage-label =
-    .label = 利用法
+    .label = 用途
 openpgp-key-details-fingerprint-label = フィンガープリント
 openpgp-key-details-legend-secret-missing = (!) マークが付いた鍵は秘密鍵が利用できません。
 openpgp-key-details-sel-action =
@@ -392,6 +426,8 @@ window-locked = メッセージ作成ウィンドウがロックされている�
 
 ## Strings in keyserver.jsm
 
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = 中止されました
 keyserver-error-unknown = 原因不明のエラーが発生しました
 keyserver-error-server-error = 鍵サーバーからエラーが報告されました。
@@ -403,6 +439,8 @@ keyserver-error-unsupported = 鍵サーバーが対応していません。
 
 ## Strings in mimeWkdHandler.jsm
 
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     ご利用のメールプロバイダーが要求を処理し、OpenPGP Web Key Directory にあなたの公開鍵をアップロードしました。
     あなたの公開鍵が Directory 上で公開されていることを確認してください。
@@ -412,6 +450,8 @@ wkd-message-body-process =
 
 ## Strings in persistentCrypto.jsm
 
+## Strings in persistentCrypto.sys.mjs
+
 # Variables:
 # $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
@@ -420,6 +460,8 @@ converter-decrypt-body-failed =
     別のパスフレーズを試しますか？ それともメッセージをスキップしますか？
 
 ## Strings filters.jsm
+
+## Strings filters.sys.mjs
 
 filter-folder-required = 対象のフォルダーを指定してください。
 filter-decrypt-move-warn-experimental =
@@ -437,6 +479,8 @@ filter-warn-key-not-secret =
     ‘{ $desc }’ に対する秘密鍵を持っていない場合、メッセージが復号できなくなります。
 
 ## Strings filtersWrapper.jsm
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = メッセージを恒久的に復号する (Enigmail)
 filter-decrypt-copy-label = 復号したメッセージのコピーを作成する (Enigmail)
@@ -484,6 +528,7 @@ key-man-button-export-pub-key = 公開鍵のみをエクスポート(&P)
 key-man-button-refresh-all = すべての鍵を更新(&R)
 key-man-loading-keys = 鍵を読み込み中です。しばらくお待ちください...
 ascii-armor-file = ASCII 形式 (*.asc)
+text-file = テキストファイル (*.txt)
 no-key-selected = 選択した操作を実行するには、少なくとも 1 つの鍵を選択する必要があります。
 export-to-file = ファイルとして公開鍵をエクスポート
 export-keypair-to-file = ファイルとして秘密鍵と公開鍵をエクスポート
@@ -511,6 +556,11 @@ openpgp-export-secret-fail = <b>選択した秘密鍵のエクスポートに失
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = 鍵 { $userId } (鍵 ID { $keyId }) は失効しています。
 key-ring-pub-key-expired = 鍵 { $userId } (鍵 ID { $keyId }) は有効期限切れです。
 key-ring-no-secret-key = { $userId } (鍵 ID { $keyId }) の秘密鍵が鍵束の中にないため、この鍵を署名に利用することはできません。
@@ -523,12 +573,16 @@ key-ring-enc-sub-keys-expired = 鍵 { $userId } (鍵 ID { $keyId }) のすべて
 
 ## Strings in gnupg-keylist.jsm
 
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = 写真
 user-att-photo = ユーザーの特徴 (JPEG 画像)
 
 ## Strings in key.jsm
 
-already-revoked = この鍵は既に失効しています。
+## Strings in key.sys.mjs
+
+already-revoked = この鍵はすでに失効しています。
 #   $identity (String) - the id and associated user identity of the key being revoked
 revoke-key-question =
     鍵 ‘{ $identity }’ を失効させようとしています。
@@ -539,7 +593,7 @@ revoke-key-not-present =
     この失効証明書に適合する鍵 (0x{ $keyId }) を所有していません！
     鍵を持っていない場合、失効証明書よりも前に公開鍵を鍵サーバーなどからインポートする必要があります！
 #   $keyId (String) - the id of the key being revoked
-revoke-key-already-revoked = 鍵 0x{ $keyId } は既に失効しています。
+revoke-key-already-revoked = 鍵 0x{ $keyId } はすでに失効しています。
 key-man-button-revoke-key = 鍵を失効(&R)
 openpgp-key-revoke-success = 鍵を失効させました。
 after-revoke-info =
@@ -549,6 +603,8 @@ after-revoke-info =
     同じメールアドレスに対する新しい鍵を利用しているのであれば、新しい公開鍵を添付してメッセージを送信することで、失効した古い鍵についての情報も周知されます。
 
 ## Strings in keyRing.jsm & decryption.jsm
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
 
 key-man-button-import = インポート(&I)
 delete-key-title = OpenPGP 鍵を削除
@@ -560,6 +616,8 @@ revoke-key-in-use-description = 処理を進められません！ 失効のた�
 
 ## Strings used in errorHandling.jsm
 
+## Strings used in errorHandling.sys.mjs
+
 # Variables:
 # $keySpec (String) - Email address.
 key-error-key-spec-not-found = メールアドレス ‘{ $keySpec }’ に適合する鍵が鍵束の中にありません。
@@ -570,18 +628,28 @@ key-error-not-accepted-as-personal = ID ‘{ $keySpec }’ の鍵があなたの
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = 選択された機能はオフラインモードでは使用できません。オンラインでもう一度試してください。
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = 指定された検索条件に適合する利用可能な鍵を見つけられませんでした。
 no-update-found = オンラインで見つけた鍵はすでに持っています。
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = エラー - 鍵の展開コマンドに失敗しました
 
 ## Strings used in keyRing.jsm
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = エラー - ユーザーの操作により鍵サーバーからの鍵のインポートが中止されました。
 not-first-block = エラー - 最初の OpenPGP ブロックは公開鍵ではありません。
@@ -594,6 +662,14 @@ no-pgp-block = エラー - 有効な OpenPGP データブロックが見つか�
 confirm-permissive-import = インポートに失敗しました。インポートを試みた鍵は、破損しているか未知の属性が使われています。正常な部分のみのインポートを試みますか？ この場合、インポートが完了しない、あるいは利用できない鍵となる可能性があります。
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = インポートされた一部の秘密鍵には未サポートの機能が使われています。これらを個人鍵として使用した場合、通信相手がメールや公開鍵を互換性のない形式で送信する可能性があります。これは次のフィンガープリントを持つインポートされた秘密鍵に影響します: {$fingerprints}
+
+help-button = ヘルプ
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = 未知
 key-valid-invalid = 不正
@@ -715,6 +791,8 @@ cannot-send-enc-because-no-own-key = このメッセージを暗号化できま�
 
 ## Strings used in decryption.jsm
 
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -736,9 +814,13 @@ dlg-button-view = 表示(&V)
 
 ## Strings used in encryption.jsm
 
+## Strings used in encryption.sys.mjs
+
 not-required = エラー - 暗号化は必要ありません。
 
 ## Strings used in windows.jsm
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = 写真が利用できません
 # Variables:
@@ -757,6 +839,9 @@ repeat-suffix-singular = 回繰り返されます。
 repeat-suffix-plural = 回繰り返されます。
 no-repeat = この警告は繰り返されません。
 dlg-keep-setting = 設定を保存し、次回から確認しない
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &OK
 dlg-button-close = 閉じる(&C)
 dlg-button-cancel = キャンセル(&C)
@@ -767,6 +852,8 @@ enig-alert = OpenPGP 警告
 enig-info = OpenPGP 情報
 
 ## Strings used in persistentCrypto.jsm
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = 再試行(&R)
 dlg-button-skip = スキップ(&S)

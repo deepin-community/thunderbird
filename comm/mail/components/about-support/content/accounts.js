@@ -6,8 +6,8 @@
 
 "use strict";
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 // Platform-specific includes
@@ -72,7 +72,8 @@ var AboutSupport = {
 
     for (const identity of aAccount.identities) {
       const isDefault = identity == defaultIdentity;
-      const smtpServer = MailServices.smtp.getServerByIdentity(identity);
+      const smtpServer =
+        MailServices.outgoingServer.getServerByIdentity(identity);
       if (!smtpServer) {
         continue;
       }
@@ -95,20 +96,32 @@ var AboutSupport = {
     const accountDetails = [];
 
     for (const account of MailServices.accounts.accounts) {
-      const server = account.incomingServer;
-      accountDetails.push({
-        key: account.key,
-        name: server.prettyName,
-        hostDetails:
-          "(" +
-          server.type +
-          ") " +
-          server.hostName +
-          (server.port != -1 ? ":" + server.port : ""),
-        socketType: server.socketType,
-        authMethod: server.authMethod,
-        smtpServers: this._getSMTPDetails(account),
-      });
+      try {
+        const server = account.incomingServer;
+        accountDetails.push({
+          key: account.key,
+          name: server.prettyName,
+          hostDetails:
+            "(" +
+            server.type +
+            ") " +
+            server.hostName +
+            (server.port != -1 ? ":" + server.port : ""),
+          socketType: server.socketType,
+          authMethod: server.authMethod,
+          smtpServers: this._getSMTPDetails(account),
+        });
+      } catch (error) {
+        // Populate placeholder data.
+        accountDetails.push({
+          key: account.key,
+          name: error.message,
+          hostDetails: "",
+          sokectType: "",
+          authMethod: "",
+          smtpServers: [],
+        });
+      }
     }
 
     function idCompare(accountA, accountB) {

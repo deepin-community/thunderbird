@@ -4,8 +4,8 @@
 
 /* eslint-env webextensions */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const TEST_DOCUMENT_URL =
@@ -407,7 +407,7 @@ add_task(async function testBrowserRequestWindow() {
       {
         url: TEST_DOCUMENT_URL,
         cancelled() {},
-        loaded(window, webProgress) {
+        loaded(window) {
           resolve(window);
         },
       }

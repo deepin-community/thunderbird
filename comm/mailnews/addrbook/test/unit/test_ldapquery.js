@@ -18,7 +18,7 @@ const { BinaryServer } = ChromeUtils.importESModule(
  * Adaptor class to implement nsILDAPMessageListener with a promise.
  * It should be passed into LDAP functions as a normal listener. The
  * caller can then await the promise attribute.
- * Based on the pattern used in PromiseTestUtils.jsm.
+ * Based on the pattern used in PromiseTestUtils.sys.mjs.
  *
  * This base class just rejects all callbacks. Derived classes should
  * implement the callbacks they need to handle.
@@ -33,13 +33,13 @@ class PromiseListener {
       this._reject = reject;
     });
   }
-  onLDAPMessage(message) {
+  onLDAPMessage() {
     this._reject(new Error("Unexpected onLDAPMessage"));
   }
   onLDAPInit() {
     this._reject(new Error("Unexpected onLDAPInit"));
   }
-  onLDAPError(status, secInfo, location) {
+  onLDAPError(status) {
     this._reject(new Error(`Unexpected onLDAPError (0x${status.toString(16)}`));
   }
 }
@@ -119,7 +119,7 @@ add_task(async function test_basic_query() {
 
   // Initialisation is async.
   const initListener = new PromiseInitListener();
-  conn.init(ldapURL, null, initListener, null, Ci.nsILDAPConnection.VERSION3);
+  conn.init(ldapURL, null, initListener);
   await initListener.promise;
 
   // Perform bind.

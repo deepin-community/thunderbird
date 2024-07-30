@@ -72,7 +72,8 @@ NS_INTERFACE_MAP_BEGIN(nsImapIncomingServer)
 NS_INTERFACE_MAP_END_INHERITING(nsMsgIncomingServer)
 
 nsImapIncomingServer::nsImapIncomingServer()
-    : mLock("nsImapIncomingServer.mLock") {
+    : mLock("nsImapIncomingServer.mLock"),
+      mLogonMonitor("nsImapIncomingServer.mLogonMonitor") {
   m_capability = kCapabilityUndefined;
   mDoingSubscribeDialog = false;
   mDoingLsub = false;
@@ -666,29 +667,6 @@ nsresult nsImapIncomingServer::GetImapConnection(
       if (!badConnection) {
         badConnection = NS_FAILED(connection->CanHandleUrl(
             aImapUrl, &canRunUrlImmediately, &canRunButBusy));
-#ifdef DEBUG_bienvenu
-        nsAutoCString curSelectedFolderName;
-        if (connection)
-          connection->GetSelectedMailboxName(
-              getter_Copies(curSelectedFolderName));
-        // check that no other connection is in the same selected state.
-        if (!curSelectedFolderName.IsEmpty()) {
-          for (uint32_t j = 0; j < cnt; j++) {
-            if (j != i) {
-              nsCOMPtr<nsIImapProtocol> otherConnection =
-                  do_QueryElementAt(m_connectionCache, j);
-              if (otherConnection) {
-                nsAutoCString otherSelectedFolderName;
-                otherConnection->GetSelectedMailboxName(
-                    getter_Copies(otherSelectedFolderName));
-                NS_ASSERTION(
-                    !curSelectedFolderName.Equals(otherSelectedFolderName),
-                    "two connections selected on same folder");
-              }
-            }
-          }
-        }
-#endif  // DEBUG_bienvenu
       }
       if (badConnection) {
         connection = nullptr;
@@ -1464,7 +1442,7 @@ NS_IMETHODIMP nsImapIncomingServer::DiscoveryDone() {
           explicitlyVerify)) ||
         ((NS_SUCCEEDED(currentFolder->GetHasSubFolders(&hasSubFolders)) &&
           hasSubFolders) &&
-         !NoDescendentsAreVerified(currentFolder))) {
+         !NoDescendantsAreVerified(currentFolder))) {
       bool isNamespace;
       currentImapFolder->GetIsNamespace(&isNamespace);
       if (!isNamespace)  // don't list namespaces explicitly
@@ -1533,7 +1511,7 @@ bool nsImapIncomingServer::CheckSpecialFolder(nsCString& folderUri,
   return false;
 }
 
-bool nsImapIncomingServer::NoDescendentsAreVerified(
+bool nsImapIncomingServer::NoDescendantsAreVerified(
     nsIMsgFolder* parentFolder) {
   nsTArray<RefPtr<nsIMsgFolder>> subFolders;
   nsresult rv = parentFolder->GetSubFolders(subFolders);
@@ -1547,7 +1525,7 @@ bool nsImapIncomingServer::NoDescendentsAreVerified(
         if (NS_SUCCEEDED(rv) && childVerified) {
           return false;
         }
-        if (!NoDescendentsAreVerified(child)) {
+        if (!NoDescendantsAreVerified(child)) {
           return false;
         }
       }
@@ -1557,7 +1535,7 @@ bool nsImapIncomingServer::NoDescendentsAreVerified(
   return true;
 }
 
-bool nsImapIncomingServer::AllDescendentsAreNoSelect(
+bool nsImapIncomingServer::AllDescendantsAreNoSelect(
     nsIMsgFolder* parentFolder) {
   nsTArray<RefPtr<nsIMsgFolder>> subFolders;
   nsresult rv = parentFolder->GetSubFolders(subFolders);
@@ -1573,7 +1551,7 @@ bool nsImapIncomingServer::AllDescendentsAreNoSelect(
         if (!isNoSelect) {
           return false;
         }
-        if (!AllDescendentsAreNoSelect(child)) {
+        if (!AllDescendantsAreNoSelect(child)) {
           return false;
         }
       }
@@ -1731,6 +1709,14 @@ NS_IMETHODIMP nsImapIncomingServer::FEAlertFromServer(
   }
 
   return AlertUser(fullMessage, aUrl);
+}
+
+NS_IMETHODIMP nsImapIncomingServer::FEAlertCertError(
+    nsITransportSecurityInfo* securityInfo, nsIMsgMailNewsUrl* url) {
+  nsCOMPtr<nsIMsgMailSession> mailSession =
+      do_GetService("@mozilla.org/messenger/services/session;1");
+  mailSession->AlertCertError(securityInfo, url);
+  return NS_OK;
 }
 
 #define IMAP_MSGS_URL "chrome://messenger/locale/imapMsgs.properties"
@@ -2916,4 +2902,11 @@ nsImapIncomingServer::SetServerDoingLsub(bool aDoingLsub) {
 NS_IMETHODIMP
 nsImapIncomingServer::SetServerUtf8AcceptEnabled(bool enabled) {
   return SetUtf8AcceptEnabled(enabled);
+}
+
+// Run a callback under the protection of the Logon lock.
+NS_IMETHODIMP
+nsImapIncomingServer::RunLogonExclusive(nsIRunnable* callback) {
+  mozilla::MonitorAutoLock lock(mLogonMonitor);
+  return callback->Run();
 }

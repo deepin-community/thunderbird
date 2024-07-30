@@ -7,7 +7,7 @@
  */
 
 // NOTE: This module should not be loaded directly, it is available when
-// including calUtils.jsm under the cal.unifinder namespace.
+// including calUtils.sys.mjs under the cal.unifinder namespace.
 
 export var unifinder = {
   /**
@@ -193,12 +193,9 @@ const sortCompare = (unifinder.sortEntryComparer._sortCompare = {
   /**
    * Catch-all function to compare two unknown values. Will return 0.
    *
-   * @param {*} a - The first thing to compare
-   * @param {*} b - The second thing to compare
-   * @param {number} modifier - Provided for consistency, but unused
    * @returns {number} Will always return 0
    */
-  unknown(a, b, modifier = 1) {
+  unknown() {
     return 0;
   },
 });

@@ -97,6 +97,10 @@ pref("mail.smime.accept_insecure_sha1_message_signatures", false);
 // When sending, encrypt to this additional key. Not available in release channel builds.
 pref("mail.openpgp.debug.extra_encryption_key", "");
 
+// Allow import of problematic OpenPGP keys, if import otherwise fails.
+// Don't enable, unless you know how to manually clean up failures in OpenPGP storage.
+pref("mail.openpgp.allow_permissive_import", false);
+
 // Hide prefs and menu entries from non-advanced users
 pref("temp.openpgp.advancedUser", false);
 
@@ -143,19 +147,12 @@ pref("temp.openpgp.inlineAttachExt", ".pgp");
 // extension to append for inline-signed attachments
 pref("temp.openpgp.inlineSigAttachExt", ".sig");
 
-// debug log directory (if set, also enabled debugging)
-pref("temp.openpgp.logDirectory", "");
-
 // List of key servers to use (comma separated list), ordered by priority.
 // Only the first supported keyserver will be used for uploading keys.
 pref("mail.openpgp.keyserver_list", "vks://keys.openpgp.org, hkps://keys.mailvelope.com");
 
 // keep passphrase for ... minutes
 pref("temp.openpgp.maxIdleMinutes", 5);
-
-// maximum number of parallel decrypt processes that Enigmaik will handle
-// (requests above the threshold are ignored)
-pref("temp.openpgp.maxNumProcesses", 3);
 
 // GnuPG hash algorithm
 // 0: automatic seletion (i.e. let GnuPG choose)

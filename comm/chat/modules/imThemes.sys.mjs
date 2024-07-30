@@ -7,6 +7,11 @@ const lazy = {};
 const ParserUtils = Cc["@mozilla.org/parserutils;1"].getService(
   Ci.nsIParserUtils
 );
+ChromeUtils.defineLazyGetter(
+  lazy,
+  "l10n",
+  () => new Localization(["chat/conversations.ftl"], true)
+);
 
 var kMessagesStylePrefBranch = "messenger.options.messagesStyle.";
 var kThemePref = "theme";
@@ -388,7 +393,7 @@ var footerReplacements = {
       "incoming_icon.png"
     );
   },
-  outgoingIconPath: aConv => "outgoing_icon.png",
+  outgoingIconPath: () => "outgoing_icon.png",
   timeOpened(aConv, aFormat) {
     const date = new Date(aConv.startDate / 1000);
     if (aFormat) {
@@ -399,9 +404,7 @@ var footerReplacements = {
 };
 
 function formatAutoResponce(aTxt) {
-  return Services.strings
-    .createBundle("chrome://chat/locale/conversations.properties")
-    .formatStringFromName("autoReply", [aTxt]);
+  return lazy.l10n.formatValueSync("auto-reply", { message: aTxt });
 }
 
 var statusMessageReplacements = {
@@ -493,18 +496,18 @@ var messageReplacements = {
   sender: aMsg => formatSender(aMsg.alias || aMsg.who, aMsg.isEncrypted),
   senderColor: aMsg => aMsg.color,
   senderStatusIcon: aMsg => getStatusIconFromBuddy(getBuddyFromMessage(aMsg)),
-  messageDirection: aMsg => "ltr",
+  messageDirection: () => "ltr",
   // no theme actually use this, don't bother making sure this is the real
   // serverside alias
   senderDisplayName: aMsg =>
     formatSender(aMsg.alias || aMsg.who, aMsg.isEncrypted),
   service: aMsg => aMsg.conversation.account.protocol.name,
-  textbackgroundcolor: (aMsg, aFormat) => "transparent", // FIXME?
+  textbackgroundcolor: () => "transparent", // FIXME?
   __proto__: statusMessageReplacements,
 };
 
 var statusReplacements = {
-  status: aMsg => "", // FIXME
+  status: () => "", // FIXME
   statusIcon(aMsg) {
     const conv = aMsg.conversation;
     let buddy = null;
@@ -858,15 +861,9 @@ export function initHTMLDocument(aConv, aTheme, aDoc) {
 
 /* Selection stuff */
 function getEllipsis() {
-  let ellipsis = "[\u2026]";
-
-  try {
-    ellipsis = Services.prefs.getComplexValue(
-      "messenger.conversations.selections.ellipsis",
-      Ci.nsIPrefLocalizedString
-    ).data;
-  } catch (e) {}
-  return ellipsis;
+  return lazy.l10n.formatValueSync(
+    "messenger-conversations-selections-ellipsis"
+  );
 }
 
 function _serializeDOMObject(aDocument, aInitFunction) {
@@ -1152,35 +1149,21 @@ SelectedMessage.prototype = {
     }
 
     // then get the suitable replacements and templates for this message
-    const getLocalizedPrefWithDefault = function (aName, aDefault) {
-      try {
-        const prefBranch = Services.prefs.getBranch(
-          "messenger.conversations.selections."
-        );
-        return prefBranch.getComplexValue(aName, Ci.nsIPrefLocalizedString)
-          .data;
-      } catch (e) {
-        return aDefault;
-      }
-    };
     let html, replacements;
     if (msg.system) {
       replacements = statusReplacements;
-      html = getLocalizedPrefWithDefault(
-        "systemMessagesTemplate",
-        "%time% - %message%"
+      html = lazy.l10n.formatValueSync(
+        "messenger-conversations-selections-system-messages-template"
       );
     } else {
       replacements = messageReplacements;
       if (msg.action) {
-        html = getLocalizedPrefWithDefault(
-          "actionMessagesTemplate",
-          "%time% * %sender% %message%"
+        html = lazy.l10n.formatValueSync(
+          "messenger-conversations-selections-action-messages-template"
         );
       } else {
-        html = getLocalizedPrefWithDefault(
-          "contentMessagesTemplate",
-          "%time% - %sender%: %message%"
+        html = lazy.l10n.formatValueSync(
+          "messenger-conversations-selections-content-messages-template"
         );
       }
     }
@@ -1190,7 +1173,7 @@ SelectedMessage.prototype = {
     // have to change the content of msg.message and revert it
     // afterwards.
     replacements = {
-      message: aMsg => text,
+      message: () => text,
       sender: aMsg => aMsg.alias || aMsg.who,
       __proto__: replacements,
     };

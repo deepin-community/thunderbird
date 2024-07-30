@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
+
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
@@ -78,6 +77,11 @@ MessageArchiver.canArchive = function (messages, isSingleFolder) {
 // only allow one active archiver.
 let gIsArchiving = false;
 
+/**
+ * @implements {nsIUrlListener}
+ * @implements {nsIMsgCopyServiceListener}
+ * @implements {nsIMsgOperationListener}
+ */
 MessageArchiver.prototype = {
   archiveMessages(aMsgHdrs) {
     if (!aMsgHdrs.length) {
@@ -102,6 +106,7 @@ MessageArchiver.prototype = {
       let archiveFolderURI;
       let archiveGranularity;
       let archiveKeepFolderStructure;
+      let archiveRecreateInbox;
 
       const [identity] = lazy.MailUtils.getIdentityForHeader(msgHdr);
       if (!identity || msgHdr.folder.server.type == "rss") {
@@ -122,6 +127,9 @@ MessageArchiver.prototype = {
         archiveKeepFolderStructure = Services.prefs.getBoolPref(
           "mail.identity.default.archive_keep_folder_structure"
         );
+        archiveRecreateInbox = Services.prefs.getBoolPref(
+          "mail.identity.default.archive_recreate_inbox"
+        );
       } else {
         if (!identity.archiveEnabled) {
           continue;
@@ -130,6 +138,7 @@ MessageArchiver.prototype = {
         archiveFolderURI = identity.archiveFolder;
         archiveGranularity = identity.archiveGranularity;
         archiveKeepFolderStructure = identity.archiveKeepFolderStructure;
+        archiveRecreateInbox = identity.archiveRecreateInbox;
       }
 
       let copyBatchKey = msgHdr.folder.URI;
@@ -152,6 +161,7 @@ MessageArchiver.prototype = {
           archiveFolderURI,
           granularity: archiveGranularity,
           keepFolderStructure: archiveKeepFolderStructure,
+          recreateInbox: archiveRecreateInbox,
           yearFolderName: msgYear,
           monthFolderName,
           messages: [],
@@ -293,7 +303,10 @@ MessageArchiver.prototype = {
       const rootFolder = srcFolder.server.rootFolder;
       const inboxFolder = lazy.MailUtils.getInboxFolder(srcFolder.server);
       let folder = srcFolder;
-      while (folder != rootFolder && folder != inboxFolder) {
+      while (
+        folder != rootFolder &&
+        (folder != inboxFolder || batch.recreateInbox)
+      ) {
         folderNames.unshift(folder.name);
         folder = folder.parent;
       }
@@ -329,13 +342,13 @@ MessageArchiver.prototype = {
         this.msgWindow,
         true
       );
-      return; // continues with OnStopCopy
+      return; // continues with onStopCopy
     }
     this.processNextBatch(); // next batch
   },
 
   // @implements {nsIUrlListener}
-  OnStartRunningUrl(url) {},
+  OnStartRunningUrl() {},
   OnStopRunningUrl(url, exitCode) {
     // this will always be a create folder url, afaik.
     if (Components.isSuccessCode(exitCode)) {
@@ -348,13 +361,15 @@ MessageArchiver.prototype = {
   },
 
   // also implements nsIMsgCopyServiceListener, but we only care
-  // about the OnStopCopy
+  // about the onStopCopy
   // @implements {nsIMsgCopyServiceListener}
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {},
-  GetMessageId() {},
-  OnStopCopy(aStatus) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey() {},
+  getMessageId() {
+    return null;
+  },
+  onStopCopy(aStatus) {
     if (Components.isSuccessCode(aStatus)) {
       this.processNextBatch();
     } else {

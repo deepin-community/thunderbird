@@ -6,18 +6,17 @@
 <!ENTITY lastPickedColor.label "Апошні выбраны колер">
 <!ENTITY lastPickedColor.accessKey "А">
 <!ENTITY chooseColor1.label "Выберыце колер:">
-<!ENTITY setColorExample.label "(напрыклад: &quot;#0000ff&quot; або &quot;blue&quot;):">
-<!ENTITY default.label "Змоўчны">
-<!ENTITY default.accessKey "З">
+<!ENTITY chooseColor2.label "Увядзіце HTML-код або HTML-імя колеру">
+<!ENTITY chooseColor2.accessKey "У">
+<!ENTITY setColorExample.label "(напрыклад, «#0000ff» або «blue»):">
+<!ENTITY default.label "Прадвызначаны">
+<!ENTITY default.accessKey "П">
 <!ENTITY palette.label "Палітра:">
 <!ENTITY standardPalette.label "Стандартная">
-<!ENTITY webPalette.label "Усе сеціўныя колеры">
+<!ENTITY webPalette.label "Усе вэб-колеры">
 <!ENTITY background.label "Фон для:">
 <!ENTITY background.accessKey "Ф">
-<!ENTITY table.label "Табліца">
+<!ENTITY table.label "Табліцы">
 <!ENTITY table.accessKey "Т">
-<!ENTITY cell.label "Ячэйка(і)">
+<!ENTITY cell.label "Ячэек">
 <!ENTITY cell.accessKey "Я">
-
-<!ENTITY chooseColor2.label "Enter an HTML color string">
-<!ENTITY chooseColor2.accessKey "H">

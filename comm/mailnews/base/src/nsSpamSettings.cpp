@@ -22,7 +22,6 @@
 #include "mozilla/mailnews/MimeHeaderParser.h"
 #include "nsMailDirServiceDefs.h"
 #include "nsDirectoryServiceUtils.h"
-#include "nsDirectoryServiceDefs.h"
 #include "nsISimpleEnumerator.h"
 #include "nsIAbCard.h"
 #include "nsIAbManager.h"
@@ -565,8 +564,8 @@ NS_IMETHODIMP nsSpamSettings::GetServerFilterFile(nsIFile** aFile) {
           break;
         }
       }  // if file
-    }    // until we find the location of mServerFilterName
-  }      // if we haven't already stored mServerFilterFile
+    }  // until we find the location of mServerFilterName
+  }  // if we haven't already stored mServerFilterFile
 
   NS_IF_ADDREF(*aFile = mServerFilterFile);
   return NS_OK;
@@ -634,7 +633,7 @@ NS_IMETHODIMP nsSpamSettings::LogJunkHit(nsIMsgDBHdr* aMsgHdr,
 
   if (aMoveMessage) {
     nsCString msgId;
-    aMsgHdr->GetMessageId(getter_Copies(msgId));
+    aMsgHdr->GetMessageId(msgId);
 
     nsCString junkFolderURI;
     rv = GetSpamFolderURI(junkFolderURI);
@@ -748,7 +747,7 @@ NS_IMETHODIMP nsSpamSettings::CheckWhiteList(nsIMsgDBHdr* aMsgHdr,
   // do per-message processing
 
   nsCString author;
-  aMsgHdr->GetAuthor(getter_Copies(author));
+  aMsgHdr->GetAuthor(author);
 
   nsAutoCString authorEmailAddress;
   ExtractEmail(EncodedHeader(author), authorEmailAddress);

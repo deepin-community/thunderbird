@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* This file looks to Myk Melez <myk@mozilla.org>'s Mozilla Labs snowl
- * project's (https://hg.mozilla.org/labs/snowl/) modules/GlodaDatastore.jsm
+ * project's (https://hg.mozilla.org/labs/snowl/) modules/GlodaDatastore.sys.mjs
  * for inspiration and idioms (and also a name :).
  */
 
@@ -43,7 +43,7 @@ function PostCommitHandler(aCallbacks) {
 }
 
 PostCommitHandler.prototype = {
-  handleResult(aResultSet) {},
+  handleResult() {},
 
   handleError(aError) {
     PCH_LOG.error("database error:" + aError);
@@ -299,7 +299,7 @@ QueryFromQueryCallback.prototype = {
     );
   },
 
-  handleCompletion(aReason) {
+  handleCompletion() {
     try {
       try {
         this.statement.finalize();
@@ -480,7 +480,7 @@ CompactionBlockFetcherHandler.prototype = {
         aError.message
     );
   },
-  handleCompletion(aReason) {
+  handleCompletion() {
     GlodaDatastore._asyncCompleted();
     this.callback(this.idsAndMessageKeys);
   },
@@ -510,7 +510,7 @@ SingletonResultValueHandler.prototype = {
         aError.message
     );
   },
-  handleCompletion(aReason) {
+  handleCompletion() {
     GlodaDatastore._asyncCompleted();
     this.callback(this.result);
   },
@@ -602,7 +602,7 @@ ExplainedStatementProcessor.prototype = {
   handleError(aError) {
     console.error("Unexpected error in EXPLAIN handler: " + aError);
   },
-  handleCompletion(aReason) {
+  handleCompletion() {
     const obj = {
       sql: this._sqlStack.shift(),
       operations: this._curOps,
@@ -613,7 +613,7 @@ ExplainedStatementProcessor.prototype = {
     this._curOps = [];
   },
 
-  observe(aSubject, aTopic, aData) {
+  observe(aSubject, aTopic) {
     if (aTopic == "quit-application") {
       this.shutdown();
     }
@@ -650,11 +650,11 @@ var DB_SCHEMA_ACCEPT_LEAVE_LOW = 31,
  *
  * === Data Model Interaction / Dependencies
  *
- * Dependent on and assumes limited knowledge of the GlodaDataModel.jsm
- *  implementations.  GlodaDataModel.jsm actually has an implicit dependency on
+ * Dependent on and assumes limited knowledge of the GlodaDataModel.sys.mjs
+ *  implementations.  GlodaDataModel.sys.mjs actually has an implicit dependency on
  *  our implementation, reaching back into the datastore via the _datastore
  *  attribute which we pass into every instance we create.
- * We pass a reference to ourself as we create the GlodaDataModel.jsm instances (and
+ * We pass a reference to ourself as we create the GlodaDataModel.sys.mjs instances (and
  *  they store it as _datastore) because of a half-implemented attempt to make
  *  it possible to live in a world where we have multiple datastores.  This
  *  would be desirable in the cases where we are dealing with multiple SQLite
@@ -669,7 +669,7 @@ var DB_SCHEMA_ACCEPT_LEAVE_LOW = 31,
  *
  * === Object Identity / Caching
  *
- * The issue of object identity is handled by integration with the Collection.jsm
+ * The issue of object identity is handled by integration with the Collection.sys.mjs
  *  provided GlodaCollectionManager.  By "Object Identity", I mean that we only
  *  should ever have one object instance alive at a time that corresponds to
  *  an underlying database row in the database.  Where possible we avoid
@@ -723,7 +723,7 @@ var DB_SCHEMA_ACCEPT_LEAVE_LOW = 31,
  *  such an event from the indexing/attribute-providing process, or poll the
  *  states of attributes to accomplish this, but that is not desirable.)  This
  *  needs to be addressed, and may be best addressed at layers above
- *  GlodaDatastore.jsm.
+ *  GlodaDatastore.sys.mjs.
  *
  * @namespace
  */
@@ -890,7 +890,7 @@ export var GlodaDatastore = {
         },
 
         // note: if reordering the columns, you need to change this file's
-        //  row-loading logic, GlodaMsgSearcher.jsm's ranking usages and also the
+        //  row-loading logic, GlodaMsgSearcher.sys.mjs's ranking usages and also the
         //  column saturations in nsGlodaRankerFunction
         fulltextColumns: [
           ["body", "TEXT"],
@@ -1535,7 +1535,7 @@ export var GlodaDatastore = {
    *  is not a time machine!  If we need to blow away the database to get to the
    *  most recent version, then that's the sum total of the migration!
    */
-  _migrate(aDBFile, aDBConnection, aCurVersion, aNewVersion) {
+  _migrate(aDBFile, aDBConnection, aCurVersion) {
     // version 12:
     // - notability column added
     // version 13:

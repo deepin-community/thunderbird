@@ -21,10 +21,10 @@ var {
   make_display_threaded,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 var folder;
@@ -79,6 +79,8 @@ add_task(async function test_ignore_thread() {
 
   // Ignore this thread.
   EventUtils.synthesizeKey("K", { shiftKey: false, accelKey: false });
+  // Ignore command is moved to an animation frame to avoid a sync reflow.
+  await new Promise(resolve => window.requestAnimationFrame(resolve));
 
   // The first msg in the next thread should now be selected.
   const t2root = thread2.getMsgHdr(0);
@@ -115,7 +117,7 @@ add_task(async function test_view_threads_ignored_threads() {
   await select_click_row(0);
   await assert_selected_and_displayed(t2root);
   assert_not_shown(thread1.msgHdrList);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 
 /**
  * Test that Watch Thread makes the thread watched.
@@ -149,4 +151,4 @@ add_task(async function test_watch_thread() {
     undefined,
     "Test ran to completion successfully"
   );
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");

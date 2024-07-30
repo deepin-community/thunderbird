@@ -5,12 +5,9 @@
 const { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-const { l10nHelper } = ChromeUtils.importESModule(
-  "resource:///modules/imXPCOMUtils.sys.mjs"
-);
 const { OTR } = ChromeUtils.importESModule("resource:///modules/OTR.sys.mjs");
 
-window.addEventListener("DOMContentLoaded", event => {
+window.addEventListener("DOMContentLoaded", () => {
   otrAuth.onload();
 });
 

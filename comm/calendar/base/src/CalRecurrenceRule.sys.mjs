@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { ICAL, unwrapSetter, unwrapSingle, wrapGetter } = ChromeUtils.import(
-  "resource:///modules/calendar/Ical.jsm"
-);
+import ICAL from "resource:///modules/calendar/Ical.sys.mjs";
+
 import { cal } from "resource:///modules/calendar/calUtils.sys.mjs";
 
 const lazy = {};
@@ -71,18 +70,19 @@ CalRecurrenceRule.prototype = {
     if (!this.freqSupported()) {
       return null;
     }
-    aStartTime = unwrapSingle(ICAL.Time, aStartTime);
-    aRecId = unwrapSingle(ICAL.Time, aRecId);
-    return wrapGetter(lazy.CalDateTime, this.innerObject.getNextOccurrence(aStartTime, aRecId));
+    aStartTime = aStartTime.wrappedJSObject.innerObject;
+    aRecId = aRecId.wrappedJSObject.innerObject;
+    const val = this.innerObject.getNextOccurrence(aStartTime, aRecId);
+    return val ? new lazy.CalDateTime(val) : null;
   },
 
   getOccurrences(aStartTime, aRangeStart, aRangeEnd, aMaxCount) {
     if (!this.freqSupported()) {
       return [];
     }
-    aStartTime = unwrapSingle(ICAL.Time, aStartTime);
-    aRangeStart = unwrapSingle(ICAL.Time, aRangeStart);
-    aRangeEnd = unwrapSingle(ICAL.Time, aRangeEnd);
+    aStartTime = aStartTime.wrappedJSObject.innerObject;
+    aRangeStart = aRangeStart.wrappedJSObject.innerObject;
+    aRangeEnd = aRangeEnd.wrappedJSObject.innerObject;
 
     if (!aMaxCount && !aRangeEnd && this.count == 0 && this.until == null) {
       throw Components.Exception("", Cr.NS_ERROR_INVALID_ARG);
@@ -147,16 +147,9 @@ CalRecurrenceRule.prototype = {
     prop.setValue(this.innerObject);
     return new lazy.CalIcalProperty(prop);
   },
-  set icalProperty(rawval) {
+  set icalProperty(val) {
     this.ensureMutable();
-    unwrapSetter(
-      ICAL.Property,
-      rawval,
-      function (val) {
-        this.innerObject = val.getFirstValue();
-      },
-      this
-    );
+    this.innerObject = val.wrappedJSObject.innerObject.getFirstValue();
   },
 
   get type() {
@@ -177,7 +170,7 @@ CalRecurrenceRule.prototype = {
 
   get count() {
     if (!this.isByCount) {
-      throw Components.Exception("", Cr.NS_ERROR_FAILURE);
+      throw Components.Exception("Rule is not by count.", Cr.NS_ERROR_FAILURE);
     }
     return this.innerObject.count || -1;
   },
@@ -192,23 +185,13 @@ CalRecurrenceRule.prototype = {
     }
     return null;
   },
-  set untilDate(rawval) {
+  set untilDate(val) {
     this.ensureMutable();
-    unwrapSetter(
-      ICAL.Time,
-      rawval,
-      function (val) {
-        if (
-          val.timezone != ICAL.Timezone.utcTimezone &&
-          val.timezone != ICAL.Timezone.localTimezone
-        ) {
-          val = val.convertToZone(ICAL.Timezone.utcTimezone);
-        }
-
-        this.innerObject.until = val;
-      },
-      this
-    );
+    val = val.wrappedJSObject.innerObject;
+    if (val.timezone != ICAL.Timezone.utcTimezone && val.timezone != ICAL.Timezone.localTimezone) {
+      val = val.convertToZone(ICAL.Timezone.utcTimezone);
+    }
+    this.innerObject.until = val;
   },
 
   get isByCount() {

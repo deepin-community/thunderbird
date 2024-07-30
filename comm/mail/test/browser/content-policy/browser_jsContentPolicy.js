@@ -20,7 +20,7 @@ var {
   select_click_row,
   select_none,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
 var {
@@ -28,7 +28,7 @@ var {
   open_compose_with_forward,
   open_compose_with_reply,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 
 var { MailE10SUtils } = ChromeUtils.importESModule(
@@ -53,7 +53,6 @@ function addToFolder(aSubject, aBody, aFolder) {
   const msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   const source =
-    "From - Sat Nov  1 12:39:54 2008\n" +
     "X-Mozilla-Status: 0001\n" +
     "X-Mozilla-Status2: 00000000\n" +
     "Message-ID: <" +

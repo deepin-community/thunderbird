@@ -9,7 +9,7 @@
 
 var { close_compose_window, open_compose_with_reply, get_compose_body } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+    "resource://testing-common/mail/ComposeHelpers.sys.mjs"
   );
 var {
   be_in_folder,
@@ -18,16 +18,17 @@ var {
   open_message_from_file,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 var folderToStoreMessages;
 
 add_setup(async function () {
   folderToStoreMessages = await create_folder("QuoteTestFolder");
+  registerCleanupFunction(() => folderToStoreMessages.deleteSelf(null));
 });
 
 add_task(async function test_quoteMessage() {
@@ -51,7 +52,6 @@ add_task(async function test_quoteMessage() {
       { label: "QuoteTestFolder" },
     ]
   );
-  await BrowserTestUtils.closeWindow(msgc);
 
   // Select message and click reply.
   await select_click_row(0);
@@ -90,4 +90,5 @@ add_task(async function test_quoteMessage() {
   );
 
   await close_compose_window(cwc);
+  await BrowserTestUtils.closeWindow(msgc);
 });

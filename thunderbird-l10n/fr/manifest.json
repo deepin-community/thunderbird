@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-fr@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Français (French)",
   "description": "Thunderbird Language Pack for Français (fr) – French",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "fr": {
-      "version": "20240423195658",
+      "version": "20240718003001",
       "chrome_resources": {
         "alerts": "chrome/fr/locale/fr/alerts/",
         "autoconfig": "chrome/fr/locale/fr/autoconfig/",
         "branding": "chrome/fr/locale/branding/",
         "calendar": "chrome/fr/locale/fr/calendar/",
-        "chat": "chrome/fr/locale/fr/chat/",
         "communicator": "chrome/fr/locale/fr/communicator/",
         "devtools": "chrome/fr/locale/fr/devtools/client/",
         "devtools-shared": "chrome/fr/locale/fr/devtools/shared/",

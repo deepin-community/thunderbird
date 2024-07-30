@@ -17,6 +17,8 @@
 #include "mozilla/Components.h"
 #include "msgCore.h"
 
+static void ImportMailThread(void* stuff);
+
 // forward decl for proxy methods
 nsresult ProxyGetSubFolders(nsIMsgFolder* aFolder);
 nsresult ProxyGetChildNamed(nsIMsgFolder* aFolder, const nsAString& aName,
@@ -41,8 +43,6 @@ nsresult NS_NewGenericMail(nsIImportGeneric** aImportGeneric) {
 }
 
 nsImportGenericMail::nsImportGenericMail() {
-  m_found = false;
-  m_userVerify = false;
   m_gotLocation = false;
   m_gotDefaultMailboxes = false;
   m_totalSize = 0;
@@ -159,27 +159,6 @@ NS_IMETHODIMP nsImportGenericMail::SetData(const char* dataId,
   return rv;
 }
 
-NS_IMETHODIMP nsImportGenericMail::GetStatus(const char* statusKind,
-                                             int32_t* _retval) {
-  NS_ASSERTION(statusKind != nullptr, "null ptr");
-  NS_ASSERTION(_retval != nullptr, "null ptr");
-  if (!statusKind || !_retval) return NS_ERROR_NULL_POINTER;
-
-  *_retval = 0;
-
-  if (!PL_strcasecmp(statusKind, "isInstalled")) {
-    GetDefaultLocation();
-    *_retval = (int32_t)m_found;
-  }
-
-  if (!PL_strcasecmp(statusKind, "canUserSetLocation")) {
-    GetDefaultLocation();
-    *_retval = (int32_t)m_userVerify;
-  }
-
-  return NS_OK;
-}
-
 void nsImportGenericMail::GetDefaultLocation(void) {
   if (!m_pInterface) return;
 
@@ -188,8 +167,7 @@ void nsImportGenericMail::GetDefaultLocation(void) {
   m_gotLocation = true;
 
   nsCOMPtr<nsIFile> pLoc;
-  m_pInterface->GetDefaultLocation(getter_AddRefs(pLoc), &m_found,
-                                   &m_userVerify);
+  m_pInterface->GetDefaultLocation(getter_AddRefs(pLoc));
   if (!m_pSrcLocation) m_pSrcLocation = pLoc;
 }
 
@@ -324,8 +302,8 @@ NS_IMETHODIMP nsImportGenericMail::BeginImport(nsISupportsString* successLog,
   m_pThreadData->stringBundle = m_stringBundle;
 
   // Previously this was run in a sub-thread, after introducing
-  // SeamonkeyImport.jsm and because JS XPCOM can only run in the main thread,
-  // this has been changed to run in the main thread.
+  // SeamonkeyImport.sys.mjs and because JS XPCOM can only run in the main
+  // thread, this has been changed to run in the main thread.
   ImportMailThread(m_pThreadData);
   *_retval = true;
   return NS_OK;
@@ -744,7 +722,7 @@ bool nsImportGenericMail::CreateFolder(nsIMsgFolder** ppFolder) {
         }
       }
     }  // if localRootFolder
-  }    // if server
+  }  // if server
   IMPORT_LOG0("****** FAILED TO CREATE FOLDER FOR IMPORT\n");
   return false;
 }

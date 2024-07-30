@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { ICAL } = ChromeUtils.import("resource:///modules/calendar/Ical.jsm");
+import ICAL from "resource:///modules/calendar/Ical.sys.mjs";
 
 const lazy = {};
 
@@ -220,14 +220,25 @@ VCardService.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIMsgVCardService"]),
   classID: Components.ID("{e2e0f615-bc5a-4441-a16b-a26e75949376}"),
 
+  /**
+   * Translates a vCard string into a nsIAbCard.
+   *
+   * @param {string} vCard
+   * @returns {nsIAbCard} - A card containing the vCard data, or null if no
+   *   data was given.
+   */
   vCardToAbCard(vCard) {
     return vCard ? VCardUtils.vCardToAbCard(vCard) : null;
   },
-  escapedVCardToAbCard(vCard) {
-    return vCard ? VCardUtils.vCardToAbCard(decodeURIComponent(vCard)) : null;
-  },
-  abCardToEscapedVCard(abCard) {
-    return abCard ? encodeURIComponent(VCardUtils.abCardToVCard(abCard)) : null;
+  /**
+   * Translates a nsIAbCard into a vCard.
+   *
+   * @param {nsIAbCard} abCard
+   * @returns {string} - A vCard representation of `abCard`, or null if
+   *   `abCard` is falsy.
+   */
+  abCardToVCard(abCard) {
+    return abCard ? VCardUtils.abCardToVCard(abCard) : null;
   },
 };
 
@@ -279,7 +290,7 @@ VCardMimeConverter.prototype = {
     }
     propertiesTable += `</table>`;
 
-    // VCardChild.jsm and VCardParent.jsm handle clicking on this link.
+    // VCardChild.sys.mjs and VCardParent.sys.mjs handle clicking on this link.
     return `<html>
       <body>
         <table class="moz-vcard-table">

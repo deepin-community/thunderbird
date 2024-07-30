@@ -6,15 +6,15 @@ import { IMServices } from "resource:///modules/IMServices.sys.mjs";
 import {
   executeSoon,
   ClassInfo,
-  l10nHelper,
 } from "resource:///modules/imXPCOMUtils.sys.mjs";
 
 const lazy = {};
 
-ChromeUtils.defineLazyGetter(lazy, "_", () =>
-  l10nHelper("chrome://chat/locale/contacts.properties")
+ChromeUtils.defineLazyGetter(
+  lazy,
+  "l10n",
+  () => new Localization(["chat/contacts.ftl"], true)
 );
-
 var gDBConnection = null;
 
 function executeAsyncThenFinalize(statement) {
@@ -113,7 +113,7 @@ Object.defineProperty(lazy, "DBConn", {
 
     if (!gDBConnection) {
       gDBConnection = getDBConnection();
-      Services.obs.addObserver(function dbClose(aSubject, aTopic, aData) {
+      Services.obs.addObserver(function dbClose(aSubject, aTopic) {
         Services.obs.removeObserver(dbClose, aTopic);
         if (gDBConnection) {
           gDBConnection.asyncClose();
@@ -138,7 +138,7 @@ class TagsService {
    * @type {imITag}
    */
   get defaultTag() {
-    return this.createTag(lazy._("defaultGroup"));
+    return this.createTag(lazy.l10n.formatValueSync("default-group"));
   }
   /**
    * Creates a new tag or gets an existing tag if one already exists.

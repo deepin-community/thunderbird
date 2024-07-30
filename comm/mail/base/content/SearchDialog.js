@@ -44,7 +44,7 @@ var gSearchStopButton;
 var gSearchOnline = false;
 
 window.addEventListener("load", searchOnLoad);
-window.addEventListener("unload", event => {
+window.addEventListener("unload", () => {
   onSearchStop();
   searchOnUnload();
 });
@@ -136,14 +136,14 @@ var nsSearchResultsController = {
     }
   },
 
-  onEvent(event) {},
+  onEvent() {},
 };
 
-function UpdateMailSearch(caller) {
+function UpdateMailSearch() {
   document.commandDispatcher.updateCommands("mail-search");
 }
 
-function SetAdvancedSearchStatusText(aNumHits) {}
+function SetAdvancedSearchStatusText() {}
 
 /**
  * Subclass the FolderDisplayWidget to deal with UI specific to the search
@@ -258,9 +258,9 @@ function searchOnLoad() {
   // and set up the user's desired sort. This synthetic view is not backed by
   // a db, so secondary sorts and custom columns are not supported here.
   const sortCol = gFolderDisplay.tree.querySelector("[sortDirection]");
-  let sortType, sortOrder;
+  let isSortable, sortOrder;
   if (sortCol) {
-    sortType = Ci.nsMsgViewSortType[gFolderDisplay.COLUMNS_MAP.get(sortCol.id)];
+    isSortable = gFolderDisplay.BUILTIN_SORT_COLUMNS.has(sortCol.id);
     sortOrder =
       sortCol.getAttribute("sortDirection") == "descending"
         ? Ci.nsMsgViewSortOrder.descending
@@ -269,8 +269,8 @@ function searchOnLoad() {
 
   gFolderDisplay.view.openSearchView();
 
-  if (sortType) {
-    gFolderDisplay.view.sort(sortType, sortOrder);
+  if (isSortable) {
+    gFolderDisplay.view.sort(sortCol.id, sortOrder);
   }
 
   if (window.arguments && window.arguments[0]) {
@@ -493,7 +493,6 @@ function GetScopeForFolder(folder) {
   } catch (e) {} // On error, we'll just assume the default mailbox type
 
   let hasBody = folder.getFlag(Ci.nsMsgFolderFlags.Offline);
-  const nsMsgSearchScope = Ci.nsMsgSearchScope;
   switch (localType) {
     case "news": {
       // News has four offline scopes, depending on whether junk and body
@@ -503,18 +502,18 @@ function GetScopeForFolder(folder) {
           "dobayes.mailnews@mozilla.org#junk"
         ) == "true";
       if (hasJunk && hasBody) {
-        return nsMsgSearchScope.localNewsJunkBody;
+        return Ci.nsMsgSearchScope.localNewsJunkBody;
       }
       if (hasJunk) {
         // and no body
-        return nsMsgSearchScope.localNewsJunk;
+        return Ci.nsMsgSearchScope.localNewsJunk;
       }
       if (hasBody) {
         // and no junk
-        return nsMsgSearchScope.localNewsBody;
+        return Ci.nsMsgSearchScope.localNewsBody;
       }
       // We don't have offline message bodies or junk processing.
-      return nsMsgSearchScope.localNews;
+      return Ci.nsMsgSearchScope.localNews;
     }
     case "imap": {
       // Junk is always enabled for imap, so the offline scope only depends on
@@ -532,12 +531,12 @@ function GetScopeForFolder(folder) {
       }
 
       if (!hasBody) {
-        return nsMsgSearchScope.onlineManual;
+        return Ci.nsMsgSearchScope.onlineManual;
       }
     }
     // fall through to default
     default:
-      return nsMsgSearchScope.offlineMail;
+      return Ci.nsMsgSearchScope.offlineMail;
   }
 }
 
@@ -563,6 +562,14 @@ function onSearchButton(event) {
 }
 
 function MsgDeleteSelectedMessages(aCommandType) {
+  if (
+    !MailUtils.confirmDelete(
+      aCommandType == Ci.nsMsgViewCommandType.deleteNoTrash,
+      gDBView
+    )
+  ) {
+    return;
+  }
   gFolderDisplay.hintAboutToDeleteMessages();
   gFolderDisplay.doCommand(aCommandType);
 }

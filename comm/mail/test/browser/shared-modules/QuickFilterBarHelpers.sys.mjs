@@ -6,9 +6,9 @@ import {
   get_about_3pane,
   mc,
   wait_for_all_messages_to_load,
-} from "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs";
+} from "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs";
 
-import * as EventUtils from "resource://testing-common/mozmill/EventUtils.sys.mjs";
+import * as EventUtils from "resource://testing-common/mail/EventUtils.sys.mjs";
 
 import { Assert } from "resource://testing-common/Assert.sys.mjs";
 import { BrowserTestUtils } from "resource://testing-common/BrowserTestUtils.sys.mjs";
@@ -306,13 +306,14 @@ export function assert_text_constraints_checked(...aArgs) {
  *  wait for all messages to load.
  */
 export async function set_filter_text(aText) {
-  // We're not testing the reliability of the textbox widget; just poke our text
-  // in and trigger the command logic.
-  const textbox = about3Pane.document
-    .getElementById("qfb-qs-textbox")
-    .shadowRoot.querySelector("input");
+  const searchBar = about3Pane.document.getElementById("qfb-qs-textbox");
+  const eventPromise = BrowserTestUtils.waitForEvent(searchBar, "autocomplete");
+
+  const textbox = searchBar.shadowRoot.querySelector("input");
   textbox.value = aText;
   textbox.dispatchEvent(new Event("input"));
+
+  await eventPromise;
   await wait_for_all_messages_to_load(mc);
 }
 

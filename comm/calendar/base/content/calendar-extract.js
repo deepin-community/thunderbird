@@ -102,7 +102,7 @@ var calendarExtract = {
           // If we ever got text, we're good. Ignore further chunks.
           content ||= text;
         },
-        onStartRequest(request) {},
+        onStartRequest() {},
         onStopRequest(request, statusCode) {
           if (!Components.isSuccessCode(statusCode)) {
             reject(new Error(statusCode));
@@ -121,7 +121,7 @@ var calendarExtract = {
     const item = isEvent ? new CalEvent() : new CalTodo();
     item.title = message.mime2DecodedSubject;
     item.calendar = getSelectedCalendar();
-    item.setProperty("DESCRIPTION", content);
+    item.descriptionText = content;
     item.setProperty("URL", `mid:${message.messageId}`);
     cal.dtz.setDefaultStartEndHour(item);
     cal.alarms.setDefaultValues(item);

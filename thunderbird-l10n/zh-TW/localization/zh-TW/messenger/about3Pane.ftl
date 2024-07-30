@@ -113,6 +113,8 @@ quick-filter-bar-textbox =
     .placeholder = 過濾這些訊息 <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search =
     .label = 過濾訊息：
+quick-filter-bar-search2 =
+    .label = 篩選訊息
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -498,9 +500,10 @@ apply-current-view-to-folder-with-children-message = 確定要將目前信件匣
 # $total (Number) - Number of messages in thread.
 threadpane-sort-header-unread-count =
     { $unread ->
-       *[other] <span>{ $unread }</span> 未讀
-    }{ " " }{ $total ->
-       *[other] 共 <span>{ $total }</span> 封訊息。
+       *[other]
+            { $total ->
+               *[other] <span>{ $unread }</span> 封未讀訊息，共 <span>{ $total }</span> 封訊息
+            }
     }
 # Variables:
 # $total (Number) - Number of messages in thread.
@@ -510,3 +513,16 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = 訊息選單
+message-list-placeholder-no-messages = 找不到訊息
+message-list-placeholder-multiple-folders = 已選擇多個信件匣
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+           *[other] 將信件匣標示為已讀
+        }
+    .accesskey = k

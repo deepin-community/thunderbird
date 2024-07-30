@@ -9,11 +9,11 @@
 "use strict";
 
 var { select_attachments } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/AttachmentHelpers.sys.mjs"
+  "resource://testing-common/mail/AttachmentHelpers.sys.mjs"
 );
 var { gMockCloudfileManager, MockCloudfileAccount } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/CloudfileHelpers.sys.mjs"
+    "resource://testing-common/mail/CloudfileHelpers.sys.mjs"
   );
 var {
   add_cloud_attachments,
@@ -21,10 +21,10 @@ var {
   close_compose_window,
   open_compose_new_mail,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var { close_popup } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { MockFilePicker } = SpecialPowers;
 
@@ -82,7 +82,7 @@ add_task(async function test_upload_cancel_repeat() {
   // so that we're perpetually uploading...
   let promise;
   let started;
-  provider.uploadFile = function (window, aFile) {
+  provider.uploadFile = function () {
     return new Promise((resolve, reject) => {
       promise = { resolve, reject };
       started = true;
@@ -400,7 +400,7 @@ add_task(async function test_error_conversion() {
   providerB.init("someOtherKey");
 
   let uploadPromise = null;
-  providerB.uploadFile = function (window, aFile) {
+  providerB.uploadFile = function () {
     return new Promise((resolve, reject) => {
       uploadPromise = { resolve, reject };
     });

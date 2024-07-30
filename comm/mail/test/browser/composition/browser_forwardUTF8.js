@@ -10,7 +10,7 @@
 
 var { close_compose_window, get_compose_body, open_compose_with_forward } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+    "resource://testing-common/mail/ComposeHelpers.sys.mjs"
   );
 var {
   assert_selected_and_displayed,
@@ -21,10 +21,10 @@ var {
   press_delete,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 var folderToSendFrom;
@@ -32,6 +32,7 @@ var folderToSendFrom;
 add_setup(async function () {
   requestLongerTimeout(2);
   folderToSendFrom = await create_folder("FolderWithUTF8");
+  registerCleanupFunction(() => folderToSendFrom.deleteSelf(null));
 });
 
 function check_content(window) {
@@ -95,7 +96,6 @@ async function forwardViaFolder(aFilePath) {
       { label: "FolderWithUTF8" },
     ]
   );
-  await BrowserTestUtils.closeWindow(msgc);
 
   const msg = await select_click_row(0);
   await assert_selected_and_displayed(window, msg);
@@ -113,6 +113,7 @@ async function forwardViaFolder(aFilePath) {
   await close_compose_window(fwdWin);
 
   await press_delete(window);
+  await BrowserTestUtils.closeWindow(msgc);
 }
 
 add_task(async function test_utf8_forwarding_from_opened_file() {

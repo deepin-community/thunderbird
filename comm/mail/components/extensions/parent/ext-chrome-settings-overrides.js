@@ -5,8 +5,8 @@
 /* global searchInitialized */
 
 // Copy of browser/components/extensions/parent/ext-chrome-settings-overrides.js
-// minus HomePage.jsm (+ dependent ExtensionControlledPopup.sys.mjs and
-// ExtensionPermissions.jsm usage).
+// minus HomePage.sys.mjs (+ dependent ExtensionControlledPopup.sys.mjs and
+// ExtensionPermissions.sys.mjs usage).
 
 "use strict";
 
@@ -118,7 +118,7 @@ this.chrome_settings_overrides = class extends ExtensionAPI {
     await chrome_settings_overrides.removeEngine(id);
   }
 
-  async onManifestEntry(entryName) {
+  async onManifestEntry() {
     const { extension } = this;
     const { manifest } = extension;
     if (manifest.chrome_settings_overrides.search_provider) {

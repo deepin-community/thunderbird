@@ -11,8 +11,40 @@
 
 @namespace html url("http://www.w3.org/1999/xhtml");
 
+/* stylelint-disable-next-line media-query-no-invalid */
+@media (-moz-bool-pref: "mail.theme.macos.native-theme") {
+  :root:not([lwtheme]) {
+    -moz-default-appearance: -moz-mac-unified-toolbar-window;
+    appearance: auto;
+
+    #compose-toolbox {
+      background: transparent;
+
+      /* This is conceptually a background, but putting this on a
+       * pseudo-element avoids it from suppressing the chrome-content separator
+       * border, etc */
+      &::after {
+        -moz-default-appearance: -moz-window-titlebar;
+        appearance: auto;
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+      }
+
+      :root:not([lwtheme]) & > #composeToolbar2 {
+        background-color: transparent;
+      }
+    }
+
+    #composeContentBox {
+      background-color: -moz-Dialog;
+    }
+  }
+}
+
 #compose-toolbox {
-  &:-moz-lwtheme::after {
+  :root[lwtheme] &::after {
     top: 100%;
     margin-top: -1px;
     border-bottom: 1px solid var(--chrome-content-separator-color);
@@ -27,10 +59,6 @@
   & > toolbar:-moz-window-inactive {
     border-top-color: rgba(255, 255, 255, 0.45);
     border-bottom-color: rgba(0, 0, 0, 0.35);
-  }
-
-  & > toolbar:not(:-moz-lwtheme) {
-    background-color: #cfcfcf;
   }
 }
 
@@ -115,7 +143,7 @@ toolbar[nowindowdrag="true"] {
 }
 
 .address-container {
-  padding: 1px 4px;
+  padding-block: 1px;
 
   & > .address-input {
     padding-block: 5px;

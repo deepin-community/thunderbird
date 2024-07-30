@@ -5,8 +5,8 @@
 const { CardDAVDirectory } = ChromeUtils.importESModule(
   "resource:///modules/CardDAVDirectory.sys.mjs"
 );
-const { CardDAVServer } = ChromeUtils.import(
-  "resource://testing-common/CardDAVServer.jsm"
+const { CardDAVServer } = ChromeUtils.importESModule(
+  "resource://testing-common/CardDAVServer.sys.mjs"
 );
 
 let book;
@@ -60,14 +60,16 @@ add_task(async function testCreateCard() {
   const abWindow = await openAddressBookWindow();
   const abDocument = abWindow.document;
 
-  const createContactButton = abDocument.getElementById("toolbarCreateContact");
+  const createContactButton = abDocument.getElementById(
+    "booksPaneCreateContact"
+  );
   const bookRow = abWindow.booksList.getRowForUID(book.UID);
   const searchInput = abDocument.getElementById("searchInput");
   const editButton = abDocument.getElementById("editButton");
   const saveEditButton = abDocument.getElementById("saveEditButton");
   const deleteButton = abDocument.getElementById("detailsDeleteButton");
 
-  openDirectory(book);
+  await openDirectory(book);
 
   // First, create a new contact.
 
@@ -159,14 +161,16 @@ add_task(async function testCreateCardWithUIDChange() {
   const abWindow = await openAddressBookWindow();
   const abDocument = abWindow.document;
 
-  const createContactButton = abDocument.getElementById("toolbarCreateContact");
+  const createContactButton = abDocument.getElementById(
+    "booksPaneCreateContact"
+  );
   const bookRow = abWindow.booksList.getRowForUID(book.UID);
   const searchInput = abDocument.getElementById("searchInput");
   const editButton = abDocument.getElementById("editButton");
   const saveEditButton = abDocument.getElementById("saveEditButton");
   const deleteButton = abDocument.getElementById("detailsDeleteButton");
 
-  openDirectory(book);
+  await openDirectory(book);
 
   // First, create a new contact.
 
@@ -256,12 +260,14 @@ add_task(async function testModificationUpdatesUI() {
   const saveEditButton = abDocument.getElementById("saveEditButton");
   const cancelEditButton = abDocument.getElementById("cancelEditButton");
 
-  openDirectory(personalBook);
+  await openDirectory(personalBook);
   Assert.equal(cardsList.view.rowCount, 1);
 
   // Display a card.
-
-  EventUtils.synthesizeMouseAtCenter(cardsList.getRowAtIndex(0), {}, abWindow);
+  const row0 = await TestUtils.waitForCondition(() =>
+    cardsList.getRowAtIndex(0)
+  );
+  EventUtils.synthesizeMouseAtCenter(row0, {}, abWindow);
   await TestUtils.waitForCondition(() =>
     BrowserTestUtils.isVisible(detailsPane)
   );

@@ -112,7 +112,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
   constructor(extension, global) {
     super(extension);
     this.global = global;
-    this.tabContext = new this.global.TabContext(target =>
+    this.tabContext = new this.global.TabContext(() =>
       this.getContextData(null)
     );
   }
@@ -152,6 +152,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
       title: options.default_title || extension.name,
       badgeText: "",
       badgeBackgroundColor: null,
+      badgeTextColor: null,
       popup: options.default_popup || "",
       type: options.type,
     };
@@ -248,7 +249,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
    * @param {DOMElement} toolbar - a toolbar node
    * @returns {DOMElement} a node which is to be used as insertion point, or null
    */
-  getNonCustomizableToolbarInsertionPoint(toolbar) {
+  getNonCustomizableToolbarInsertionPoint() {
     return null;
   }
 
@@ -602,12 +603,23 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
         node.setAttribute("disabled", "true");
       }
 
-      let color = tabData.badgeBackgroundColor;
-      if (color) {
-        color = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${
-          color[3] / 255
+      const styles = [];
+      let bgColor = tabData.badgeBackgroundColor;
+      if (bgColor) {
+        bgColor = `rgba(${bgColor[0]}, ${bgColor[1]}, ${bgColor[2]}, ${
+          bgColor[3] / 255
         })`;
-        node.setAttribute("badgeStyle", `background-color: ${color};`);
+        styles.push(`background-color: ${bgColor};`);
+      }
+      let textColor = tabData.badgeTextColor;
+      if (textColor) {
+        textColor = `rgba(${textColor[0]}, ${textColor[1]}, ${textColor[2]}, ${
+          textColor[3] / 255
+        })`;
+        styles.push(`color: ${textColor};`);
+      }
+      if (styles.length) {
+        node.setAttribute("badgeStyle", styles.join(" "));
       } else {
         node.removeAttribute("badgeStyle");
       }
@@ -737,7 +749,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
    *        An object with optional `tabId` or `windowId` properties.
    * @param {string} prop
    *        String property to set. Should should be one of "icon", "title", "label",
-   *        "badgeText", "popup", "badgeBackgroundColor" or "enabled".
+   *        "badgeText", "popup", "badgeBackgroundColor", "badgeTextColor" or "enabled".
    * @param {string} value
    *        Value for prop.
    */
@@ -760,7 +772,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
    *        An object with optional `tabId` or `windowId` properties.
    * @param {string} prop
    *        String property to retrieve. Should should be one of "icon", "title", "label",
-   *        "badgeText", "popup", "badgeBackgroundColor" or "enabled".
+   *        "badgeText", "popup", "badgeBackgroundColor", "badgeTextColor" or "enabled".
    * @returns {string} value
    *          Value of prop.
    */
@@ -769,7 +781,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
   }
 
   PERSISTENT_EVENTS = {
-    onClicked({ context, fire }) {
+    onClicked({ fire }) {
       const { extension } = this;
       const { tabManager, windowManager } = extension;
 
@@ -789,9 +801,8 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
         unregister: () => {
           this.off("click", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
@@ -893,6 +904,23 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
           return action.getProperty(details, "popup");
         },
 
+        async setBadgeTextColor(details) {
+          let color = details.color;
+          if (typeof color == "string") {
+            const col = InspectorUtils.colorToRGBA(color);
+            if (!col) {
+              throw new ExtensionError(`Invalid badge text color: "${color}"`);
+            }
+            color = col && [col.r, col.g, col.b, Math.round(col.a * 255)];
+          }
+          await action.setProperty(details, "badgeTextColor", color);
+        },
+
+        getBadgeTextColor(details) {
+          const color = action.getProperty(details, "badgeTextColor");
+          return color || [255, 255, 255, 255];
+        },
+
         async setBadgeBackgroundColor(details) {
           let color = details.color;
           if (typeof color == "string") {
@@ -907,7 +935,7 @@ export class ToolbarButtonAPI extends ExtensionAPIPersistent {
           await action.setProperty(details, "badgeBackgroundColor", color);
         },
 
-        getBadgeBackgroundColor(details, callback) {
+        getBadgeBackgroundColor(details) {
           const color = action.getProperty(details, "badgeBackgroundColor");
           return color || [0xd9, 0, 0, 255];
         },

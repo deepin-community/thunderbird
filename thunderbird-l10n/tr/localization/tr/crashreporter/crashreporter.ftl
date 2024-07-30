@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 crashreporter-branded-title = { -brand-short-name } Çökme Raporcusu
+crashreporter-apology = Özür dileriz
 crashreporter-crashed-and-restore = { -brand-short-name } bir sorunla karşılaştı ve çöktü. Tarayıcı yeniden başlatıldığında sekmelerinizi ve pencerelerinizi geri yüklemeye çalışacağız.
 crashreporter-plea = Sorunu tanılayıp çözmemize yardımcı olmak için bize bir çökme raporu gönderebilirsiniz.
 crashreporter-information = Bu uygulama, çökmeden sonra sorunu { -vendor-short-name }’ya bildirmek için çalışır. Doğrudan çalıştırılmamalıdır.
@@ -17,7 +18,7 @@ crashreporter-comment-prompt = Yorumunuzu ekleyin (Yorumları herkes görebilir.
 crashreporter-report-info = Bu rapor, uygulamanın çökme anındaki durumuyla ilgili teknik bilgileri de içerir.
 crashreporter-send-report = { -vendor-short-name } çöküşten haberdar edilsin ki sorunu çözebilsinler
 crashreporter-include-url = Bakmakta olduğum sayfanın adresini dahil et.
-crashreporter-submit-status = Raporunuz çıkmadan veya yeniden başlatmadan önce gönderilecek.
+crashreporter-submit-status = Raporunuz uygulamadan çıkılmadan önce veya uygulama yeniden başlatılmadan önce gönderilecek.
 crashreporter-submit-in-progress = Raporunuz gönderiliyor…
 crashreporter-submit-success = Rapor başarıyla gönderildi!
 crashreporter-submit-failure = Raporunuz gönderilirken bir sorun yaşandı.

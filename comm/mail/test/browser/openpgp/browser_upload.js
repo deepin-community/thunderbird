@@ -7,7 +7,7 @@ var { EnigmailKeyServer } = ChromeUtils.importESModule(
 );
 
 const { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
 
 const { HttpServer } = ChromeUtils.importESModule(
@@ -51,7 +51,7 @@ add_task(async function testHKPUpload() {
   };
 
   // Register a path handler on the server to handle HKP key upload.
-  function addKey(request, response) {
+  function addKey(request) {
     // Store the parts of the request we want to check later, i.e. its
     // content-type header and its body.
     latestHKPUploadAttempt = {

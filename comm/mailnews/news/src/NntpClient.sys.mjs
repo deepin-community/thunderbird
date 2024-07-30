@@ -763,8 +763,6 @@ export class NntpClient {
   _actionArticle = () => {
     this._sendCommand(`ARTICLE ${this._articleNumber || this._messageId}`);
     this._nextAction = this._actionArticleResponse;
-    this._newsFolder?.notifyDownloadBegin(this._articleNumber);
-    this._downloadingToFolder = true;
   };
 
   /**
@@ -775,18 +773,15 @@ export class NntpClient {
   _actionArticleResponse = ({ data }) => {
     const lineSeparator = AppConstants.platform == "win" ? "\r\n" : "\n";
 
+    let article = "";
     this._lineReader.read(
       data,
       line => {
-        // NewsFolder will decide whether to save it to the offline storage.
-        this._newsFolder?.notifyDownloadedLine(
-          line.slice(0, -2) + lineSeparator
-        );
+        article += line.slice(0, -2) + lineSeparator;
         this.onData(line);
       },
       () => {
-        this._newsFolder?.notifyDownloadEnd(Cr.NS_OK);
-        this._downloadingToFolder = false;
+        this._newsFolder?.notifyArticleDownloaded(this._articleNumber, article);
         this._actionDone();
       }
     );
@@ -958,19 +953,13 @@ export class NntpClient {
     if (this._done) {
       return;
     }
-    if (this._downloadingToFolder) {
-      // If we're in the middle of sending a message to the folder, make sure
-      // the folder knows we're aborting.
-      this._newsFolder?.notifyDownloadEnd(Cr.NS_ERROR_FAILURE);
-      this._downloadingToFolder = false;
-    }
     this._done = true;
     this._logger.debug(`Done with status=${status}`);
     this.onDone(status);
     this._newsGroup?.cleanUp();
     this._newsFolder?.OnStopRunningUrl?.(this.runningUri, status);
     this.urlListener?.OnStopRunningUrl(this.runningUri, status);
-    this.runningUri.SetUrlState(false, status);
+    this.runningUri?.SetUrlState(false, status);
     this._reset();
     this.onIdle?.();
   };

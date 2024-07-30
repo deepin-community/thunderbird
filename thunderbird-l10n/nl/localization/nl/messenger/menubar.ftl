@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Functies verkennen
     .accesskey = F
+menu-help-get-release-help =
+    .label = Hulp verkrijgen bij { -brand-short-name }
+    .accesskey = H
 menu-help-shortcuts =
     .label = Sneltoetsen
     .accesskey = S
@@ -65,6 +68,9 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } afsluiten
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -130,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = E-mailaccount…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Nieuwsgroepaccount…
     .accesskey = N

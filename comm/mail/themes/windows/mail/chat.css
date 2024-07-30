@@ -23,7 +23,7 @@
   }
 
   @media not (prefers-contrast) {
-    :root:not([lwt-tree],:-moz-lwtheme) & {
+    :root:not([lwt-tree],[lwtheme]) & {
       background-color: var(--layout-background-1);
     }
   }
@@ -71,7 +71,6 @@
 
 .conv-nicklist-header,
 .conv-logs-header-label {
-  appearance: none;
   margin: 0;
   padding-block: 2px;
   border-bottom: 1px solid ThreeDShadow;

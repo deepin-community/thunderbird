@@ -10,11 +10,11 @@
 #include "nsImapMailFolder.h"
 #include "nsMsgFolderFlags.h"
 #include "nsMsgMessageFlags.h"
+#include "nsIDBFolderInfo.h"
 #include "nsIMsgMailNewsUrl.h"
 #include "nsIMsgAccountManager.h"
 #include "nsINntpIncomingServer.h"
 #include "nsDirectoryServiceDefs.h"
-#include "nsISeekableStream.h"
 #include "nsIMsgCopyService.h"
 #include "nsImapProtocol.h"
 #include "nsMsgUtils.h"
@@ -933,9 +933,6 @@ nsImapOfflineSync::ProcessNextOperation() {
     }
   }
   // if we get here, then I *think* we're done. Not sure, though.
-#ifdef DEBUG_bienvenu
-  printf("done with offline imap sync\n");
-#endif
   nsCOMPtr<nsIUrlListener> saveListener = m_listener;
   m_listener = nullptr;
 

@@ -6,10 +6,10 @@
 
 var { be_in_folder, create_folder, make_message_sets_in_folders } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+    "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
   );
 var { promise_new_window } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 var { MockRegistrar } = ChromeUtils.importESModule(
   "resource://testing-common/MockRegistrar.sys.mjs"
@@ -18,8 +18,8 @@ var { MockRegistrar } = ChromeUtils.importESModule(
 var { MailConsts } = ChromeUtils.importESModule(
   "resource:///modules/MailConsts.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 // Our global folder variables...
@@ -155,7 +155,7 @@ registerCleanupFunction(function () {
   MockRegistrar.unregister(gMockAlertsService._classID);
 });
 
-function setupTest(test) {
+function setupTest() {
   gFolder.markAllMessagesRead(null);
   gMockAlertsService._reset();
   gMockAlertsService._doFail = false;
@@ -220,7 +220,7 @@ add_task(async function test_dont_show_newmailalert() {
   setupTest();
 
   let windowOpened = false;
-  function observer(subject, topic, data) {
+  function observer(subject, topic) {
     if (topic == "domwindowopened") {
       windowOpened = true;
     }
@@ -702,8 +702,7 @@ add_task(async function test_click_on_notification() {
  */
 add_task(async function test_revert_to_newmailalert() {
   setupTest();
-  // Set up the gMockAlertsService so that it fails
-  // to send a notification.
+  // Set up the gMockAlertsService so that it fails to send a notification.
   gMockAlertsService._doFail = true;
 
   if (AppConstants.platform == "macosx") {
@@ -711,7 +710,7 @@ add_task(async function test_revert_to_newmailalert() {
     return;
   }
 
-  // We expect the newmailalert.xhtml window...
+  // We expect the newmailalert.xhtml window.
   const alertPromise = promise_new_window("alert:alert");
   await make_gradually_newer_sets_in_folder([gFolder], [{ count: 2 }]);
   const win = await alertPromise;

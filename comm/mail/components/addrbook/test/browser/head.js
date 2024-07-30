@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const personalBook = MailServices.ab.getDirectoryFromId("ldap_2.servers.pab");
@@ -65,14 +65,27 @@ registerCleanupFunction(function () {
   });
 });
 
+async function waitForCardsListReady(list) {
+  Assert.ok(list, "The cardList should exists after opening an address book.");
+  if (list.isReady) {
+    return;
+  }
+  const eventName = "_treerowbufferfillAbListReady";
+  list._rowBufferReadyEvent = new CustomEvent(eventName);
+  await BrowserTestUtils.waitForEvent(list, eventName);
+}
+
 async function openAddressBookWindow() {
-  return new Promise(resolve => {
+  const abWindow = await new Promise(resolve => {
     window.openTab("addressBookTab", {
       onLoad(event, browser) {
         resolve(browser.contentWindow);
       },
     });
   });
+  const cardsList = abWindow.cardsPane.cardsList;
+  await waitForCardsListReady(cardsList);
+  return abWindow;
 }
 
 function closeAddressBookWindow() {
@@ -102,13 +115,16 @@ async function openAllAddressBooks() {
     {},
     abWindow
   );
-  await new Promise(r => abWindow.setTimeout(r));
+  const cardsList = abWindow.cardsPane.cardsList;
+  await waitForCardsListReady(cardsList);
 }
 
-function openDirectory(directory) {
+async function openDirectory(directory) {
   const abWindow = getAddressBookWindow();
   const row = abWindow.booksList.getRowForUID(directory.UID);
   EventUtils.synthesizeMouseAtCenter(row.querySelector("span"), {}, abWindow);
+  const cardsList = abWindow.cardsPane.cardsList;
+  await waitForCardsListReady(cardsList);
 }
 
 function createAddressBook(dirName, type = Ci.nsIAbManager.JS_DIRECTORY_TYPE) {
@@ -122,11 +138,17 @@ async function createAddressBookWithUI(abName) {
   );
 
   const abWindow = getAddressBookWindow();
+  const abDocument = abWindow.document;
+
+  const menu = abDocument.getElementById("booksPaneCreateBookContext");
   EventUtils.synthesizeMouseAtCenter(
-    abWindow.document.getElementById("toolbarCreateBook"),
+    abWindow.document.getElementById("booksPaneCreateBook"),
     {},
     abWindow
   );
+  await BrowserTestUtils.waitForPopupEvent(menu, "shown");
+  menu.activateItem(abDocument.getElementById("booksPaneContextCreateBook"));
+  await BrowserTestUtils.waitForPopupEvent(menu, "hidden");
 
   const abNameDialog = await newAddressBookPromise;
   EventUtils.sendString(abName, abNameDialog);
@@ -166,7 +188,7 @@ function createMailingList(name) {
 }
 
 async function createMailingListWithUI(mlParent, mlName) {
-  openDirectory(mlParent);
+  await openDirectory(mlParent);
 
   const newAddressBookPromise = promiseLoadSubDialog(
     "chrome://messenger/content/addressbook/abMailListDialog.xhtml"
@@ -174,7 +196,7 @@ async function createMailingListWithUI(mlParent, mlName) {
 
   const abWindow = getAddressBookWindow();
   EventUtils.synthesizeMouseAtCenter(
-    abWindow.document.getElementById("toolbarCreateList"),
+    abWindow.document.getElementById("booksPaneCreateList"),
     {},
     abWindow
   );
@@ -197,10 +219,11 @@ async function createMailingListWithUI(mlParent, mlName) {
   return list;
 }
 
-function checkDirectoryDisplayed(directory) {
+async function checkDirectoryDisplayed(directory) {
   const abWindow = getAddressBookWindow();
   const booksList = abWindow.document.getElementById("books");
   const cardsList = abWindow.cardsPane.cardsList;
+  await waitForCardsListReady(cardsList);
 
   if (directory) {
     Assert.equal(
@@ -214,8 +237,8 @@ function checkDirectoryDisplayed(directory) {
   }
 }
 
-function checkCardsListed(...expectedCards) {
-  checkNamesListed(
+async function checkCardsListed(...expectedCards) {
+  await checkNamesListed(
     ...expectedCards.map(card =>
       card.isMailList ? card.dirName : card.displayName
     )
@@ -223,6 +246,7 @@ function checkCardsListed(...expectedCards) {
 
   const abWindow = getAddressBookWindow();
   const cardsList = abWindow.document.getElementById("cards");
+  await waitForCardsListReady(cardsList);
   for (let i = 0; i < expectedCards.length; i++) {
     const row = cardsList.getRowAtIndex(i);
     Assert.equal(
@@ -245,10 +269,11 @@ function checkCardsListed(...expectedCards) {
   }
 }
 
-function checkNamesListed(...expectedNames) {
+async function checkNamesListed(...expectedNames) {
   const abWindow = getAddressBookWindow();
   const cardsList = abWindow.document.getElementById("cards");
   const expectedCount = expectedNames.length;
+  await waitForCardsListReady(cardsList);
 
   Assert.equal(
     cardsList.view.rowCount,
@@ -258,7 +283,7 @@ function checkNamesListed(...expectedNames) {
 
   for (let i = 0; i < expectedCount; i++) {
     Assert.equal(
-      cardsList.view.getCellText(i, { id: "GeneratedName" }),
+      cardsList.view.getCellText(i, "GeneratedName"),
       expectedNames[i],
       "view should give the correct name"
     );
@@ -271,9 +296,11 @@ function checkNamesListed(...expectedNames) {
   }
 }
 
-function checkPlaceholders(expectedVisible = []) {
+async function checkPlaceholders(expectedVisible = []) {
   const abWindow = getAddressBookWindow();
-  const placeholder = abWindow.cardsPane.cardsList.placeholder;
+  const cardsList = abWindow.document.getElementById("cards");
+  const placeholder = cardsList.placeholder;
+  await waitForCardsListReady(cardsList);
 
   if (!expectedVisible.length) {
     Assert.ok(
@@ -371,14 +398,15 @@ async function doSearch(searchString, ...expectedCards) {
   if (searchString) {
     EventUtils.synthesizeKey("a", { accelKey: true }, abWindow);
     EventUtils.sendString(searchString, abWindow);
-    EventUtils.synthesizeKey("VK_RETURN", {}, abWindow);
   } else {
     EventUtils.synthesizeKey("VK_ESCAPE", {}, abWindow);
   }
 
   await viewChangePromise;
-  checkCardsListed(...expectedCards);
-  checkPlaceholders(expectedCards.length ? [] : ["placeholderNoSearchResults"]);
+  await checkCardsListed(...expectedCards);
+  await checkPlaceholders(
+    expectedCards.length ? [] : ["placeholderNoSearchResults"]
+  );
 }
 
 /**
@@ -443,7 +471,22 @@ async function toggleLayout() {
   await new Promise(resolve => abWindow.setTimeout(resolve));
 }
 
-async function checkComposeWindow(composeWindow, ...expectedAddresses) {
+/**
+ * Waits for a compose window to be ready, then checks the "To" addresses
+ * match those given, then closes the window, waiting for focus to return to
+ * the previous window.
+ *
+ * @param {Window} composeWindow - A just-opened compose window.
+ * @param {string[]} expectedAddresses - An array of recipients that should
+ *   appear in the To section of the window.
+ * @param {Window} [nextWindow] - The window to return to after `composeWindow`
+ *   closes. If not given, this is the main application window.
+ */
+async function checkComposeWindow(
+  composeWindow,
+  expectedAddresses,
+  nextWindow = window
+) {
   await BrowserTestUtils.waitForEvent(composeWindow, "compose-editor-ready");
   const composeDocument = composeWindow.document;
   const toAddrRow = composeDocument.getElementById("addressRowTo");
@@ -456,7 +499,7 @@ async function checkComposeWindow(composeWindow, ...expectedAddresses) {
 
   await Promise.all([
     BrowserTestUtils.closeWindow(composeWindow),
-    BrowserTestUtils.waitForEvent(window, "activate"),
+    BrowserTestUtils.waitForEvent(nextWindow, "activate"),
   ]);
 }
 

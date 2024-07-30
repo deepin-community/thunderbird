@@ -96,13 +96,17 @@ function endTest() {
   do_test_finished(); // for the one in run_test()
 }
 
-// nsIMsgCopyServiceListener implementation
+/**
+ * @implements {nsIMsgCopyServiceListener}
+ */
 var copyListener = {
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {},
-  SetMessageId(aMessageId) {},
-  OnStopCopy(aStatus) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey() {},
+  getMessageId() {
+    return null;
+  },
+  onStopCopy(aStatus) {
     // Check: message successfully copied.
     Assert.equal(aStatus, 0);
     ++gCurTestNum;

@@ -27,8 +27,8 @@ menu-help-exit-troubleshoot-mode =
 ## Mail Toolbar
 
 toolbar-junk-button =
-    .label = Лухта
-    .tooltiptext = Адзначыць выбраныя паведамленні як лухта
+    .label = Спам
+    .tooltiptext = Пазначыць выбраныя паведамленні як спам
 toolbar-not-junk-button =
     .label = Не лухта
     .tooltiptext = Пазначыць вылучаныя лісты як не лухта
@@ -53,9 +53,6 @@ menu-view-repair-text-encoding =
 mail-uidensity-label =
     .label = Шчыльнасць
     .accesskey = Ш
-mail-uidensity-compact =
-    .label = Ушчыльную
-    .accesskey = У
 
 ## File
 

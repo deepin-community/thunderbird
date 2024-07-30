@@ -9,8 +9,8 @@
 const { CardDAVDirectory } = ChromeUtils.importESModule(
   "resource:///modules/CardDAVDirectory.sys.mjs"
 );
-const { CardDAVServer } = ChromeUtils.import(
-  "resource://testing-common/CardDAVServer.jsm"
+const { CardDAVServer } = ChromeUtils.importESModule(
+  "resource://testing-common/CardDAVServer.sys.mjs"
 );
 
 add_task(async () => {
@@ -49,7 +49,7 @@ add_task(async () => {
   const abDocument = abWindow.document;
   const booksList = abWindow.booksList;
 
-  openDirectory(directory);
+  await openDirectory(directory);
 
   Assert.equal(booksList.rowCount, 4);
   Assert.equal(booksList.getIndexForUID(directory.UID), 2);

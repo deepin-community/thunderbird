@@ -42,7 +42,7 @@ async function subtest_tools_menu(
 
   const element = testWindow.document.getElementById("tasksMenu");
   const menu = testWindow.document.getElementById("taskPopup");
-  await leftClick(menu, element);
+  await openMenuPopup(menu, element);
   await checkShownEvent(
     extension,
     { menuIds: ["tools_menu"], contexts: ["tools_menu"] },
@@ -55,7 +55,6 @@ async function subtest_tools_menu(
     expectedTab
   );
   await clickItemInMenuPopup(
-    menu,
     menu.querySelector("#menus_mochi_test-menuitem-_tools_menu")
   );
   await clickedPromise;
@@ -71,14 +70,14 @@ add_task(async function test_tools_menu_mv2() {
     {
       menuItemId: "tools_menu",
     },
-    { active: true, index: 0, mailTab: true },
+    { active: true, index: 0, type: "mail" },
     {
       manifest_version: 2,
     }
   );
 
   toolbar.setAttribute("inactive", initialState);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 add_task(async function test_compose_tools_menu_mv2() {
   const testWindow = await openComposeWindow(gAccount);
   await focusWindow(testWindow);
@@ -87,13 +86,13 @@ add_task(async function test_compose_tools_menu_mv2() {
     {
       menuItemId: "tools_menu",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageCompose" },
     {
       manifest_version: 2,
     }
   );
   await BrowserTestUtils.closeWindow(testWindow);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 add_task(async function test_messagewindow_tools_menu_mv2() {
   const testWindow = await openMessageInWindow(gMessage);
   await focusWindow(testWindow);
@@ -102,13 +101,13 @@ add_task(async function test_messagewindow_tools_menu_mv2() {
     {
       menuItemId: "tools_menu",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageDisplay" },
     {
       manifest_version: 2,
     }
   );
   await BrowserTestUtils.closeWindow(testWindow);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 add_task(async function test_tools_menu_mv3() {
   const toolbar = window.document.getElementById("toolbar-menubar");
   const initialState = toolbar.getAttribute("inactive");
@@ -119,14 +118,14 @@ add_task(async function test_tools_menu_mv3() {
     {
       menuItemId: "tools_menu",
     },
-    { active: true, index: 0, mailTab: true },
+    { active: true, index: 0, type: "mail" },
     {
       manifest_version: 3,
     }
   );
 
   toolbar.setAttribute("inactive", initialState);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 add_task(async function test_compose_tools_menu_mv3() {
   const testWindow = await openComposeWindow(gAccount);
   await focusWindow(testWindow);
@@ -135,13 +134,13 @@ add_task(async function test_compose_tools_menu_mv3() {
     {
       menuItemId: "tools_menu",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageCompose" },
     {
       manifest_version: 3,
     }
   );
   await BrowserTestUtils.closeWindow(testWindow);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");
 add_task(async function test_messagewindow_tools_menu_mv3() {
   const testWindow = await openMessageInWindow(gMessage);
   await focusWindow(testWindow);
@@ -150,10 +149,10 @@ add_task(async function test_messagewindow_tools_menu_mv3() {
     {
       menuItemId: "tools_menu",
     },
-    { active: true, index: 0, mailTab: false },
+    { active: true, index: 0, type: "messageDisplay" },
     {
       manifest_version: 3,
     }
   );
   await BrowserTestUtils.closeWindow(testWindow);
-}).__skipMe = AppConstants.platform == "macosx";
+}).skip(AppConstants.platform == "macosx");

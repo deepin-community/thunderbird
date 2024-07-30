@@ -3,7 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// as does this
 #include "msgCore.h"  // for pre-compiled headers
 #include "nsMsgUtils.h"
 
@@ -31,7 +30,6 @@
 #include "nsIPipe.h"
 #include "nsIMsgFolder.h"
 #include "nsMsgMessageFlags.h"
-#include "nsTextFormatter.h"
 #include "nsTransportUtils.h"
 #include "nsIMsgHdr.h"
 #include "nsMsgI18N.h"
@@ -70,8 +68,6 @@
 #include "nsMsgCompressIStream.h"
 #include "nsMsgCompressOStream.h"
 #include "mozilla/Logging.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/SlicedInputStream.h"
 #include "nsIPrincipal.h"
 #include "nsContentSecurityManager.h"
 
@@ -820,12 +816,6 @@ nsresult nsImapProtocol::SetupWithUrl(nsIURI* aURL, nsISupports* aConsumer) {
       NS_ENSURE_SUCCESS(rv, rv);
       m_server = do_GetWeakReference(server);
     }
-    // Obtain m_rootFolder value for use only in TryToLogon().
-    if (!m_rootFolder) {
-      if (!server && m_server) server = do_QueryReferent(m_server);
-      if (server) server->GetRootFolder(getter_AddRefs(m_rootFolder));
-      MOZ_ASSERT(m_rootFolder, "null m_rootFolder");
-    }
     nsCOMPtr<nsIMsgFolder> folder;
     mailnewsUrl->GetFolder(getter_AddRefs(folder));
     mFolderLastModSeq = 0;
@@ -1491,9 +1481,6 @@ nsImapProtocol::PseudoInterruptMsgLoad(nsIMsgFolder* aImapFolder,
     }
   }
   PR_CExitMonitor(this);
-#ifdef DEBUG_bienvenu
-  printf("interrupt msg load : %s\n", (*interrupted) ? "TRUE" : "FALSE");
-#endif
   return NS_OK;
 }
 
@@ -1602,10 +1589,7 @@ void nsImapProtocol::ImapThreadMainLoop() {
       }
     }
     if (!GetServerStateParser().Connected()) break;
-#ifdef DEBUG_bienvenu
-    else
-      printf("ready to run but no url and not idle\n");
-#endif
+
     // This can happen if the UI thread closes cached connections in the
     // OnStopRunningUrl notification.
     if (m_threadShouldDie) TellThreadToDie();
@@ -1990,7 +1974,15 @@ bool nsImapProtocol::ProcessCurrentURL() {
         m_socketType = nsMsgSocketType::plain;
       }
       if (!DeathSignalReceived() && (NS_SUCCEEDED(GetConnectionStatus()))) {
-        logonFailed = !TryToLogon();
+        // Run TryToLogon() under the protection of the server's logon monitor.
+        // This prevents a dogpile of multiple connections all attempting to
+        // log on at the same time using an obsolete password, potentially
+        // triggering the provider to block the account (Bug 1862111).
+        // We run this on the current thread, not proxied to the main thread!
+        logonFailed = true;
+        nsCOMPtr<nsIRunnable> logonFunc = NS_NewRunnableFunction(
+            "IMAP TryToLogin", [&]() { logonFailed = !TryToLogon(); });
+        m_imapServerSink->Receiver()->RunLogonExclusive(logonFunc);
       }
       if (m_retryUrlOnError) return RetryUrl();
     }
@@ -2387,9 +2379,6 @@ NS_IMETHODIMP nsImapProtocol::LoadImapUrl(nsIURI* aURL,
                                           nsISupports* aConsumer) {
   nsresult rv = NS_ERROR_FAILURE;
   if (aURL) {
-#ifdef DEBUG_bienvenu
-    printf("loading url %s\n", aURL->GetSpecOrDefault().get());
-#endif
     // We might be able to fulfill the request locally (e.g. fetching a message
     // which is already stored offline).
     if (TryToRunUrlLocally(aURL, aConsumer)) return NS_OK;
@@ -4841,6 +4830,7 @@ char* nsImapProtocol::CreateNewLineFromSocket() {
                 Log("CreateNewLineFromSocket", nullptr, logMsg.get());
 
                 mailNewsUrl->SetFailedSecInfo(securityInfo);
+                AlertCertError(securityInfo);
               }
             }
           }
@@ -5114,6 +5104,18 @@ void nsImapProtocol::AlertUserEventFromServer(const char* aServerEvent,
       m_imapServerSink->FEAlertFromServer(nsDependentCString(aServerEvent),
                                           mailnewsUrl);
     }
+  }
+}
+
+void nsImapProtocol::AlertCertError(nsITransportSecurityInfo* securityInfo) {
+  if (m_imapServerSink) {
+    bool suppressErrorMsg = false;
+
+    nsCOMPtr<nsIMsgMailNewsUrl> mailnewsUrl = do_QueryInterface(m_runningUrl);
+    if (mailnewsUrl) mailnewsUrl->GetSuppressErrorMsgs(&suppressErrorMsg);
+
+    if (!suppressErrorMsg)
+      m_imapServerSink->FEAlertCertError(securityInfo, mailnewsUrl);
   }
 }
 
@@ -5875,7 +5877,7 @@ nsresult nsImapProtocol::AuthLogin(const char* userName,
 
       rv = SendDataParseIMAPandCheckForNewMail(m_dataOutputBuf, currentCommand);
     }  // if the last command succeeded
-  }    // if auth plain capability
+  }  // if auth plain capability
   else if (flag & kHasAuthLoginCapability) {
     MOZ_LOG(IMAP, LogLevel::Debug, ("LOGIN auth"));
     PR_snprintf(m_dataOutputBuf, OUTPUT_BUFFER_SIZE,
@@ -5903,9 +5905,9 @@ nsresult nsImapProtocol::AuthLogin(const char* userName,
           rv = SendData(m_dataOutputBuf, true /* suppress logging */);
           if (NS_SUCCEEDED(rv)) ParseIMAPandCheckForNewMail(currentCommand);
         }  // if last command successful
-      }    // if last command successful
-    }      // if last command successful
-  }        // if has auth login capability
+      }  // if last command successful
+    }  // if last command successful
+  }  // if has auth login capability
   else if (flag & kHasAuthOldLoginCapability) {
     MOZ_LOG(IMAP, LogLevel::Debug, ("old-style auth"));
     ProgressEventFunctionUsingName("imapStatusSendingLogin");
@@ -8450,14 +8452,6 @@ bool nsImapProtocol::TryToLogon() {
   AutoProxyReleaseMsgWindow msgWindow;
   GetMsgWindow(getter_AddRefs(msgWindow));
 
-  // Block other imap threads for this server from attempting to login while
-  // this thread is also attempting to login. This prevents sending too many
-  // potentially invalid passwords that may cause the email provider to lock
-  // out the account.  m_rootFolder (pointer to the server's root folder) is
-  // the same value for all imap threads for a given server. So just using its
-  // value as the parameter to the monitor calls.
-  PR_CEnterMonitor(m_rootFolder);
-  Log("TryToLogon", nullptr, "enter mon");
   // This loops over 1) auth methods (only one per loop) and 2) password tries
   // (with UI)
   while (!loginSucceeded && !skipLoop && !DeathSignalReceived()) {
@@ -8549,10 +8543,8 @@ bool nsImapProtocol::TryToLogon() {
         m_currentBiffState = nsIMsgFolder::nsMsgBiffState_Unknown;
         SendSetBiffIndicatorEvent(m_currentBiffState);
       }  // all methods failed
-    }    // login failed
-  }      // while
-  Log("TryToLogon", nullptr, "exit mon");
-  PR_CExitMonitor(m_rootFolder);
+    }  // login failed
+  }  // while
 
   if (loginSucceeded) {
     MOZ_LOG(IMAP, LogLevel::Debug, ("login succeeded"));
@@ -8869,7 +8861,6 @@ NS_IMETHODIMP nsImapMockChannel::Close() {
     if (mailnewsUrl) {
       nsCOMPtr<nsICacheEntry> cacheEntry;
       mailnewsUrl->GetMemCacheEntry(getter_AddRefs(cacheEntry));
-      if (cacheEntry) cacheEntry->MarkValid();
       // remove the channel from the load group
       nsCOMPtr<nsILoadGroup> loadGroup;
       GetLoadGroup(getter_AddRefs(loadGroup));
@@ -8957,9 +8948,6 @@ NS_IMETHODIMP nsImapMockChannel::GetURI(nsIURI** aURI) {
 
 NS_IMETHODIMP nsImapMockChannel::SetURI(nsIURI* aURI) {
   m_url = aURI;
-#ifdef DEBUG_bienvenu
-  if (!aURI) printf("Clearing URI\n");
-#endif
   if (m_url) {
     // if we don't have a progress event sink yet, get it from the url for
     // now...
@@ -9137,7 +9125,6 @@ nsImapMockChannel::OnCacheEntryAvailable(nsICacheEntry* entry, bool aNew,
       rv = ReadFromCache2(entry);
       if (NS_SUCCEEDED(rv)) {
         NotifyStartEndReadFromCache(true);
-        entry->MarkValid();
         return NS_OK;  // Return here since reading from the cache succeeded.
       }
       entry->AsyncDoom(nullptr);  // Doom entry if we failed to read from cache.
@@ -9349,8 +9336,8 @@ nsresult nsImapMockChannel::ReadFromCache2(nsICacheEntry* entry) {
         MOZ_LOG(IMAPCache, LogLevel::Debug,
                 ("%s: Cache entry accepted and being read", __func__));
       }  // if AsyncRead succeeded.
-    }    // new pump
-  }      // if useCacheEntry
+    }  // new pump
+  }  // if useCacheEntry
 
   if (!useCacheEntry || NS_FAILED(rv)) {
     // Cache entry appears to be unusable. Return an error so will still attempt

@@ -8,38 +8,6 @@
 
 @import url("chrome://messenger/skin/shared/messenger.css");
 
-/* UI Density customization */
-:root {
-  --menuitem-vertical-padding: 3px;
-  &[uidensity="compact"] {
-    --menuitem-vertical-padding: 1px;
-  }
-
-  &[uidensity="touch"] {
-    --menuitem-vertical-padding: 8px;
-  }
-}
-
-menupopup > menu,
-menupopup > menuitem {
-  padding-block: var(--menuitem-vertical-padding);
-}
-
-menulist > menupopup > menu,
-menulist > menupopup > menuitem {
-  padding-inline-end: 5px;
-}
-
-menulist > menupopup:not([needsgutter]) > menu:not([icon], .menu-iconic),
-menulist > menupopup:not([needsgutter]) > menuitem:not([icon], .menuitem-iconic) {
-  padding-inline-start: 1em;
-}
-
-menupopup:not([needsgutter]) > menu:not([icon], .menu-iconic),
-menupopup:not([needsgutter]) > menuitem:not([checked="true"], [icon], .menuitem-iconic) {
-  padding-inline-start: 32px;
-}
-
 .folderMenuItem > .menu-iconic-left,
 .menuitem-iconic > .menu-iconic-left {
   display: flex;
@@ -74,7 +42,7 @@ menupopup:not([needsgutter]) > menuitem:not([checked="true"], [icon], .menuitem-
   }
 }
 
-menubar > menu[disabled="true"]:-moz-lwtheme {
+:root[lwtheme] menubar > menu[disabled="true"] {
   color: inherit;
   opacity: .4;
 }
@@ -141,7 +109,7 @@ treechildren::-moz-tree-cell-text {
 
 @media (prefers-color-scheme: dark) {
   /* Override the toolkit color. */
-  :root:-moz-lwtheme {
+  :root[lwtheme] {
     & tree > treechildren::-moz-tree-row(selected) {
       background-color:  rgba(249, 249, 250, .1);
     }
@@ -266,7 +234,7 @@ button.notification-button[is="toolbarbutton-menu-button"] {
 }
 
 @media (prefers-contrast) {
-  #tabmail:not(:-moz-lwtheme) {
+  :root:not([lwtheme]) #tabmail {
     background-color: ActiveCaption;
 
     &:-moz-window-inactive {
@@ -304,7 +272,7 @@ toolbar[mode="text"] .toolbarbutton-text {
 .statusbarpanel {
   border-inline-end: 1px solid ThreeDLightShadow;
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     border-inline-end-color: var(--lwt-tabs-border-color);
   }
 }
@@ -342,7 +310,7 @@ toolbar[mode="text"] .toolbarbutton-text {
 .contentTabInstance {
   background-color: -moz-dialog;
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     background-color: transparent;
     background-image: linear-gradient(transparent 40px, -moz-dialog 40px);
   }

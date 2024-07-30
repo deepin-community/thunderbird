@@ -39,27 +39,17 @@ msll.prototype = {
   _startedSending: false,
 
   // nsIMsgSendLaterListener
-  onStartSending(aTotalMessageCount) {
+  onStartSending() {
     this._initialTotal = 1;
     Assert.equal(msgSendLater.sendingMessages, true);
   },
-  onMessageStartSending(
-    aCurrentMessage,
-    aTotalMessageCount,
-    aMessageHeader,
-    aIdentity
-  ) {
+  onMessageStartSending() {
     this._startedSending = true;
   },
-  onMessageSendProgress(
-    aCurrentMessage,
-    aTotalMessageCount,
-    aMessageSendPercent,
-    aMessageCopyPercent
-  ) {
+  onMessageSendProgress() {
     // XXX Enable this function
   },
-  onMessageSendError(aCurrentMessage, aMessageHeader, aStatus, aMsg) {
+  onMessageSendError(aCurrentMessage, aMessageHeader, aStatus) {
     do_throw(
       "onMessageSendError should not have been called, status: " + aStatus
     );
@@ -160,7 +150,7 @@ function sendMessageLater() {
   try {
     // Start the fake SMTP server
     server.start();
-    smtpServer.port = server.port;
+    smtpServer.QueryInterface(Ci.nsISmtpServer).port = server.port;
 
     // A test to check that we are sending files correctly, including checking
     // what the server receives and what we output.

@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 # create-upstream-tarballs - Utility to create the required source tarballs
 #                            to package Thunderbird within Debian
-# Copyright (c) 2022-2023 Carsten Schoenert <c.schoenert@t-online.de>
+# Copyright (c) 2022-2024 Carsten Schoenert <c.schoenert@t-online.de>
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -39,9 +39,9 @@ TB_BASE_URL_CANDIDATES = "https://ftp.mozilla.org/pub/thunderbird/candidates/"
 # Some strings we need to exclude within the detection of the current
 # release version.
 RELEASE_STRING_EXCLUSION_LIST = (
- "esr",
  "-real",
  "125.0",
+ "127.0",
 )
 
 # Also we need to exclude some strings in the current planned version
@@ -49,6 +49,7 @@ RELEASE_STRING_EXCLUSION_LIST = (
 PLANNED_STRING_EXCLUSION_LIST = (
  "124.0",
  "125.0",
+ "127.0",
 )
 
 try:
@@ -222,8 +223,8 @@ def get_versions():
 
     release_planned_version = tb_upstream_candidates_versions[1]
     for pos in range(2, len(tb_upstream_candidates_versions)):
-        check = Version(release_planned_version) < Version(
-            tb_upstream_candidates_versions[pos]
+        check = Version(release_planned_version.replace('esr', '')) < Version(
+            tb_upstream_candidates_versions[pos].replace('esr', '')
         )
         if check:
             release_planned_version = tb_upstream_candidates_versions[pos]
@@ -267,8 +268,8 @@ def get_versions():
     beta_version = release_version
     for pos in range(2, len(tb_upstream_versions)):
         if "b" not in tb_upstream_versions[pos]:
-            check = Version(release_version) < Version(
-                tb_upstream_versions[pos]
+            check = Version(release_version.replace('esr', '')) < Version(
+                tb_upstream_versions[pos].replace('esr', '')
             )
             if check:
                 release_version = tb_upstream_versions[pos]

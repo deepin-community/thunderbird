@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-cy@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Cymraeg (Welsh)",
   "description": "Thunderbird Language Pack for Cymraeg (cy) – Welsh",
-  "version": "125.0.20240423.190814",
+  "version": "128.0.20240717.233102",
   "languages": {
     "cy": {
-      "version": "20240423195901",
+      "version": "20240718003202",
       "chrome_resources": {
         "alerts": "chrome/cy/locale/cy/alerts/",
         "autoconfig": "chrome/cy/locale/cy/autoconfig/",
         "branding": "chrome/cy/locale/branding/",
         "calendar": "chrome/cy/locale/cy/calendar/",
-        "chat": "chrome/cy/locale/cy/chat/",
         "communicator": "chrome/cy/locale/cy/communicator/",
         "devtools": "chrome/cy/locale/cy/devtools/client/",
         "devtools-shared": "chrome/cy/locale/cy/devtools/shared/",

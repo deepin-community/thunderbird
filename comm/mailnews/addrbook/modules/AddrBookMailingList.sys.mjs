@@ -7,6 +7,11 @@
  * and fulfill each interface on demand. This will make more sense and be
  * a lot neater once we stop using two XPCOM interfaces for one job. */
 
+const lazy = {};
+ChromeUtils.defineESModuleGetters(lazy, {
+  VCardService: "resource:///modules/VCardUtils.sys.mjs",
+});
+
 export function AddrBookMailingList(uid, parent, name, nickName, description) {
   this._uid = uid;
   this._parent = parent;
@@ -265,7 +270,7 @@ AddrBookMailingList.prototype = {
           self._uid
         );
       },
-      editMailListToDatabase(listCard) {
+      editMailListToDatabase() {
         if (this.readOnly) {
           throw new Components.Exception(
             "Directory is read-only",
@@ -306,10 +311,10 @@ AddrBookMailingList.prototype = {
           self._parent.UID
         );
       },
-      hasMailListWithName(name) {
+      hasMailListWithName() {
         return false;
       },
-      getMailListFromName(name) {
+      getMailListFromName() {
         return null;
       },
     };
@@ -353,7 +358,7 @@ AddrBookMailingList.prototype = {
         return [];
       },
 
-      generateName(generateFormat) {
+      generateName() {
         return self._name;
       },
       getProperty(name, defaultValue) {
@@ -378,7 +383,7 @@ AddrBookMailingList.prototype = {
       equals(card) {
         return self._uid == card.UID;
       },
-      hasEmailAddress(emailAddress) {
+      hasEmailAddress() {
         return false;
       },
       get properties() {
@@ -407,14 +412,8 @@ AddrBookMailingList.prototype = {
       get vCardProperties() {
         return null;
       },
-      translateTo(type) {
-        // Get nsAbCardProperty to do the work, the code is in C++ anyway.
-        const cardCopy = Cc[
-          "@mozilla.org/addressbook/cardproperty;1"
-        ].createInstance(Ci.nsIAbCard);
-        cardCopy.UID = this.UID;
-        cardCopy.copy(this);
-        return cardCopy.translateTo(type);
+      toVCard() {
+        return lazy.VCardService.abCardToVCard(this);
       },
     };
   },

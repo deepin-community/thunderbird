@@ -33,14 +33,14 @@ class CertVerificationResultCallback {
   constructor(callback) {
     this.callback = callback;
   }
-  verifyCertFinished(prErrorCode, verifiedChain, hasEVPolicy) {
+  verifyCertFinished(prErrorCode) {
     gCertValidityResult = prErrorCode;
     this.callback();
   }
 }
 
 function testCertValidity(cert, date) {
-  const prom = new Promise((resolve, reject) => {
+  const prom = new Promise(resolve => {
     const certificateUsageEmailRecipient = 0x0020;
     const result = new CertVerificationResultCallback(resolve);
     const flags = Ci.nsIX509CertDB.FLAG_LOCAL_ONLY;
@@ -227,9 +227,7 @@ add_task(async function check_smime_message() {
     let sinkPromise = smimeSink.expectResults(eventsExpected);
 
     let conversion = apply_mime_conversion(uri, smimeSink);
-    await conversion.promise;
-
-    let contents = conversion._data;
+    let contents = await conversion.promise;
     // dump("contents: " + contents + "\n");
 
     // Check that we're also using the display output.
@@ -263,9 +261,7 @@ add_task(async function check_smime_message() {
     sinkPromise = smimeSink.expectResults(eventsExpected);
 
     conversion = apply_mime_conversion(uri, smimeSink);
-    await conversion.promise;
-
-    contents = conversion._data;
+    contents = await conversion.promise;
     // dump("contents: " + contents + "\n");
 
     // Check that we're also using the display output.

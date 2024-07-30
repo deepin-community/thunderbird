@@ -3,10 +3,21 @@
     "namespace": "mailTabs",
     "types": [
       {
+        "id": "FolderMode",
+        "description": "A supported folder mode in the folder pane.",
+        "type": "string",
+        "enum": ["all", "unified", "tags", "unread", "favorite", "recent"]
+      },
+      {
         "id": "MailTab",
         "type": "object",
         "properties": {
           "id": {
+            "max_manifest_version": 2,
+            "type": "integer"
+          },
+          "tabId": {
+            "min_manifest_version": 3,
             "type": "integer"
           },
           "windowId": {
@@ -15,9 +26,16 @@
           "active": {
             "type": "boolean"
           },
+          "groupType": {
+            "type": "string",
+            "min_manifest_version": 3,
+            "description": "Grouping type of the message list.",
+            "optional": true,
+            "enum": ["ungrouped", "groupedByThread", "groupedBySortType"]
+          },
           "sortType": {
             "type": "string",
-            "description": "**Note:** ``sortType`` and ``sortOrder`` depend on each other, so both should be present, or neither.",
+            "description": "The primary sort column of the message list.",
             "optional": true,
             "enum": [
               "none",
@@ -44,31 +62,50 @@
           },
           "sortOrder": {
             "type": "string",
-            "description": "**Note:** ``sortType`` and ``sortOrder`` depend on each other, so both should be present, or neither.",
+            "description": "The sort order of the message list.",
             "optional": true,
             "enum": ["none", "ascending", "descending"]
           },
           "viewType": {
             "type": "string",
+            "max_manifest_version": 2,
+            "description": "Grouping type of the message list.",
             "optional": true,
             "enum": ["ungrouped", "groupedByThread", "groupedBySortType"]
           },
           "layout": {
             "type": "string",
+            "description": "The arrangement of the folder pane, message list pane, and message display pane.",
             "enum": ["standard", "wide", "vertical"]
+          },
+          "folderMode": {
+            "description": "The folder mode of the currently displayed folder.",
+            "$ref": "mailTabs.FolderMode",
+            "optional": true
+          },
+          "folderModesEnabled": {
+            "type": "array",
+            "description": "The enabled folder modes in the folder pane, and their sort order.",
+            "minItems": 1,
+            "optional": true,
+            "items": {
+              "$ref": "mailTabs.FolderMode"
+            }
           },
           "folderPaneVisible": {
             "type": "boolean",
+            "description": "Whether the folder pane is visible or not.",
             "optional": true
           },
           "messagePaneVisible": {
             "type": "boolean",
+            "description": "Whether the message pane is visible or not.",
             "optional": true
           },
           "displayedFolder": {
             "$ref": "folders.MailFolder",
-            "optional": true,
-            "description": "The <permission>accountsRead</permission> permission is required for this property to be included."
+            "description": "The folder displayed in the mail tab. The <permission>accountsRead</permission> permission is required for this property to be included.",
+            "optional": true
           }
         }
       },
@@ -76,9 +113,16 @@
         "id": "MailTabProperties",
         "type": "object",
         "properties": {
+          "groupType": {
+            "type": "string",
+            "min_manifest_version": 3,
+            "description": "Grouping type of the message list.",
+            "optional": true,
+            "enum": ["ungrouped", "groupedByThread", "groupedBySortType"]
+          },
           "sortType": {
             "type": "string",
-            "description": "Sorts the list of messages. ``sortOrder`` must also be given.",
+            "description": "Sorts the list of messages. <var>sortOrder</var> must also be given.",
             "optional": true,
             "enum": [
               "none",
@@ -105,12 +149,14 @@
           },
           "sortOrder": {
             "type": "string",
-            "description": "Sorts the list of messages. ``sortType`` must also be given.",
+            "description": "Sorts the list of messages. <var>sortType</var> must also be given.",
             "optional": true,
             "enum": ["none", "ascending", "descending"]
           },
           "viewType": {
             "type": "string",
+            "max_manifest_version": 2,
+            "description": "Sets the grouping type of displayed messages.",
             "optional": true,
             "enum": ["ungrouped", "groupedByThread", "groupedBySortType"]
           },
@@ -125,9 +171,29 @@
             "description": "Shows or hides the folder pane.",
             "optional": true
           },
+          "folderMode": {
+            "description": "Sets the currently used folder mode, enabling it if required. If used without also specifying <var>displayedFolder</var>, the currently selected folder is re-selected in the new folder mode, if possible.",
+            "$ref": "mailTabs.FolderMode",
+            "optional": true
+          },
+          "folderModesEnabled": {
+            "type": "array",
+            "description": "Set the enabled folder modes in the folder pane, and their sort order.",
+            "minItems": 1,
+            "optional": true,
+            "items": {
+              "$ref": "mailTabs.FolderMode"
+            }
+          },
           "messagePaneVisible": {
             "type": "boolean",
             "description": "Shows or hides the message display pane.",
+            "optional": true
+          },
+          "displayedFolderId": {
+            "$ref": "folders.MailFolderId",
+            "min_manifest_version": 3,
+            "description": "Sets the folder displayed in the mail tab. Requires the <permission>accountsRead</permission> permission. The previous message selection in the given folder will be restored, if any. This property is ignored, if <var>selectedMessages</var> is specified.",
             "optional": true
           },
           "displayedFolder": {
@@ -136,12 +202,12 @@
                 "$ref": "folders.MailFolderId"
               },
               {
-                "max_manifest_version": 2,
                 "deprecated": "Support deprecated since Thunderbird 121 and removed in Manifest V3: MailTabProperties.displayedFolder needs to be specified as a MailFolderId instead of as a full MailFolder object.",
                 "$ref": "folders.MailFolder"
               }
             ],
-            "description": "Sets the folder displayed in the mail tab. Requires the <permission>accountsRead</permission> permission. The previous message selection in the given folder will be restored, if any. This property is ignored, if <value>selectedMessages</value> is specified.",
+            "max_manifest_version": 2,
+            "description": "Sets the folder displayed in the mail tab. Requires the <permission>accountsRead</permission> permission. The previous message selection in the given folder will be restored, if any. This property is ignored, if <var>selectedMessages</var> is specified.",
             "optional": true
           }
         }
@@ -152,26 +218,26 @@
         "properties": {
           "text": {
             "type": "string",
-            "description": "String to match against the ``recipients``, ``author``, ``subject``, or ``body``."
+            "description": "String to match against the <var>recipients</var>, <var>author</var>, <var>subject</var>, or <var>body</var>."
           },
           "recipients": {
             "type": "boolean",
-            "description": "Shows messages where ``text`` matches the recipients.",
+            "description": "Shows messages where <var>text</var> matches the recipients.",
             "optional": true
           },
           "author": {
             "type": "boolean",
-            "description": "Shows messages where ``text`` matches the author.",
+            "description": "Shows messages where <var>text</var> matches the author.",
             "optional": true
           },
           "subject": {
             "type": "boolean",
-            "description": "Shows messages where ``text`` matches the subject.",
+            "description": "Shows messages where <var>text</var> matches the subject.",
             "optional": true
           },
           "body": {
             "type": "boolean",
-            "description": "Shows messages where ``text`` matches the message body.",
+            "description": "Shows messages where <var>text</var> matches the message body.",
             "optional": true
           }
         }
@@ -209,7 +275,7 @@
                 "type": "integer",
                 "optional": true,
                 "minimum": -2,
-                "description": "The ID of the parent window, or :ref:`windows.WINDOW_ID_CURRENT` for the current window."
+                "description": "The ID of the parent window, or $(ref:windows.WINDOW_ID_CURRENT) for the current window."
               }
             }
           },
@@ -221,7 +287,7 @@
               {
                 "type": "array",
                 "items": {
-                  "$ref": "MailTab"
+                  "$ref": "mailTabs.MailTab"
                 }
               }
             ]
@@ -231,13 +297,13 @@
       {
         "name": "get",
         "type": "function",
-        "description": "Get the properties of a mail tab.",
+        "description": "Get the $(ref:mailTabs.MailTab) properties of a mail tab.",
         "async": "callback",
         "parameters": [
           {
             "name": "tabId",
             "type": "integer",
-            "description": "ID of the requested mail tab. Throws if the requested tab is not a mail tab."
+            "description": "ID of the requested mail tab. Throws if the requested <var>tabId</var> does not belong to a mail tab."
           },
           {
             "type": "function",
@@ -245,7 +311,7 @@
             "optional": true,
             "parameters": [
               {
-                "$ref": "MailTab"
+                "$ref": "mailTabs.MailTab"
               }
             ]
           }
@@ -254,7 +320,8 @@
       {
         "name": "getCurrent",
         "type": "function",
-        "description": "Get the properties of the active mail tab, if the active tab is a mail tab. Returns undefined otherwise.",
+        "max_manifest_version": 2,
+        "description": "Get the $(ref:mailTabs.MailTab) properties of the active mail tab. Returns <var>undefined</var>, if the active tab is not a mail tab.",
         "async": "callback",
         "parameters": [
           {
@@ -263,8 +330,9 @@
             "optional": true,
             "parameters": [
               {
-                "$ref": "MailTab",
-                "optional": true
+                "$ref": "mailTabs.MailTab",
+                "optional": true,
+                "description": "This may return undefined"
               }
             ]
           }
@@ -273,12 +341,12 @@
       {
         "name": "create",
         "type": "function",
-        "description": "Creates a new mail tab. Standard tab properties can be adjusted via :ref:`tabs.update` after the mail tab has been created. **Note:** A new mail window can be created via :ref:`windows.create`.",
+        "description": "Creates a new mail tab. Standard tab properties can be adjusted via $(ref:tabs.update) after the mail tab has been created. **Note:** A new mail window can be created via $(ref:windows.create).",
         "async": "callback",
         "parameters": [
           {
             "name": "createProperties",
-            "$ref": "MailTabProperties",
+            "$ref": "mailTabs.MailTabProperties",
             "optional": true,
             "default": {}
           },
@@ -289,8 +357,7 @@
             "parameters": [
               {
                 "name": "mailTab",
-                "$ref": "MailTab",
-                "optional": true,
+                "$ref": "mailTabs.MailTab",
                 "description": "Details about the created mail tab. Will contain the ID of the new tab."
               }
             ]
@@ -300,7 +367,7 @@
       {
         "name": "update",
         "type": "function",
-        "description": "Modifies the properties of a mail tab. Properties that are not specified in ``updateProperties`` are not modified.",
+        "description": "Modifies the properties of a mail tab. Properties that are not specified in <var>updateProperties</var> are not modified.",
         "async": "callback",
         "parameters": [
           {
@@ -312,7 +379,7 @@
           },
           {
             "name": "updateProperties",
-            "$ref": "MailTabProperties"
+            "$ref": "mailTabs.MailTabProperties"
           },
           {
             "type": "function",
@@ -321,8 +388,7 @@
             "parameters": [
               {
                 "name": "mailTab",
-                "$ref": "MailTab",
-                "optional": true,
+                "$ref": "mailTabs.MailTab",
                 "description": "Details about the updated mail tab."
               }
             ]
@@ -350,6 +416,35 @@
             "parameters": [
               {
                 "$ref": "messages.MessageList"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "getSelectedFolders",
+        "type": "function",
+        "description": "Lists the selected folders in the folder pane.",
+        "permissions": ["accountsRead"],
+        "async": "callback",
+        "parameters": [
+          {
+            "name": "tabId",
+            "type": "integer",
+            "description": "Defaults to the active tab of the current window.",
+            "optional": true,
+            "minimum": 1
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "folders.MailFolder"
+                }
               }
             ]
           }
@@ -460,7 +555,7 @@
                 "optional": true
               },
               "text": {
-                "$ref": "QuickFilterTextDetail",
+                "$ref": "mailTabs.QuickFilterTextDetail",
                 "description": "Shows only messages matching the supplied text.",
                 "optional": true
               }

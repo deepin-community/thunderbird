@@ -13,7 +13,7 @@ var { localAccountUtils } = ChromeUtils.importESModule(
 
 var CC = Components.Constructor;
 
-// WebApps.jsm called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
+// WebApps.sys.mjs called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
 var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.importESModule(
   "resource://testing-common/AppInfo.sys.mjs"
 );
@@ -55,10 +55,10 @@ function setupServerDaemon(handler) {
 
 function getBasicSmtpServer(port = 1, hostname = "localhost") {
   const server = localAccountUtils.create_outgoing_server(
-    port,
+    "smtp",
     "user",
     "password",
-    hostname
+    { port, hostname }
   );
 
   // Override the default greeting so we get something predicitable
@@ -94,14 +94,19 @@ function do_check_transaction(real, expected) {
   dump("Passed test " + test + "\n");
 }
 
-// This listener is designed just to call OnStopCopy() when its OnStopCopy
-// function is called - the rest of the functions are unneeded for a lot of
-// tests (but we can't use asyncCopyListener because we need the
-// nsIMsgSendListener interface as well).
+/**
+ * This listener is designed just to call OnStopCopy() when its onStopCopy
+ * function is called - the rest of the functions are unneeded for a lot of
+ * tests (but we can't use asyncCopyListener because we need the
+ * nsIMsgSendListener interface as well).
+ *
+ * @implements {nsIMsgSendListener}
+ * @implements {nsIMsgCopyServiceListener}
+ */
 var copyListener = {
   // nsIMsgSendListener
   onStartSending() {},
-  onProgress() {},
+  onSendProgress() {},
   onStatus() {},
   onStopSending() {},
   onGetDraftFolderURI() {},
@@ -109,11 +114,13 @@ var copyListener = {
   onTransportSecurityError() {},
 
   // nsIMsgCopyServiceListener
-  OnStartCopy() {},
-  OnProgress() {},
-  SetMessageKey() {},
-  GetMessageId() {},
-  OnStopCopy(aStatus) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey() {},
+  getMessageId() {
+    return null;
+  },
+  onStopCopy(aStatus) {
     /* globals OnStopCopy */
     OnStopCopy(aStatus);
   },

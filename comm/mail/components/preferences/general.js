@@ -21,6 +21,11 @@ var { XPCOMUtils } = ChromeUtils.importESModule(
 var { AppConstants } = ChromeUtils.importESModule(
   "resource://gre/modules/AppConstants.sys.mjs"
 );
+if (AppConstants.MOZ_UPDATER) {
+  ChromeUtils.defineESModuleGetters(this, {
+    UpdateListener: "resource://gre/modules/UpdateListener.sys.mjs",
+  });
+}
 var { UpdateUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/UpdateUtils.sys.mjs"
 );
@@ -77,6 +82,7 @@ Preferences.addAll([
   { id: "mailnews.labels.color.4", type: "string" },
   { id: "mailnews.labels.description.5", type: "wstring" },
   { id: "mailnews.labels.color.5", type: "string" },
+  { id: "mail.addressDisplayFormat", type: "int" },
   { id: "mail.showCondensedAddresses", type: "bool" },
   { id: "mailnews.mark_message_read.auto", type: "bool" },
   { id: "mailnews.mark_message_read.delay", type: "bool" },
@@ -213,11 +219,7 @@ var gGeneralPane = {
       "resource:///modules/SearchIntegration.sys.mjs"
     );
     if (SearchIntegration) {
-      if (SearchIntegration.osVersionTooLow) {
-        hideSearchUI = true;
-      } else if (SearchIntegration.osComponentsNotRunning) {
-        disableSearchUI = true;
-      }
+      disableSearchUI = SearchIntegration.osComponentsNotRunning;
     } else {
       hideSearchUI = true;
     }
@@ -804,7 +806,7 @@ var gGeneralPane = {
    * default for each type; otherwise, the user is informed that Thunderbird is
    * already the default.
    */
-  checkDefaultNow(aAppType) {
+  checkDefaultNow() {
     if (!this.mShellServiceWorking) {
       return;
     }
@@ -1699,10 +1701,16 @@ var gGeneralPane = {
   },
 
   async checkUpdateInProgress() {
+    const aus = Cc["@mozilla.org/updates/update-service;1"].getService(
+      Ci.nsIApplicationUpdateService
+    );
     const um = Cc["@mozilla.org/updates/update-manager;1"].getService(
       Ci.nsIUpdateManager
     );
-    if (!um.readyUpdate && !um.downloadingUpdate) {
+    // We don't want to see an idle state just because the updater hasn't
+    // initialized yet.
+    await aus.init();
+    if (aus.currentState == Ci.nsIApplicationUpdateService.STATE_IDLE) {
       return;
     }
 
@@ -1734,12 +1742,9 @@ var gGeneralPane = {
       {}
     );
     if (rv != 1) {
-      const aus = Cc["@mozilla.org/updates/update-service;1"].getService(
-        Ci.nsIApplicationUpdateService
-      );
-      aus.stopDownload();
-      um.cleanupReadyUpdate();
-      um.cleanupDownloadingUpdate();
+      await aus.stopDownload();
+      await um.cleanupActiveUpdates();
+      UpdateListener.clearPendingAndActiveNotifications();
     }
   },
 

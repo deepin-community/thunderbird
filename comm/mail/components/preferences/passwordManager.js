@@ -14,6 +14,7 @@ var { XPCOMUtils } = ChromeUtils.importESModule(
 
 ChromeUtils.defineESModuleGetters(this, {
   DeferredTask: "resource://gre/modules/DeferredTask.sys.mjs",
+  LoginHelper: "resource://gre/modules/LoginHelper.sys.mjs",
   OSKeyStore: "resource://gre/modules/OSKeyStore.sys.mjs",
   PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
 });
@@ -45,10 +46,10 @@ let signonsTree;
  */
 let reloadDisplay = true;
 
-window.addEventListener("load", event => {
+window.addEventListener("load", () => {
   Startup();
 });
-window.addEventListener("unload", event => {
+window.addEventListener("unload", () => {
   Shutdown();
 });
 
@@ -150,7 +151,7 @@ const signonsTreeView = {
   selection: null,
 
   rowCount: 0,
-  setTree(tree) {},
+  setTree() {},
   getImageSrc(row, column) {
     if (column.element.getAttribute("id") !== "providerCol") {
       return "";
@@ -160,7 +161,7 @@ const signonsTreeView = {
 
     return PlacesUtils.urlWithSizeRef(window, "page-icon:" + signon.origin, 16);
   },
-  getCellValue(row, column) {},
+  getCellValue() {},
   getCellText(row, column) {
     let time;
     const signon = GetVisibleLogins()[row];
@@ -194,20 +195,20 @@ const signonsTreeView = {
     }
     return false;
   },
-  isSeparator(index) {
+  isSeparator() {
     return false;
   },
   isSorted() {
     return false;
   },
-  isContainer(index) {
+  isContainer() {
     return false;
   },
-  cycleHeader(column) {},
-  getRowProperties(row) {
+  cycleHeader() {},
+  getRowProperties() {
     return "";
   },
-  getColumnProperties(column) {
+  getColumnProperties() {
     return "";
   },
   getCellProperties(row, column) {
@@ -622,7 +623,7 @@ function SignonMatchesFilter(aSignon, aFilterValue) {
   return false;
 }
 
-function _filterPasswords(aFilterValue, view) {
+function _filterPasswords(aFilterValue) {
   aFilterValue = aFilterValue.toLowerCase();
   return signons.filter(s => SignonMatchesFilter(s, aFilterValue));
 }
@@ -735,14 +736,15 @@ async function masterPasswordLogin(noPasswordCallback) {
   );
   const token = tokendb.getInternalKeyToken();
 
+  const isOSAuthEnabled = LoginHelper.getOSAuthEnabled(
+    LoginHelper.OS_AUTH_FOR_PASSWORDS_PREF
+  );
+
   // If there is no primary password, still give the user a chance to opt-out of displaying passwords
   if (token.checkPassword("")) {
     // The OS re-authentication on Linux isn't working (Bug 1527745),
     // still add the confirm dialog for Linux.
-    if (
-      Services.prefs.getBoolPref("signon.management.page.os-auth.enabled") &&
-      AppConstants.platform !== "linux"
-    ) {
+    if (isOSAuthEnabled) {
       // Require OS authentication before the user can show the passwords or copy them.
       let messageId = "password-os-auth-dialog-message";
       if (AppConstants.platform == "macosx") {

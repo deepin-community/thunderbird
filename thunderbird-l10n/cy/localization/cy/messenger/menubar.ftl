@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Edrych ar y Nodweddion
     .accesskey = E
+menu-help-get-release-help =
+    .label = Cael Cymorth gyda { -brand-short-name }
+    .accesskey = C
 menu-help-shortcuts =
     .label = Llwybrau Byr Bysellfwrdd
     .accesskey = L
@@ -133,6 +136,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Cyfrif E-bost…
+    .accesskey = C
 file-new-newsgroup-account =
     .label = Cyfrif Grŵp Newyddion…
     .accesskey = N

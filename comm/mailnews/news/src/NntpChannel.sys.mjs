@@ -7,7 +7,6 @@ import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
-  MailUtils: "resource:///modules/MailUtils.sys.mjs",
   NntpUtils: "resource:///modules/NntpUtils.sys.mjs",
 });
 
@@ -131,11 +130,11 @@ export class NntpChannel extends MailChannel {
       return;
     }
 
-    // It's an old entry, read from the memory cache.
+    // It's an existing cache entry, read it from the memory cache.
     this._readFromCacheStream(entry.openInputStream(0));
   }
 
-  onCacheEntryCheck(entry) {
+  onCacheEntryCheck() {
     return Ci.nsICacheEntryOpenCallback.ENTRY_WANTED;
   }
 
@@ -168,30 +167,6 @@ export class NntpChannel extends MailChannel {
     if (url.searchParams.has("list-ids")) {
       // Triggered by newsError.js.
       this._removeExpired(decodeURIComponent(url.pathname.slice(1)));
-      return;
-    }
-
-    if (this._groupName && !this._server.containsNewsgroup(this._groupName)) {
-      const bundle = Services.strings.createBundle(
-        "chrome://messenger/locale/news.properties"
-      );
-      const win = Services.wm.getMostRecentWindow("mail:3pane");
-      const result = Services.prompt.confirm(
-        win,
-        null,
-        bundle.formatStringFromName("autoSubscribeText", [this._groupName])
-      );
-      if (!result) {
-        return;
-      }
-      this._server.subscribeToNewsgroup(this._groupName);
-      const folder = this._server.findGroup(this._groupName);
-      lazy.MailUtils.displayFolderIn3Pane(folder.URI);
-    }
-
-    if (this._groupName && !this._articleNumber && !this._messageId) {
-      const folder = this._server.findGroup(this._groupName);
-      lazy.MailUtils.displayFolderIn3Pane(folder.URI);
       return;
     }
 
@@ -262,7 +237,7 @@ export class NntpChannel extends MailChannel {
   }
 
   /**
-   * Read the article from the a stream.
+   * Read the article from a stream (memory cache or offline storage).
    *
    * @param {nsIInputStream} cacheStream - The input stream to read.
    */
@@ -276,10 +251,12 @@ export class NntpChannel extends MailChannel {
     pump.asyncRead({
       onStartRequest: () => {
         this._listener.onStartRequest(this);
+        this.URI.SetUrlState(true, Cr.NS_OK);
         this._pending = true;
       },
       onStopRequest: (request, status) => {
         this._listener.onStopRequest(this, status);
+        this.URI.SetUrlState(false, status);
         try {
           this.loadGroup?.removeRequest(this, null, Cr.NS_OK);
         } catch (e) {}
@@ -318,7 +295,11 @@ export class NntpChannel extends MailChannel {
       } catch (e) {}
       client.startRunningUrl(null, msgWindow, this.URI);
       client.channel = this;
-      this._listener.onStartRequest(this);
+      try {
+        this._listener.onStartRequest(this);
+      } catch (e) {
+        this._logger.warn("onStartRequest FAILED", e);
+      }
       this._pending = true;
       client.onOpen = () => {
         if (this._messageId) {
@@ -345,6 +326,11 @@ export class NntpChannel extends MailChannel {
           // Prevent marking a message as read.
           this.URI.errorCode = status;
           // Remove the invalid cache.
+          this._cacheEntry?.asyncDoom(null);
+        } else if (this.contentLength == 0) {
+          // Prevent marking a message as read.
+          this.URI.errorCode = Cr.NS_ERROR_FAILURE;
+          this._logger.debug("Didn't get any data. Won't cache.");
           this._cacheEntry?.asyncDoom(null);
         }
         this._listener.onStopRequest(this, status);

@@ -4,6 +4,7 @@
 
 about-networking-title = Ağ Hakkında
 about-networking-http = HTTP
+about-networking-http-clear-cache-button = HTTP önbelleğini temizle
 about-networking-sockets = Sockets
 about-networking-dns = DNS
 about-networking-dns-clear-cache-button = DNS önbelleğini temizle
@@ -19,7 +20,7 @@ about-networking-http-version = HTTP sürümü
 about-networking-ssl = SSL
 about-networking-active = Etkin
 about-networking-idle = Beklemede
-about-networking-host = Makine
+about-networking-host = Ana makine
 about-networking-type = Tür
 about-networking-sent = Gönderilen
 about-networking-received = Alınan

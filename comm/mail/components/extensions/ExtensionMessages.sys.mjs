@@ -9,7 +9,11 @@ import { EventEmitter } from "resource://gre/modules/EventEmitter.sys.mjs";
 import { ExtensionUtils } from "resource://gre/modules/ExtensionUtils.sys.mjs";
 import { clearTimeout, setTimeout } from "resource://gre/modules/Timer.sys.mjs";
 
-import { getFolder } from "resource:///modules/ExtensionAccounts.sys.mjs";
+import {
+  getFolder,
+  getWildcardVirtualFolders,
+} from "resource:///modules/ExtensionAccounts.sys.mjs";
+
 import {
   MimeTreeEmitter,
   MimeTreeDecrypter,
@@ -17,25 +21,13 @@ import {
 } from "chrome://openpgp/content/modules/MimeTree.sys.mjs";
 
 var { ExtensionError } = ExtensionUtils;
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "jsmime",
-  "resource:///modules/jsmime.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "MimeParser",
-  "resource:///modules/mimeParser.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "VirtualFolderHelper",
-  "resource:///modules/VirtualFolderWrapper.jsm"
-);
+ChromeUtils.defineESModuleGetters(lazy, {
+  MimeParser: "resource:///modules/mimeParser.sys.mjs",
+  VirtualFolderHelper: "resource:///modules/VirtualFolderWrapper.sys.mjs",
+  jsmime: "resource:///modules/jsmime.sys.mjs",
+});
 
 XPCOMUtils.defineLazyPreferenceGetter(
   lazy,
@@ -179,29 +171,54 @@ function getParentMsgInfo(msgHdr) {
  */
 class WebExtMimeTreeEmitter extends MimeTreeEmitter {
   getAttachmentName(mimeTreePart) {
+    const getName = header => {
+      const filename = lazy.MimeParser.getParameter(header, "filename");
+      if (filename) {
+        return filename;
+      }
+      if (mimeTreePart.fullContentType) {
+        const name = lazy.MimeParser.getParameter(
+          mimeTreePart.fullContentType,
+          "name"
+        );
+        if (name) {
+          return name;
+        }
+      }
+      return "";
+    };
+
     if (
       mimeTreePart.headers &&
       mimeTreePart.headers.has("content-disposition")
     ) {
-      const header = mimeTreePart.headers.get("content-disposition")[0];
+      const contentDisposition = mimeTreePart.headers.get(
+        "content-disposition"
+      )[0];
+
+      // Forwarded messages are sometimes inlined, but we consider them as
+      // attachments.
       if (
-        /^attachment/i.test(header) ||
+        /^inline/i.test(contentDisposition) &&
+        mimeTreePart.headers.contentType.type == "message/rfc822"
+      ) {
+        return getName(contentDisposition) || "ForwardedMessage.eml";
+      }
+
+      // We also consider related (inline) attachments as attachments.
+      if (mimeTreePart.headers._rawHeaders.has("content-id")) {
+        return (
+          getName(contentDisposition) ||
+          mimeTreePart.headers.contentType.get("name") ||
+          ""
+        );
+      }
+
+      if (
+        /^attachment/i.test(contentDisposition) ||
         mimeTreePart.headers.contentType.type == "text/x-moz-deleted"
       ) {
-        const filename = lazy.MimeParser.getParameter(header, "filename");
-        if (filename) {
-          return filename;
-        }
-        if (mimeTreePart.fullContentType) {
-          const name = lazy.MimeParser.getParameter(
-            mimeTreePart.fullContentType,
-            "name"
-          );
-          if (name) {
-            return name;
-          }
-        }
-        return "";
+        return getName(contentDisposition);
       }
     }
     return null;
@@ -340,7 +357,7 @@ export class MsgHdrProcessor {
       return mimeTree;
     }
 
-    const decrypter = new MimeTreeDecrypter();
+    const decrypter = new MimeTreeDecrypter({ disablePrompts: true });
     await decrypter.decrypt(mimeTree);
     if (decrypter.decryptFailure) {
       mimeTree.decryptionStatus = "fail";
@@ -580,7 +597,7 @@ export class MsgHdrProcessor {
    * @returns {Promise<MimeTreePart[]>}
    */
   async getAttachmentParts(options) {
-    const rawMessage = await this.getOriginalMessage();
+    const rawMessage = await this.getDecryptedMessage();
     const mimeTree = this.#parseMessage(
       rawMessage,
       {
@@ -593,6 +610,12 @@ export class MsgHdrProcessor {
         excludeAttachmentData: true,
       }
     );
+
+    // If the message does not contain mime parts, but is just an attachment,
+    // return that part directly.
+    if (mimeTree.isAttachment) {
+      return [mimeTree];
+    }
 
     const flat = (attachmentParts, part) => {
       if (part.isAttachment) {
@@ -622,7 +645,7 @@ export class MsgHdrProcessor {
    * @returns {Promise<MimeTreePart>}
    */
   async getAttachmentPart(partName, options) {
-    const rawMessage = await this.getOriginalMessage();
+    const rawMessage = await this.getDecryptedMessage();
     const includeRaw = options?.includeRaw ?? false;
     const mimeTree = this.#parseMessage(
       rawMessage,
@@ -656,7 +679,13 @@ export function getMessagesInFolder(folder) {
     const messages = [];
     const wrappedVirtualFolder =
       lazy.VirtualFolderHelper.wrapVirtualFolder(folder);
+
+    const searchFolders = getWildcardVirtualFolders(wrappedVirtualFolder);
     for (const searchFolder of wrappedVirtualFolder.searchFolders) {
+      searchFolders.push(searchFolder);
+    }
+
+    for (const searchFolder of searchFolders) {
       const msgs = searchFolder.msgDatabase.getFilterEnumerator(
         wrappedVirtualFolder.searchTerms
       );
@@ -761,7 +790,7 @@ export class CachedMsgHeader {
   setUint32Property(aProperty, aVal) {
     this.mProperties[aProperty] = aVal.toString();
   }
-  markHasAttachments(hasAttachments) {}
+  markHasAttachments() {}
   get mime2DecodedAuthor() {
     return this.author;
   }
@@ -1646,28 +1675,57 @@ export class MessageQuery {
     // Limit search to a given folder, or search all folders.
     const folders = [];
     let includeSubFolders = false;
+    const allAccounts = MailServices.accounts.accounts.map(account => ({
+      key: account.key,
+      rootFolder: account.incomingServer.rootFolder,
+    }));
 
-    // Property was renamed from folder to folderId in MV3.
-    const queryFolder = this.queryInfo.folderId || this.queryInfo.folder;
-    const queryAccountId = this.queryInfo.accountId;
-    if (queryFolder) {
+    // The queryFolder property is only supported in MV2 and specifies a single
+    // MailFolder. The queryFolderId property specifies one or more MailFolderIds.
+    // When one or more accounts and one or more folders are specified, the accounts
+    // are used as a filter on the specified folders.
+    let queryFolders = null;
+    if (this.queryInfo.folder) {
+      queryFolders = [getFolder(this.queryInfo.folder)];
+    } else if (this.queryInfo.folderId) {
+      // Enforce the order as specified.
+      const folderIds = Array.isArray(this.queryInfo.folderId)
+        ? this.queryInfo.folderId
+        : [this.queryInfo.folderId];
+      queryFolders = folderIds.map(f => getFolder(f));
+    }
+
+    let queryAccounts = null;
+    if (this.queryInfo.accountId) {
+      // Enforce the order as specified.
+      const accountKeys = Array.isArray(this.queryInfo.accountId)
+        ? this.queryInfo.accountId
+        : [this.queryInfo.accountId];
+      queryAccounts = accountKeys.map(accountKey =>
+        allAccounts.find(account => accountKey == account.key)
+      );
+    }
+
+    if (queryFolders) {
       includeSubFolders = !!this.queryInfo.includeSubFolders;
       if (!this.extension.hasPermission("accountsRead")) {
         throw new ExtensionError(
           'Querying by folder requires the "accountsRead" permission'
         );
       }
-      const { folder, accountId } = getFolder(queryFolder);
-      if (!queryAccountId || queryAccountId == accountId) {
-        folders.push(folder);
+      for (const queryFolder of queryFolders) {
+        const { folder, accountKey } = queryFolder;
+        if (
+          !queryAccounts ||
+          queryAccounts.some(account => accountKey == account.key)
+        ) {
+          folders.push(folder);
+        }
       }
     } else {
       includeSubFolders = true;
-      for (const account of MailServices.accounts.accounts) {
-        const accountId = account.key;
-        if (!queryAccountId || queryAccountId == accountId) {
-          folders.push(account.incomingServer.rootFolder);
-        }
+      for (const account of queryAccounts || allAccounts) {
+        folders.push(account.rootFolder);
       }
     }
 

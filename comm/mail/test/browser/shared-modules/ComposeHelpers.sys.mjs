@@ -5,20 +5,18 @@
 import {
   get_about_message,
   mc,
-} from "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs";
+} from "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs";
 
-import { gMockCloudfileManager } from "resource://testing-common/mozmill/CloudfileHelpers.sys.mjs";
+import { gMockCloudfileManager } from "resource://testing-common/mail/CloudfileHelpers.sys.mjs";
 
-import { promise_new_window } from "resource://testing-common/mozmill/WindowHelpers.sys.mjs";
-import { get_notification } from "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs";
-import * as EventUtils from "resource://testing-common/mozmill/EventUtils.sys.mjs";
+import { promise_new_window } from "resource://testing-common/mail/WindowHelpers.sys.mjs";
+import { get_notification } from "resource://testing-common/mail/NotificationBoxHelpers.sys.mjs";
+import * as EventUtils from "resource://testing-common/mail/EventUtils.sys.mjs";
 import { Assert } from "resource://testing-common/Assert.sys.mjs";
 import { BrowserTestUtils } from "resource://testing-common/BrowserTestUtils.sys.mjs";
 import { TestUtils } from "resource://testing-common/TestUtils.sys.mjs";
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 var kTextNodeType = 3;
 
@@ -718,7 +716,7 @@ export async function get_msg_source(aMsgHdr, aCharset = "") {
         this.sis.init(inputStream);
         this.content += this.sis.read(count);
       },
-      onStartRequest(request) {},
+      onStartRequest() {},
       onStopRequest(request, statusCode) {
         this.sis.close();
         if (Components.isSuccessCode(statusCode)) {
@@ -1672,7 +1670,11 @@ export class FormatHelper {
     Assert.equal(
       getDifference(bodyBlock, expectBlock, "HTML", 0),
       null,
-      `${assertMessage}: Should be no difference in body content`
+      `${assertMessage}: Should be no difference in body content: bodyblock=${JSON.stringify(
+        bodyBlock,
+        null,
+        2
+      )}`
     );
   }
 

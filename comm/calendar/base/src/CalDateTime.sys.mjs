@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { ICAL, unwrap, unwrapSetter } = ChromeUtils.import("resource:///modules/calendar/Ical.jsm");
+import ICAL from "resource:///modules/calendar/Ical.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
@@ -84,16 +84,8 @@ CalDateTime.prototype = {
   get timezone() {
     return new lazy.CalTimezone(this.innerObject.zone);
   },
-  set timezone(rawval) {
-    unwrapSetter(
-      ICAL.Timezone,
-      rawval,
-      function (val) {
-        this.innerObject.zone = val;
-        return val;
-      },
-      this
-    );
+  set timezone(val) {
+    this.innerObject.zone = val.wrappedJSObject.innerObject;
   },
 
   resetTo(year, month, day, hour, minute, second, timezone) {
@@ -137,21 +129,21 @@ CalDateTime.prototype = {
     return this.toString();
   },
 
-  getInTimezone: unwrap(ICAL.Timezone, function (val) {
-    return new CalDateTime(this.innerObject.convertToZone(val));
-  }),
+  getInTimezone(val) {
+    return new CalDateTime(this.innerObject.convertToZone(val.wrappedJSObject.innerObject));
+  },
 
-  addDuration: unwrap(ICAL.Duration, function (val) {
-    this.innerObject.addDuration(val);
-  }),
+  addDuration(val) {
+    this.innerObject.addDuration(val.wrappedJSObject.innerObject);
+  },
 
-  subtractDate: unwrap(ICAL.Time, function (val) {
-    return new lazy.CalDuration(this.innerObject.subtractDateTz(val));
-  }),
+  subtractDate(val) {
+    return new lazy.CalDuration(this.innerObject.subtractDateTz(val.wrappedJSObject.innerObject));
+  },
 
-  compare: unwrap(ICAL.Time, function (val) {
+  compare(val) {
     let a = this.innerObject;
-    let b = val;
+    let b = val.wrappedJSObject.innerObject;
 
     // If either this or aOther is floating, both objects are treated
     // as floating for the comparison.
@@ -166,7 +158,7 @@ CalDateTime.prototype = {
     }
     // If both are dates or date-times, then just do the normal compare
     return a.compare(b);
-  }),
+  },
 
   get startOfWeek() {
     return new CalDateTime(this.innerObject.startOfWeek());

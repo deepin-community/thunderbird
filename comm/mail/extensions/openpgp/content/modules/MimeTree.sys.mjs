@@ -4,32 +4,29 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   EnigmailArmor: "chrome://openpgp/content/modules/armor.sys.mjs",
   EnigmailConstants: "chrome://openpgp/content/modules/constants.sys.mjs",
   EnigmailData: "chrome://openpgp/content/modules/data.sys.mjs",
   EnigmailDecryption: "chrome://openpgp/content/modules/decryption.sys.mjs",
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
+  EnigmailFixExchangeMsg:
+    "chrome://openpgp/content/modules/fixExchangeMsg.sys.mjs",
   EnigmailMime: "chrome://openpgp/content/modules/mime.sys.mjs",
   EnigmailStreams: "chrome://openpgp/content/modules/streams.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  jsmime: "resource:///modules/jsmime.jsm",
-
-  EnigmailFixExchangeMsg:
-    "chrome://openpgp/content/modules/fixExchangeMessage.jsm",
-
-  MailCryptoUtils: "resource:///modules/MailCryptoUtils.jsm",
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
+  MailCryptoUtils: "resource:///modules/MailCryptoUtils.sys.mjs",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
+  jsmime: "resource:///modules/jsmime.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
+});
+
+var log = console.createInstance({
+  prefix: "openpgp",
+  maxLogLevel: "Warn",
+  maxLogLevelPref: "openpgp.loglevel",
 });
 
 /**
@@ -112,7 +109,7 @@ export class MimeTreeEmitter {
       if (this.#enableFilterMode && this.#checkForEncryption) {
         this.#checkForAttachments = true;
         this.#hasEncryptedParts = false;
-        this.#decrypter = new MimeTreeDecrypter();
+        this.#decrypter = new MimeTreeDecrypter({ disablePrompts: false });
       }
 
       if (this.#enableFilterMode && this.#excludeAttachmentData) {
@@ -203,7 +200,7 @@ export class MimeTreeEmitter {
     }
   }
 
-  endPart(partNum) {
+  endPart() {
     // Identify PGP encrypted parts, if this message has not yet been identified
     // as having encrypted parts.
     if (
@@ -244,14 +241,25 @@ export class MimeTreeEmitter {
 }
 
 /**
+ * @typedef {object} MimeTreeDecrypterOptions
+ *
+ * @property {boolean} [disablePrompts=false] - If the user's input is necessary
+ *   but prompting is disabled, the operation will abort with a failure.
+ */
+
+/**
  * Class to decrypt a MimeTreePart.
  */
 export class MimeTreeDecrypter {
-  constructor() {
+  /**
+   * @param {MimeTreeDecrypterOptions} [options]
+   */
+  constructor(options) {
     this.cryptoChanged = false;
     this.decryptFailure = false;
     this.mimeTree = null;
     this.subject = "";
+    this.disablePrompts = options?.disablePrompts ?? false;
   }
 
   /**
@@ -277,8 +285,6 @@ export class MimeTreeDecrypter {
    * @param {MimeTreePart} mimeTreePart
    */
   async decryptMimeTree(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: decryptMimeTree:\n");
-
     if (this.isBrokenByExchange(mimeTreePart)) {
       this.fixExchangeMessage(mimeTreePart);
     }
@@ -309,10 +315,7 @@ export class MimeTreeDecrypter {
    *   - https://doesnotexist-openpgp-integration.thunderbird/forum/viewtopic.php?f=4&t=425
    *   - https://sourceforge.net/p/enigmail/forum/support/thread/4add2b69/
    */
-
   isBrokenByExchange(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: isBrokenByExchange:\n");
-
     try {
       if (
         mimeTreePart.subParts &&
@@ -343,9 +346,7 @@ export class MimeTreeDecrypter {
           .toLowerCase()
           .includes("encrypted.asc")
       ) {
-        lazy.EnigmailLog.DEBUG(
-          "MimeTree.sys.mjs: isBrokenByExchange: found message broken by MS-Exchange\n"
-        );
+        log.debug("Found message broken by MS-Exchange");
         return true;
       }
     } catch (ex) {}
@@ -372,12 +373,6 @@ export class MimeTreeDecrypter {
     let data = "";
     for (const c of decrypted) {
       data += String.fromCharCode(c);
-    }
-
-    if (lazy.EnigmailLog.getLogLevel() > 5) {
-      lazy.EnigmailLog.DEBUG(
-        "*** start data ***\n'" + data + "'\n***end data***\n"
-      );
     }
 
     // Search for the separator between headers and message body.
@@ -437,8 +432,6 @@ export class MimeTreeDecrypter {
   }
 
   isPgpMime(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: isPgpMime()\n");
-
     try {
       if (mimeTreePart.headers.has("content-type")) {
         if (
@@ -458,12 +451,10 @@ export class MimeTreeDecrypter {
   }
 
   async decryptPGPMIME(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG(
-      "MimeTree.sys.mjs: decryptPGPMIME(" + mimeTreePart.partNum + ")\n"
-    );
-
     if (!mimeTreePart.subParts[1]) {
-      throw new Error("Not a correct PGP/MIME message");
+      throw new Error(
+        `${mimeTreePart.partNum} is not a correct PGP/MIME message`
+      );
     }
 
     const uiFlags =
@@ -501,19 +492,13 @@ export class MimeTreeDecrypter {
 
     if (!data || data.length === 0) {
       if (statusFlagsObj.value & lazy.EnigmailConstants.DISPLAY_MESSAGE) {
-        Services.prompt.alert(null, null, errorMsgObj.value);
+        if (!this.disablePrompts) {
+          Services.prompt.alert(null, null, errorMsgObj.value);
+        } else {
+          log.warn(errorMsgObj.value);
+        }
         throw new Error("Decryption impossible");
       }
-    }
-
-    lazy.EnigmailLog.DEBUG(
-      "MimeTree.sys.mjs: analyzeDecryptedData: got " + data.length + " bytes\n"
-    );
-
-    if (lazy.EnigmailLog.getLogLevel() > 5) {
-      lazy.EnigmailLog.DEBUG(
-        "*** start data ***\n'" + data + "'\n***end data***\n"
-      );
     }
 
     if (data.length === 0) {
@@ -624,7 +609,6 @@ export class MimeTreeDecrypter {
   }
 
   pgpDecryptAttachment(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: pgpDecryptAttachment()\n");
     const attachmentHead = mimeTreePart.body.substr(0, 30);
     if (attachmentHead.search(/-----BEGIN PGP \w{5,10} KEY BLOCK-----/) >= 0) {
       // attachment appears to be a PGP key file, skip
@@ -670,44 +654,27 @@ export class MimeTreeDecrypter {
     );
 
     if (data || statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_OKAY) {
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: pgpDecryptAttachment: decryption OK\n"
-      );
+      // Decryption ok.
     } else if (statusFlagsObj.value & lazy.EnigmailConstants.MISSING_MDC) {
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: pgpDecryptAttachment: decryption without MDC protection\n"
-      );
+      log.warn("Decryption failed. Missing MDC protection.");
       this.decryptFailure = true;
     } else if (
       statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_FAILED
     ) {
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: pgpDecryptAttachment: decryption failed\n"
-      );
+      log.warn("Decryption failed.");
       this.decryptFailure = true;
       // Enigmail prompts the user here, but we just keep going.
     } else if (
       statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_INCOMPLETE
     ) {
-      // failure; message not complete
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: pgpDecryptAttachment: decryption incomplete\n"
-      );
+      log.warn("Decryption failed. Message not complete.");
       this.decryptFailure = true;
       return;
     } else {
       // there is nothing to be decrypted
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: pgpDecryptAttachment: no decryption required\n"
-      );
       return;
     }
 
-    lazy.EnigmailLog.DEBUG(
-      "MimeTree.sys.mjs: pgpDecryptAttachment: decrypted to " +
-        data.length +
-        " bytes\n"
-    );
     if (statusFlagsObj.encryptedFileName) {
       attachmentName = statusFlagsObj.encryptedFileName;
     }
@@ -757,8 +724,6 @@ export class MimeTreeDecrypter {
   }
 
   async decryptINLINE(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: decryptINLINE()\n");
-
     if ("decryptedPgpMime" in mimeTreePart && mimeTreePart.decryptedPgpMime) {
       return 0;
     }
@@ -842,7 +807,11 @@ export class MimeTreeDecrypter {
           );
           if (!plaintext || plaintext.length === 0) {
             if (statusFlagsObj.value & lazy.EnigmailConstants.DISPLAY_MESSAGE) {
-              Services.prompt.alert(null, null, errorMsgObj.value);
+              if (!this.disablePrompts) {
+                Services.prompt.alert(null, null, errorMsgObj.value);
+              } else {
+                log.warn(errorMsgObj.value);
+              }
               this.cryptoChanged = false;
               this.decryptFailure = true;
               return -1;
@@ -853,9 +822,7 @@ export class MimeTreeDecrypter {
               (lazy.EnigmailConstants.DECRYPTION_FAILED |
                 lazy.EnigmailConstants.MISSING_MDC)
             ) {
-              lazy.EnigmailLog.DEBUG(
-                "MimeTree.sys.mjs: decryptINLINE: no MDC protection, decrypting anyway\n"
-              );
+              log.debug("Not MDC protection. Decrypting inline anyway.");
             }
             if (
               statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_FAILED
@@ -870,6 +837,7 @@ export class MimeTreeDecrypter {
               );
 
               if (
+                this.disablePrompts ||
                 Services.prompt.confirmEx(
                   null,
                   null,
@@ -882,8 +850,10 @@ export class MimeTreeDecrypter {
                   {}
                 )
               ) {
+                // Either user pressed skip/cancel, or prompts are forbidden.
                 this.cryptoChanged = false;
                 this.decryptFailure = true;
+                log.warn(msg);
                 return -1;
               }
             } else if (
@@ -972,28 +942,16 @@ export class MimeTreeDecrypter {
       this.cryptoChanged = true;
       return 1;
     }
-
-    const ct = getContentType(mimeTreePart);
-    lazy.EnigmailLog.DEBUG(
-      "MimeTree.sys.mjs: Decryption skipped:  " + ct + "\n"
-    );
-
     return 0;
   }
 
   fixExchangeMessage(mimeTreePart) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: fixExchangeMessage()\n");
-
     const msg = mimeTreeToString(mimeTreePart, true);
-
-    try {
-      const fixedMsg = lazy.EnigmailFixExchangeMsg.getRepairedMessage(msg);
-      const replacement = getMimeTree(fixedMsg, true);
-
-      for (const i in replacement) {
-        mimeTreePart[i] = replacement[i];
-      }
-    } catch (ex) {}
+    const fixedMsg = lazy.EnigmailFixExchangeMsg.getRepairedMessage(msg);
+    const replacement = getMimeTree(fixedMsg, true);
+    for (const i in replacement) {
+      mimeTreePart[i] = replacement[i];
+    }
   }
 }
 
@@ -1019,10 +977,6 @@ function stripHTMLFromArmoredBlocks(text) {
 }
 
 function getHeaderValue(mimeStruct, header) {
-  lazy.EnigmailLog.DEBUG(
-    "MimeTree.sys.mjs: getHeaderValue: '" + header + "'\n"
-  );
-
   try {
     if (mimeStruct.headers.has(header)) {
       const hdrVal = mimeStruct.headers.get(header);
@@ -1032,10 +986,8 @@ function getHeaderValue(mimeStruct, header) {
       return mimeStruct.headers[header].join(" ");
     }
     return "";
-  } catch (ex) {
-    lazy.EnigmailLog.DEBUG(
-      "MimeTree.sys.mjs: getHeaderValue: header not present\n"
-    );
+  } catch (e) {
+    log.debug("Could not get header value for header=" + header, e);
     return "";
   }
 }
@@ -1050,7 +1002,7 @@ function getContentType(mimeTreePart) {
       return mimeTreePart.headers.get("content-type").type.toLowerCase();
     }
   } catch (e) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: getContentType: " + e + "\n");
+    log.debug("Get content type failed.", e);
   }
   return null;
 }
@@ -1066,7 +1018,7 @@ function getBoundary(mimeTreePart) {
       return mimeTreePart.headers.get("content-type").get("boundary");
     }
   } catch (e) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: getBoundary: " + e + "\n");
+    log.debug("Get boundary failed.", e);
   }
   return null;
 }
@@ -1084,7 +1036,7 @@ function getCharset(mimeTreePart) {
       }
     }
   } catch (e) {
-    lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: getCharset: " + e + "\n");
+    log.debug("Get charset failed.", e);
   }
   return null;
 }
@@ -1104,9 +1056,7 @@ function getTransferEncoding(mimeTreePart) {
       }
     }
   } catch (e) {
-    lazy.EnigmailLog.DEBUG(
-      "MimeTree.sys.mjs: getTransferEncoding: " + e + "\n"
-    );
+    log.debug("Get transfer encoding failed.", e);
   }
   return "8Bit";
 }
@@ -1154,17 +1104,11 @@ function getAttachmentName(mimeTreePart) {
 }
 
 function getPepSubject(mimeString) {
-  lazy.EnigmailLog.DEBUG("MimeTree.sys.mjs: getPepSubject()\n");
-
   let subject = null;
-
   const emitter = {
     ct: "",
     firstPlainText: false,
     startPart(partNum, headers) {
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: getPepSubject.startPart: partNum=" + partNum + "\n"
-      );
       try {
         this.ct = String(headers.getRawHeader("content-type")).toLowerCase();
         if (!subject && !this.firstPlainText) {
@@ -1179,16 +1123,9 @@ function getPepSubject(mimeString) {
       }
     },
 
-    endPart(partNum) {},
+    endPart() {},
 
     deliverPartData(partNum, data) {
-      lazy.EnigmailLog.DEBUG(
-        "MimeTree.sys.mjs: getPepSubject.deliverPartData: partNum=" +
-          partNum +
-          " ct=" +
-          this.ct +
-          "\n"
-      );
       if (!this.firstPlainText && this.ct.search(/^text\/plain/) === 0) {
         // check data
         this.firstPlainText = true;
@@ -1201,13 +1138,11 @@ function getPepSubject(mimeString) {
     },
   };
 
-  const opt = {
-    strformat: "unicode",
-    bodyformat: "decode",
-  };
-
   try {
-    const p = new lazy.jsmime.MimeParser(emitter, opt);
+    const p = new lazy.jsmime.MimeParser(emitter, {
+      strformat: "unicode",
+      bodyformat: "decode",
+    });
     p.deliverData(mimeString);
   } catch (ex) {}
 
@@ -1222,10 +1157,6 @@ function getPepSubject(mimeString) {
  * @returns {string}
  */
 export function mimeTreeToString(mimeTreePart, includeHeaders) {
-  lazy.EnigmailLog.DEBUG(
-    "MimeTree.sys.mjs: mimeTreeToString: part: '" + mimeTreePart.partNum + "'\n"
-  );
-
   let msg = "";
   const rawHdr = mimeTreePart.headers._rawHeaders;
 
@@ -1295,8 +1226,6 @@ export function mimeTreeToString(mimeTreePart, includeHeaders) {
  * @param {boolean} getBody - if true, delivers the body of each MimeTreePart
  * @param {MimeTreeFromUrlCallback} callbackFunc - the callback function that is
  *   called asynchronously when parsing is complete.
- *
- * @returns undefined
  */
 export function getMimeTreeFromUrl(url, getBody = false, callbackFunc) {
   function onData(data) {
@@ -1304,6 +1233,22 @@ export function getMimeTreeFromUrl(url, getBody = false, callbackFunc) {
     callbackFunc(tree);
   }
 
+  const chan = lazy.EnigmailStreams.createChannel(url);
+  const bufferListener = lazy.EnigmailStreams.newStringStreamListener(onData);
+  chan.asyncOpen(bufferListener, null);
+}
+
+/**
+ * Return the contents of a message.
+ *
+ * @param {string} url - the URL to load and parse
+ * @param {MimeTreeFromUrlCallback} callbackFunc - the callback function that is
+ *   called asynchronously when parsing is complete.
+ */
+export function getMessageFromUrl(url, callbackFunc) {
+  function onData(data) {
+    callbackFunc(data);
+  }
   const chan = lazy.EnigmailStreams.createChannel(url);
   const bufferListener = lazy.EnigmailStreams.newStringStreamListener(onData);
   chan.asyncOpen(bufferListener, null);

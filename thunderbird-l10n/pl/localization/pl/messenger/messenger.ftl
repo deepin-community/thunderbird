@@ -213,6 +213,21 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Przekaż i przekieruj
     .accesskey = P
+mail-context-menu-forward-forward =
+    .label = Przekaż
+    .accesskey = P
+mail-context-menu-forward-inline =
+    .label = Bezpośrednio
+    .accesskey = B
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Jako załącznik
+           *[other] Jako załączniki
+        }
+    .accesskey = o
 mail-context-menu-organize =
     .label = Organizuj
     .accesskey = O

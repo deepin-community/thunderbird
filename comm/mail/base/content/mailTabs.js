@@ -9,14 +9,10 @@
 /* globals contentProgress, statusFeedback */ // From mailWindow.js
 
 ChromeUtils.defineESModuleGetters(this, {
+  FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
+  GlodaSyntheticView: "resource:///modules/gloda/GlodaSyntheticView.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
-  MsgHdrSyntheticView: "resource:///modules/MsgHdrSyntheticView.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  FolderUtils: "resource:///modules/FolderUtils.jsm",
-  GlodaSyntheticView: "resource:///modules/gloda/GlodaSyntheticView.jsm",
-  MsgHdrToMimeMessage: "resource:///modules/gloda/MimeMessage.jsm",
+  MsgHdrToMimeMessage: "resource:///modules/gloda/MimeMessage.sys.mjs",
 });
 
 /**
@@ -81,8 +77,8 @@ var mailTabType = {
     tab.mode._nextId++;
   },
 
-  closeTab(tab) {},
-  saveTabState(tab) {},
+  closeTab() {},
+  saveTabState() {},
 
   modes: {
     mail3PaneTab: {
@@ -320,7 +316,7 @@ var mailTabType = {
         mailTabType._cloneTemplate(
           "mailMessageTabTemplate",
           tab,
-          win => {
+          () => {
             // Make tabmail give the message pane focus when this tab becomes
             // the active tab.
             tab.lastActiveElement = tab.browser;
@@ -368,7 +364,7 @@ var mailTabType = {
       restoreTab(tabmail, persistedState) {
         tabmail.openTab("mailMessageTab", persistedState);
       },
-      showTab(tab) {},
+      showTab() {},
       supportsCommand(command, tab) {
         return tab.chromeBrowser?.contentWindow.commandController?.supportsCommand(
           command

@@ -13,7 +13,6 @@
 #include "prmem.h"
 #include "nsEmitterUtils.h"
 #include "nsMimeStringResources.h"
-#include "msgCore.h"
 #include "nsEmitterUtils.h"
 #include "nsIMimeStreamConverter.h"
 #include "mozilla/Logging.h"
@@ -363,11 +362,6 @@ nsMimeBaseEmitter::Write(const nsACString& buf, uint32_t* amountWritten) {
   unsigned int written = 0;
   nsresult rv = NS_OK;
   uint32_t needToWrite;
-
-#ifdef DEBUG_BenB
-  // If you want to see libmime output...
-  printf("%s", buf);
-#endif
 
   MOZ_LOG(gMimeEmitterLogModule, mozilla::LogLevel::Info,
           ("%s", PromiseFlatCString(buf).get()));

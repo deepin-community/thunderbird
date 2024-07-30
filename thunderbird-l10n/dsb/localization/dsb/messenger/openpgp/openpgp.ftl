@@ -4,6 +4,37 @@
 
 e2e-intro-description = Aby skoděrowane abo digitalnje signěrowane powěsći pósłał, musyśo koděrowańsku technologiju konfigurěrowaś, pak OpenPGP pak S/MIME.
 e2e-intro-description-more = Wubjeŕśo swój wósobinski kluc, aby wužywanje OpenPGP zmóžnił, abo wósobinski certifikat, aby wužywanje S/MIME zmóžnił. Za wósobinski kluc abo certifikat maśo wótpowědny pótajmny kluc.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = Aby nowy wósobinski certifikat S/MIME dostał, generěrujśo napšašowanje signěrowanja certifikata (CSR) a zapódajśo jo pla certificěrowanišća (CA).
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = Wubjeŕśo lokalny zapis a datajowe mě za swóju CSR-dataju a wótegrońśo na slědujuce pšašanja za nastajenja algoritmusa a mócy.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = CSR generěrowaś
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Dalej
+# A label for a button that goes back one step
+e2e-csr-back = Slědk
+# Do not translate: CSR
+e2e-csr-button =
+    .label = CSR-dataju generěrowaś a składowaś…
+# Do not translate: CSR
+e2e-csr-select-title = CSR-algoritmus
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = Wubjeŕśo mjazy RSA (dopórucony) abo ECC ako swój kryptografiski algoritmus za nowy certifikat S/MIME.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Wubjeŕśo pominanu kryptografisku móc (malsnjejša z niskimi licbami abo lěpša z wušymi licbami) za nowy certifikat S/MIME), abo wobchowajśo standardne nastajenje.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = Nowy pótajmny kluc { $type } { $strength } buźo se w nastajenjach { -brand-short-name } generěrowaś. Toś ten proces móžo chylku traś a nachylu zawinowaś, až wótegrono njedojźo; pšosym wóstańś sćerpliwy za toś ten kšac. CSR-dataja, kótaraž jo se składła ako { $file }, se mjaztym napórajo.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = E-mailowu adresu ({ $email }) do CSR zapśimjeś (dopórucone)
+# $file A filename
+e2e-csr-success = CSR jo se wuspěšnje składł do { $file }
+# $file A filename
+e2e-csr-failure = CSR njedajo se do { $file } składowaś
 e2e-signing-description = Digitalna signatura dostawarjam zmóžnja, pśeglědowaś, až powěsć jo se wót was pósłała, a lěc jeje wopśimjeśe njejo se změniło. Skoděrowane powěsći se pśecej pó standarźe signěruju.
 e2e-sign-message =
     .label = Njeskoděrowane powěsći signěrowaś
@@ -405,6 +436,9 @@ window-locked = Wobźěłowańske wokno jo zastajone; słanje jo se pśetergnuł
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Pśetorgnjony
 keyserver-error-unknown = Njeznata zmólka jo nastała
 keyserver-error-server-error = Klucowy serwer jo dał zmólku k wěsći.
@@ -416,6 +450,9 @@ keyserver-error-unsupported = Klucowy serwer se njepódpěra.
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     Waš e-mailowy póbitowaŕ jo pśeźěłał wašo napšašowanje, aby waš zjawny kluc do zapisa OpenPGP-webklucow nagrał.
     Pšosym wobkšuśćo, aby wózjawjenje swójogo zjawnego kluca dokóńcył.
@@ -425,6 +462,9 @@ wkd-message-body-process =
 
 ## Strings in persistentCrypto.jsm
 
+
+## Strings in persistentCrypto.sys.mjs
+
 # Variables:
 # $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
@@ -433,6 +473,9 @@ converter-decrypt-body-failed =
     Cośo z drugeju gronidłoweju frazu znowego wopytaś abo cośo powěsć pśeskócyś?
 
 ## Strings filters.jsm
+
+
+## Strings filters.sys.mjs
 
 filter-folder-required = Wy dejśo celowy zarědnik wubraś.
 filter-decrypt-move-warn-experimental =
@@ -450,6 +493,9 @@ filter-warn-key-not-secret =
     Jolic pótajmny kluc za ‚{ $desc }‘ njamaśo, njamóžośo wěcej mejlki cytaś.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Na pśecej dešifrěrowaś (OpenPGP)
 filter-decrypt-copy-label = Dešifrěrowanu kopiju napóraś (OpenPGP)
@@ -497,6 +543,7 @@ key-man-button-export-pub-key = Jano &zjawne kluce eksportěrowaś
 key-man-button-refresh-all = Wšykne kluce &aktualizěrowaś
 key-man-loading-keys = Kluce se zacytuju, pšosym cakajśo…
 ascii-armor-file = ASCII Armored Files (*.asc)
+text-file = Tekstowe dataje (*.txt)
 no-key-selected = Wy měł nanejmjenjej jaden kluc wubraś, aby wubranu operaciju wuwjadł
 export-to-file = Zjawny kluc do dataje eksportěrowaś
 export-keypair-to-file = Pótajmny a zjawny kluc do dataje eksportěrowaś
@@ -524,6 +571,12 @@ openpgp-export-secret-fail = <b>Njejo móžno, wubrany pótajmny kluc eksportěr
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = Kluc { $userId } (klucowy ID { $keyId }) jo se wótwołał.
 key-ring-pub-key-expired = Klcč { $userId } (klucowy ID { $keyId }) jo spadnuł.
 key-ring-no-secret-key = Zda se, až pótajmny kluc za { $userId } (klucowy ID { $keyId }) na swójom klucowcu njamaśo; njamóžośo kluc za signěrowanje wužywaś.
@@ -536,10 +589,16 @@ key-ring-enc-sub-keys-expired = Wšykne koděrowańske pódkluce kluca { $userId
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Foto
 user-att-photo = Wužywaŕski atribut (JPEG-wobraz)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Toś ten kluc jo južo wótwołany.
 #   $identity (String) - the id and associated user identity of the key being revoked
@@ -563,6 +622,9 @@ after-revoke-info =
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &Importěrowaś
 delete-key-title = OpenPGP-kluc lašowaś
 delete-external-key-title = Eksterny GnuPG-kluc wótwónoźeś
@@ -572,6 +634,9 @@ delete-key-in-use-description = Pókšacowanje njejo móžne! Kluc, kótaryž jo
 revoke-key-in-use-description = Pókšacowanje njejo móžne! Kluc, kótaryž jo se wubrał za wótwołanje, se tuchylu pśez toś tu identitu wužywa. Wubjeŕśo drugi kluc abo njewuběrajśo žeden a wopytajśo hyšći raz.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -583,18 +648,33 @@ key-error-not-accepted-as-personal = Njejsćo wobkšuśił, až kluc z ID ‚{ $
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = Funkcija, kótaruž sćo wubrał, njejo w modusu offline k dispoziciji. Pšosym źiśo online a wopytajśo hyšći raz.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Njejsmy mógli wužywajobny kluc namakaś, kótaryž pódanym pytańskim kriterijam wótpowědujo.
 no-update-found = Maśo južo kluce, kótarež su se namakali online.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
+
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Zmólka - pśikaz klucoweje ekstrakcije njejo se raźił
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Zmólka - dostaśe kluca jo se pśetergnuło wot wužywarja
 not-first-block = Zmólka - prědny OpenPGP-blok njejo blok zjawnego kluca
@@ -607,6 +687,13 @@ no-pgp-block = Zmólka - žeden płaśiwy blok šćitanych OpenPGP-datow namakan
 confirm-permissive-import = Import njejo se raźił. Kluc, kótaryž wopytujośo importěrowaś, mógał wobškóźony byś abo njeznate atributy wužywaś. Cośo wopytowaś, źěle importěrowaś, kótarež su korektne? To mógło k tomu wjasć, až import jo njedopołny a kluce su njewužywajobne.
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Někotare importěrowane pótajmne kluce njepódprětu funkciju póbituju. Jolic taki kluc ako swój wósobinski kluc wužywaśo, mógu korespondenty wam mejlki abo zjawne kluce w inkompatibelnych formatach słaś. To importěrowane pótajmne kluce ze slědujucymi palcowymi wótśišćami nastupa: { $fingerprints }.
+help-button = Pomoc
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = njeznaty
 key-valid-invalid = njepłaśiwy
@@ -728,6 +815,9 @@ cannot-send-enc-because-no-own-key = Toś ta powěsć njedajo se skoděrowana p�
 
 ## Strings used in decryption.jsm
 
+
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -751,9 +841,15 @@ dlg-button-view = &Naglěd
 
 ## Strings used in encryption.jsm
 
+
+## Strings used in encryption.sys.mjs
+
 not-required = Zmólka – žedno koděrowanje trjebne
 
 ## Strings used in windows.jsm
+
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = Žedno foto k dispoziciji
 # Variables:
@@ -772,6 +868,9 @@ repeat-suffix-singular = raz wóspjetujo.
 repeat-suffix-plural = razow wóspjetujo.
 no-repeat = Toś ta powěźeńka njebuźo se wěcej pokazaś.
 dlg-keep-setting = Mójo wótegrono se spomnjeś a wěcej se njepšašaś
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = W pó&rěźe
 dlg-button-close = &Zacyniś
 dlg-button-cancel = &Pśetergnuś
@@ -782,6 +881,9 @@ enig-alert = OpenPGP-powěźeńka
 enig-info = OpenPGP-informacije
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = &Hyšći raz wopytaś
 dlg-button-skip = &Pśeskócyś

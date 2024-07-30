@@ -13,7 +13,7 @@ var { localAccountUtils } = ChromeUtils.importESModule(
 
 var test = null;
 
-// WebApps.jsm called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
+// WebApps.sys.mjs called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
 var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.importESModule(
   "resource://testing-common/AppInfo.sys.mjs"
 );
@@ -70,20 +70,23 @@ function createPop3ServerAndLocalFolders(port, hostname = "localhost") {
   return server;
 }
 
+/** @implements {nsIMsgCopyServiceListener} */
 var gCopyListener = {
   callbackFunction: null,
   copiedMessageHeaderKeys: [],
-  OnStartCopy() {},
-  OnProgress() {},
-  SetMessageKey(aKey) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey(aKey) {
     try {
       this.copiedMessageHeaderKeys.push(aKey);
     } catch (ex) {
       dump(ex);
     }
   },
-  GetMessageId() {},
-  OnStopCopy(aStatus) {
+  getMessageId() {
+    return null;
+  },
+  onStopCopy(aStatus) {
     if (this.callbackFunction) {
       mailTestUtils.do_timeout_function(0, this.callbackFunction, null, [
         this.copiedMessageHeaderKeys,

@@ -73,6 +73,7 @@ module.exports = {
     "mozilla/prefer-boolean-length-check": "off",
     // Enforce using `let` only when variables are reassigned.
     "prefer-const": ["error", { destructuring: "all" }],
+    "mozilla/reject-chromeutils-import": "error",
   },
 
   overrides: [
@@ -82,6 +83,10 @@ module.exports = {
         node: true,
         browser: false,
       },
+    },
+    {
+      files: ["**/test/**", "**/tests/**"],
+      extends: ["plugin:mozilla/general-test"],
     },
     {
       files: ["*.mjs"],
@@ -157,7 +162,6 @@ module.exports = {
         "calendar/base/content/calendar-task-tree-view.js",
         "calendar/base/content/dialogs/calendar-event-dialog-attendees.js",
         "calendar/base/content/dialogs/calendar-event-dialog-recurrence.js",
-        "calendar/base/content/dialogs/calendar-ics-file-dialog.js",
         "calendar/base/content/item-editing/calendar-item-editing.js",
         "calendar/base/content/widgets/calendar-filter.js",
         "calendar/base/content/widgets/calendar-invitation-panel.js",
@@ -166,14 +170,14 @@ module.exports = {
         "calendar/base/modules/calUtils.sys.mjs",
         "calendar/base/modules/utils/calDateTimeFormatter.sys.mjs",
         "calendar/base/modules/utils/calIteratorUtils.sys.mjs",
-        "calendar/base/src/CalMetronome.jsm",
+        "calendar/base/src/CalMetronome.sys.mjs",
+
+        "chat/modules/imContentSink.sys.mjs",
+
+        "mail/modules/QuickFilterManager.sys.mjs",
       ],
       excludedFiles: [".eslintrc.js"],
       extends: ["plugin:mozilla/valid-jsdoc"],
-    },
-    {
-      files: ["**/test/**", "**/tests/**"],
-      extends: ["plugin:mozilla/general-test"],
     },
   ],
 };

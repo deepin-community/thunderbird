@@ -188,6 +188,48 @@ appmenu-addons-and-themes =
 
 ## Context menu
 
+context-menu-mark-read =
+    .aria-label = Merkitse luetuksi
+    .tooltiptext = Merkitse luetuksi
+context-menu-mark-unread =
+    .aria-label = Merkitse lukemattomaksi
+    .tooltiptext = Merkitse lukemattomaksi
+context-menu-mark-reply =
+    .aria-label = Vastaa
+    .tooltiptext = Vastaa
+context-menu-archive =
+    .aria-label = Arkistoi
+    .tooltiptext = Arkistoi
+context-menu-mark-junk =
+    .aria-label = Merkitse roskapostiksi
+    .tooltiptext = Merkitse roskapostiksi
+mail-context-menu-open =
+    .label = Avaa
+    .accesskey = A
+mail-context-menu-reply =
+    .label = Vastaa
+    .accesskey = V
+mail-context-menu-forward-forward =
+    .label = Välitä
+    .accesskey = ä
+mail-context-menu-forward-inline =
+    .label = Viestiin sisällytettynä
+    .accesskey = I
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Liitteenä
+           *[other] Liitteinä
+        }
+    .accesskey = L
+mail-context-menu-organize =
+    .label = Järjestä
+    .accesskey = J
+mail-context-menu-threads =
+    .label = Viestiketjut
+    .accesskey = T
 context-menu-redirect-msg =
     .label = Uudelleenohjaa
 # This menu item is for canceling an NNTP message
@@ -209,6 +251,15 @@ mail-context-undelete-messages =
             [one] Kumoa viestin poisto
            *[other] Kumoa valittujen viestien poisto
         }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-delete =
+    .label =
+        { $count ->
+            [one] Poista viesti
+           *[other] Poista valitut viestit
+        }
+    .tooltiptext = { mail-context-messages-delete.label }
 context-menu-decrypt-to-folder2 =
     .label = Luo salauksesta purettu kopio kansioon
     .accesskey = r
@@ -247,6 +298,9 @@ message-header-show-recipient-avatar =
 message-header-show-big-avatar =
     .label = Suurempi profiilikuva
     .accesskey = f
+message-header-large-subject =
+    .label = Suuri aihe
+    .accesskey = S
 message-header-all-headers =
     .label = Näytä kaikki otsakkeet
     .accesskey = a

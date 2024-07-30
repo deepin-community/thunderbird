@@ -329,7 +329,7 @@
       // in the bubbling phase which is set up in the calendar-editable-item.
       this.addEventListener(
         "dragstart",
-        event => {
+        () => {
           document.monthDragEvent = this;
         },
         true
@@ -807,6 +807,15 @@
       this.mHeight = height;
 
       this.adjustWeekdayLength();
+    }
+
+    /**
+     * Because the font size changed, resetting the cached size of
+     * longWeekdayTotalPixels before calling the resize routine.
+     */
+    onFontSizeChange() {
+      delete this.longWeekdayTotalPixels;
+      super.onFontSizeChange();
     }
 
     /**

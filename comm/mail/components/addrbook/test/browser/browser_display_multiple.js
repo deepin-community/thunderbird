@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { CalendarTestUtils } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarTestUtils.jsm"
+var { CalendarTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/calendar/CalendarTestUtils.sys.mjs"
 );
 
 var { VCardUtils } = ChromeUtils.importESModule(
@@ -40,7 +40,7 @@ add_setup(async function () {
 
 add_task(async function testSelectMultiple() {
   const abWindow = await openAddressBookWindow();
-  openDirectory(personalBook);
+  await openDirectory(personalBook);
 
   const abDocument = abWindow.document;
   const cardsList = abDocument.getElementById("cards");
@@ -357,11 +357,10 @@ async function checkActionButtons(
 
     const composeWindowPromise = BrowserTestUtils.domWindowOpened();
     EventUtils.synthesizeMouseAtCenter(writeButton, {}, abWindow);
-    await checkComposeWindow(
-      await composeWindowPromise,
+    await checkComposeWindow(await composeWindowPromise, [
       ...listAddresses,
-      ...cardAddresses
-    );
+      ...cardAddresses,
+    ]);
   }
 
   if (eventAddresses.length) {

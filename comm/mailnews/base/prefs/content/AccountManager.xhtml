@@ -24,8 +24,11 @@
 
   <link rel="stylesheet" href="chrome://messenger/skin/inContentDialog.css" />
   <link rel="stylesheet" href="chrome://messenger/skin/icons.css" />
+  <link rel="stylesheet" href="chrome://messenger/skin/variables.css" />
+  <link rel="stylesheet" href="chrome://messenger/skin/containers.css" />
   <link rel="stylesheet" href="chrome://messenger/skin/folderPane.css" />
   <link rel="stylesheet" href="chrome://messenger/skin/shared/tree-listbox.css" />
+  <link rel="stylesheet" href="chrome://messenger/skin/shared/list-container.css" />
   <link rel="stylesheet" href="chrome://messenger/skin/shared/accountManager.css" />
 
   <link rel="localization" href="branding/brand.ftl" />
@@ -49,20 +52,22 @@
   <stringbundle id="bundle_brand" src="chrome://branding/locale/brand.properties"/>
   <stringbundle id="bundle_prefs" src="chrome://messenger/locale/prefs.properties"/>
   <html:aside id="accountTreeBox">
-    <html:ol is="orderable-tree-listbox" id="accounttree" class="no-overscroll"
+    <html:ol is="orderable-tree-listbox" id="accounttree" class="sidebar-panel-scroll"
              role="tree"
              flex="1"
              onselect="onAccountTreeSelect(null, null);">
     </html:ol>
     <template id="accountTreeItem" xmlns="http://www.w3.org/1999/xhtml">
       <li>
-        <div draggable="true">
+        <div class="container" draggable="true">
           <div class="twisty">
             <img class="twisty-icon" alt=""
                  src="chrome://global/skin/icons/arrow-down-12.svg" />
           </div>
           <div class="icon"></div>
           <span class="name" tabindex="-1"></span>
+          <img data-l10n-id="account-manager-server-default-icon"
+               class="default-icon" />
         </div>
         <ul></ul>
       </li>

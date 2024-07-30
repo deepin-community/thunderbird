@@ -114,6 +114,90 @@ add_task(async function testInsertRemoveCSS() {
   await extension.unload();
 });
 
+/** Tests browser.scripting.insertCSS and browser.scripting.removeCSS. */
+add_task(async function testInsertRemoveCSSViaScriptingAPI() {
+  const extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "background.js": async () => {
+        const [tab] = await browser.tabs.query({ mailTab: true });
+        await window.sendMessage();
+
+        await browser.scripting.insertCSS({
+          target: { tabId: tab.id },
+          css: "body { background-color: lime; }",
+        });
+        await window.sendMessage();
+
+        await browser.scripting.removeCSS({
+          target: { tabId: tab.id },
+          css: "body { background-color: lime; }",
+        });
+        await window.sendMessage();
+
+        await browser.scripting.insertCSS({
+          target: { tabId: tab.id },
+          files: ["test.css"],
+        });
+        await window.sendMessage();
+
+        await browser.scripting.removeCSS({
+          target: { tabId: tab.id },
+          files: ["test.css"],
+        });
+
+        browser.test.notifyPass("finished");
+      },
+      "test.css": "body { background-color: green; }",
+      "utils.js": await getUtilsJS(),
+    },
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["messagesModify", "scripting"],
+    },
+  });
+
+  about3Pane.threadTree.selectedIndex = 2;
+  await awaitBrowserLoaded(messagePane);
+
+  await extension.startup();
+
+  await extension.awaitMessage();
+  await checkMessageBody(
+    { backgroundColor: "rgba(0, 0, 0, 0)" },
+    messages.at(-3)
+  );
+  extension.sendMessage();
+
+  await extension.awaitMessage();
+  await checkMessageBody(
+    { backgroundColor: "rgb(0, 255, 0)" },
+    messages.at(-3)
+  );
+  extension.sendMessage();
+
+  await extension.awaitMessage();
+  await checkMessageBody(
+    { backgroundColor: "rgba(0, 0, 0, 0)" },
+    messages.at(-3)
+  );
+  extension.sendMessage();
+
+  await extension.awaitMessage();
+  await checkMessageBody(
+    { backgroundColor: "rgb(0, 128, 0)" },
+    messages.at(-3)
+  );
+  extension.sendMessage();
+
+  await extension.awaitFinish("finished");
+  await checkMessageBody(
+    { backgroundColor: "rgba(0, 0, 0, 0)" },
+    messages.at(-3)
+  );
+
+  await extension.unload();
+});
+
 /** Tests browser.tabs.insertCSS fails without the "messagesModify" permission. */
 add_task(async function testInsertRemoveCSSNoPermissions() {
   const extension = ExtensionTestUtils.loadExtension({
@@ -226,6 +310,67 @@ add_task(async function testExecuteScript() {
   await extension.unload();
 });
 
+/** Tests browser.scripting.executeScript. */
+add_task(async function testExecuteScriptViaScriptingAPI() {
+  const extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "background.js": async () => {
+        const [tab] = await browser.tabs.query({ mailTab: true });
+        await window.sendMessage();
+
+        await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            document.body.setAttribute("foo", "bar");
+          },
+        });
+        await window.sendMessage();
+
+        await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["test.js"],
+        });
+
+        browser.test.notifyPass("finished");
+      },
+      "test.js": () => {
+        document.body.querySelector(".moz-text-flowed").textContent +=
+          "Hey look, the script ran!";
+      },
+      "utils.js": await getUtilsJS(),
+    },
+    manifest: {
+      manifest_version: 2,
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["messagesModify", "scripting"],
+    },
+  });
+
+  about3Pane.threadTree.selectedIndex = 1;
+  await awaitBrowserLoaded(messagePane);
+
+  await extension.startup();
+
+  await extension.awaitMessage();
+  await checkMessageBody({ textContent: "" }, messages.at(-2));
+  extension.sendMessage();
+
+  await extension.awaitMessage();
+  await checkMessageBody({ foo: "bar" }, messages.at(-2));
+  extension.sendMessage();
+
+  await extension.awaitFinish("finished");
+  await checkMessageBody(
+    {
+      foo: "bar",
+      textContent: "Hey look, the script ran!",
+    },
+    messages.at(-2)
+  );
+
+  await extension.unload();
+});
+
 /** Tests browser.tabs.executeScript fails without the "messagesModify" permission. */
 add_task(async function testExecuteScriptNoPermissions() {
   const extension = ExtensionTestUtils.loadExtension({
@@ -281,7 +426,9 @@ add_task(async function testExecuteScriptNoPermissions() {
   await extension.unload();
 });
 
-/** Tests the messenger alias is available. */
+/**
+ * Tests the messenger alias is available after browser.tabs.executeScript().
+ */
 add_task(async function testExecuteScriptAlias() {
   const extension = ExtensionTestUtils.loadExtension({
     files: {
@@ -318,6 +465,57 @@ add_task(async function testExecuteScriptAlias() {
   await checkMessageBody(
     { textContent: "message_display_scripts@mochitest" },
     messages.at(-5)
+  );
+
+  await extension.unload();
+});
+
+/**
+ * Tests messenger alias is available after browser.scripting.executeScript().
+ */
+add_task(async function testExecuteScriptAliasViaScriptingAPI() {
+  const extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "background.js": async () => {
+        const [tab] = await browser.tabs.query({ type: ["mail"] });
+        await window.sendMessage();
+
+        await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // eslint-disable-next-line no-undef
+            const id = messenger.runtime.getManifest().applications.gecko.id;
+            document.body.querySelector(".moz-text-flowed").textContent += id;
+          },
+        });
+
+        browser.test.notifyPass("finished");
+      },
+      "utils.js": await getUtilsJS(),
+    },
+    manifest: {
+      manifest_version: 2,
+      browser_specific_settings: {
+        gecko: { id: "message_display_scripts@mochitest" },
+      },
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["messagesModify", "scripting"],
+    },
+  });
+
+  about3Pane.threadTree.selectedIndex = 3;
+  await awaitBrowserLoaded(messagePane);
+
+  await extension.startup();
+
+  await extension.awaitMessage();
+  await checkMessageBody({ textContent: "" }, messages.at(-4));
+  extension.sendMessage();
+
+  await extension.awaitFinish("finished");
+  await checkMessageBody(
+    { textContent: "message_display_scripts@mochitest" },
+    messages.at(-4)
   );
 
   await extension.unload();
@@ -648,4 +846,230 @@ add_task(async function testContentScriptRegister() {
     "<all_urls>",
     "messagesModify"
   );
+});
+
+/**
+ * Tests if scripts are correctly injected according to their runAt option.
+ */
+add_task(async function testRunAt() {
+  const extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "background.js": async () => {
+        // Report script results.
+        browser.runtime.onMessage.addListener((message, sender) => {
+          if (message?.runAt) {
+            window.sendMessage(`ScriptLoaded:${message.runAt}`, {
+              senderTabId: sender.tab.id,
+              ...message,
+            });
+          }
+        });
+
+        const registeredScripts = new Set();
+        registeredScripts.add(
+          await browser.messageDisplayScripts.register({
+            runAt: "document_start",
+            js: [{ file: "start.js" }],
+          })
+        );
+
+        registeredScripts.add(
+          await browser.messageDisplayScripts.register({
+            runAt: "document_end",
+            js: [{ file: "end.js" }],
+          })
+        );
+
+        registeredScripts.add(
+          await browser.messageDisplayScripts.register({
+            runAt: "document_idle",
+            js: [{ file: "idle.js" }],
+          })
+        );
+
+        browser.test.onMessage.addListener(async message => {
+          switch (message) {
+            case "Unregister":
+              for (const registeredScript of registeredScripts) {
+                await registeredScript.unregister();
+              }
+              browser.test.notifyPass("finished");
+              break;
+          }
+        });
+
+        browser.test.sendMessage("Ready");
+      },
+      "start.js": () => {
+        browser.runtime.sendMessage({
+          runAt: "document_start",
+          readyState: document?.readyState,
+          document: !!document,
+          body: !!document?.body,
+          textContent:
+            document.querySelector(".moz-text-flowed")?.textContent ?? "",
+        });
+      },
+      "end.js": () => {
+        browser.runtime.sendMessage({
+          runAt: "document_end",
+          readyState: document?.readyState,
+          document: !!document,
+          body: !!document?.body,
+          textContent:
+            document.querySelector(".moz-text-flowed")?.textContent ?? "",
+        });
+      },
+      "idle.js": () => {
+        browser.runtime.sendMessage({
+          runAt: "document_idle",
+          readyState: document?.readyState,
+          document: !!document,
+          body: !!document?.body,
+          textContent:
+            document.querySelector(".moz-text-flowed")?.textContent ?? "",
+        });
+      },
+      "utils.js": await getUtilsJS(),
+    },
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["messagesModify", "<all_urls>"],
+    },
+  });
+
+  about3Pane.threadTree.selectedIndex = 2;
+  await awaitBrowserLoaded(messagePane);
+
+  extension.startup();
+  await extension.awaitMessage("Ready");
+
+  function verifyResult(result, expected_individual) {
+    const expected_standard = [
+      {
+        runAt: "document_start",
+        readyState: "loading",
+        document: true,
+        body: false,
+      },
+      {
+        runAt: "document_end",
+        readyState: "interactive",
+        document: true,
+        body: true,
+      },
+      {
+        runAt: "document_idle",
+        readyState: "complete",
+        document: true,
+        body: true,
+      },
+    ];
+    for (let i = 0; i < result.length; i++) {
+      Assert.equal(
+        expected_standard[i].runAt,
+        result[i].runAt,
+        `The 'runAt' value for state #${i} should be correct`
+      );
+      Assert.equal(
+        expected_standard[i].readyState,
+        result[i].readyState,
+        `The 'readyState' value at state #${i} should be correct`
+      );
+      Assert.equal(
+        expected_standard[i].document,
+        result[i].document,
+        `The document element at state #${i} ${
+          expected_standard[i].document ? "should" : "should not"
+        } exist`
+      );
+      Assert.equal(
+        expected_standard[i].body,
+        result[i].body,
+        `The body element at state #${i} ${
+          expected_standard[i].body ? "should" : "should not"
+        } exist`
+      );
+      Assert.equal(
+        expected_individual[i].textContent.trim(),
+        result[i].textContent.trim(),
+        `The content at state #${i} should be correct`
+      );
+    }
+  }
+
+  // Select a new message.
+  const firstLoadPromise = Promise.all([
+    extension.awaitMessage("ScriptLoaded:document_start"),
+    extension.awaitMessage("ScriptLoaded:document_end"),
+    extension.awaitMessage("ScriptLoaded:document_idle"),
+  ]);
+  about3Pane.threadTree.selectedIndex = 3;
+  verifyResult(await firstLoadPromise, [
+    { textContent: "" },
+    { textContent: "Hello Pete Price!" },
+    { textContent: "Hello Pete Price!" },
+  ]);
+
+  // Select a different message.
+  const secondLoadPromise = Promise.all([
+    extension.awaitMessage("ScriptLoaded:document_start"),
+    extension.awaitMessage("ScriptLoaded:document_end"),
+    extension.awaitMessage("ScriptLoaded:document_idle"),
+  ]);
+  about3Pane.threadTree.selectedIndex = 4;
+  verifyResult(await secondLoadPromise, [
+    { textContent: "" },
+    { textContent: "Hello Neil Nagel!" },
+    { textContent: "Hello Neil Nagel!" },
+  ]);
+
+  // Open the message in a new tab.
+  const thirdLoadPromise = Promise.all([
+    extension.awaitMessage("ScriptLoaded:document_start"),
+    extension.awaitMessage("ScriptLoaded:document_end"),
+    extension.awaitMessage("ScriptLoaded:document_idle"),
+  ]);
+  const messageTab = await openMessageInTab(messages.at(-6));
+  verifyResult(await thirdLoadPromise, [
+    { textContent: "" },
+    { textContent: "Hello Lilia Lowe!" },
+    { textContent: "Hello Lilia Lowe!" },
+  ]);
+  Assert.equal(tabmail.tabInfo.length, 2);
+
+  // Open a content tab. The message display scripts should not be injected.
+  // If they DO get injected, we will end up with 3 additional messages from the
+  // extension and the test will fail.
+  const contentTab = window.openContentTab("http://mochi.test:8888/");
+  Assert.equal(tabmail.tabInfo.length, 3);
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Closing this tab should bring us back to the message in a tab.
+  tabmail.closeTab(contentTab);
+  Assert.equal(tabmail.tabInfo.length, 2);
+  Assert.equal(tabmail.currentTabInfo, messageTab);
+
+  // Open the message in a new window.
+  const fourthLoadPromise = Promise.all([
+    extension.awaitMessage("ScriptLoaded:document_start"),
+    extension.awaitMessage("ScriptLoaded:document_end"),
+    extension.awaitMessage("ScriptLoaded:document_idle"),
+  ]);
+  const newWindow = await openMessageInWindow(messages.at(-7));
+  verifyResult(await fourthLoadPromise, [
+    { textContent: "" },
+    { textContent: "Hello Johnny Jones!" },
+    { textContent: "Hello Johnny Jones!" },
+  ]);
+
+  // Unregister.
+  extension.sendMessage("Unregister");
+  await extension.awaitFinish("finished");
+  await extension.unload();
+
+  // Close the new tab.
+  tabmail.closeTab(messageTab);
+  await BrowserTestUtils.closeWindow(newWindow);
 });

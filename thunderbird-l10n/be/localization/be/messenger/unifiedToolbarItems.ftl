@@ -37,11 +37,11 @@ toolbar-next-unread =
 toolbar-next-label = Наступны
 toolbar-next =
     .title = Перайсці да наступнага ліста
-toolbar-junk-label = Лухта
+toolbar-junk-label = Спам
 toolbar-junk =
-    .title = Адзначыць выбраныя паведамленні як лухта
+    .title = Пазначыць выбраныя паведамленні як спам
 toolbar-delete-label = Выдаліць
-toolbar-compact-label = Ушчыльніць
+toolbar-compact-label = Сціснуць
 toolbar-compact =
     .title = Прыняць выдаленыя лісты з вылучанай папкі
 toolbar-tag-message-label = Метка
@@ -66,10 +66,13 @@ toolbar-calendar-label = Каляндар
 toolbar-print-label = Друкаваць
 toolbar-print =
     .title = Надрукаваць гэты ліст
+toolbar-synchronize-label = Сінхранізаваць
+toolbar-synchronize =
+    .title = Перазагрузіць календары і сінхранізаваць змены
 toolbar-delete-event-label = Выдаліць
 toolbar-go-to-today-label = Сёння
 toolbar-go-to-today =
-    .title = Перайсці да сёння
+    .title = Перайсці да сённяшніх падзей
 toolbar-go-back-label = Назад
 toolbar-go-back =
     .title = Перамясціцца да папярэдняга ліста
@@ -82,3 +85,6 @@ toolbar-stop =
 toolbar-throbber-label = Паказнік дзейнасці
 toolbar-throbber =
     .title = Паказнік дзейнасці
+
+## New Address Book popup items
+

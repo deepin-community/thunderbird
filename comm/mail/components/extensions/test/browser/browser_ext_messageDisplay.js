@@ -213,6 +213,230 @@ add_task(async function testGetDisplayedMessage() {
   await extension.unload();
 });
 
+add_task(async function testGetDisplayedMessages_MV3() {
+  const files = {
+    "background.js": async () => {
+      const [{ tabId: firstTabId, displayedFolder }] =
+        await browser.mailTabs.query({
+          active: true,
+          currentWindow: true,
+        });
+
+      const { messages } = await browser.messages.list(displayedFolder.id);
+
+      async function checkResults(action, expectedMessages, sameTab) {
+        const msgsListener = window.waitForEvent(
+          "messageDisplay.onMessagesDisplayed"
+        );
+
+        if (typeof action == "string") {
+          await window.sendMessage(action);
+        } else {
+          action();
+        }
+
+        // Check onMessagesDisplayed results.
+        const [msgsTab, msgList] = await msgsListener;
+        if (expectedMessages.length == 1) {
+          if (sameTab) {
+            browser.test.assertEq(firstTabId, msgsTab.id);
+          } else {
+            browser.test.assertTrue(firstTabId != msgsTab.id);
+          }
+        }
+        for (const [i, expected] of expectedMessages.entries()) {
+          browser.test.assertEq(
+            messages[expected].subject,
+            msgList.messages[i].subject
+          );
+        }
+
+        // Check getDisplayedMessages() results.
+        const displayMsgList =
+          await browser.messageDisplay.getDisplayedMessages(msgsTab.id);
+        browser.test.assertEq(
+          expectedMessages.length,
+          displayMsgList.messages.length,
+          "Number of returned messages should be correct"
+        );
+        for (const [i, expected] of expectedMessages.entries()) {
+          browser.test.assertEq(
+            messages[expected].subject,
+            displayMsgList.messages[i].subject,
+            "Subject of message should be correct"
+          );
+        }
+        return msgsTab;
+      }
+
+      async function testGetDisplayedMessagesFunctions(tabId, expected) {
+        const { messages } = await browser.messageDisplay.getDisplayedMessages(
+          tabId
+        );
+        if (expected) {
+          browser.test.assertEq(1, messages.length);
+          browser.test.assertEq(expected.subject, messages[0].subject);
+        } else {
+          browser.test.assertEq(0, messages.length);
+        }
+      }
+
+      // Test that selecting a different message fires the event.
+      await checkResults("show message 1", [1], true);
+
+      // ... and again, for good measure.
+      await checkResults("show message 2", [2], true);
+
+      // Test that opening a message in a new tab fires the event.
+      let tab = await checkResults("open message 0 in tab", [0], false);
+
+      // The opened tab should return message #0.
+      await testGetDisplayedMessagesFunctions(tab.id, messages[0]);
+
+      // The first tab should return message #2, even if it is currently not displayed.
+      await testGetDisplayedMessagesFunctions(firstTabId, messages[2]);
+
+      // Closing the tab should return us to the first tab.
+      await browser.tabs.remove(tab.id);
+
+      // Test that opening a message in a new window fires the event.
+      tab = await checkResults("open message 1 in window", [1], false);
+
+      // Test the windows API being able to return the messageDisplay window as
+      // the current one.
+      const msgWindow = await browser.windows.get(tab.windowId);
+      browser.test.assertEq(msgWindow.type, "messageDisplay");
+      const curWindow = await browser.windows.getCurrent();
+      browser.test.assertEq(tab.windowId, curWindow.id);
+      // Test the tabs API being able to return the correct current tab.
+      const [currentTab] = await browser.tabs.query({
+        currentWindow: true,
+        active: true,
+      });
+      browser.test.assertEq(tab.id, currentTab.id);
+
+      // Close the window.
+      browser.tabs.remove(tab.id);
+
+      // Test that selecting a multiple messages fires the event.
+      await checkResults("show messages 1 and 2", [1, 2], true);
+
+      browser.test.notifyPass("finished");
+    },
+    "utils.js": await getUtilsJS(),
+  };
+  const extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      manifest_version: 3,
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "messagesRead"],
+    },
+  });
+
+  const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  about3Pane.displayFolder(gFolder);
+  about3Pane.threadTree.selectedIndex = 0;
+
+  await extension.startup();
+
+  await extension.awaitMessage("show message 1");
+  about3Pane.threadTree.selectedIndex = 1;
+  extension.sendMessage();
+
+  await extension.awaitMessage("show message 2");
+  about3Pane.threadTree.selectedIndex = 2;
+  extension.sendMessage();
+
+  await extension.awaitMessage("open message 0 in tab");
+  await openMessageInTab(gMessages[0]);
+  extension.sendMessage();
+
+  await extension.awaitMessage("open message 1 in window");
+  await openMessageInWindow(gMessages[1]);
+  extension.sendMessage();
+
+  await extension.awaitMessage("show messages 1 and 2");
+  about3Pane.threadTree.selectedIndices = [1, 2];
+  extension.sendMessage();
+
+  await extension.awaitFinish("finished");
+  await extension.unload();
+});
+
+add_task(async function testGetDisplayedMessageActiveTab() {
+  const files = {
+    "background.js": async () => {
+      const [{ id: firstTabId }] = await browser.mailTabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
+      // Test getDisplayedMessage().
+      const messageFromFirstTab =
+        await browser.messageDisplay.getDisplayedMessage(firstTabId);
+      const messageFromActiveTab =
+        await browser.messageDisplay.getDisplayedMessage();
+      window.assertDeepEqual(
+        {
+          headerMessageId: "0@made.up.invalid",
+          author: "Andy Anway <andy@anway.invalid>",
+          subject: "Big Meeting Today",
+        },
+        messageFromFirstTab,
+        "The message returned from the first tab should be correct"
+      );
+      window.assertDeepEqual(
+        messageFromFirstTab,
+        messageFromActiveTab,
+        "The message returned from the first tab and the active tab should match",
+        { strict: true }
+      );
+
+      // Test getDisplayedMessages().
+      const messagesFromFirstTab =
+        await browser.messageDisplay.getDisplayedMessages(firstTabId);
+      const messagesFromActiveTab =
+        await browser.messageDisplay.getDisplayedMessages();
+      window.assertDeepEqual(
+        [
+          {
+            headerMessageId: "0@made.up.invalid",
+            author: "Andy Anway <andy@anway.invalid>",
+            subject: "Big Meeting Today",
+          },
+        ],
+        messagesFromFirstTab,
+        "The messages returned from the first tab should be correct"
+      );
+      window.assertDeepEqual(
+        messagesFromFirstTab,
+        messagesFromActiveTab,
+        "The messages returned from the first tab and the active tab should match",
+        { strict: true }
+      );
+
+      browser.test.notifyPass("finished");
+    },
+    "utils.js": await getUtilsJS(),
+  };
+  const extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "messagesRead"],
+    },
+  });
+
+  const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  about3Pane.displayFolder(gFolder);
+  about3Pane.threadTree.selectedIndex = 0;
+
+  await extension.startup();
+  await extension.awaitFinish("finished");
+  await extension.unload();
+});
+
 add_task(async function testOpenMessagesInTabs() {
   const extension = ExtensionTestUtils.loadExtension({
     files: {
@@ -683,165 +907,6 @@ add_task(async function testOpenMessagesInWindows() {
   await extension.unload();
 });
 
-add_task(async function test_MV3_event_pages_onMessageDisplayed() {
-  const files = {
-    "background.js": async () => {
-      // Whenever the extension starts or wakes up, hasFired is set to false. In
-      // case of a wake-up, the first fired event is the one that woke up the background.
-      let hasFired = false;
-
-      browser.messageDisplay.onMessageDisplayed.addListener((tab, message) => {
-        // Only send the first event after background wake-up, this should be
-        // the only one expected.
-        if (!hasFired) {
-          hasFired = true;
-          browser.test.sendMessage("onMessageDisplayed received", {
-            tab,
-            message,
-          });
-        }
-      });
-
-      browser.test.sendMessage("background started");
-    },
-    "utils.js": await getUtilsJS(),
-  };
-  const extension = ExtensionTestUtils.loadExtension({
-    files,
-    manifest: {
-      manifest_version: 3,
-      background: { scripts: ["utils.js", "background.js"] },
-      permissions: ["accountsRead", "messagesRead"],
-      browser_specific_settings: {
-        gecko: { id: "onMessageDisplayed@mochi.test" },
-      },
-    },
-  });
-
-  function checkPersistentListeners({ primed }) {
-    // A persistent event is referenced by its moduleName as defined in
-    // ext-mails.json, not by its actual namespace.
-    const persistent_events = ["messageDisplay.onMessageDisplayed"];
-
-    for (const event of persistent_events) {
-      const [moduleName, eventName] = event.split(".");
-      assertPersistentListeners(extension, moduleName, eventName, {
-        primed,
-      });
-    }
-  }
-
-  await extension.startup();
-  await extension.awaitMessage("background started");
-  // The listeners should be persistent, but not primed.
-  checkPersistentListeners({ primed: false });
-  await extension.terminateBackground({ disableResetIdleForTest: true });
-  // Verify the primed persistent listeners.
-  checkPersistentListeners({ primed: true });
-
-  // Select a message.
-
-  {
-    const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
-    about3Pane.displayFolder(gFolder);
-    about3Pane.threadTree.selectedIndex = 2;
-
-    const displayInfo = await extension.awaitMessage(
-      "onMessageDisplayed received"
-    );
-    Assert.equal(
-      displayInfo.message.subject,
-      "Huge Shindig Yesterday",
-      "The primed onMessageDisplayed event should return the correct message."
-    );
-    Assert.deepEqual(
-      {
-        active: true,
-        type: "mail",
-      },
-      {
-        active: displayInfo.tab.active,
-        type: displayInfo.tab.type,
-      },
-      "The primed onMessageDisplayed event should return the correct values"
-    );
-
-    await extension.awaitMessage("background started");
-    // The listeners should be persistent, but not primed.
-    checkPersistentListeners({ primed: false });
-  }
-
-  await extension.terminateBackground({ disableResetIdleForTest: true });
-  // Verify the primed persistent listeners.
-  checkPersistentListeners({ primed: true });
-
-  // Open a message in a window.
-
-  {
-    const messageWindow = await openMessageInWindow(gMessages[0]);
-    const displayInfo = await extension.awaitMessage(
-      "onMessageDisplayed received"
-    );
-    Assert.equal(
-      displayInfo.message.subject,
-      "Big Meeting Today",
-      "The primed onMessageDisplayed event should return the correct message."
-    );
-    Assert.deepEqual(
-      {
-        active: true,
-        type: "messageDisplay",
-      },
-      {
-        active: displayInfo.tab.active,
-        type: displayInfo.tab.type,
-      },
-      "The primed onMessageDisplayed event should return the correct values"
-    );
-
-    await extension.awaitMessage("background started");
-    // The listeners should be persistent, but not primed.
-    checkPersistentListeners({ primed: false });
-    messageWindow.close();
-  }
-
-  await extension.terminateBackground({ disableResetIdleForTest: true });
-  // Verify the primed persistent listeners.
-  checkPersistentListeners({ primed: true });
-
-  // Open a message in a tab.
-
-  {
-    await openMessageInTab(gMessages[1]);
-    const displayInfo = await extension.awaitMessage(
-      "onMessageDisplayed received"
-    );
-    Assert.equal(
-      displayInfo.message.subject,
-      "Small Party Tomorrow",
-      "The primed onMessageDisplayed event should return the correct message."
-    );
-    Assert.deepEqual(
-      {
-        active: true,
-        type: "messageDisplay",
-      },
-      {
-        active: displayInfo.tab.active,
-        type: displayInfo.tab.type,
-      },
-      "The primed onMessageDisplayed event should return the correct values"
-    );
-
-    await extension.awaitMessage("background started");
-    // The listeners should be persistent, but not primed.
-    checkPersistentListeners({ primed: false });
-    document.getElementById("tabmail").closeTab();
-  }
-
-  await extension.unload();
-});
-
 add_task(async function test_MV3_event_pages_onMessagesDisplayed() {
   const files = {
     "background.js": async () => {
@@ -850,14 +915,14 @@ add_task(async function test_MV3_event_pages_onMessagesDisplayed() {
       let hasFired = false;
 
       browser.messageDisplay.onMessagesDisplayed.addListener(
-        (tab, messages) => {
+        (tab, messageList) => {
           // Only send the first event after background wake-up, this should be
           // the only one expected.
           if (!hasFired) {
             hasFired = true;
             browser.test.sendMessage("onMessagesDisplayed received", {
               tab,
-              messages,
+              messageList,
             });
           }
         }
@@ -911,7 +976,7 @@ add_task(async function test_MV3_event_pages_onMessagesDisplayed() {
       "onMessagesDisplayed received"
     );
     Assert.equal(
-      displayInfo.messages.length,
+      displayInfo.messageList.messages.length,
       5,
       "The primed onMessagesDisplayed event should return the correct number of messages."
     );
@@ -923,7 +988,7 @@ add_task(async function test_MV3_event_pages_onMessagesDisplayed() {
         "Tiny Wedding In a Fortnight",
         "Red Document Needs Attention",
       ],
-      displayInfo.messages.map(e => e.subject),
+      displayInfo.messageList.messages.map(e => e.subject),
       "The primed onMessagesDisplayed event should return the correct messages."
     );
     Assert.deepEqual(
@@ -955,12 +1020,12 @@ add_task(async function test_MV3_event_pages_onMessagesDisplayed() {
       "onMessagesDisplayed received"
     );
     Assert.equal(
-      displayInfo.messages.length,
+      displayInfo.messageList.messages.length,
       1,
       "The primed onMessagesDisplayed event should return the correct number of messages."
     );
     Assert.equal(
-      displayInfo.messages[0].subject,
+      displayInfo.messageList.messages[0].subject,
       "Big Meeting Today",
       "The primed onMessagesDisplayed event should return the correct message."
     );
@@ -994,12 +1059,12 @@ add_task(async function test_MV3_event_pages_onMessagesDisplayed() {
       "onMessagesDisplayed received"
     );
     Assert.equal(
-      displayInfo.messages.length,
+      displayInfo.messageList.messages.length,
       1,
       "The primed onMessagesDisplayed event should return the correct number of messages."
     );
     Assert.equal(
-      displayInfo.messages[0].subject,
+      displayInfo.messageList.messages[0].subject,
       "Small Party Tomorrow",
       "The primed onMessagesDisplayed event should return the correct message."
     );

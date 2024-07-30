@@ -3,20 +3,25 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /**
- *  Module that provides generic functions for the Enigmail SQLite database
+ * Module that provides generic functions for the OpenPGP SQLite database.
  */
-
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.sys.mjs",
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
   Sqlite: "resource://gre/modules/Sqlite.sys.mjs",
   setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
+ChromeUtils.defineLazyGetter(lazy, "log", () => {
+  return console.createInstance({
+    prefix: "openpgp",
+    maxLogLevel: "Warn",
+    maxLogLevelPref: "openpgp.loglevel",
+  });
+});
 
 export var PgpSqliteDb2 = {
+  /** @returns {Promise<OpenedConnection>} */
   openDatabase() {
-    lazy.EnigmailLog.DEBUG("sqliteDb.jsm: PgpSqliteDb2 openDatabase()\n");
     return new Promise((resolve, reject) => {
       openDatabaseConn(
         "openpgp.sqlite",
@@ -28,22 +33,19 @@ export var PgpSqliteDb2 = {
     });
   },
 
+  /**
+   * Check database structure is ok.
+   *
+   * @throws {Error} if the structure is not ok.
+   */
   async checkDatabaseStructure() {
-    lazy.EnigmailLog.DEBUG(
-      `sqliteDb.jsm: PgpSqliteDb2 checkDatabaseStructure()\n`
-    );
     let conn;
     try {
       conn = await this.openDatabase();
       await checkAcceptanceTable(conn);
       await conn.close();
-      lazy.EnigmailLog.DEBUG(
-        `sqliteDb.jsm: PgpSqliteDb2 checkDatabaseStructure - success\n`
-      );
     } catch (ex) {
-      lazy.EnigmailLog.ERROR(
-        `sqliteDb.jsm: PgpSqliteDb2 checkDatabaseStructure: ERROR: ${ex}\n`
-      );
+      lazy.log.error("Check db structure FAILED.", ex);
       if (conn) {
         await conn.close();
       }
@@ -55,6 +57,10 @@ export var PgpSqliteDb2 = {
   accCacheValue: "",
   accCacheEmails: null,
 
+  /**
+   * @param {Promise<OpenedConnection>} conn
+   * @param {string} fingerprint
+   */
   async getFingerprintAcceptance(conn, fingerprint) {
     // 40 is for modern fingerprints, 32 for older fingerprints.
     if (fingerprint.length != 40 && fingerprint.length != 32) {
@@ -94,6 +100,12 @@ export var PgpSqliteDb2 = {
     return rv;
   },
 
+  /**
+   * Check if the given email has a positively accepted key.
+   *
+   * @param {string} email
+   * @returns {boolean} true if it has an accepted key.
+   */
   async hasAnyPositivelyAcceptedKeyForEmail(email) {
     email = email.toLowerCase();
     let count = 0;
@@ -127,6 +139,14 @@ export var PgpSqliteDb2 = {
     return true;
   },
 
+  /**
+   * Get acceptance for the specified fingerprint + email combination.
+   *
+   * @param {string} fingerprint
+   * @param {string} email
+   * @param {object} rv - Out object.
+   * FIXME: use return value instead.
+   */
   async getAcceptance(fingerprint, email, rv) {
     fingerprint = fingerprint.toLowerCase();
     email = email.toLowerCase();
@@ -181,8 +201,11 @@ export var PgpSqliteDb2 = {
     }
   },
 
-  // fingerprint must be lowercase already
-  async internalDeleteAcceptanceNoTransaction(conn, fingerprint) {
+  /**
+   * @param {OpenedConnection} conn - Connection.
+   * @param {string} fingerprint - Fingerprint; must be lowercase already.
+   */
+  async _deleteAcceptanceNoTransaction(conn, fingerprint) {
     const delObj = { fpr: fingerprint };
     await conn.execute(
       "delete from acceptance_decision where fpr = :fpr",
@@ -191,6 +214,11 @@ export var PgpSqliteDb2 = {
     await conn.execute("delete from acceptance_email where fpr = :fpr", delObj);
   },
 
+  /**
+   * Delete acceptance for the given fingerprint.
+   *
+   * @param {string} fingerprint
+   */
   async deleteAcceptance(fingerprint) {
     fingerprint = fingerprint.toLowerCase();
     this.accCacheFingerprint = fingerprint;
@@ -200,7 +228,7 @@ export var PgpSqliteDb2 = {
     try {
       conn = await this.openDatabase();
       await conn.execute("begin transaction");
-      await this.internalDeleteAcceptanceNoTransaction(conn, fingerprint);
+      await this._deleteAcceptanceNoTransaction(conn, fingerprint);
       await conn.execute("commit transaction");
       await conn.close();
       Services.obs.notifyObservers(null, "openpgp-acceptance-change");
@@ -217,6 +245,9 @@ export var PgpSqliteDb2 = {
    * either to an already accepted key, or as unverified to an undecided
    * key. It is an error to call this API for a rejected key, or for
    * an already accepted email address.
+   *
+   * @param {string} fingerprint
+   * @param {string} email
    */
   async addAcceptedEmail(fingerprint, email) {
     fingerprint = fingerprint.toLowerCase();
@@ -257,7 +288,7 @@ export var PgpSqliteDb2 = {
       if (!fprAlreadyAccepted) {
         await conn.execute("begin transaction");
         // start fresh, clean up old potential email decisions
-        this.internalDeleteAcceptanceNoTransaction(conn, fingerprint);
+        this._deleteAcceptanceNoTransaction(conn, fingerprint);
 
         await conn.execute(
           "insert into acceptance_decision values (:fpr, :decision)",
@@ -328,7 +359,7 @@ export var PgpSqliteDb2 = {
 
       conn = await this.openDatabase();
       await conn.execute("begin transaction");
-      await this.internalDeleteAcceptanceNoTransaction(conn, fingerprint);
+      await this._deleteAcceptanceNoTransaction(conn, fingerprint);
 
       if (decision !== "undecided") {
         const decisionObj = {
@@ -383,9 +414,9 @@ export var PgpSqliteDb2 = {
 };
 
 /**
- * Use a promise to open the Enigmail database.
+ * Use a promise to open the OpenPGP database.
  *
- * it's possible that there will be an NS_ERROR_STORAGE_BUSY
+ * It's possible that there will be an NS_ERROR_STORAGE_BUSY
  * so we're willing to retry for a little while.
  *
  * @param {string} filename - Path of the sqlite database.
@@ -397,7 +428,6 @@ export var PgpSqliteDb2 = {
  *   which we should give up.
  */
 function openDatabaseConn(filename, resolve, reject, waitms, maxtime) {
-  lazy.EnigmailLog.DEBUG("sqliteDb.jsm: openDatabaseConn()\n");
   lazy.Sqlite.openConnection({
     path: filename,
     sharedMemoryCache: false,
@@ -417,27 +447,17 @@ function openDatabaseConn(filename, resolve, reject, waitms, maxtime) {
     });
 }
 
+/** @param {OpenedConnection} connection */
 async function checkAcceptanceTable(connection) {
-  try {
-    const exists = await connection.tableExists("acceptance_email");
-    const exists2 = await connection.tableExists("acceptance_decision");
-    lazy.EnigmailLog.DEBUG("sqliteDB.jsm: checkAcceptanceTable - success\n");
-    if (!exists || !exists2) {
-      await createAcceptanceTable(connection);
-    }
-  } catch (error) {
-    lazy.EnigmailLog.DEBUG(
-      `sqliteDB.jsm: checkAcceptanceTable - error ${error}\n`
-    );
-    throw error;
+  const exists = await connection.tableExists("acceptance_email");
+  const exists2 = await connection.tableExists("acceptance_decision");
+  if (!exists || !exists2) {
+    await createAcceptanceTable(connection);
   }
-
-  return true;
 }
 
+/** @param {OpenedConnection} connection */
 async function createAcceptanceTable(connection) {
-  lazy.EnigmailLog.DEBUG("sqliteDB.jsm: createAcceptanceTable()\n");
-
   await connection.execute(
     "create table acceptance_email (" +
       "fpr text not null, " +
@@ -452,15 +472,11 @@ async function createAcceptanceTable(connection) {
       "unique(fpr));"
   );
 
-  lazy.EnigmailLog.DEBUG("sqliteDB.jsm: createAcceptanceTable - index1\n");
   await connection.execute(
     "create unique index acceptance_email_i1 on acceptance_email(fpr, email);"
   );
 
-  lazy.EnigmailLog.DEBUG("sqliteDB.jsm: createAcceptanceTable - index2\n");
   await connection.execute(
     "create unique index acceptance__decision_i1 on acceptance_decision(fpr);"
   );
-
-  return null;
 }

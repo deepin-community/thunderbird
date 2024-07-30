@@ -9,23 +9,15 @@
  * a module makes unit testing much easier.
  */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
-
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   EventEmitter: "resource://gre/modules/EventEmitter.sys.mjs",
-  setTimeout: "resource://gre/modules/Timer.sys.mjs",
-  migrateToolbarForSpace: "resource:///modules/ToolbarMigration.sys.mjs",
   clearXULToolbarState: "resource:///modules/ToolbarMigration.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  migrateMailnews: "resource:///modules/MailnewsMigrator.jsm",
+  migrateMailnews: "resource:///modules/MailnewsMigrator.sys.mjs",
+  migrateToolbarForSpace: "resource:///modules/ToolbarMigration.sys.mjs",
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
 
 export var MailMigrator = {
@@ -36,7 +28,7 @@ export var MailMigrator = {
   _migrateUI() {
     // The code for this was ported from
     // mozilla/browser/components/nsBrowserGlue.js
-    const UI_VERSION = 41;
+    const UI_VERSION = 43;
     const MESSENGER_DOCURL = "chrome://messenger/content/messenger.xhtml";
     const MESSENGERCOMPOSE_DOCURL =
       "chrome://messenger/content/messengercompose/messengercompose.xhtml";
@@ -89,7 +81,7 @@ export var MailMigrator = {
       if (currentUIVersion < 32) {
         this._migrateIncomingToOAuth2("imap.gmail.com");
         this._migrateIncomingToOAuth2("pop.gmail.com");
-        this._migrateSMTPToOAuth2("smtp.gmail.com");
+        this._migrateOutgoingServerToOAuth2("smtp.gmail.com");
       }
 
       if (currentUIVersion < 33) {
@@ -173,7 +165,7 @@ export var MailMigrator = {
       if (currentUIVersion < 35) {
         // Both IMAP and POP settings currently use this domain
         this._migrateIncomingToOAuth2("outlook.office365.com");
-        this._migrateSMTPToOAuth2("smtp.office365.com");
+        this._migrateOutgoingServerToOAuth2("smtp.office365.com");
       }
 
       if (currentUIVersion < 36) {
@@ -261,6 +253,27 @@ export var MailMigrator = {
         }
       }
 
+      if (currentUIVersion < 42) {
+        // Update the display name version pref so we force clear the cache of
+        // sender names.
+        Services.prefs.setIntPref(
+          "mail.displayname.version",
+          Services.prefs.getIntPref("mail.displayname.version", 0) + 1
+        );
+      }
+
+      if (currentUIVersion < 43) {
+        // Set the `type` property of existing SMTP servers.
+        const serverKeys = Services.prefs
+          .getCharPref("mail.smtpservers", "")
+          .split(",")
+          .filter(Boolean);
+
+        serverKeys.forEach(key => {
+          Services.prefs.setCharPref(`mail.smtpserver.${key}.type`, "smtp");
+        });
+      }
+
       // Migration tasks that may take a long time are not run immediately, but
       // added to the MigrationTasks object then run at the end.
       //
@@ -306,14 +319,14 @@ export var MailMigrator = {
    *
    * @param {string} hostnameHint - What the hostname should end with.
    */
-  _migrateSMTPToOAuth2(hostnameHint) {
-    for (const server of MailServices.smtp.servers) {
+  _migrateOutgoingServerToOAuth2(hostnameHint) {
+    for (const server of MailServices.outgoingServer.servers) {
       // Skip if not a matching server.
-      if (!server.hostname.endsWith(hostnameHint)) {
+      if (!server.serverURI.host.endsWith(hostnameHint)) {
         continue;
       }
 
-      // Change Outgoing SMTP server to OAuth2.
+      // Change outgoing server to OAuth2.
       server.authMethod = Ci.nsMsgAuthMethod.OAuth2;
     }
   },

@@ -76,7 +76,7 @@ async function subtest_compose(manifest) {
     {
       active: true,
       index: 0,
-      mailTab: false,
+      type: "messageCompose",
     }
   );
 
@@ -94,7 +94,7 @@ async function subtest_compose(manifest) {
       {
         active: true,
         index: 0,
-        mailTab: false,
+        type: "messageCompose",
         fieldId: chromeElementsMap[elementId],
       }
     );
@@ -113,7 +113,9 @@ async function subtest_compose(manifest) {
     {},
     composeWindow
   );
-  await rightClick(menu, attachmentBucket.itemChildren[0], composeWindow);
+  await openMenuPopup(menu, attachmentBucket.itemChildren[0], {
+    type: "contextmenu",
+  });
   Assert.ok(
     menu.querySelector("#menus_mochi_test-menuitem-_compose_attachments")
   );
@@ -128,11 +130,13 @@ async function subtest_compose(manifest) {
         ? [{ name: "first.txt", size: 25 }]
         : undefined,
     },
-    { active: true, index: 0, mailTab: false }
+    { active: true, index: 0, type: "messageCompose" }
   );
 
   attachmentBucket.addItemToSelection(attachmentBucket.itemChildren[3]);
-  await rightClick(menu, attachmentBucket.itemChildren[0], composeWindow);
+  await openMenuPopup(menu, attachmentBucket.itemChildren[0], {
+    type: "contextmenu",
+  });
   Assert.ok(
     menu.querySelector("#menus_mochi_test-menuitem-_compose_attachments")
   );
@@ -150,7 +154,7 @@ async function subtest_compose(manifest) {
           ]
         : undefined,
     },
-    { active: true, index: 0, mailTab: false }
+    { active: true, index: 0, type: "messageCompose" }
   );
 
   await extension.unload();

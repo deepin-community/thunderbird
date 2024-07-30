@@ -395,6 +395,20 @@ support-printing-modified-settings = 更改過的列印設定
 support-printing-prefs-name = 名稱
 support-printing-prefs-value = 值
 
+## Remote Settings sections
+
+support-remote-settings-title = 遠端設定
+support-remote-settings-status = 狀態
+support-remote-settings-status-ok = 確定
+# Status when synchronization is not working.
+support-remote-settings-status-broken = 未使用中
+support-remote-settings-last-check = 上次檢查
+support-remote-settings-local-timestamp = 本地時間戳記
+support-remote-settings-sync-history = 紀錄
+support-remote-settings-sync-history-status = 狀態
+support-remote-settings-sync-history-datetime = 日期
+support-remote-settings-sync-history-infos = 資訊
+
 ## Normandy sections
 
 support-remote-experiments-title = 遠端實驗

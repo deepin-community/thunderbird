@@ -8,8 +8,8 @@
 
 /* global EnigRevokeKey */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var { EnigmailCore } = ChromeUtils.importESModule(
@@ -27,9 +27,6 @@ var { EnigmailWindows } = ChromeUtils.importESModule(
 var { EnigmailKeyServer } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyserver.sys.mjs"
 );
-var { EnigmailCryptoAPI } = ChromeUtils.importESModule(
-  "chrome://openpgp/content/modules/cryptoAPI.sys.mjs"
-);
 var { KeyLookupHelper } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyLookupHelper.sys.mjs"
 );
@@ -38,9 +35,6 @@ var { EnigmailTrust } = ChromeUtils.importESModule(
 );
 var { PgpSqliteDb2 } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/sqliteDb.sys.mjs"
-);
-var { EnigmailLog } = ChromeUtils.importESModule(
-  "chrome://openpgp/content/modules/log.sys.mjs"
 );
 var { EnigmailKeyRing } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyRing.sys.mjs"
@@ -58,11 +52,7 @@ var { EnigmailKeyserverURIs } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyserverUris.sys.mjs"
 );
 
-const { XPCOMUtils } = ChromeUtils.importESModule(
-  "resource://gre/modules/XPCOMUtils.sys.mjs"
-);
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   RNP: "chrome://openpgp/content/modules/RNP.sys.mjs",
 });
@@ -92,8 +82,6 @@ var gTimeoutId = null;
 window.addEventListener("load", enigmailKeyManagerLoad);
 
 function enigmailKeyManagerLoad() {
-  EnigmailLog.DEBUG("enigmailKeyManager.js: enigmailKeyManagerLoad\n");
-
   // Close the key manager if GnuPG is not available
   EnigmailCore.init();
 
@@ -154,8 +142,6 @@ function onDialogClose() {
 }
 
 function loadkeyList() {
-  EnigmailLog.DEBUG("enigmailKeyManager.js: loadkeyList\n");
-
   sortTree();
   gKeyListView.applyFilter(0);
   document.getElementById("pleaseWait").hidePopup();
@@ -169,7 +155,6 @@ function clearKeyCache() {
 }
 
 function refreshKeys() {
-  EnigmailLog.DEBUG("enigmailKeyManager.js: refreshKeys\n");
   var keyList = getSelectedKeys();
   gEnigLastSelectedKeys = [];
   for (var i = 0; i < keyList.length; i++) {
@@ -198,8 +183,6 @@ function reloadKeys() {
 }
 
 function buildKeyList(refresh) {
-  EnigmailLog.DEBUG("enigmailKeyManager.js: buildKeyList\n");
-
   var keyListObj = {};
 
   if (refresh) {
@@ -407,10 +390,9 @@ async function enigmailDeleteKey() {
     return;
   }
 
-  const cApi = EnigmailCryptoAPI();
   for (const j in keyList) {
     const fpr = gKeyList[keyList[j]].fpr;
-    await cApi.deleteKey(fpr, deleteSecret);
+    await lazy.RNP.deleteKey(fpr, deleteSecret);
     await PgpSqliteDb2.deleteAcceptance(fpr);
   }
   clearKeyCache();
@@ -628,7 +610,6 @@ async function enigmailImportFromClipbrd() {
       outParam
     );
     if (confirmImport) {
-      // import
       EnigmailKeyRing.importKey(
         window,
         false,
@@ -639,7 +620,6 @@ async function enigmailImportFromClipbrd() {
         null,
         false,
         [],
-        true,
         outParam.acceptance
       );
       var keyList = preview.map(function (a) {
@@ -710,7 +690,7 @@ async function enigmailCopyToClipbrd() {
         Services.prompt.alert(window, null, value);
       });
     })
-    .catch(err => {
+    .catch(() => {
       l10n.formatValue("copy-to-clipbrd-failed").then(value => {
         Services.prompt.alert(window, null, value);
       });
@@ -796,7 +776,6 @@ function enigmailImportKeysFromUrl() {
   }
   var p = new Promise(function (resolve, reject) {
     var cbFunc = async function (data) {
-      EnigmailLog.DEBUG("enigmailImportKeysFromUrl: _cbFunc()\n");
       var errorMsgObj = {};
 
       var preview = await EnigmailKey.getKeyListFromKeyBlock(
@@ -826,7 +805,6 @@ function enigmailImportKeysFromUrl() {
             null,
             false,
             [],
-            true,
             outParam.acceptance
           );
           errorMsgObj.preview = preview;
@@ -870,10 +848,6 @@ function enigmailImportKeysFromUrl() {
       })
     );
   });
-}
-
-function initiateAcKeyTransfer() {
-  EnigmailWindows.inititateAcSetupMessage();
 }
 
 //
@@ -997,15 +971,15 @@ var gKeyListView = {
   rowCount: 0,
   selection: null,
 
-  canDrop(index, orientation, dataTransfer) {
+  canDrop() {
     return false;
   },
 
-  cycleCell(row, col) {},
-  cycleHeader(col) {},
-  drop(row, orientation, dataTransfer) {},
+  cycleCell() {},
+  cycleHeader() {},
+  drop() {},
 
-  getCellProperties(row, col) {
+  getCellProperties(row) {
     const r = this.getFilteredRow(row);
     if (!r) {
       return "";
@@ -1102,14 +1076,14 @@ var gKeyListView = {
 
     return "";
   },
-  getCellValue(row, col) {
+  getCellValue() {
     return "";
   },
-  getColumnProperties(col) {
+  getColumnProperties() {
     return "";
   },
 
-  getImageSrc(row, col) {
+  getImageSrc(row) {
     const r = this.getFilteredRow(row);
     if (!r) {
       return null;
@@ -1138,15 +1112,15 @@ var gKeyListView = {
     return 0;
   },
 
-  getParentIndex(idx) {
+  getParentIndex() {
     return -1;
   },
-  getProgressMode(row, col) {},
+  getProgressMode() {},
 
-  getRowProperties(row) {
+  getRowProperties() {
     return "";
   },
-  hasNextSibling(rowIndex, afterIndex) {
+  hasNextSibling() {
     return false;
   },
   isContainer(row) {
@@ -1175,21 +1149,21 @@ var gKeyListView = {
   isContainerOpen(row) {
     return this.getFilteredRow(row).isOpen;
   },
-  isEditable(row, col) {
+  isEditable() {
     return false;
   },
-  isSelectable(row, col) {
+  isSelectable() {
     return true;
   },
-  isSeparator(index) {
+  isSeparator() {
     return false;
   },
   isSorted() {
     return false;
   },
-  performAction(action) {},
-  performActionOnCell(action, row, col) {},
-  performActionOnRow(action, row) {},
+  performAction() {},
+  performActionOnCell() {},
+  performActionOnRow() {},
   selectionChanged() {},
   // void setCellText(in long row, in nsITreeColumn col, in AString value);
   // void setCellValue(in long row, in nsITreeColumn col, in AString value);
@@ -1228,13 +1202,12 @@ var gKeyListView = {
   },
 
   /**
-   * add UIDs for a given key to key view
+   * Add UIDs for a given key to key view
    *
-   * @param uidType: String - one of uid (user ID), uat (photo)
-   * @param keyNum:  Number - index of key in gKeyList
-   * @param realRow: Number - index of row in keyViewList (i.e. without filter)
-   *
-   * @returns Number: number of UIDs added
+   * @param {string} uidType - One of uid (user ID), uat (photo).
+   * @param {integer} keyNum -Index of key in gKeyList.
+   * @param {integer} realRow - Index of row in keyViewList (i.e. without filter)
+   * @returns {integer} the number of UIDs added.
    */
   appendUids(uidType, keyNum, realRow, parentRow) {
     const keyObj = gKeyList[keyNum];
@@ -1259,7 +1232,7 @@ var gKeyListView = {
   },
 
   /**
-   * Reload key list entirely
+   * Reload key list entirely.
    */
   keysRefreshed() {
     this.keyViewList = [];
@@ -1282,9 +1255,10 @@ var gKeyListView = {
   },
 
   /**
-   * If no search term is entered, decide which keys to display
+   * If no search term is entered, decide which keys to display.
    *
-   * @returns array of keyNums (= display some keys) or null (= display ALL keys)
+   * @returns {?integer[]} array of keyNums (= display some keys)
+   *   or null (= display ALL keys).
    */
   showOrHideAllKeys() {
     var showInvalidKeys = gShowInvalidKeys.getAttribute("checked") == "true";
@@ -1307,9 +1281,10 @@ var gKeyListView = {
   },
 
   /**
-   * Search for keys that match filter criteria
+   * Search for keys that match filter criteria.
    *
-   * @returns array of keyNums (= display some keys) or null (= display ALL keys)
+   * @returns {?integer[]} array of keyNums (= display some keys)
+   *   or null (= display ALL keys).
    */
   getFilteredKeys() {
     let searchTxt = gSearchInput.value;
@@ -1407,10 +1382,10 @@ var gKeyListView = {
   },
 
   /**
-   * Trigger re-displaying the list of keys and apply a filter
+   * Trigger re-displaying the list of keys and apply a filter.
    *
-   * @param selectedRow: Number - the row that is currently selected or
-   *                     clicked on
+   * @param {integer} selectedRow - The row that is currently selected or
+   *   clicked on.
    */
   applyFilter(selectedRow) {
     const keyDisplayList = this.getFilteredKeys();
@@ -1434,7 +1409,7 @@ var gKeyListView = {
   },
 
   /**
-   * Re-calculate the row count and instruct the view to update
+   * Re-calculate the row count and instruct the view to update.
    */
   adjustRowCount(newRowCount, selectedRow) {
     if (this.rowCount === newRowCount) {
@@ -1450,8 +1425,8 @@ var gKeyListView = {
   /**
    * Determine the row object from the a filtered row number
    *
-   * @param row: Number - row number of displayed (=filtered) list
-   * @returns Object: keyViewList entry of corresponding row
+   * @param {integer} row - Row number of displayed (=filtered) list.
+   * @returns {?object} keyViewList entry of corresponding row.
    */
   getFilteredRow(row) {
     const r = this.keyFilterList[row];

@@ -10,9 +10,6 @@ var { CommonUtils } = ChromeUtils.importESModule(
 var { EnigmailFuncs } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/funcs.sys.mjs"
 );
-var { EnigmailLog } = ChromeUtils.importESModule(
-  "chrome://openpgp/content/modules/log.sys.mjs"
-);
 var { EnigmailKey } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/key.sys.mjs"
 );
@@ -21,9 +18,6 @@ var { EnigmailKeyRing } = ChromeUtils.importESModule(
 );
 var { PgpSqliteDb2 } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/sqliteDb.sys.mjs"
-);
-var { EnigmailCryptoAPI } = ChromeUtils.importESModule(
-  "chrome://openpgp/content/modules/cryptoAPI.sys.mjs"
 );
 var { KeyLookupHelper } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyLookupHelper.sys.mjs"
@@ -120,15 +114,6 @@ function setLabel(elementId, label) {
 async function changeExpiry() {
   const keyObj = EnigmailKeyRing.getKeyById(gKeyId);
   if (!keyObj || !keyObj.secretAvailable) {
-    return;
-  }
-
-  if (!keyObj.iSimpleOneSubkeySameExpiry()) {
-    Services.prompt.alert(
-      null,
-      document.title,
-      await document.l10n.formatValue("openpgp-cannot-change-expiry")
-    );
     return;
   }
 
@@ -395,8 +380,7 @@ async function reloadData(firstLoad) {
   }
 
   gSigTree = document.getElementById("signatures_tree");
-  const cApi = EnigmailCryptoAPI();
-  const signatures = await cApi.getKeyObjSignatures(keyObj);
+  const signatures = await RNP.getKeyObjSignatures(keyObj, false);
   gSigTree.view = new SigListView(signatures);
 
   document.getElementById("subkeyList").view = new SubkeyListView(keyObj);
@@ -667,15 +651,6 @@ function enableRefresh() {
 // ------------------ onCommand Functions  -----------------
 
 /*
-function signKey() {
-  if (EnigmailWindows.signKey(window, gUserId, gKeyId)) {
-    enableRefresh();
-    reloadData(false);
-  }
-}
-*/
-
-/*
 function manageUids() {
   let keyObj = EnigmailKeyRing.getKeyById(gKeyId);
 
@@ -831,7 +806,7 @@ SigListView.prototype = {
     return "sigList" in s;
   },
 
-  isSeparator(row) {
+  isSeparator() {
     return false;
   },
 
@@ -844,40 +819,40 @@ SigListView.prototype = {
     return "sigList" in s ? 0 : 1;
   },
 
-  cycleHeader(col, elem) {},
+  cycleHeader() {},
 
-  getImageSrc(row, col) {
+  getImageSrc() {
     return null;
   },
 
-  getRowProperties(row, props) {},
+  getRowProperties() {},
 
-  getCellProperties(row, col) {
+  getCellProperties() {
     return "";
   },
 
-  canDrop(row, orientation, data) {
+  canDrop() {
     return false;
   },
 
-  getColumnProperties(colid, col, props) {},
+  getColumnProperties() {},
 
-  isContainerEmpty(row) {
+  isContainerEmpty() {
     return false;
   },
 
-  getParentIndex(idx) {
+  getParentIndex() {
     return -1;
   },
 
-  getProgressMode(row, col) {},
+  getProgressMode() {},
 
   isContainerOpen(row) {
     const s = this.getSigAtIndex(row);
     return s.expanded;
   },
 
-  isSelectable(row, col) {
+  isSelectable() {
     return true;
   },
 
@@ -890,7 +865,7 @@ SigListView.prototype = {
   },
 };
 
-function createSubkeyItem(mainKeyIsSecret, subkey) {
+function createSubkeyItem(mainKeyIsSecret, subkey, usagetext) {
   // Get expiry state of this subkey
   let expire;
   if (subkey.keyTrust === "r") {
@@ -913,46 +888,6 @@ function createSubkeyItem(mainKeyIsSecret, subkey) {
     subkeyType += l10n.formatValueSync("key-type-subkey");
   }
 
-  let usagetext = "";
-  let i;
-  //  e = encrypt
-  //  s = sign
-  //  c = certify
-  //  a = authentication
-  //  Capital Letters are ignored, as these reflect summary properties of a key
-
-  var singlecode = "";
-  for (i = 0; i < subkey.keyUseFor.length; i++) {
-    singlecode = subkey.keyUseFor.substr(i, 1);
-    switch (singlecode) {
-      case "e":
-        if (usagetext.length > 0) {
-          usagetext = usagetext + ", ";
-        }
-        usagetext = usagetext + l10n.formatValueSync("key-usage-encrypt");
-        break;
-      case "s":
-        if (usagetext.length > 0) {
-          usagetext = usagetext + ", ";
-        }
-        usagetext = usagetext + l10n.formatValueSync("key-usage-sign");
-        break;
-      case "c":
-        if (usagetext.length > 0) {
-          usagetext = usagetext + ", ";
-        }
-        usagetext = usagetext + l10n.formatValueSync("key-usage-certify");
-        break;
-      case "a":
-        if (usagetext.length > 0) {
-          usagetext = usagetext + ", ";
-        }
-        usagetext =
-          usagetext + l10n.formatValueSync("key-usage-authentication");
-        break;
-    } // * case *
-  } // * for *
-
   const keyObj = {
     keyType: subkeyType,
     keyId: "0x" + subkey.keyId,
@@ -971,11 +906,21 @@ function SubkeyListView(keyObj) {
 
   this.subkeys = [];
   this.rowCount = keyObj.subKeys.length + 1;
-  this.subkeys.push(createSubkeyItem(keyObj.secretAvailable, keyObj));
+  this.subkeys.push(
+    createSubkeyItem(
+      keyObj.secretAvailable,
+      keyObj,
+      keyObj.getUsageText(keyObj.keyUseFor)
+    )
+  );
 
   for (let i = 0; i < keyObj.subKeys.length; i++) {
     this.subkeys.push(
-      createSubkeyItem(keyObj.secretAvailable, keyObj.subKeys[i])
+      createSubkeyItem(
+        keyObj.secretAvailable,
+        keyObj.subKeys[i],
+        keyObj.getUsageText(keyObj.subKeys[i].keyUseFor)
+      )
     );
   }
 
@@ -1013,11 +958,11 @@ SubkeyListView.prototype = {
     this.treebox = treebox;
   },
 
-  isContainer(row) {
+  isContainer() {
     return false;
   },
 
-  isSeparator(row) {
+  isSeparator() {
     return false;
   },
 
@@ -1025,50 +970,50 @@ SubkeyListView.prototype = {
     return false;
   },
 
-  getLevel(row) {
+  getLevel() {
     return 0;
   },
 
-  cycleHeader(col, elem) {},
+  cycleHeader() {},
 
-  getImageSrc(row, col) {
+  getImageSrc() {
     return null;
   },
 
-  getRowProperties(row, props) {},
+  getRowProperties() {},
 
-  getCellProperties(row, col) {
+  getCellProperties() {
     return "";
   },
 
-  canDrop(row, orientation, data) {
+  canDrop() {
     return false;
   },
 
-  getColumnProperties(colid, col, props) {},
+  getColumnProperties() {},
 
-  isContainerEmpty(row) {
+  isContainerEmpty() {
     return false;
   },
 
-  getParentIndex(idx) {
+  getParentIndex() {
     return -1;
   },
 
-  getProgressMode(row, col) {},
+  getProgressMode() {},
 
-  isContainerOpen(row) {
+  isContainerOpen() {
     return false;
   },
 
-  isSelectable(row, col) {
+  isSelectable() {
     return true;
   },
 
-  toggleOpenState(row) {},
+  toggleOpenState() {},
 };
 
-function sigHandleDblClick(event) {}
+function sigHandleDblClick() {}
 
 document.addEventListener("dialogaccept", async function (event) {
   // Prevent the closing of the dialog to wait until all the SQLite operations

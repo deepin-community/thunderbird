@@ -32,14 +32,14 @@ function run_test() {
   do_test_pending();
   do_timeout(10000, function () {
     do_throw(
-      "SaveMessageToDisk did not complete within 10 seconds" +
+      "saveMessageToDisk did not complete within 10 seconds" +
         "(incorrect messageURI?). ABORTING."
     );
   });
   copyFileMessageInLocalFolder(dot, 0, "", null, save_message);
 }
 
-async function save_message(aMessageHeaderKeys, aStatus) {
+async function save_message(aMessageHeaderKeys) {
   const headerKeys = aMessageHeaderKeys;
   Assert.notEqual(headerKeys, null);
 
@@ -49,12 +49,11 @@ async function save_message(aMessageHeaderKeys, aStatus) {
     "@mozilla.org/messenger/messageservice;1?type=mailbox-message"
   ].getService(Ci.nsIMsgMessageService);
   const promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
-  messageService.SaveMessageToDisk(
+  messageService.saveMessageToDisk(
     msgURI,
     saveFile,
     false,
     promiseUrlListener,
-    {},
     true,
     null
   );

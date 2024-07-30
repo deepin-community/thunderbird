@@ -29,14 +29,11 @@ ChromeUtils.defineESModuleGetters(this, {
     "resource://devtools/client/framework/browser-toolbox/Launcher.sys.mjs",
 
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
+  MimeParser: "resource:///modules/mimeParser.sys.mjs",
   PluralForm: "resource:///modules/PluralForm.sys.mjs",
   UIDensity: "resource:///modules/UIDensity.sys.mjs",
   UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
   XULStoreUtils: "resource:///modules/XULStoreUtils.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  MimeParser: "resource:///modules/mimeParser.jsm",
 });
 
 Object.defineProperty(this, "BrowserConsoleManager", {
@@ -58,18 +55,9 @@ Object.defineProperty(this, "BrowserConsoleManager", {
 var gDisallow_classes_no_html = 1;
 
 /**
- * Disable the new account menu item if the account preference is locked.
- * The other affected areas are the account central, the account manager
- * dialog, and the account provisioner window.
+ * Init the New menu.
  */
 function menu_new_init() {
-  // If the account provisioner is pref'd off, we shouldn't display the menu
-  // item.
-  ShowMenuItem(
-    "newCreateEmailAccountMenuItem",
-    Services.prefs.getBoolPref("mail.provider.enabled")
-  );
-
   // If we don't have a folder, just get out of here and leave the menu as it is.
   const folder = document.getElementById("tabmail")?.currentTabInfo.folder;
   if (!folder) {
@@ -260,16 +248,19 @@ function view_init(event) {
   let messagePaneVisible;
   let quickFilterBarVisible;
   let threadPaneHeaderVisible;
+  let isMultiSelection;
 
   const tab = document.getElementById("tabmail")?.currentTabInfo;
   if (tab?.mode.name == "mail3PaneTab") {
     let chromeBrowser;
     ({ chromeBrowser, message } = tab);
-    const { paneLayout, quickFilterBar } = chromeBrowser.contentWindow;
+    const { paneLayout, quickFilterBar, folderPane } =
+      chromeBrowser.contentWindow;
     ({ accountCentralVisible, folderPaneVisible, messagePaneVisible } =
       paneLayout);
     quickFilterBarVisible = quickFilterBar.filterer.visible;
     threadPaneHeaderVisible = true;
+    isMultiSelection = folderPane.isMultiSelection;
   } else if (tab?.mode.name == "mailMessageTab") {
     message = tab.message;
     messagePaneVisible = true;
@@ -301,7 +292,7 @@ function view_init(event) {
       "checked",
       accountCentralVisible ? false : messagePaneVisible
     );
-    messagePaneMenuItem.disabled = accountCentralVisible;
+    messagePaneMenuItem.disabled = isMultiSelection || accountCentralVisible;
   }
 
   const messagePaneAppMenuItem = document.getElementById("appmenu_showMessage");
@@ -311,7 +302,7 @@ function view_init(event) {
       "checked",
       accountCentralVisible ? false : messagePaneVisible
     );
-    messagePaneAppMenuItem.disabled = accountCentralVisible;
+    messagePaneAppMenuItem.disabled = isMultiSelection || accountCentralVisible;
   }
 
   const folderPaneMenuItem = document.getElementById("menu_showFolderPane");
@@ -339,12 +330,14 @@ function view_init(event) {
   threadPaneAppMenuItem?.toggleAttribute("disabled", !threadPaneHeaderVisible);
 
   // Disable some menus if account manager is showing
-  document.getElementById("viewSortMenu").disabled = accountCentralVisible;
+  document.getElementById("viewSortMenu").disabled =
+    isMultiSelection || accountCentralVisible;
 
   document.getElementById("viewMessageViewMenu").disabled =
-    accountCentralVisible;
+    isMultiSelection || accountCentralVisible;
 
-  document.getElementById("viewMessagesMenu").disabled = accountCentralVisible;
+  document.getElementById("viewMessagesMenu").disabled =
+    isMultiSelection || accountCentralVisible;
 
   // Hide the "View > Messages" menu item if the user doesn't have the "Views"
   // (aka "Mail Views") toolbar button in the main toolbar. (See bug 1563789.)
@@ -472,16 +465,13 @@ function InitViewSortByMenu() {
     return;
   }
 
-  const { gViewWrapper, threadPane } = tab.chromeBrowser.contentWindow;
+  const { gViewWrapper } = tab.chromeBrowser.contentWindow;
   if (!gViewWrapper?.dbView) {
     return;
   }
 
   const { primarySortType, primarySortOrder, showGroupedBySort, showThreaded } =
     gViewWrapper;
-  const hiddenColumns = threadPane.columns
-    .filter(c => c.hidden)
-    .map(c => c.sortKey);
 
   const isSortTypeValidForGrouping = [
     Ci.nsMsgViewSortType.byAccount,
@@ -506,11 +496,6 @@ function InitViewSortByMenu() {
       "checked",
       primarySortType == Ci.nsMsgViewSortType[sortKey]
     );
-    if (hiddenColumns.includes(sortKey)) {
-      menuItem.setAttribute("disabled", "true");
-    } else {
-      menuItem.removeAttribute("disabled");
-    }
   };
 
   setSortItemAttrs("sortByDateMenuitem", "byDate");
@@ -882,7 +867,7 @@ function InitMessageTags(parent, elementName = "menuitem", classes) {
     // (the key for the tag at index n needs to have the id key_tag<n>)
     const shortcutkey = document.getElementById("key_tag" + index);
     const accesskey = shortcutkey ? shortcutkey.getAttribute("key") : "  ";
-    if (accesskey != "  ") {
+    if (accesskey != "  " && accesskey !== null) {
       menuitem.setAttribute("accesskey", accesskey);
       menuitem.setAttribute("acceltext", accesskey);
     }
@@ -1542,21 +1527,6 @@ function GetNewMsgs(server, folder) {
   server.getNewMessages(folder, msgWindow, new TransportErrorUrlListener());
 }
 
-function InformUserOfCertError(secInfo, targetSite) {
-  const params = {
-    exceptionAdded: false,
-    securityInfo: secInfo,
-    prefetchCert: true,
-    location: targetSite,
-  };
-  window.openDialog(
-    "chrome://pippki/content/exceptionDialog.xhtml",
-    "",
-    "chrome,centerscreen,modal",
-    params
-  );
-}
-
 /**
  * A listener to be passed to the url object of the server request being issued
  * to detect the bad server certificates.
@@ -1564,7 +1534,7 @@ function InformUserOfCertError(secInfo, targetSite) {
  * @implements {nsIUrlListener}
  */
 class TransportErrorUrlListener {
-  OnStartRunningUrl(url) {}
+  OnStartRunningUrl() {}
 
   OnStopRunningUrl(url, exitCode) {
     if (Components.isSuccessCode(exitCode)) {
@@ -1578,7 +1548,7 @@ class TransportErrorUrlListener {
       if (errorClass == Ci.nsINSSErrorsService.ERROR_CLASS_BAD_CERT) {
         const mailNewsUrl = url.QueryInterface(Ci.nsIMsgMailNewsUrl);
         const secInfo = mailNewsUrl.failedSecInfo;
-        InformUserOfCertError(secInfo, url.asciiHostPort);
+        MailServices.mailSession.alertCertError(secInfo, mailNewsUrl);
       }
     } catch (e) {
       // It's not an NSS error.
@@ -1681,7 +1651,20 @@ function CommandUpdate_UndoRedo() {
 }
 
 function SetupUndoRedoCommand(command) {
-  const folder = document.getElementById("tabmail")?.currentTabInfo.folder;
+  let mainWindow;
+  let folder = null;
+  const tabmail = document.getElementById("tabmail");
+  if (tabmail) {
+    folder = tabmail.currentTabInfo.folder;
+    mainWindow = window;
+  } else {
+    mainWindow = Services.wm.getMostRecentWindow("mail:3pane");
+    // There may not be a "main" window if an .eml file was double-clicked.
+    if (!mainWindow) {
+      return false;
+    }
+    folder = document.getElementById("messageBrowser")?.contentWindow?.gFolder;
+  }
   if (!folder?.server.canUndoDeleteOnServer) {
     return false;
   }
@@ -1690,11 +1673,11 @@ function SetupUndoRedoCommand(command) {
   let txnType;
   try {
     if (command == "cmd_undo") {
-      canUndoOrRedo = messenger.canUndo();
-      txnType = messenger.getUndoTransactionType();
+      canUndoOrRedo = mainWindow.messenger.canUndo();
+      txnType = mainWindow.messenger.getUndoTransactionType();
     } else {
-      canUndoOrRedo = messenger.canRedo();
-      txnType = messenger.getRedoTransactionType();
+      canUndoOrRedo = mainWindow.messenger.canRedo();
+      txnType = mainWindow.messenger.getRedoTransactionType();
     }
   } catch (ex) {
     // If this fails, assume we can't undo or redo.
