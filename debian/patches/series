@@ -18,3 +18,6 @@ porting-ppc64el/skia-Disable-musttail-on-ppc64el.patch
 porting-mips64el/skia-Disable-musttail-on-mips64.patch
 debian-hacks/Relax-cargo-version-requirement.patch
 fixes/Install-vaapitest-v4l2test-only-when-build.patch
+porting-loong64/0001-AOSCOS-Add-missing-loongarch-lsx-code-for-libpng.patch
+porting-loong64/0002-AOSCOS-comm-botan-add-loongarch64-to-archinfo.patch
+porting-loong64/0003-AOSCOS-Build-Loongson-SIMD-EXtension-LSX-and-Loongso.patch
