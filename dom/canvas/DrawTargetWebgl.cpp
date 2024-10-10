@@ -21,6 +21,7 @@
 #include "mozilla/gfx/Swizzle.h"
 #include "mozilla/layers/ImageDataSerializer.h"
 #include "mozilla/layers/RemoteTextureMap.h"
+#include "mozilla/widget/ScreenManager.h"
 #include "skia/include/core/SkPixmap.h"
 #include "nsContentUtils.h"
 
@@ -324,6 +325,11 @@ void SharedContextWebgl::UnlinkGlyphCaches() {
 }
 
 void SharedContextWebgl::OnMemoryPressure() { mShouldClearCaches = true; }
+
+void SharedContextWebgl::ClearCaches() {
+  OnMemoryPressure();
+  ClearCachesIfNecessary();
+}
 
 // Clear out the entire list of texture handles from any source.
 void SharedContextWebgl::ClearAllTextures() {
@@ -852,10 +858,14 @@ bool DrawTargetWebgl::CanCreate(const IntSize& aSize, SurfaceFormat aFormat) {
     // In addition, allow acceleration up to this size even if the screen is
     // smaller. A lot content expects this size to work well. See Bug 999841
     static const int32_t kScreenPixels = 980 * 480;
-    IntSize screenSize = gfxPlatform::GetPlatform()->GetScreenSize();
-    if (aSize.width * aSize.height >
-        std::max(screenSize.width * screenSize.height, kScreenPixels)) {
-      return false;
+
+    if (RefPtr<widget::Screen> screen =
+            widget::ScreenManager::GetSingleton().GetPrimaryScreen()) {
+      LayoutDeviceIntSize screenSize = screen->GetRect().Size();
+      if (aSize.width * aSize.height >
+          std::max(screenSize.width * screenSize.height, kScreenPixels)) {
+        return false;
+      }
     }
   }
 
@@ -1316,8 +1326,8 @@ bool SharedContextWebgl::CreateShaders() {
         "                     dot(u_transform[1], u_transform[1]));\n"
         "   vec2 invScale = u_aa * inversesqrt(scale + 1.0e-6);\n"
         "   scale *= invScale;\n"
-        "   vec2 extrude = a_vertex.xy + invScale * (2.0 * a_vertex.xy - "
-        "1.0);\n"
+        "   vec2 extrude = a_vertex.xy +\n"
+        "                  invScale * (2.0 * a_vertex.xy - 1.0);\n"
         "   vec2 vertex = u_transform[0] * extrude.x +\n"
         "                 u_transform[1] * extrude.y +\n"
         "                 u_transform[2];\n"
@@ -1325,8 +1335,10 @@ bool SharedContextWebgl::CreateShaders() {
         "   v_cliptc = vertex / u_viewport;\n"
         "   v_clipdist = vec4(vertex - u_clipbounds.xy,\n"
         "                     u_clipbounds.zw - vertex);\n"
-        "   v_dist = vec4(extrude, 1.0 - extrude) * scale.xyxy + 1.5 - u_aa;\n"
-        "   v_alpha = a_vertex.z;\n"
+        "   float noAA = 1.0 - u_aa;\n"
+        "   v_dist = vec4(extrude, 1.0 - extrude) * scale.xyxy + 0.5 + noAA;\n"
+        "   v_alpha = min(a_vertex.z,\n"
+        "                 min(scale.x, 1.0) * min(scale.y, 1.0) + noAA);\n"
         "}\n";
     auto fsSource =
         "precision mediump float;\n"
@@ -1340,7 +1352,7 @@ bool SharedContextWebgl::CreateShaders() {
         "   float clip = texture2D(u_clipmask, v_cliptc).r;\n"
         "   vec4 dist = min(v_dist, v_clipdist);\n"
         "   dist.xy = min(dist.xy, dist.zw);\n"
-        "   float aa = v_alpha * clamp(min(dist.x, dist.y), 0.0, 1.0);\n"
+        "   float aa = clamp(min(dist.x, dist.y), 0.0, v_alpha);\n"
         "   gl_FragColor = clip * aa * u_color;\n"
         "}\n";
     RefPtr<WebGLShader> vsId = mWebgl->CreateShader(LOCAL_GL_VERTEX_SHADER);
@@ -1396,8 +1408,8 @@ bool SharedContextWebgl::CreateShaders() {
         "                     dot(u_transform[1], u_transform[1]));\n"
         "   vec2 invScale = u_aa * inversesqrt(scale + 1.0e-6);\n"
         "   scale *= invScale;\n"
-        "   vec2 extrude = a_vertex.xy + invScale * (2.0 * a_vertex.xy - "
-        "1.0);\n"
+        "   vec2 extrude = a_vertex.xy +\n"
+        "                  invScale * (2.0 * a_vertex.xy - 1.0);\n"
         "   vec2 vertex = u_transform[0] * extrude.x +\n"
         "                 u_transform[1] * extrude.y +\n"
         "                 u_transform[2];\n"
@@ -1408,8 +1420,10 @@ bool SharedContextWebgl::CreateShaders() {
         "   v_texcoord = u_texmatrix[0] * extrude.x +\n"
         "                u_texmatrix[1] * extrude.y +\n"
         "                u_texmatrix[2];\n"
-        "   v_dist = vec4(extrude, 1.0 - extrude) * scale.xyxy + 1.5 - u_aa;\n"
-        "   v_alpha = a_vertex.z;\n"
+        "   float noAA = 1.0 - u_aa;\n"
+        "   v_dist = vec4(extrude, 1.0 - extrude) * scale.xyxy + 0.5 + noAA;\n"
+        "   v_alpha = min(a_vertex.z,\n"
+        "                 min(scale.x, 1.0) * min(scale.y, 1.0) + noAA);\n"
         "}\n";
     auto fsSource =
         "precision mediump float;\n"
@@ -1430,7 +1444,7 @@ bool SharedContextWebgl::CreateShaders() {
         "   float clip = texture2D(u_clipmask, v_cliptc).r;\n"
         "   vec4 dist = min(v_dist, v_clipdist);\n"
         "   dist.xy = min(dist.xy, dist.zw);\n"
-        "   float aa = v_alpha * clamp(min(dist.x, dist.y), 0.0, 1.0);\n"
+        "   float aa = clamp(min(dist.x, dist.y), 0.0, v_alpha);\n"
         "   gl_FragColor = clip * aa * u_color *\n"
         "                  mix(image, image.rrrr, u_swizzle);\n"
         "}\n";

@@ -14,10 +14,8 @@
 #include "mozilla/mailnews/MimeHeaderParser.h"
 #include "nsIMsgHeaderParser.h"
 #include "prprf.h"
-#include "nsISupportsPrimitives.h"
 #include "nsMsgUtils.h"
 #include "nsServiceManagerUtils.h"
-#include "nsComponentManagerUtils.h"
 #include "nsIUUIDGenerator.h"
 #include "mozilla/Components.h"
 
@@ -305,6 +303,7 @@ NS_IMPL_FOLDERPREF_STR(StationeryFolder, "stationery_folder", "Templates"_ns,
 NS_IMPL_IDPREF_BOOL(ArchiveEnabled, "archive_enabled")
 NS_IMPL_IDPREF_INT(ArchiveGranularity, "archive_granularity")
 NS_IMPL_IDPREF_BOOL(ArchiveKeepFolderStructure, "archive_keep_folder_structure")
+NS_IMPL_IDPREF_BOOL(ArchiveRecreateInbox, "archive_recreate_inbox")
 
 NS_IMPL_IDPREF_BOOL(ShowSaveMsgDlg, "showSaveMsgDlg")
 NS_IMPL_IDPREF_STR(DirectoryServer, "directoryServer")
@@ -575,6 +574,8 @@ nsMsgIdentity::Copy(nsIMsgIdentity* identity) {
                           SetArchiveGranularity)
   COPY_IDENTITY_BOOL_VALUE(identity, GetArchiveKeepFolderStructure,
                            SetArchiveKeepFolderStructure)
+  COPY_IDENTITY_BOOL_VALUE(identity, GetArchiveRecreateInbox,
+                           SetArchiveRecreateInbox)
   COPY_IDENTITY_BOOL_VALUE(identity, GetAttachSignature, SetAttachSignature)
   COPY_IDENTITY_FILE_VALUE(identity, GetSignature, SetSignature)
   COPY_IDENTITY_WSTR_VALUE(identity, GetHtmlSigText, SetHtmlSigText)

@@ -12,7 +12,7 @@ import {
 } from "resource:///modules/caldav/CalDavRequest.sys.mjs";
 
 // NOTE: This module should not be loaded directly, it is available when
-// including calUtils.jsm under the cal.provider.ics namespace.
+// including calUtils.sys.mjs under the cal.provider.ics namespace.
 
 /**
  * @implements {calICalendarProvider}
@@ -32,17 +32,11 @@ export var CalICSProvider = {
     return "ICS";
   },
 
-  deleteCalendar(aCalendar, aListener) {
+  deleteCalendar() {
     throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
   },
 
-  async detectCalendars(
-    username,
-    password,
-    location = null,
-    savePassword = false,
-    extraProperties = {}
-  ) {
+  async detectCalendars(username, password, location = null, savePassword = false) {
     const uri = cal.provider.detection.locationToUri(location);
     if (!uri) {
       throw new Error("Could not infer location from username");
@@ -206,9 +200,9 @@ class ICSDetectionSession {
   }
 
   /** @see {CalDavSession} */
-  async prepareRequest(aChannel) {}
-  async prepareRedirect(aOldChannel, aNewChannel) {}
-  async completeRequest(aResponse) {}
+  async prepareRequest() {}
+  async prepareRedirect() {}
+  async completeRequest() {}
 }
 
 /**
@@ -282,14 +276,19 @@ class ICSDetector {
 
     // The content type header may include a charset, so use 'string.includes'.
     if (response.ok) {
-      const header = response.getHeader("Content-Type");
-
+      const contentType = response.getHeader("Content-Type");
+      const contentDisposition = response.getHeader("Content-Disposition");
       if (
-        header.includes("text/calendar") ||
-        header.includes("application/ics") ||
+        contentType?.includes("text/calendar") ||
+        contentType?.includes("application/ics") ||
+        /\.ics\b/i.test(contentDisposition) ||
         (response.text && response.text.includes("BEGIN:VCALENDAR"))
       ) {
-        const target = response.uri;
+        let target = response.uri;
+        // Set up calendar for original URI for temporal redirects.
+        if (response.lastRedirectStatus == 302 || response.lastRedirectStatus == 307) {
+          target = response.nsirequest.originalURI;
+        }
         cal.LOG(`[calICSProvider] ${target.spec} has valid content type (via ${method} request)`);
         return [this.handleCalendar(target)];
       }
@@ -415,8 +414,8 @@ class ICSDetector {
    * Set up and return a new ICS calendar object.
    *
    * @param {nsIURI} uri - The location of the calendar.
-   * @param {Set} [props] - For CalDav calendars, these are the props
-   *                                  parsed from the response.
+   * @param {Set} [props] - For CalDav calendars, these are the props parsed
+   *   from the response.
    * @returns {calICalendar} A new calendar.
    */
   handleCalendar(uri, props = new Set()) {

@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Iragazi mezuak hauek <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Iragazi mezuak:
+quick-filter-bar-search2 =
+    .label = Iragazi mezuak
+quick-filter-bar-searching =
+    .title = Bilatzen…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -443,6 +445,13 @@ threadpane-column-label-delete =
     .label = Ezabatu
 threadpane-cell-delete =
     .aria-label = Ezabatu
+# Variables:
+# $count (Number) - Number of replies in thread.
+threadpane-replies =
+    { $count ->
+        [one] erantzun { $count }
+       *[other] { $count } erantzun
+    }
 
 ## Message state variations
 
@@ -494,3 +503,42 @@ apply-current-view-to-folder-message = Aplikatu uneko karpeten ikuspegia { $name
 # Variables:
 #  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Aplikatu uneko karpeten ikuspegia { $name }(e)ri eta bere umeetan?
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] Mezu <span>1</span> irakurtzeke mezu <span>1</span>etik
+               *[other] Mezu <span>1</span> irakurtzeke <span>{ $total }</span> mezutik
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> mezu irakurtzeke mezu <span>1</span>etik
+               *[other] <span>{ $unread }</span> mezu irakurtzeke <span>{ $total }</span> mezutik
+            }
+    }
+# Variables:
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-count =
+    { $total ->
+        [one] <span>1</span> mezu
+       *[other] <span>{ $total }</span> mezu
+    }
+threadpane-card-menu-button =
+    .title = Mezu menua
+message-list-placeholder-no-messages = Ez da mezua aurkitu
+message-list-placeholder-multiple-folders = Hainbat karpeta hautatuak
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Markatu karpeta irakurrita gisa
+           *[other] Markatu karpetak irakurrita gisa
+        }
+    .accesskey = M

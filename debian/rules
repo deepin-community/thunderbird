@@ -22,23 +22,14 @@ THUNDERBIRD_L10N_BUILDDIR=debian/thunderbird-l10n-build
 # in thunderbird-l10n/$LANG/manifest.json
 export MOZ_LANGPACK_ID = $(shell grep MOZ_LANGPACK_EID comm/mail/locales/Makefile.in | cut -f2 -d @)
 
-# Note: Load this first for $DEB_BUILD_ARCH.
-include /usr/share/dpkg/architecture.mk
-
-# Note: _STRIP operations needs to be done before including buildflags.mk.
-ifeq ($(DEB_BUILD_ARCH),loong64)
-	# FIXME: -mlsx is not yet available for Clang.
-	export DEB_CFLAGS_MAINT_STRIP = -mlsx
-	export DEB_CXXFLAGS_MAINT_STRIP = -mlsx
-endif
-
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
+include /usr/share/dpkg/architecture.mk
 
 # Use dpkg-buildflags to get build flags, but exclude -g, that is dealt with
 # via configure options. Picked partially from FF.
 
-dpkg_buildflags = $(and $(1),$(shell DEB_CFLAGS_MAINT_STRIP+=" -g" DEB_CXXFLAGS_MAINT_STRIP+=" -g" dpkg-buildflags --get $(1)))
+dpkg_buildflags = $(and $(1),$(shell DEB_CFLAGS_MAINT_STRIP="-g" DEB_CXXFLAGS_MAINT_STRIP="-g" dpkg-buildflags --get $(1)))
 lazy = $(eval $(1) = $$(if $$(___$(1)),,$$(eval ___$(1) := $(2)))$$(___$(1)))
 $(call lazy,CFLAGS,$$(call dpkg_buildflags,CFLAGS))
 $(call lazy,CXXFLAGS,$$(call dpkg_buildflags,CXXFLAGS))
@@ -130,6 +121,9 @@ ifeq (32,$(DEB_BUILD_ARCH_BITS))
 endif
 	echo 'mk_add_options MOZ_OBJDIR=$(CURDIR)/obj-thunderbird' >> mozconfig.thunderbird
 	echo 'ac_add_options --prefix=$(CURDIR)/debian/tmp/usr' >> mozconfig.default
+	# Rename the folder third_party/python/typing_extensions so it is not
+	# visible to the internal tool chain.
+	mv third_party/python/typing_extensions third_party/python/typing_extensions-old
 	# configure the various build settings for thunderbird
 	DIST= python3 ./mach -v configure
 
@@ -171,6 +165,9 @@ endif
 		install -D -m 644 ../$(THUNDERBIRD_L10N_BUILDDIR)/langpack-$${locale}@$${MOZ_LANGPACK_ID}.xpi $(CURDIR)/debian/thunderbird-l10n-$${lowercase_locale}/usr/lib/thunderbird/extensions/langpack-$${locale}@$${MOZ_LANGPACK_ID}.xpi ;\
 	done
 	dh_bash-completion
+	# And rename the folder back to the original name, needed if multiple
+	# builds in a row are done, dpkg would complain about unknown modifications.
+	mv third_party/python/typing_extensions-old third_party/python/typing_extensions
 
 override_dh_install-arch:
 	dh_install

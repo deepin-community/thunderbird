@@ -41,6 +41,9 @@ appmenu-create-new-mail-account =
 appmenu-new-mail-account =
     .label = Existující e-mail
     .accesskey = E
+appmenu-new-email-account =
+    .label = E-mail
+    .accesskey = E
 appmenu-new-calendar =
     .label = Kalendář
     .accesskey = K
@@ -171,6 +174,13 @@ appmenu-help-get-help =
 appmenu-help-explore-features =
     .label = Prozkoumat všechny funkce
     .accesskey = f
+appmenu-help-get-release-help =
+    .label =
+        { -brand-short-name.case-status ->
+            [with-cases] Získat pomoc s { -brand-short-name(case: "ins") }
+           *[no-cases] Získat pomoc s aplikací { -brand-short-name }
+        }
+    .accesskey = p
 appmenu-help-shortcuts =
     .label = Klávesové zkratky
     .accesskey = K

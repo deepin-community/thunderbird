@@ -344,6 +344,9 @@ has-seccomp-bpf = Seccomp-BPF (ਸਿਸਟਮ ਕਾਲ ਫਿਲਟਰ ਕਰ�
 has-seccomp-tsync = Seccomp ਥਰਿੱਡ ਸੈਕਰੋਨਾਈਜ਼ੇਸ਼ਨ
 has-user-namespaces = ਵਰਤੋਂਕਾਰ ਨੇਮ-ਸਪੇਸ
 has-privileged-user-namespaces = ਅਧਿਕਾਰ ਪ੍ਰਾਪਤ ਕਾਰਵਾਈਆਂ ਲਈ ਵਰਤੋਂਕਾਰ ਨੇਮਸਪੇਸ
+# Variables
+# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
+support-user-namespaces-unavailable = { $status } — ਇਹ ਫ਼ੀਚਰ ਨੂੰ ਤੁਹਾਡੇ ਸਿਸਟਮ ਵਲੋਂ ਮਨਜ਼ੂਰੀ ਨਹੀਂ ਮਿਲੀ ਹੈ। ਇਹ { -brand-short-name } ਦੇ ਸੁਰੱਖਿਆ ਫ਼ੀਚਰਾਂ ਨੂੰ ਸੀਮਿਤ ਕਰ ਸਕਦਾ ਹੈ।
 can-sandbox-content = ਪ੍ਰਸੰਗ ਕਾਰਵਾਈ ਸੈਂਡਬੌਕਸਿੰਗ
 can-sandbox-media = ਮੀਡੀਆ ਪਲੱਗਇਨ ਸੈਂਡਬੌਕਸਿੰਗ
 content-sandbox-level = ਪ੍ਰਸੰਗ ਪਰੋਸੈਸ ਸੈਂਡਬਾਕਸ ਪੱਧਰ
@@ -412,6 +415,20 @@ support-printing-modified-settings = ਸੋਧੀਆਂ ਪਰਿੰਟ ਸੈ�
 support-printing-prefs-name = ਨਾਂ
 support-printing-prefs-value = ਮੁੱਲ
 
+## Remote Settings sections
+
+support-remote-settings-title = ਰਿਮੋਟ ਸੈਟਿੰਗਾਂ
+support-remote-settings-status = ਹਾਲਤ
+support-remote-settings-status-ok = ਠੀਕ ਹੈ
+# Status when synchronization is not working.
+support-remote-settings-status-broken = ਨਹੀਂ ਕੰਮ ਕਰਦਾ
+support-remote-settings-last-check = ਆਖਰੀ ਵਾਰ ਜਾਂਚ
+support-remote-settings-local-timestamp = ਲੋਕਲ ਸਮਾਂ
+support-remote-settings-sync-history = ਅਤੀਤ
+support-remote-settings-sync-history-status = ਹਾਲਤ
+support-remote-settings-sync-history-datetime = ਤਾਰੀਖ
+support-remote-settings-sync-history-infos = ਜਾਣਕਾਰੀ
+
 ## Normandy sections
 
 support-remote-experiments-title = ਰਿਮੋਟ ਤਜਰਬੇ
@@ -428,3 +445,15 @@ pointing-device-mouse = ਮਾਊਸ
 pointing-device-touchscreen = ਟੱਚ-ਸਕਰੀਨ
 pointing-device-pen-digitizer = ਪੈਨ ਡਿਜ਼ੀਟਾਈਜ਼ਰ
 pointing-device-none = ਕੋਈ ਪੁਆਇੰਟ ਕਰਨ ਵਾਲਾ ਡਿਵਾਈਸ ਨਹੀਂ ਹੈ
+
+## Content Analysis (DLP)
+
+# DLP stands for Data Loss Prevention, an industry term for external software
+# that enterprises can set up to prevent sensitive data from being transferred
+# to external websites.
+content-analysis-title = ਸਮੱਗਰੀ ਵਿਸ਼ਲੇਸ਼ਣ (DLP)
+content-analysis-active = ਸਰਗਰਮ
+content-analysis-connected-to-agent = ਏਜੰਟ ਨਾਲ ਕਨੈਕਟ ਕੀਤਾ
+content-analysis-agent-path = ਏਜੰਟ ਦਾ ਮਾਰਗ
+content-analysis-agent-failed-signature-verification = ਏਜੰਟ ਦਸਤਖ਼ਤ ਜਾਂਚ ਲਈ ਅਸਫ਼ਲ ਹੈ
+content-analysis-request-count = ਬੇਨਤੀ ਗਿਣਤੀ

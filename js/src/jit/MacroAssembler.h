@@ -1727,10 +1727,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                                   Register scratch,
                                                   Label* label);
 
-  inline void branchIfFunctionHasNoJitEntry(Register fun, bool isConstructing,
-                                            Label* label);
-  inline void branchIfFunctionHasJitEntry(Register fun, bool isConstructing,
-                                          Label* label);
+  inline void branchIfFunctionHasNoJitEntry(Register fun, Label* label);
+  inline void branchIfFunctionHasJitEntry(Register fun, Label* label);
 
   inline void branchIfScriptHasJitScript(Register script, Label* label);
   inline void branchIfScriptHasNoJitScript(Register script, Label* label);
@@ -3902,8 +3900,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
                              Register temp2)
       DEFINED_ON(x86, x64, arm, arm64, loong64, mips64, riscv64);
 
-  void wasmMarkSlowCall()
+  // Places slow class marker for tail calls.
+  void wasmMarkCallAsSlow()
       DEFINED_ON(x86, x64, arm, arm64, loong64, mips64, riscv64);
+
+  // Combines slow class marker with actual assembler call.
+  CodeOffset wasmMarkedSlowCall(const wasm::CallSiteDesc& desc,
+                                const Register reg)
+      DEFINED_ON(x86_shared, arm, arm64, loong64, mips64, riscv64);
 #endif
 
   // WasmTableCallIndexReg must contain the index of the indirect call.  This is
@@ -5291,6 +5295,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                         Label* fail);
 
   void loadArgumentsObjectLength(Register obj, Register output, Label* fail);
+  void loadArgumentsObjectLength(Register obj, Register output);
 
   void branchTestArgumentsObjectFlags(Register obj, Register temp,
                                       uint32_t flags, Condition cond,
@@ -5601,8 +5606,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void setIsDefinitelyTypedArrayConstructor(Register obj, Register output);
 
   void loadMegamorphicCache(Register dest);
-  void lookupStringInAtomCacheLastLookups(Register str, Register scratch,
-                                          Register output, Label* fail);
+  void tryFastAtomize(Register str, Register scratch, Register output,
+                      Label* fail);
   void loadMegamorphicSetPropCache(Register dest);
 
   void loadAtomOrSymbolAndHash(ValueOperand value, Register outId,

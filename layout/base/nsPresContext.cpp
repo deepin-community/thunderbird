@@ -336,6 +336,7 @@ static const char* gExactCallbackPrefs[] = {
     "intl.accept_languages",
     "layout.css.devPixelsPerPx",
     "layout.css.dpi",
+    "layout.css.letter-spacing.model",
     "layout.css.text-transform.uppercase-eszett.enabled",
     "privacy.trackingprotection.enabled",
     "ui.use_standins_for_native_colors",
@@ -608,7 +609,8 @@ void nsPresContext::PreferenceChanged(const char* aPrefName) {
   }
 
   if (prefName.EqualsLiteral(
-          "layout.css.text-transform.uppercase-eszett.enabled")) {
+          "layout.css.text-transform.uppercase-eszett.enabled") ||
+      prefName.EqualsLiteral("layout.css.letter-spacing.model")) {
     changeHint |= NS_STYLE_HINT_REFLOW;
   }
 
@@ -1410,6 +1412,11 @@ void nsPresContext::SetInRDMPane(bool aInRDMPane) {
   }
   mInRDMPane = aInRDMPane;
   RecomputeTheme();
+  if (mPresShell) {
+    nsContentUtils::AddScriptRunner(NewRunnableMethod<bool>(
+        "PresShell::MaybeRecreateMobileViewportManager", mPresShell,
+        &PresShell::MaybeRecreateMobileViewportManager, true));
+  }
 }
 
 float nsPresContext::GetDeviceFullZoom() {
@@ -1450,6 +1457,32 @@ void nsPresContext::SetOverrideDPPX(float aDPPX) {
   mMediaEmulationData.mDPPX = aDPPX;
   MediaFeatureValuesChanged({MediaFeatureChangeReason::ResolutionChange},
                             MediaFeatureChangePropagation::JustThisDocument);
+}
+
+void nsPresContext::UpdateTopInnerSizeForRFP() {
+  if (!mDocument->ShouldResistFingerprinting(RFPTarget::WindowOuterSize) ||
+      !mDocument->GetBrowsingContext() ||
+      !mDocument->GetBrowsingContext()->IsTop()) {
+    return;
+  }
+
+  CSSSize size = CSSPixel::FromAppUnits(GetVisibleArea().Size());
+
+  switch (StaticPrefs::dom_innerSize_rounding()) {
+    case 1:
+      size.width = std::roundf(size.width);
+      size.height = std::roundf(size.height);
+      break;
+    case 2:
+      size.width = std::truncf(size.width);
+      size.height = std::truncf(size.height);
+      break;
+    default:
+      break;
+  }
+
+  Unused << mDocument->GetBrowsingContext()->SetTopInnerSizeForRFP(
+      CSSIntSize{(int)size.width, (int)size.height});
 }
 
 gfxSize nsPresContext::ScreenSizeInchesForFontInflation(bool* aChanged) {
@@ -2637,11 +2670,6 @@ bool nsPresContext::HavePendingInputEvent() {
   }
 }
 
-bool nsPresContext::HasPendingRestyleOrReflow() {
-  mozilla::PresShell* presShell = PresShell();
-  return presShell->NeedStyleFlush() || presShell->HasPendingReflow();
-}
-
 void nsPresContext::ReflowStarted(bool aInterruptible) {
 #ifdef NOISY_INTERRUPTIBLE_REFLOW
   if (!aInterruptible) {
@@ -2828,7 +2856,7 @@ void nsPresContext::NotifyContentfulPaint() {
       MOZ_ASSERT(!nowTime.IsNull(),
                  "Most recent refresh timestamp should exist since we are in "
                  "a refresh driver tick");
-      RefPtr<PerformancePaintTiming> paintTiming = new PerformancePaintTiming(
+      auto paintTiming = MakeRefPtr<PerformancePaintTiming>(
           perf, u"first-contentful-paint"_ns, nowTime);
       perf->SetFCPTimingEntry(paintTiming);
 
@@ -2970,6 +2998,8 @@ void nsPresContext::SetVisibleArea(const nsRect& r) {
           {mozilla::MediaFeatureChangeReason::ViewportChange},
           MediaFeatureChangePropagation::JustThisDocument);
     }
+
+    UpdateTopInnerSizeForRFP();
   }
 }
 

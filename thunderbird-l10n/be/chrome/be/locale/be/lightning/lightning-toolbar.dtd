@@ -15,12 +15,11 @@
 <!ENTITY lightning.toolbar.day.accesskey             "Д">
 <!ENTITY lightning.toolbar.week.label                "Тыдзень">
 <!ENTITY lightning.toolbar.week.accesskey            "Т">
+<!ENTITY lightning.toolbar.multiweek.label           "Тыдні">
+<!ENTITY lightning.toolbar.multiweek.accesskey       "ы">
 <!ENTITY lightning.toolbar.month.label               "Месяц">
 <!ENTITY lightning.toolbar.month.accesskey           "М">
 <!ENTITY lightning.toolbar.calendarmenu.label        "Панэль календара">
 <!ENTITY lightning.toolbar.calendarmenu.accesskey    "П">
 <!ENTITY lightning.toolbar.calendarpane.label        "Паказаць панэль календара">
 <!ENTITY lightning.toolbar.calendarpane.accesskey    "а">
-
-<!ENTITY lightning.toolbar.multiweek.label           "Multiweek">
-<!ENTITY lightning.toolbar.multiweek.accesskey       "u">

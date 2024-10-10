@@ -6,10 +6,8 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "MailServices",
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var { AppConstants } = ChromeUtils.importESModule(
@@ -29,11 +27,15 @@ var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
+ChromeUtils.defineESModuleGetters(this, {
+  ExtensionMenus: "resource://gre/modules/ExtensionMenus.sys.mjs",
+});
+
 XPCOMUtils.defineLazyGlobalGetters(this, ["fetch", "FileReader"]);
 
 var { makeWidgetId } = ExtensionCommon;
 var { DefaultMap, ExtensionError } = ExtensionUtils;
-var { IconDetails, StartupCache } = ExtensionParent;
+var { IconDetails } = ExtensionParent;
 
 const ACTION_MENU_TOP_LEVEL_LIMIT = 6;
 
@@ -41,12 +43,6 @@ const ACTION_MENU_TOP_LEVEL_LIMIT = 6;
 // Note: we want to enumerate all the menu items so
 // this cannot be a weak map.
 var gMenuMap = new Map();
-
-// Map[Extension -> Map[ID -> MenuCreateProperties]]
-// The map object for each extension is a reference to the same
-// object in StartupCache.menus.  This provides a non-async
-// getter for that object.
-var gStartupCache = new Map();
 
 // Map[Extension -> MenuItem]
 var gRootItems = new Map();
@@ -334,7 +330,7 @@ var gMenuBuilder = {
     return this.customizeElement(element, item, contextData);
   },
 
-  createMenuElement(doc, item) {
+  createMenuElement(doc) {
     const element = doc.createXULElement("menu");
     // Menu elements need to have a menupopup child for its menu items.
     const menupopup = doc.createXULElement("menupopup");
@@ -473,7 +469,7 @@ var gMenuBuilder = {
         }[item.command];
         if (actionFor) {
           const win = event.target.ownerGlobal;
-          actionFor(item.extension).triggerAction(win);
+          actionFor(item.extension).triggerAction(win.top);
           return;
         }
 
@@ -656,7 +652,7 @@ const contextsMap = {
   onTab: "tab",
   inToolsMenu: "tools_menu",
   selectedMessages: "message_list",
-  selectedFolder: "folder_pane",
+  selectedFolders: "folder_pane",
   selectedComposeAttachments: "compose_attachments",
   selectedMessageAttachments: "message_attachments",
   allMessageAttachments: "all_message_attachments",
@@ -804,20 +800,39 @@ async function addMenuEventInfo(
     );
   }
   if (extension.hasPermission("accountsRead")) {
-    for (const folderType of ["displayedFolder", "selectedFolder"]) {
-      if (contextData[folderType]) {
-        const folder = extension.folderManager.convert(contextData[folderType]);
-        // If the context menu click in the folder pane occurred on a root folder
-        // representing an account, do not include a selectedFolder object, but
-        // the corresponding selectedAccount object.
-        if (folderType == "selectedFolder" && folder.path == "/") {
+    if (contextData.displayedFolder) {
+      const folder = extension.folderManager.convert(
+        contextData.displayedFolder
+      );
+      // Do not include subfolders in Manifest V3.
+      info.displayedFolder =
+        extension.manifestVersion > 2
+          ? folder
+          : extension.folderManager.traverseSubfolders(
+              contextData.displayedFolder,
+              folder.accountId
+            );
+    }
+
+    if (contextData.selectedFolders) {
+      info.selectedFolders = contextData.selectedFolders.map(folder =>
+        extension.folderManager.convert(folder)
+      );
+
+      // Manifest V2 includes a single selectedFolder property. If the context
+      //   menu click in the folder pane occurred on a root folder representing
+      //   an account, we include the selectedAccount property instead.
+      if (extension.manifestVersion < 3) {
+        const [folder] = contextData.selectedFolders;
+        const [{ path, accountId }] = info.selectedFolders;
+        if (path == "/") {
           info.selectedAccount = extension.accountManager.convert(
-            MailServices.accounts.getAccount(folder.accountId)
+            MailServices.accounts.getAccount(accountId)
           );
         } else {
-          info[folderType] = extension.folderManager.traverseSubfolders(
-            contextData[folderType],
-            folder.accountId
+          info.selectedFolder = extension.folderManager.traverseSubfolders(
+            folder,
+            accountId
           );
         }
       }
@@ -874,26 +889,8 @@ class MenuItem {
     }
   }
 
-  static mergeProps(obj, properties) {
-    for (const propName in properties) {
-      if (properties[propName] === null) {
-        // Omitted optional argument.
-        continue;
-      }
-      obj[propName] = properties[propName];
-    }
-
-    if ("icons" in properties) {
-      if (properties.icons === null) {
-        obj.icons = null;
-      } else if (typeof properties.icons == "string") {
-        obj.icons = { 16: properties.icons };
-      }
-    }
-  }
-
   setProps(createProperties) {
-    MenuItem.mergeProps(this, createProperties);
+    ExtensionMenus.mergeMenuProperties(this, createProperties);
 
     if (createProperties.documentUrlPatterns != null) {
       this.documentUrlMatchPattern = new MatchPatternSet(
@@ -975,24 +972,6 @@ class MenuItem {
     }
   }
 
-  /**
-   * When updating menu properties we need to ensure parents exist
-   * in the cache map before children.  That allows the menus to be
-   * created in the correct sequence on startup.  This reparents the
-   * tree starting from this instance of MenuItem.
-   */
-  reparentInCache() {
-    const { id, extension } = this;
-    const cachedMap = gStartupCache.get(extension);
-    const createProperties = cachedMap.get(id);
-    cachedMap.delete(id);
-    cachedMap.set(id, createProperties);
-
-    for (const child of this.children) {
-      child.reparentInCache();
-    }
-  }
-
   set parentId(parentId) {
     this.ensureValidParentId(parentId);
 
@@ -1010,6 +989,12 @@ class MenuItem {
 
   get parentId() {
     return this.parent ? this.parent.id : undefined;
+  }
+
+  get descendantIds() {
+    return this.children
+      ? this.children.flatMap(m => [m.id, ...m.descendantIds])
+      : [];
   }
 
   addChild(child) {
@@ -1056,10 +1041,7 @@ class MenuItem {
 
     const menuMap = gMenuMap.get(this.extension);
     menuMap.delete(this.id);
-    // Menu items are saved if !extension.persistentBackground.
-    if (gStartupCache.get(this.extension)?.delete(this.id)) {
-      StartupCache.save();
-    }
+
     if (this.root == this) {
       gRootItems.delete(this.extension);
     }
@@ -1171,7 +1153,7 @@ const menuTracker = {
     windowTracker.removeOpenListener(this.onWindowOpen);
   },
 
-  observe(subject, topic, data) {
+  observe(subject) {
     subject = subject.wrappedJSObject;
     gMenuBuilder.build(subject);
   },
@@ -1217,11 +1199,17 @@ const menuTracker = {
       case "folderPaneContext": {
         const tab = tabTracker.activeTab;
         const pageUrl = tab.linkedBrowser?.currentURI?.spec;
+        const overrideFolder = win.folderPaneContextMenu._overrideFolder;
+        const selectedFolders = overrideFolder
+          ? [overrideFolder]
+          : [...win.folderTree.selection.values()].map(row =>
+              MailServices.folderLookup.getFolderForURL(row.uri)
+            );
         gMenuBuilder.build({
           menu,
           tab,
           pageUrl,
-          selectedFolder: win.folderPaneContextMenu.activeFolder,
+          selectedFolders,
         });
         break;
       }
@@ -1313,6 +1301,8 @@ const menuTracker = {
 };
 
 this.menus = class extends ExtensionAPIPersistent {
+  #promiseInitialized = null;
+
   constructor(extension) {
     super(extension);
 
@@ -1322,36 +1312,56 @@ this.menus = class extends ExtensionAPIPersistent {
     gMenuMap.set(extension, new Map());
   }
 
-  restoreFromCache() {
+  async initExtensionMenus() {
     const { extension } = this;
-    // ensure extension has not shutdown
-    if (!this.extension) {
+    await ExtensionMenus.asyncInitForExtension(extension);
+
+    if (
+      extension.hasShutdown ||
+      !ExtensionMenus.shouldPersistMenus(extension)
+    ) {
       return;
     }
-    for (const createProperties of gStartupCache.get(extension).values()) {
-      // The order of menu creation is significant, see reparentInCache.
-      const menuItem = new MenuItem(extension, createProperties);
-      gMenuMap.get(extension).set(menuItem.id, menuItem);
+
+    // Used for testing.
+    const notifyMenusCreated = () =>
+      extension.emit("webext-menus-created", gMenuMap.get(extension));
+
+    const menus = ExtensionMenus.getMenus(extension);
+    if (!menus.size) {
+      notifyMenusCreated();
+      return;
     }
-    // Used for testing
-    extension.emit("webext-menus-created", gMenuMap.get(extension));
+
+    const createErrorMenuIds = [];
+    for (const createProperties of menus.values()) {
+      // The order of menu creation is significant:
+      // When creating and reparenting the menu we ensure parents exist
+      // in the persisted menus map before children.  That allows the
+      // menus to be recreated in the correct sequence on startup.
+      //
+      // For details, see ExtensionMenusManager's updateMenus in
+      // ExtensionMenus.sys.mjs
+      try {
+        const menuItem = new MenuItem(extension, createProperties);
+        gMenuMap.get(extension).set(menuItem.id, menuItem);
+      } catch (err) {
+        console.error(
+          `Unexpected error on recreating persisted menu ${createProperties?.id} for ${extension.id}: ${err}`
+        );
+        createErrorMenuIds.push(createProperties.id);
+      }
+    }
+
+    if (createErrorMenuIds.length) {
+      ExtensionMenus.deleteMenus(extension, createErrorMenuIds);
+    }
+
+    notifyMenusCreated();
   }
 
-  async onStartup() {
-    const { extension } = this;
-    if (extension.persistentBackground) {
-      return;
-    }
-    // Using the map retains insertion order.
-    const cachedMenus = await StartupCache.menus.get(extension.id, () => {
-      return new Map();
-    });
-    gStartupCache.set(extension, cachedMenus);
-    if (!cachedMenus.size) {
-      return;
-    }
-
-    this.restoreFromCache();
+  onStartup() {
+    this.#promiseInitialized = this.initExtensionMenus();
   }
 
   onShutdown() {
@@ -1361,7 +1371,6 @@ this.menus = class extends ExtensionAPIPersistent {
       gMenuMap.delete(extension);
       gRootItems.delete(extension);
       gShownMenuItems.delete(extension);
-      gStartupCache.delete(extension);
       gOnShownSubscribers.delete(extension);
       if (!gMenuMap.size) {
         menuTracker.unregister();
@@ -1448,22 +1457,26 @@ this.menus = class extends ExtensionAPIPersistent {
     onClicked({ context, fire }) {
       const { extension } = this;
       const listener = async (event, info, nativeTab) => {
-        const { linkedBrowser } = nativeTab || tabTracker.activeTab;
         const tab = nativeTab && extension.tabManager.convert(nativeTab);
         if (fire.wakeup) {
-          // force the wakeup, thus the call to convert to get the context.
+          // Force the wakeup, thus the call to convert to get the context.
           await fire.wakeup();
           // If while waiting the tab disappeared we bail out.
-          if (
-            !linkedBrowser.ownerGlobal.gBrowser.getTabForBrowser(linkedBrowser)
-          ) {
+          if (!tabTracker.getTab(tab.id, /* do not throw, but return */ null)) {
             console.error(
               `menus.onClicked: target tab closed during background startup.`
             );
             return;
           }
         }
-        context.withPendingBrowser(linkedBrowser, () => fire.sync(info, tab));
+        // The pending browser concept is a hack to be able to access the browser
+        // without having to explicitly pass it around. This basically sets
+        // context.pendingEventBrowser before calling the provided callback.
+        // The linked browser being null (for example if no message is selected)
+        // does not have negative consequences here.
+        context.withPendingBrowser(nativeTab.linkedBrowser, () =>
+          fire.sync(info, tab)
+        );
       };
 
       extension.on("webext-menu-menuitem-click", listener);
@@ -1507,9 +1520,14 @@ this.menus = class extends ExtensionAPIPersistent {
           extensionApi: this,
         }).api(),
 
-        async create(createProperties) {
-          // event pages require id
-          if (!extension.persistentBackground) {
+        create: async createProperties => {
+          await this.#promiseInitialized;
+          if (extension.hasShutdown) {
+            return;
+          }
+
+          // Event pages require an id.
+          if (ExtensionMenus.shouldPersistMenus(extension)) {
             if (!createProperties.id) {
               throw new ExtensionError(
                 "menus.create requires an id for non-persistent background scripts."
@@ -1529,17 +1547,16 @@ this.menus = class extends ExtensionAPIPersistent {
           // it, the implementation of menus.create in the child will add it for
           // extensions with persistent backgrounds, but not otherwise.
           const menuItem = new MenuItem(extension, createProperties);
+          ExtensionMenus.addMenu(extension, createProperties);
           gMenuMap.get(extension).set(menuItem.id, menuItem);
-          if (!extension.persistentBackground) {
-            // Only cache properties that are necessary.
-            const cached = {};
-            MenuItem.mergeProps(cached, createProperties);
-            gStartupCache.get(extension).set(menuItem.id, cached);
-            StartupCache.save();
-          }
         },
 
-        async update(id, updateProperties) {
+        update: async (id, updateProperties) => {
+          await this.#promiseInitialized;
+          if (extension.hasShutdown) {
+            return;
+          }
+
           const menuItem = gMenuMap.get(extension).get(id);
           if (!menuItem) {
             return;
@@ -1547,45 +1564,36 @@ this.menus = class extends ExtensionAPIPersistent {
 
           // Pre-fetch the icon from http(s) and replace it by a data: uri.
           await fetchRemoteIcons(updateProperties);
-          menuItem.setProps(updateProperties);
 
-          // Update the startup cache for non-persistent extensions.
-          if (extension.persistentBackground) {
+          menuItem.setProps(updateProperties);
+          ExtensionMenus.updateMenu(extension, id, updateProperties);
+        },
+
+        remove: async id => {
+          await this.#promiseInitialized;
+          if (extension.hasShutdown) {
             return;
           }
 
-          const cached = gStartupCache.get(extension).get(id);
-          const reparent =
-            updateProperties.parentId != null &&
-            cached.parentId != updateProperties.parentId;
-          MenuItem.mergeProps(cached, updateProperties);
-          if (reparent) {
-            // The order of menu creation is significant, see reparentInCache.
-            menuItem.reparentInCache();
-          }
-          StartupCache.save();
-        },
-
-        remove(id) {
           const menuItem = gMenuMap.get(extension).get(id);
           if (menuItem) {
+            const menuIds = [menuItem.id, ...menuItem.descendantIds];
             menuItem.remove();
+            ExtensionMenus.deleteMenus(extension, menuIds);
           }
         },
 
-        removeAll() {
+        removeAll: async () => {
+          await this.#promiseInitialized;
+          if (extension.hasShutdown) {
+            return;
+          }
+
           const root = gRootItems.get(extension);
           if (root) {
             root.remove();
           }
-          // Should be empty, just extra assurance.
-          if (!extension.persistentBackground) {
-            const cached = gStartupCache.get(extension);
-            if (cached.size) {
-              cached.clear();
-              StartupCache.save();
-            }
-          }
+          ExtensionMenus.deleteAllMenus(extension);
         },
       },
     };

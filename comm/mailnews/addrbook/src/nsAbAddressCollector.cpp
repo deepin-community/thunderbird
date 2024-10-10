@@ -3,9 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "msgCore.h"  // for pre-compiled headers
-#include "nsISimpleEnumerator.h"
-
 #include "nsIAbCard.h"
 #include "nsAbAddressCollector.h"
 #include "nsIPrefService.h"
@@ -200,8 +197,6 @@ bool nsAbAddressCollector::SetNamesForCard(nsIAbCard* aSenderCard,
   if (!lastName.IsEmpty() &&
       NS_SUCCEEDED(aSenderCard->SetLastName(NS_ConvertUTF8toUTF16(lastName))))
     modifiedCard = true;
-
-  if (modifiedCard) aSenderCard->SetPropertyAsBool("PreferDisplayName", false);
 
   return modifiedCard;
 }

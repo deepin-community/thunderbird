@@ -211,6 +211,14 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Chuyển tiếp và chuyển hướng
     .accesskey = F
+mail-context-menu-forward-forward =
+    .label = Chuyển tiếp
+    .accesskey = y
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label = Dưới dạng đính kèm
+    .accesskey = A
 mail-context-menu-organize =
     .label = Quản lí
     .accesskey = g

@@ -1,3 +1,4 @@
+
 /* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* vim:set ts=4 sw=2 sts=2 et cin: */
 /* This Source Code Form is subject to the terms of the Mozilla Public
@@ -1156,6 +1157,12 @@ ConnectionCloseReason ToCloseReason(nsresult aErrorCode) {
   }
 
   return ConnectionCloseReason::OTHER_NET_ERROR;
+}
+
+void DisallowHTTPSRR(uint32_t& aCaps) {
+  // NS_HTTP_DISALLOW_HTTPS_RR should take precedence than
+  // NS_HTTP_FORCE_WAIT_HTTP_RR.
+  aCaps = (aCaps | NS_HTTP_DISALLOW_HTTPS_RR) & ~NS_HTTP_FORCE_WAIT_HTTP_RR;
 }
 
 }  // namespace net

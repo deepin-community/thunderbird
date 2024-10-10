@@ -5,15 +5,16 @@
 import { IMServices } from "resource:///modules/IMServices.sys.mjs";
 import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
 import { GenericMessagePrototype } from "resource:///modules/jsProtoHelper.sys.mjs";
-import { l10nHelper } from "resource:///modules/imXPCOMUtils.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   ToLocaleFormat: "resource:///modules/ToLocaleFormat.sys.mjs",
 });
 
-ChromeUtils.defineLazyGetter(lazy, "_", () =>
-  l10nHelper("chrome://chat/locale/logger.properties")
+ChromeUtils.defineLazyGetter(
+  lazy,
+  "l10n",
+  () => new Localization(["chat/logger.ftl"], true)
 );
 
 /*
@@ -696,7 +697,7 @@ class Log {
         messages.push({
           who: "sessionstart",
           date: getDateFromFilename(filename)[0],
-          text: lazy._("badLogfile", filename),
+          text: lazy.l10n.formatValueSync("bad-logfile", { filename }),
           flags: ["noLog", "notification", "error", "system"],
         });
         continue;
@@ -1023,7 +1024,7 @@ export class Logger {
     gFilePromises.forEach(checkLogFiles);
     // After all operations finish, remove the whole log folder.
     return Promise.all(pendingPromises)
-      .then(values => {
+      .then(() => {
         IOUtils.remove(logPath, { recursive: true });
       })
       .catch(aError =>
@@ -1096,7 +1097,7 @@ export class Logger {
     }
   }
 
-  observe(aSubject, aTopic, aData) {
+  observe(aSubject, aTopic) {
     switch (aTopic) {
       case "new-text": {
         let excludeBecauseEncrypted = false;

@@ -2,17 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailServices: "resource:///modules/MailServices.jsm",
-  MimeParser: "resource:///modules/mimeParser.jsm",
-});
-
 ChromeUtils.defineESModuleGetters(lazy, {
   MailConsts: "resource:///modules/MailConsts.sys.mjs",
+  MailServices: "resource:///modules/MailServices.sys.mjs",
+  MimeParser: "resource:///modules/mimeParser.sys.mjs",
   NetUtil: "resource://gre/modules/NetUtil.sys.mjs",
   PluralForm: "resource:///modules/PluralForm.sys.mjs",
 });
@@ -188,10 +182,10 @@ export var MailUtils = {
    *      is used, and the window is brought to the front
    *    - if no 3pane windows are open, a standalone window is opened instead
    *      of a tab
-   * @param {Boolean} [forceTab] - Boolean that let us know when the middle
+   * @param {boolean} [forceTab] - Boolean that let us know when the middle
    *   click button triggered the event. We then proceed to open the message in
    *   a new tab.
-   * @param {Boolean} [shiftPressed] - We take into account if the user pressed
+   * @param {boolean} [shiftPressed] - We take into account if the user pressed
    *   the shift key to know how to open a message in a new tab.
    */
   displayMessages(
@@ -210,7 +204,8 @@ export var MailUtils = {
         aMsgHdrs,
         aViewWrapperToClone,
         aTabmail,
-        shiftPressed
+        shiftPressed,
+        forceTab
       );
       return;
     }
@@ -235,7 +230,8 @@ export var MailUtils = {
           aMsgHdrs,
           aViewWrapperToClone,
           aTabmail,
-          shiftPressed
+          shiftPressed,
+          forceTab
         );
         break;
     }
@@ -255,11 +251,20 @@ export var MailUtils = {
    *      is used, and the window is brought to the front
    *    - if no 3pane windows are open, a standalone window is opened instead
    *      of a tab
-   * @param {Boolean} [shiftPressed] - We take into account if the user pressed
+   * @param {boolean} [shiftPressed] - We take into account if the user pressed
    *   the shift key to know how to open a message in a new tab. We only look at
    *   the loadInBackground preferefence if this value is provided.
+   * @param {boolean} [backgroundCmd] - We take into account whether we are
+   *   opening a tab from middle click, in which case the tab should only
+   *   open in the background.
    */
-  openMessageInNewTab(aMsgHdrs, aViewWrapperToClone, aTabmail, shiftPressed) {
+  openMessageInNewTab(
+    aMsgHdrs,
+    aViewWrapperToClone,
+    aTabmail,
+    shiftPressed,
+    backgroundCmd
+  ) {
     let mail3PaneWindow = null;
     if (!aTabmail) {
       // Try opening new tabs in a 3pane window.
@@ -286,9 +291,8 @@ export var MailUtils = {
       return;
     }
 
-    const loadInBgPref = Services.prefs.getBoolPref(
-      "mail.tabs.loadInBackground"
-    );
+    const loadInBgPref =
+      backgroundCmd || Services.prefs.getBoolPref("mail.tabs.loadInBackground");
 
     // If shiftPressed is not specified the message should ignore the
     // loadInBackground preference.
@@ -423,41 +427,18 @@ export var MailUtils = {
           .showWindow(mail3PaneWindow);
       }
       mail3PaneWindow.focus();
-    } else {
-      const args = { msgHdr };
-      args.wrappedJSObject = args;
-      Services.ww.openWindow(
-        null,
-        "chrome://messenger/content/messenger.xhtml",
-        "",
-        "all,chrome,dialog=no,status,toolbar",
-        args
-      );
-    }
-  },
-
-  /**
-   * Open a message from a message id.
-   *
-   * @param {string} msgId - The message id string without the brackets.
-   */
-  openMessageByMessageId(msgId) {
-    const msgHdr = this.getMsgHdrForMsgId(msgId);
-    if (msgHdr) {
-      this.displayMessage(msgHdr);
       return;
     }
-    const bundle = Services.strings.createBundle(
-      "chrome://messenger/locale/messenger.properties"
+
+    const args = { msgHdr };
+    args.wrappedJSObject = args;
+    Services.ww.openWindow(
+      null,
+      "chrome://messenger/content/messenger.xhtml",
+      "",
+      "all,chrome,dialog=no,status,toolbar",
+      args
     );
-    const errorTitle = bundle.GetStringFromName(
-      "errorOpenMessageForMessageIdTitle"
-    );
-    const errorMessage = bundle.formatStringFromName(
-      "errorOpenMessageForMessageIdMessage",
-      [msgId]
-    );
-    Services.prompt.alert(null, errorTitle, errorMessage);
   },
 
   /**
@@ -829,11 +810,269 @@ export var MailUtils = {
     }
     return null;
   },
+
+  /**
+   * Recursively search for message id in all msg folders and open the first
+   * matching message found.
+   *
+   * @param {string} msgId - The message id string without the brackets.
+   * @param {nsIMsgIncomingServer} [startServer] - The server to check first.
+   * @param {DOMWindow} [window] - The message window to load the message into.
+   */
+  openMessageForMessageId(msgId, startServer, window) {
+    window?.setCursor("wait");
+    const msgHdr = this.getMsgHdrForMsgId(msgId, startServer);
+    window?.setCursor("auto");
+
+    // If message was found open corresponding message.
+    if (msgHdr) {
+      if (window) {
+        if (window.parent.location == "about:3pane") {
+          // Message in 3pane.
+          window.parent.selectMessage(msgHdr);
+        } else {
+          // Message in tab, standalone message window.
+          const uri = msgHdr.folder.getUriForMsg(msgHdr);
+          window.displayMessage(uri);
+        }
+      } else {
+        this.displayMessage(msgHdr);
+      }
+      return;
+    }
+    const bundle = Services.strings.createBundle(
+      "chrome://messenger/locale/messenger.properties"
+    );
+    Services.prompt.alert(
+      window,
+      bundle.GetStringFromName("errorOpenMessageForMessageIdTitle"),
+      bundle.formatStringFromName("errorOpenMessageForMessageIdMessage", [
+        `<${msgId}>`,
+      ])
+    );
+  },
+
+  /**
+   * Take the message id from the messageIdNode and use the url defined in the
+   * hidden pref "mailnews.messageid_browser.url" to open it in a browser window
+   * (%mid is replaced by the message id).
+   *
+   * @param {string} messageId - The message id to open.
+   */
+  openBrowserWithMessageId(messageId) {
+    let browserURL = Services.prefs.getStringPref(
+      "mailnews.messageid_browser.url"
+    );
+    browserURL = browserURL.replace(/%mid/, encodeURIComponent(messageId));
+    Cc["@mozilla.org/uriloader/external-protocol-service;1"]
+      .getService(Ci.nsIExternalProtocolService)
+      .loadURI(Services.io.newURI(browserURL));
+  },
+
+  /**
+   * If the 'news' URI contains a message-id, retrieve the corresponding
+   * message from the server, save it in a temporary EML file, and display it
+   * in a new tab or message window.
+   * For URIs that identify a newsgroup, ask to subscribe, if necessary, and
+   * open the group in the folder pane.
+   * If no host is specified in the URI, the server of the first NNTP account
+   * is used.
+   *
+   * @param {string} uri - The 'news' URI to open.
+   * @param {DOMWindow} win - The window which the URI is being opened within.
+   */
+  handleNewsUri(uri, win) {
+    // @see {@link https://datatracker.ietf.org/doc/html/rfc5538#section-2.2}
+    const url = new URL(uri);
+    if (url.pathname.length <= 1) {
+      return;
+    }
+
+    // Treat deprecated 'snews' URIs exactly as 'news' URIs.
+    // @see {@link https://datatracker.ietf.org/doc/html/rfc5538#section-8.1}
+    if (url.protocol == "snews:") {
+      url.protocol = "news:";
+    }
+
+    const firstNntpServer = lazy.MailServices.accounts.accounts.find(
+      account => account.incomingServer.type == "nntp"
+    )?.incomingServer;
+
+    // 'news' URIs identifying a newsgroup.
+
+    const identifier = decodeURIComponent(url.pathname.slice(1));
+    if (!identifier.includes("@")) {
+      if (identifier.includes("*")) {
+        console.warn(`Unsupported news URI: ${url}`);
+        return;
+      }
+
+      const server = url.hostname
+        ? lazy.MailServices.accounts.findServer("", url.hostname, "nntp")
+        : firstNntpServer;
+      if (!server) {
+        console.warn(`Unknown news server: ${url.hostname}`);
+        return;
+      }
+
+      if (
+        !server
+          .QueryInterface(Ci.nsINntpIncomingServer)
+          .containsNewsgroup(identifier)
+      ) {
+        const bundle = Services.strings.createBundle(
+          "chrome://messenger/locale/news.properties"
+        );
+        const result = Services.prompt.confirm(
+          win,
+          null,
+          bundle.formatStringFromName("autoSubscribeText", [identifier])
+        );
+        if (!result) {
+          return;
+        }
+        server.subscribeToNewsgroup(identifier);
+      }
+      this.displayFolderIn3Pane(server.findGroup(identifier).URI);
+      return;
+    }
+
+    // URIs that contain a message-ID.
+
+    if (!url.hostname) {
+      if (!firstNntpServer) {
+        console.warn("No news server set up.");
+        return;
+      }
+      url.hostname = firstNntpServer.hostName;
+      url.port = firstNntpServer.port;
+    }
+    if (!url.port) {
+      url.port = Ci.nsINntpUrl.DEFAULT_NNTP_PORT;
+    }
+
+    const tempFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
+    tempFile.append("newsuri.eml");
+    tempFile.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o600);
+    const extAppLauncher = Cc[
+      "@mozilla.org/uriloader/external-helper-app-service;1"
+    ].getService(Ci.nsPIExternalAppLauncher);
+    extAppLauncher.deleteTemporaryFileOnExit(tempFile);
+
+    const messageService = Cc[
+      "@mozilla.org/messenger/messageservice;1?type=news"
+    ].getService(Ci.nsIMsgMessageService);
+    const urlListener = {
+      OnStopRunningUrl(url, aExitCode) {
+        if (!Components.isSuccessCode(aExitCode) || tempFile.fileSize <= 0) {
+          console.warn(`Could not open URI ${url.asciiSpec}`);
+          return;
+        }
+        MailUtils.openEMLFile(win, tempFile, Services.io.newFileURI(tempFile));
+      },
+    };
+    messageService.saveMessageToDisk(
+      url.href,
+      tempFile,
+      false,
+      urlListener,
+      true,
+      null
+    );
+  },
+
+  /**
+   * Display the appropriate warning to inform in which way messages will be
+   * deleted.
+   *
+   * @param {boolean} deleteStorage - If the messages are about to be deleted
+   *   permanently.
+   * @param {nsIMsgDBView} dbView - The view displaying the messages.
+   * @param {nsIMsgFolder} [folder] - Defaults to the folder of the first
+   *   selected message.
+   * @returns {boolean} - True, if the user confirms the deletion.
+   */
+  confirmDelete(deleteStorage, dbView, folder = null) {
+    if (!folder && dbView.numSelected >= 1) {
+      folder = dbView.hdrForFirstSelectedMessage?.folder;
+    }
+    const trashFolder = folder?.isSpecialFolder(
+      Ci.nsMsgFolderFlags.Trash,
+      true
+    );
+
+    let activePref = "";
+    let warningName = "";
+    const warnTrashDelPref = "mail.warn_on_delete_from_trash";
+    const warnShiftDelPref = "mail.warn_on_shift_delete";
+    const warnCollapsedPref = "mail.warn_on_collapsed_thread_operation";
+    const warnNewsPref = "news.warn_on_delete";
+
+    if (trashFolder && Services.prefs.getBoolPref(warnTrashDelPref, true)) {
+      activePref = warnTrashDelPref;
+      warningName = "confirmMsgDelete.deleteFromTrash.desc";
+    }
+    if (
+      !activePref &&
+      dbView.selection.count != dbView.numSelected &&
+      Services.prefs.getBoolPref(warnCollapsedPref, true)
+    ) {
+      activePref = warnCollapsedPref;
+      warningName = "confirmMsgDelete.collapsed.desc";
+    }
+    if (
+      !activePref &&
+      deleteStorage &&
+      !trashFolder &&
+      Services.prefs.getBoolPref(warnShiftDelPref, true)
+    ) {
+      activePref = warnShiftDelPref;
+      warningName = "confirmMsgDelete.deleteNoTrash.desc";
+    }
+    if (
+      !activePref &&
+      folder?.isSpecialFolder(Ci.nsMsgFolderFlags.Newsgroup, true) &&
+      Services.prefs.getBoolPref(warnNewsPref, true)
+    ) {
+      activePref = warnNewsPref;
+      warningName = "confirmMsgDelete.deleteNoTrash.desc";
+    }
+    if (!activePref) {
+      return true;
+    }
+
+    const messengerBundle = Services.strings.createBundle(
+      "chrome://messenger/locale/messenger.properties"
+    );
+    const dontAsk = { value: false };
+    if (
+      Services.prompt.confirmEx(
+        Services.wm.getMostRecentWindow(null),
+        messengerBundle.GetStringFromName("confirmMsgDelete.title"),
+        messengerBundle.GetStringFromName(warningName),
+        Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0 +
+          Services.prompt.BUTTON_TITLE_CANCEL * Services.prompt.BUTTON_POS_1,
+        messengerBundle.GetStringFromName("confirmMsgDelete.delete.label"),
+        "",
+        "",
+        messengerBundle.GetStringFromName("confirmMsgDelete.dontAsk.label"),
+        dontAsk
+      ) != 0
+    ) {
+      return false;
+    }
+
+    if (dontAsk.value) {
+      Services.prefs.setBoolPref(activePref, false);
+    }
+    return true;
+  },
 };
 
 /**
  * A class that listens to notifications about folders, and deals with them
  * appropriately.
+ *
  * @implements {nsIObserver}
  */
 class FolderNotificationManager {
@@ -853,7 +1092,7 @@ class FolderNotificationManager {
     Services.obs.addObserver(this, "folder-attention");
   }
 
-  observe(subject, topic, data) {
+  observe(subject, topic) {
     switch (topic) {
       case "profile-before-change":
         Services.obs.removeObserver(this, "profile-before-change");

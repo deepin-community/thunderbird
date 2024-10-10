@@ -399,6 +399,17 @@ close-move-delete =
     .accesskey = I
 display-name-label =
     .value = Bistaratzeko izena:
+address-display-legend = Mezu zerrenda
+address-display-description = Helbidea bistaratzeko formatu lehenetsia:
+address-display-full =
+    .label = Izen osoa eta posta elektroniko helbidea
+    .accesskey = o
+address-display-email =
+    .label = Posta elektronikoa bakarrik
+    .accesskey = P
+address-display-name =
+    .label = Izena bakarrik
+    .accesskey = I
 condensed-addresses-label =
     .label = Erakutsi nire helbide-liburuko pertsonen bistarazte-izena bakarrik
     .accesskey = p
@@ -560,6 +571,9 @@ primary-password-description = Pasahitz nagusiak zure pasahitz guztiak babesten 
 primary-password-label =
     .label = Erabili pasahitz nagusia
     .accesskey = E
+# This operation requires the user to authenticate with the operating system (device sign-in)
+forms-os-reauth =
+    .label = Pasahitzak bete eta kudeatzeko gailuan saioa hasi behar da
 primary-password-button =
     .label = Aldatu pasahitz nagusia…
     .accesskey = A
@@ -568,6 +582,9 @@ forms-master-pw-fips-desc = Pasahitz aldaketak huts egin du
 junk-description = Ezarri zabor-postaren ezarpen lehenetsiak. Kontu bakoitzari lotutako zabor-postaren ezarpenak kontu-ezarpenetan konfiguratu daitezke.
 junk-label =
     .label = Mezuak zabor gisa markatzen ditudanean:
+    .accesskey = z
+junk-marked-label =
+    .label = Mezuak zabor gisa markatzen direnean:
     .accesskey = z
 junk-move-label =
     .label = Aldatu lekuz kontuaren "Zaborra" karpetara
@@ -578,6 +595,13 @@ junk-delete-label =
 junk-read-label =
     .label = Markatu zabor-mezuak irakurrita gisa
     .accesskey = M
+junk-read-description = Markatu mezuak irakurrita
+junk-read-manual-label =
+    .label = Eskuz zabor gisa markatzean
+    .accesskey = E
+junk-read-auto-label =
+    .label = { -brand-short-name } zaborra direla erabakitzean
+    .accesskey = t
 junk-log-label =
     .label = Gaitu zabor-iragazki moldakorraren loga
     .accesskey = G
@@ -611,7 +635,22 @@ certificate-button =
 security-devices-button =
     .label = Segurtasun-gailuak…
     .accesskey = S
+email-e2ee-header = Muturretik muturrerako zifratzea posta elektronikoan
 account-settings = Kontu-ezarpenak
+email-e2ee-enable-info = Konfiguratu posta elektronikoko kontuak eta identitateak Muturretik-Muturrerako zifraketarako, kontuaren ezarpenetan.
+email-e2ee-automatism = Zifratzearen erabilera automatikoa
+email-e2ee-automatism-pre =
+    { -brand-short-name } lagun dezake zifratzea automatikoki gaituz edo desgaituz mezu elektroniko bat idazten duzun bitartean.
+    Gaitu/desgaitu automatikoki korrespontsalen gako edo ziurtagiri baliozko eta onartuen erabilgarritasunean oinarritzen da.
+email-e2ee-auto-on =
+    .label = Gaitu automatikoki zifratzea posible denean
+email-e2ee-auto-off =
+    .label = Desgaitu automatikoki zifratzea hartzaileak aldatzen direnean eta zifratzea posible ez denean
+email-e2ee-auto-off-notify =
+    .label = Erakutsi jakinarazpen bat zifratzea automatikoki desgaitzen den bakoitzean
+email-e2ee-automatism-post =
+    Erabaki automatikoak baliogabetu daitezke mezu bat idazterakoan zifratzea eskuz gaituz edo desgaituz.
+    oharra: Zifratzea automatikoki gaituta dago beti zifratutako mezu bati erantzutean.
 
 ## Chat Tab
 

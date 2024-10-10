@@ -331,7 +331,6 @@ class ProfileImporterController extends ImporterController {
     Thunderbird: "ThunderbirdProfileImporter",
     Seamonkey: "SeamonkeyProfileImporter",
     Outlook: "OutlookProfileImporter",
-    Becky: "BeckyProfileImporter",
     AppleMail: "AppleMailProfileImporter",
   };
 
@@ -343,7 +342,6 @@ class ProfileImporterController extends ImporterController {
     Thunderbird: "thunderbird",
     Seamonkey: "seamonkey",
     Outlook: "outlook",
-    Becky: "becky",
     AppleMail: "apple-mail",
   };
   _sourceAppName = "thunderbird";
@@ -632,7 +630,7 @@ class ProfileImporterController extends ImporterController {
     }
     document.getElementById("appSummaryItems").replaceChildren(
       ...Object.entries(this._getItemsChecked(true))
-        .filter(([item, checked]) => checked)
+        .filter(([, checked]) => checked)
         .map(([item]) => {
           const li = document.createElement("li");
           const fluentId = this._importItemFluentId[item] ?? item;
@@ -892,7 +890,7 @@ class AddrBookImporterController extends ImporterController {
     const elList = document.getElementById("directoryList");
     elList.innerHTML = "";
     this._directories = MailServices.ab.directories.filter(
-      dir => dir.dirType == Ci.nsIAbManager.JS_DIRECTORY_TYPE
+      dir => !dir.readOnly
     );
     for (const directory of this._directories) {
       const label = document.createElement("label");
@@ -996,6 +994,9 @@ class AddrBookImporterController extends ImporterController {
 class CalendarImporterController extends ImporterController {
   constructor() {
     super("tabPane-calendar", "calendar");
+    const filter = document.getElementById("calendarFilter");
+    filter.addEventListener("autocomplete", this.onFilterChange.bind(this));
+    filter.addEventListener("search", event => event.preventDefault());
   }
 
   next() {
@@ -1021,16 +1022,67 @@ class CalendarImporterController extends ImporterController {
   }
 
   /**
-   * When filter changes, re-render the item list.
+   * When filter changes, re-render the item list. This function wraps
+   * #onFilterChange in a timer, to reduce the frequency of list updates.
    *
-   * @param {HTMLInputElement} filterInput - The filter input.
+   * @param {Event} event - The "autocomplete" event fired by the filter input.
    */
-  onFilterChange(filterInput) {
-    const term = filterInput.value.toLowerCase();
+  onFilterChange(event) {
+    let searchString = event.detail.trim();
+    if (!searchString) {
+      this._filteredItems = [...this._items];
+      for (const item of this._items) {
+        const element = this._itemElements[item.id];
+        element.hidden = false;
+      }
+      return;
+    }
+
+    searchString = searchString.toLowerCase().normalize();
+
+    // Split the search string into tokens. Quoted strings are preserved.
+    let searchTokens = [];
+    let startIndex;
+    while ((startIndex = searchString.indexOf('"')) != -1) {
+      let endIndex = searchString.indexOf('"', startIndex + 1);
+      if (endIndex == -1) {
+        endIndex = searchString.length;
+      }
+
+      searchTokens.push(searchString.slice(startIndex + 1, endIndex));
+      let query = searchString.slice(0, startIndex);
+      if (endIndex < searchString.length) {
+        query += searchString.slice(endIndex + 1);
+      }
+
+      searchString = query.trim();
+    }
+
+    if (searchString.length != 0) {
+      searchTokens = searchTokens.concat(searchString.split(/\s+/));
+    }
+
     this._filteredItems = [];
+
     for (const item of this._items) {
+      const title = item.title.toLowerCase().normalize();
+      let description;
+      const matches = searchTokens.every(term => {
+        if (title?.includes(term)) {
+          return true;
+        }
+
+        if (description === undefined) {
+          description = item
+            .getProperty("description")
+            ?.toLowerCase()
+            .normalize();
+        }
+        return description?.includes(term);
+      });
+
       const element = this._itemElements[item.id];
-      if (item.title.toLowerCase().includes(term)) {
+      if (matches) {
         element.hidden = false;
         this._filteredItems.push(item);
       } else {
@@ -1095,11 +1147,21 @@ class CalendarImporterController extends ImporterController {
       return;
     }
 
-    this._sourceFile = filePicker.file;
+    this.useFile(filePicker.file);
+  }
+
+  /**
+   * Use `file` as the source of items to be imported. Normally the file comes
+   * from the file picker, but it could be given as command-line argument when
+   * starting Thunderbird.
+   *
+   * @param {nsIFile} file
+   */
+  useFile(file) {
+    this._sourceFile = file;
     this._importer = new CalendarFileImporter();
 
-    document.getElementById("calendarSourcePath").textContent =
-      filePicker.file.path;
+    document.getElementById("calendarSourcePath").textContent = file.path;
 
     this._showItems();
   }
@@ -1124,6 +1186,7 @@ class CalendarImporterController extends ImporterController {
     this.showPane("items");
 
     // Give the UI a chance to render.
+    await document.l10n.translateElements([elItemList]);
     await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
@@ -1135,12 +1198,17 @@ class CalendarImporterController extends ImporterController {
 
     document.getElementById("calendarItemsTools").hidden =
       this._items.length < 2;
-    elItemList.innerHTML = "";
+    delete elItemList.dataset.l10nId;
+    elItemList.replaceChildren();
     this._filteredItems = this._items;
     this._selectedItems = new Set(this._items);
     this._itemElements = {};
 
     for (const item of this._items) {
+      if (!item.id) {
+        item.id = Services.uuid.generateUUID().toString().slice(1, 37);
+      }
+
       const wrapper = document.createElement("div");
       wrapper.className = "calendar-item-wrapper";
       elItemList.appendChild(wrapper);
@@ -1466,6 +1534,8 @@ class StartController extends ImporterController {
   }
 }
 
+let currentTab;
+
 /**
  * Show a specific importing tab.
  *
@@ -1479,7 +1549,8 @@ function showTab(tabId, reset = false) {
     Steps.reset();
     restart();
   }
-  const selectedPaneId = `tabPane-${tabId.split("-")[1]}`;
+  currentTab = tabId.slice(4); // Cut off "tab-".
+  const selectedPaneId = `tabPane-${currentTab}`;
   const isExport = tabId === "tab-export";
   document.getElementById("importDocs").hidden = isExport;
   document.getElementById("exportDocs").hidden = !isExport;
@@ -1491,7 +1562,7 @@ function showTab(tabId, reset = false) {
   document.querySelector("link[rel=icon]").href = isExport
     ? "chrome://messenger/skin/icons/new/compact/export.svg"
     : "chrome://messenger/skin/icons/new/compact/import.svg";
-  location.hash = isExport ? "export" : "";
+  location.hash = currentTab;
   for (const tabPane of document.querySelectorAll("[id^=tabPane-]")) {
     tabPane.hidden = tabPane.id != selectedPaneId;
   }
@@ -1508,6 +1579,10 @@ function showTab(tabId, reset = false) {
         break;
       case "tab-calendar":
         calendarController.showInitialStep();
+        break;
+      case "tab-app":
+        // Profile import can't be restored to - app selection is in start flow.
+        showTab("tab-start", true);
         break;
       default:
     }
@@ -1527,7 +1602,7 @@ function restart() {
 
 let profileController;
 let addrBookController;
-let calendarController;
+var calendarController;
 let exportController;
 let startController;
 
@@ -1537,5 +1612,13 @@ document.addEventListener("DOMContentLoaded", () => {
   calendarController = new CalendarImporterController();
   exportController = new ExportController();
   startController = new StartController();
-  showTab(location.hash === "#export" ? "tab-export" : "tab-start", true);
+  showTab(
+    location.hash ? location.hash.replace("#", "tab-") : "tab-start",
+    true
+  );
+});
+window.addEventListener("hashchange", () => {
+  if (location.hash.slice(1) !== currentTab) {
+    showTab(location.hash.replace("#", "tab-"), true);
+  }
 });

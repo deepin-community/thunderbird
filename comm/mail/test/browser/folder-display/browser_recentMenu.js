@@ -20,14 +20,14 @@ var {
   right_click_on_row,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence, close_popup_sequence } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+    "resource://testing-common/mail/WindowHelpers.sys.mjs"
   );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var folder1, folder2;
@@ -70,13 +70,16 @@ add_task(async function test_move_message() {
   close_popup_sequence(popups);
   await hiddenPromise;
   await new Promise(resolve => requestAnimationFrame(resolve));
+  /** @implements {nsIMsgCopyServiceListener} */
   const copyListener = {
     copyDone: false,
-    OnStartCopy() {},
-    OnProgress(aProgress, aProgressMax) {},
-    SetMessageKey(aKey) {},
-    SetMessageId(aMessageId) {},
-    OnStopCopy(aStatus) {
+    onStartCopy() {},
+    onProgress() {},
+    setMessageKey() {},
+    getMessageId() {
+      return null;
+    },
+    onStopCopy() {
       this.copyDone = true;
     },
   };

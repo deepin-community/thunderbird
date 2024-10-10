@@ -41,7 +41,7 @@
       this._updateStyling();
     }
 
-    attributeChangedCallback(name, oldValue, newValue) {
+    attributeChangedCallback(name) {
       switch (name) {
         case "resize-direction":
           this._updateResizeDirection();
@@ -231,6 +231,7 @@
     _updateSize(trySize) {
       const vertical = this.resizeDirection == "vertical";
       if (trySize != undefined) {
+        trySize = Math.round(trySize);
         if (vertical) {
           this.height = trySize;
         } else {

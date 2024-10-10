@@ -6,7 +6,7 @@ import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 
 import { cal } from "resource:///modules/calendar/calUtils.sys.mjs";
 
-var { ICAL, unwrapSingle } = ChromeUtils.import("resource:///modules/calendar/Ical.jsm");
+import ICAL from "resource:///modules/calendar/Ical.sys.mjs";
 
 import { CalTimezone } from "resource:///modules/CalTimezone.sys.mjs";
 
@@ -25,7 +25,8 @@ export function CalTimezoneService() {
   this.mZones = new Map();
   this.mZoneIds = [];
 
-  ICAL.TimezoneService = this.wrappedJSObject;
+  // Patch the ical.js TimezoneService with our one.
+  ICAL.TimezoneService.get = this.get.bind(this);
 }
 
 var calTimezoneServiceClassID = Components.ID("{e736f2bd-7640-4715-ab35-887dc866c587}");
@@ -51,7 +52,7 @@ CalTimezoneService.prototype = {
     return this.getTimezone(id) != null;
   },
   get(id) {
-    return id ? unwrapSingle(ICAL.Timezone, this.getTimezone(id)) : null;
+    return id ? this.getTimezone(id)?.wrappedJSObject.innerObject : null;
   },
   remove() {},
   register() {},

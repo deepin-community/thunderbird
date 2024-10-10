@@ -37,7 +37,7 @@ menupopup {
   font-size: inherit;
   text-align: start;
 
-  menubar:not(:-moz-lwtheme) > menu & {
+  :root:not([lwtheme]) menubar > menu & {
     --panel-background: Menu;
     --panel-color: MenuText;
   }
@@ -58,7 +58,7 @@ menupopup {
     &[checked="true"],
     &[selected="true"] {
       list-style-image: var(--icon-check);
-      -moz-context-properties: stroke;
+      -moz-context-properties: fill, stroke;
       stroke: currentColor;
       color: inherit;
     }
@@ -78,7 +78,7 @@ menupopup {
     &[disabled="true"]:hover,
     &[checked="true"][disabled="true"],
     &[checked="true"][disabled="true"]:hover {
-      color: var(--text-color-deemphasized);
+      color: var(--panel-disabled-color);
       background-color: transparent;
     }
 
@@ -88,7 +88,7 @@ menupopup {
     }
   }
 
-  menubar:not(:-moz-lwtheme) > menu & >
+  :root:not([lwtheme]) menubar > menu & >
     :is(menu, menuitem):not([disabled="true"])[_moz-menuactive] {
     color: -moz-MenuHoverText;
     background-color: -moz-MenuHover;
@@ -115,6 +115,21 @@ menupopup {
 
   & > menuseparator {
     padding-inline: 8px;
+  }
+
+  &.no-accel-menupopup > :is(menu, menuitem) > .menu-accel-container {
+    display: none;
+  }
+
+  /* NOTE: the menuitem children must be constructed with the menuitem-iconic
+   * class so that this rule can hide the icon container. */
+  &.no-icon-menupopup > :is(menu, menuitem) > .menu-iconic-left {
+    display: none;
+  }
+
+  /* Allways show the extension icons. */
+  &.no-icon-menupopup > :is(menu, menuitem)[image^="moz-extension"] > .menu-iconic-left {
+    display: flex;
   }
 }
 
@@ -145,28 +160,66 @@ menu > .menu-right {
   margin-inline-end: 3px;
 }
 
-/* browser navigation context menu in content pages */
-#context-navigation {
+@media not (prefers-contrast) {
+  menuitem:not([disabled]) > .menu-accel-container > :is(.menu-accel, .menu-iconic-accel) {
+    color: var(--text-color-deemphasized);
+  }
+}
+
+/* navigation buttons in context menu */
+#context-navigation,
+#mailContext-navigation {
+  --indicator-background: transparent;
+
   & > .menuitem-iconic {
     -moz-box-flex: 1;
     -moz-box-pack: center;
     -moz-box-align: center;
     flex: 1 0 auto;
     margin: var(--menu-item-margin);
-    border-radius: 3px;
+    padding: 0;
+    border-radius: var(--button-border-radius);
+
+    &[_moz-menuactive] {
+      /* Override the menu-shared.css rule. */
+      &[disabled="true"] {
+        background-color: transparent;
+      }
+
+      &:not([disabled="true"]) {
+        color: inherit;
+        background-color: var(--arrowpanel-dimmed);
+      }
+    }
 
     & > .menu-iconic-left {
       appearance: none;
+      position: relative;
+      flex-direction: column;
       margin: 0 auto;
       padding: 0;
 
       & > .menu-iconic-icon {
-        width: 1.25em;
-        height: auto;
         margin: 7px;
-        -moz-context-properties: fill;
-        fill: currentColor;
+        -moz-context-properties: fill, stroke;
+        fill: color-mix(in srgb, currentColor 20%, transparent);
+        stroke: currentColor;
       }
+
+      &::after {
+        content: '';
+        box-sizing: border-box;
+        background-color: var(--indicator-background);
+        border-radius: 4px;
+        width: 12px;
+        height: 4px;
+        margin-block: -6px 1px;
+      }
+    }
+
+    &[active="true"] > .menu-iconic-left {
+      color: var(--selected-item-color);
+      --indicator-background: var(--selected-item-color);
     }
 
     & > .menu-iconic-text,
@@ -176,20 +229,45 @@ menu > .menu-right {
   }
 }
 
+#navContext-markRead,
+#navContext-markUnread {
+  list-style-image: var(--icon-unread);
+
+  &[disabled="true"] {
+    display: none;
+  }
+}
+
+#navContext-reply {
+  list-style-image: var(--icon-reply);
+}
+
+#navContext-archive {
+  list-style-image: var(--icon-archive);
+}
+
+#navContext-markAsJunk {
+  list-style-image: var(--icon-spam);
+}
+
+#navContext-delete {
+  list-style-image: var(--icon-trash);
+}
+
 #browserContext-back {
-  list-style-image: url("chrome://messenger/skin/icons/browser-back.svg");
+  list-style-image: var(--icon-nav-back);
 }
 
 #browserContext-forward {
-  list-style-image: url("chrome://messenger/skin/icons/browser-forward.svg");
+  list-style-image: var(--icon-nav-forward);
 }
 
 #browserContext-reload {
-  list-style-image: url("chrome://global/skin/icons/reload.svg");
+  list-style-image: var(--icon-restore);
 }
 
 #browserContext-stop {
-  list-style-image: url("chrome://global/skin/icons/close.svg");
+  list-style-image: var(--icon-close);
 }
 
 #browserContext-back:-moz-locale-dir(rtl),

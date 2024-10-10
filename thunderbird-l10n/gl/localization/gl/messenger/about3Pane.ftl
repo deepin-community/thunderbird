@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Filtrar estas mensaxes <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Filtrar mensaxes:
+quick-filter-bar-search2 =
+    .label = Filtrar mensaxes
+quick-filter-bar-searching =
+    .title = Buscando…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -501,3 +503,42 @@ apply-current-view-to-folder-message = Aplicar a vista do cartafol actual a { $n
 # Variables:
 #  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Aplicar a vista do cartafol actual a { $name } e aos subcartafoles?
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span> sen ler de <span>1</span> mensaxe
+               *[other] <span>1</span> sen ler de <span>{ $total }</span> mensaxes
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> sen ler de <span>{ $total }</span> mensaxe
+               *[other] <span>{ $unread }</span> sen ler de <span>{ $total }</span> mensaxes
+            }
+    }
+# Variables:
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-count =
+    { $total ->
+        [one] <span>1</span>mensaxe
+       *[other] <span>{ $total }</span> mensaxes
+    }
+threadpane-card-menu-button =
+    .title = Menú de mensaxes
+message-list-placeholder-no-messages = Non se atopou ningunha mensaxe
+message-list-placeholder-multiple-folders = Múltiples cartafoles seleccionados
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Marcar o cartafol como lido
+           *[other] Marcar os cartafoles como lidos
+        }
+    .accesskey = M

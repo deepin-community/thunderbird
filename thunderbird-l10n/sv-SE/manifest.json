@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sv-SE@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Svenska (Swedish)",
   "description": "Thunderbird Language Pack for Svenska (sv-SE) – Swedish",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "sv-SE": {
-      "version": "20240423195647",
+      "version": "20240930174558",
       "chrome_resources": {
         "alerts": "chrome/sv-SE/locale/sv-SE/alerts/",
         "autoconfig": "chrome/sv-SE/locale/sv-SE/autoconfig/",
         "branding": "chrome/sv-SE/locale/branding/",
         "calendar": "chrome/sv-SE/locale/sv-SE/calendar/",
-        "chat": "chrome/sv-SE/locale/sv-SE/chat/",
         "communicator": "chrome/sv-SE/locale/sv-SE/communicator/",
         "devtools": "chrome/sv-SE/locale/sv-SE/devtools/client/",
         "devtools-shared": "chrome/sv-SE/locale/sv-SE/devtools/shared/",

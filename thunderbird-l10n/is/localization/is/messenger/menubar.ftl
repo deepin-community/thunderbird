@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Kannaðu eiginleika
     .accesskey = e
+menu-help-get-release-help =
+    .label = Fáðu aðstoð með { -brand-short-name }
+    .accesskey = F
 menu-help-shortcuts =
     .label = Flýtilyklar
     .accesskey = k
@@ -44,9 +47,6 @@ menu-help-enter-troubleshoot-mode =
 menu-help-exit-troubleshoot-mode =
     .label = Slökkva á úrræðaleitarham
     .accesskey = k
-menu-help-more-troubleshooting-info =
-    .label = Frekari upplýsingar um bilanaleit
-    .accesskey = b
 menu-help-troubleshooting-info =
     .label = Upplýsingar fyrir úrræðaleit
     .accesskey = i
@@ -68,6 +68,15 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Hætta í { -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Hætta í { -brand-full-name }
+           *[other] Hætta í { -brand-full-name }
+        }
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -121,12 +130,6 @@ mail-uidensity-label =
 mail-uidensity-compact =
     .label = Þjappað
     .accesskey = p
-mail-uidensity-normal =
-    .label = Venjulegt
-    .accesskey = n
-mail-uidensity-touch =
-    .label = Snertiskjár
-    .accesskey = S
 mail-uidensity-default =
     .label = Sjálfgefið
     .accesskey = g
@@ -139,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Tölvupóstreikningur…
+    .accesskey = p
 file-new-newsgroup-account =
     .label = Fréttareikningur…
     .accesskey = n

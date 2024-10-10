@@ -4,23 +4,17 @@
 
 import { Assert } from "resource://testing-common/Assert.sys.mjs";
 import { BrowserTestUtils } from "resource://testing-common/BrowserTestUtils.sys.mjs";
-import * as EventUtils from "resource://testing-common/mozmill/EventUtils.sys.mjs";
-
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+import * as EventUtils from "resource://testing-common/mail/EventUtils.sys.mjs";
 
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   EnigmailCore: "chrome://openpgp/content/modules/core.sys.mjs",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.sys.mjs",
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.sys.mjs",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
   OpenPGPAlias: "chrome://openpgp/content/modules/OpenPGPAlias.sys.mjs",
   PgpSqliteDb2: "chrome://openpgp/content/modules/sqliteDb.sys.mjs",
   RNP: "chrome://openpgp/content/modules/RNP.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
 });
 
 export const OpenPGPTestUtils = {
@@ -238,8 +232,7 @@ export const OpenPGPTestUtils = {
       errorObj,
       fingerPrintObj,
       false,
-      [],
-      false
+      []
     );
 
     if (result !== 0) {

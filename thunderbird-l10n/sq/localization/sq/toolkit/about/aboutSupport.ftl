@@ -193,6 +193,9 @@ media-content-decryption-modules-title = Informacion Modulesh Shfshehtëzimi Lë
 media-video-robustness = Fortësi Videoje
 media-audio-robustness = Fortësi Audioje
 media-cdm-capabilities = Aftësi
+# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
+# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-hdcp-22-compatible = I përputhshëm me HDCP 2.2
 
 ##
 
@@ -272,6 +275,7 @@ try-newer-driver = E bllokuar për versionin tuaj të përudhësit grafik. Provo
 # there are no good translations, these are only used in about:support
 clear-type-parameters = Parametra ClearType
 compositing = Hartim
+support-font-determination = Hollësi Diagnostikimi Dukshmërie Shkronjash
 hardware-h264 = Shkodim Hardware H264
 main-thread-no-omtc = rrjedhë kryesore, jo OMTC
 yes = Po
@@ -324,12 +328,16 @@ gpu-device-reset = Rikthim i Pajisjes Në Fillimet
 gpu-device-reset-button = Shkakto Rikthim të Pajisjes Në Fillimet
 uses-tiling = Përdor Tjegullzim
 content-uses-tiling = Përdor Tjegullzim (Lëndë)
+off-main-thread-paint-enabled = Shpejtësi Kuadrosh e Synuar
 min-lib-versions = Version minimum i pritshëm
 loaded-lib-versions = Version në përdorim
 has-seccomp-bpf = Seccomp-BPF (Filtrim Thirrjesh Sistemi)
 has-seccomp-tsync = Njëkohësim Seccomp Rrjedhe
 has-user-namespaces = Emërhapësira Përdoruesi
 has-privileged-user-namespaces = Emërhapësira Përdoruesi për procese të privilegjuar
+# Variables
+# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
+support-user-namespaces-unavailable = { $status } — Kjo veçori nuk lejohet nga sistemi juaj. Ky mund të kufizojë veçori sigurie të { -brand-short-name }-it.
 can-sandbox-content = Mbajtje Brenda Bankëprovës e Proceseve të Lëndës
 can-sandbox-media = Mbajtje Brenda Bankëprovës e Shtojcave Për Media
 content-sandbox-level = Shkallë Mbajtjeje Brenda Bankëprovës e Proceseve të Lëndës
@@ -396,6 +404,20 @@ support-printing-modified-settings = Rregullime shtypjeje të ndryshuara
 support-printing-prefs-name = Emër
 support-printing-prefs-value = Vlerë
 
+## Remote Settings sections
+
+support-remote-settings-title = Rregullime për të Largët
+support-remote-settings-status = Gjendje
+support-remote-settings-status-ok = OK
+# Status when synchronization is not working.
+support-remote-settings-status-broken = S’funksionon
+support-remote-settings-last-check = Kontrolli i fundit më
+support-remote-settings-local-timestamp = Vulë kohore vendore
+support-remote-settings-sync-history = Historik
+support-remote-settings-sync-history-status = Gjendje
+support-remote-settings-sync-history-datetime = Datë
+support-remote-settings-sync-history-infos = Hollësi
+
 ## Normandy sections
 
 support-remote-experiments-title = Eksperimente Së Largëti
@@ -410,3 +432,15 @@ support-remote-features-status = Gjendje
 
 pointing-device-mouse = Mi
 pointing-device-touchscreen = Ekran Me Prekje
+
+## Content Analysis (DLP)
+
+# DLP stands for Data Loss Prevention, an industry term for external software
+# that enterprises can set up to prevent sensitive data from being transferred
+# to external websites.
+content-analysis-title = Analizë Lënde (DLP)
+content-analysis-active = Aktive
+content-analysis-connected-to-agent = I lidhur me Agjentin
+content-analysis-agent-path = Shteg Agjenti
+content-analysis-agent-failed-signature-verification = Dështoi Verifikim Nënshkrimi Për Agjentin
+content-analysis-request-count = Numër Kërkesash

@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-zh-TW@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: 正體中文 (Traditional Chinese)",
   "description": "Thunderbird Language Pack for 正體中文 (zh-TW) – Traditional Chinese",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "zh-TW": {
-      "version": "20240423200212",
+      "version": "20240930174745",
       "chrome_resources": {
         "alerts": "chrome/zh-TW/locale/zh-TW/alerts/",
         "autoconfig": "chrome/zh-TW/locale/zh-TW/autoconfig/",
         "branding": "chrome/zh-TW/locale/branding/",
         "calendar": "chrome/zh-TW/locale/zh-TW/calendar/",
-        "chat": "chrome/zh-TW/locale/zh-TW/chat/",
         "communicator": "chrome/zh-TW/locale/zh-TW/communicator/",
         "devtools": "chrome/zh-TW/locale/zh-TW/devtools/client/",
         "devtools-shared": "chrome/zh-TW/locale/zh-TW/devtools/shared/",

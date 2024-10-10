@@ -149,7 +149,7 @@ menu-edit-delete-messages =
     .label =
         { $count ->
             [one] Elimina messaggio
-           *[other] Elimina messaggi selezionati
+           *[other] Elimina i messaggi selezionati
         }
     .accesskey = E
 # Variables:
@@ -212,6 +212,21 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Inoltra e reindirizza
     .accesskey = I
+mail-context-menu-forward-forward =
+    .label = Inoltra
+    .accesskey = I
+mail-context-menu-forward-inline =
+    .label = In linea
+    .accesskey = I
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Come allegati
+           *[other] Come allegati
+        }
+    .accesskey = c
 mail-context-menu-organize =
     .label = Organizza
     .accesskey = O
@@ -245,7 +260,7 @@ mail-context-messages-delete =
     .label =
         { $count ->
             [one] Elimina messaggio
-           *[other] Elimina messaggi selezionati
+           *[other] Elimina i messaggi selezionati
         }
     .tooltiptext = { mail-context-messages-delete.label }
 # Variables:

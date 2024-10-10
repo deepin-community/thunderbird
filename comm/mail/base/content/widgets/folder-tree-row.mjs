@@ -2,20 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { XPCOMUtils } = ChromeUtils.importESModule(
-  "resource://gre/modules/XPCOMUtils.sys.mjs"
-);
-
 const lazy = {};
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  FeedUtils: "resource:///modules/FeedUtils.jsm",
-  FolderUtils: "resource:///modules/FolderUtils.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
-});
-
 ChromeUtils.defineESModuleGetters(lazy, {
+  FeedUtils: "resource:///modules/FeedUtils.sys.mjs",
   FolderPaneUtils: "resource:///modules/FolderPaneUtils.sys.mjs",
   FolderTreeProperties: "resource:///modules/FolderTreeProperties.sys.mjs",
+  FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
+  MailServices: "resource:///modules/MailServices.sys.mjs",
   XULStoreUtils: "resource:///modules/XULStoreUtils.sys.mjs",
 });
 
@@ -82,7 +75,7 @@ class FolderTreeRow extends HTMLLIElement {
   }
 
   /**
-   * The name to display for this folder or server.
+   * The (possibly abbreviated) name to display for this folder or server.
    *
    * @type {string}
    */
@@ -93,6 +86,21 @@ class FolderTreeRow extends HTMLLIElement {
   set name(value) {
     if (this.name != value) {
       this.nameLabel.textContent = value;
+    }
+  }
+
+  /**
+   * The full name to display for this folder or server in the aria label.
+   *
+   * @type {string}
+   */
+  get fullName() {
+    return this._fullName;
+  }
+
+  set fullName(value) {
+    if (this.fullName != value) {
+      this._fullName = value;
       this.#updateAriaLabel();
     }
   }
@@ -104,12 +112,15 @@ class FolderTreeRow extends HTMLLIElement {
     switch (this._nameStyle) {
       case "server":
         this.name = this._serverName;
+        this.fullName = this._serverName;
         break;
       case "folder":
         this.name = this._folderName;
+        this.fullName = this._fullFolderName;
         break;
       case "both":
         this.name = `${this._folderName} - ${this._serverName}`;
+        this.fullName = `${this._fullFolderName} - ${this._serverName}`;
         break;
     }
   }
@@ -169,7 +180,7 @@ class FolderTreeRow extends HTMLLIElement {
     // Collect the various strings and fluent IDs to build the full string for
     // the folder aria-label.
     const ariaLabelPromises = [];
-    ariaLabelPromises.push(this.name);
+    ariaLabelPromises.push(this.fullName);
 
     // If unread messages.
     const count = this.unreadCount;
@@ -265,6 +276,7 @@ class FolderTreeRow extends HTMLLIElement {
     this._nameStyle = nameStyle;
     this._serverName = folder.server.prettyName;
     this._folderName = folder.abbreviatedName;
+    this._fullFolderName = folder.name;
     this._setName();
     const isCollapsed = this.classList.contains("collapsed");
     this.unreadCount = folder.getNumUnread(isCollapsed);

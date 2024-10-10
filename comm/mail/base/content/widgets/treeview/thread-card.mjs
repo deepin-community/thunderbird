@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 import { TreeViewTableRow } from "chrome://messenger/content/tree-view.mjs";
@@ -27,6 +27,7 @@ class ThreadCard extends TreeViewTableRow {
     super.connectedCallback();
 
     this.setAttribute("draggable", "true");
+    this.classList.add("card-layout");
 
     this.appendChild(
       document.getElementById("threadPaneCardTemplate").content.cloneNode(true)
@@ -40,6 +41,7 @@ class ThreadCard extends TreeViewTableRow {
     this.tagIcons = this.querySelectorAll(".tag-icon");
     this.tagsMore = this.querySelector(".tag-more");
     this.replies = this.querySelector(".thread-replies");
+    this.sortHeaderDetails = this.querySelector(".sort-header-details");
   }
 
   get index() {
@@ -64,6 +66,10 @@ class ThreadCard extends TreeViewTableRow {
     // Collect the various strings and fluent IDs to build the full string for
     // the message row aria-label.
     const ariaLabelPromises = [];
+    // Use static mapping instead of threadPane.cardColumns since the name of
+    // the sender column changes. (see getProperSenderForCardsView)
+    const KEYS = ["subject", "sender", "date", "tags", "total", "unread"];
+    const data = Object.fromEntries(KEYS.map((key, i) => [key, cellTexts[i]]));
 
     if (threadLevel.value) {
       properties.value += " thread-children";
@@ -71,17 +77,45 @@ class ThreadCard extends TreeViewTableRow {
     const propertiesSet = new Set(properties.value.split(" "));
     this.dataset.properties = properties.value.trim();
 
-    this.subjectLine.textContent = cellTexts[0];
-    this.subjectLine.title = cellTexts[0];
-    this.senderLine.textContent = cellTexts[1];
-    this.senderLine.title = cellTexts[1];
-    this.dateLine.textContent = cellTexts[2];
+    this.subjectLine.textContent = data.subject;
+    this.subjectLine.title = data.subject;
+
+    // Handle a different style and data if this is a dummy row.
+    if (propertiesSet.has("dummy")) {
+      const unread = Number(data.unread);
+      const total = Number(data.total);
+
+      if (unread) {
+        document.l10n.setAttributes(
+          this.sortHeaderDetails,
+          "threadpane-sort-header-unread-count",
+          {
+            unread,
+            total,
+          }
+        );
+        return;
+      }
+
+      document.l10n.setAttributes(
+        this.sortHeaderDetails,
+        "threadpane-sort-header-count",
+        {
+          total,
+        }
+      );
+      return;
+    }
+
+    this.senderLine.textContent = data.sender;
+    this.senderLine.title = data.sender;
+    this.dateLine.textContent = data.date;
 
     let tagColor;
     const matchesTags = [];
     const matchesColors = [];
     for (const tag of MailServices.tags.getAllTags()) {
-      if (cellTexts[3].includes(tag.tag)) {
+      if (data.tags.includes(tag.tag)) {
         matchesTags.push(tag.tag);
         tagColor = tag.color;
         matchesColors.push(tagColor);
@@ -112,10 +146,10 @@ class ThreadCard extends TreeViewTableRow {
     }
 
     // Follow the layout order.
-    ariaLabelPromises.push(cellTexts[1]);
-    ariaLabelPromises.push(cellTexts[2]);
-    ariaLabelPromises.push(cellTexts[0]);
-    ariaLabelPromises.push(cellTexts[3]);
+    ariaLabelPromises.push(data.sender);
+    ariaLabelPromises.push(data.date);
+    ariaLabelPromises.push(data.subject);
+    ariaLabelPromises.push(data.tags);
 
     if (propertiesSet.has("flagged")) {
       document.l10n.setAttributes(
@@ -154,7 +188,7 @@ class ThreadCard extends TreeViewTableRow {
     }
 
     // Display number of replies in the twisty button.
-    const repliesCount = parseInt(cellTexts[4]) - 1;
+    const repliesCount = parseInt(data.total) - 1;
     if (repliesCount > 0) {
       document.l10n.setAttributes(this.replies, "threadpane-replies", {
         count: repliesCount,

@@ -3,11 +3,10 @@ const JsMIMEmimeutils = function () {
    * Decode a quoted-printable buffer into a binary string.
    *
    * @param {BinaryString} buffer - The string to decode.
-   * @param {boolean} more - This argument is ignored.
    * @returns {BinaryString[]} The first element of the array is the decoded
    *   string. The second element is always the empty string.
    */
-  function decode_qp(buffer, more) {
+  function decode_qp(buffer) {
     // Unlike base64, quoted-printable isn't stateful across multiple lines, so
     // there is no need to buffer input, so we can always ignore more.
     const decoded = buffer.replace(
@@ -266,18 +265,17 @@ const JsMIMEstructuredHeaders = function () {
   });
   structuredEncoders.set("Content-Transfer-Encoding", writeUnstructured);
 
-  // Some clients like outlook.com send non-compliant References headers that
-  // separate values using commas. Also, some clients don't separate References
-  // with spaces, since these are optional according to RFC2822. So here we
-  // preprocess these headers (see bug 1154521 and bug 1197686).
+  /**
+   * Some clients like outlook.com send non-compliant References headers that
+   * separate values using commas. Also, some clients don't separate References
+   * with spaces, since these are optional according to RFC2822. So here we
+   * preprocess these headers (see bug 1154521 and bug 1197686).
+   *
+   * @param {string[]} values
+   * @returns {string} the message ids; properly space separated.
+   */
   function preprocessMessageIDs(values) {
-    const msgId = /<[^>]*>/g;
-    let match;
-    const ids = [];
-    while ((match = msgId.exec(values)) !== null) {
-      ids.push(match[0]);
-    }
-    return ids.join(" ");
+    return values[0].match(/<[^>]*>/g)?.join(" ");
   }
   structuredDecoders.set("References", preprocessMessageIDs);
   structuredDecoders.set("In-Reply-To", preprocessMessageIDs);
@@ -749,7 +747,7 @@ const JsMIMEheaderparser = function () {
         // whitespace at the end of the string. Such an input string is already
         // malformed to begin with, so stripping the = and following input in that
         // case should not be an important loss.
-        buffer = mimeutils.decode_qp(text.replace(/_/g, " "), false)[0];
+        buffer = mimeutils.decode_qp(text.replace(/_/g, " "))[0];
       } else {
         return false;
       }
@@ -2071,7 +2069,7 @@ const JsMIMEmimeparser = function () {
       stripcontinuations: true,
       charset: "",
       "force-charset": false,
-      onerror(error) {},
+      onerror() {},
     };
     // Load the options as a copy here (prevents people from changing on the fly).
     if (options) {

@@ -9,10 +9,10 @@
 <!ENTITY newsSectionHdr.label         "Nyheitsgrupper">
 <!ENTITY subscribeNewsLink.label      "Behandle medlemskap i nyheitsgrupper">
 
-<!ENTITY feedsSectionHdr.label        "RSS-kjelder">
+<!ENTITY feedsSectionHdr.label        "Nyheitskjelder">
 <!ENTITY subscribeFeeds.label         "Handter abonnement">
 
-<!ENTITY chat.label                   "Chat">
+<!ENTITY chat.label                   "Chatt">
 
 <!ENTITY accountsSectionHdr.label     "Kontoar">
 <!ENTITY subscribeImapFolders.label   "Behandle medlemskap i mapper">

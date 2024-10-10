@@ -8,6 +8,8 @@ about-addressbook-title = Ευρετήριο
 
 about-addressbook-toolbar-new-address-book =
     .label = Νέο ευρετήριο
+about-addressbook-toolbar-add-address-book =
+    .label = Προσθήκη τοπικού ευρετηρίου
 about-addressbook-toolbar-add-carddav-address-book =
     .label = Προσθήκη ευρετηρίου CardDAV
 about-addressbook-toolbar-add-ldap-address-book =
@@ -18,6 +20,14 @@ about-addressbook-toolbar-new-list =
     .label = Νέα λίστα
 about-addressbook-toolbar-import =
     .label = Εισαγωγή
+books-pane-create-contact-button = Νέα επαφή
+    .title = Δημιουργία νέας επαφής
+books-pane-create-book-button =
+    .title = Δημιουργία νέου ευρετηρίου
+books-pane-create-list-button =
+    .title = Δημιουργία νέας λίστας αλληλογραφίας
+books-pane-import-button = Εισαγωγή
+    .title = Εισαγωγή βιβλίων διευθύνσεων
 
 ## Books
 
@@ -66,6 +76,14 @@ about-addressbook-search =
     .placeholder = Αναζήτηση σε { $name }
 about-addressbook-search-all =
     .placeholder = Αναζήτηση σε όλα τα ευρετήρια
+# Variables:
+# $name (String) - Name of the address book that will be searched.
+about-addressbook-search2 =
+    .label = Αναζήτηση «{ $name }»
+    .placeholder = Αναζήτηση «{ $name }»…
+about-addressbook-search-all2 =
+    .label = Αναζήτηση σε όλα τα ευρετήρια
+    .placeholder = Αναζήτηση σε όλα τα ευρετήρια…
 about-addressbook-sort-button2 =
     .title = Επιλογές εμφάνισης λίστας
 about-addressbook-name-format-display =
@@ -92,38 +110,83 @@ about-addressbook-column-header-generatedname2 = Όνομα
     .title = Ταξινόμηση κατά όνομα
 about-addressbook-column-label-generatedname2 =
     .label = Όνομα
+# Variables:
+# $title (String) - Contact name for tooltip.
+about-addressbook-cell-generatedname2 =
+    .aria-label = Όνομα
+    .title = { $title }
 about-addressbook-column-header-emailaddresses2 = Διευθύνσεις email
     .title = Ταξινόμηση κατά διευθύνσεις email
 about-addressbook-column-label-emailaddresses2 =
     .label = Διευθύνσεις email
+# Variables:
+# $title (String) - Contact email addresses for tooltip.
+about-addressbook-cell-emailaddresses2 =
+    .aria-label = Διευθύνσεις email
+    .title = { $title }
 about-addressbook-column-header-nickname2 = Ψευδώνυμο
     .title = Ταξινόμηση κατά ψευδώνυμο
 about-addressbook-column-label-nickname2 =
     .label = Ψευδώνυμο
+# Variables:
+# $title (String) - Contact nickname for tooltip.
+about-addressbook-cell-nickname2 =
+    .aria-label = Ψευδώνυμο
+    .title = { $title }
 about-addressbook-column-header-phonenumbers2 = Αριθμοί τηλεφώνου
     .title = Ταξινόμηση κατά αριθμούς τηλεφώνου
 about-addressbook-column-label-phonenumbers2 =
     .label = Αριθμοί τηλεφώνου
+# Variables:
+# $title (String) - Contact phone numbers for tooltip.
+about-addressbook-cell-phonenumbers2 =
+    .aria-label = Αριθμοί τηλεφώνου
+    .title = { $title }
 about-addressbook-column-header-addresses2 = Διευθύνσεις
     .title = Ταξινόμηση κατά διευθύνσεις
 about-addressbook-column-label-addresses2 =
     .label = Διευθύνσεις
+# Variables:
+# $title (String) - Contact addresses for tooltip.
+about-addressbook-cell-addresses2 =
+    .aria-label = Διευθύνσεις
+    .title = { $title }
 about-addressbook-column-header-title2 = Τίτλος
     .title = Ταξινόμηση κατά τίτλο
 about-addressbook-column-label-title2 =
     .label = Τίτλος
+# Variables:
+# $title (String) - Contact job title for tooltip.
+about-addressbook-cell-title2 =
+    .aria-label = Τίτλος
+    .title = { $title }
 about-addressbook-column-header-department2 = Τμήμα
     .title = Ταξινόμηση κατά τμήμα
 about-addressbook-column-label-department2 =
     .label = Τμήμα
+# Variables:
+# $title (String) - Contact department for tooltip.
+about-addressbook-cell-department2 =
+    .aria-label = Τμήμα
+    .title = { $title }
 about-addressbook-column-header-organization2 = Οργανισμός
     .title = Ταξινόμηση κατά οργανισμό
 about-addressbook-column-label-organization2 =
     .label = Οργανισμός
+# Variables:
+# $title (String) - Contact organization for tooltip.
+about-addressbook-cell-organization2 =
+    .aria-label = Εταιρεία
+    .title = { $title }
 about-addressbook-column-header-addrbook2 = Ευρετήριο
     .title = Ταξινόμηση κατά ευρετήριο
 about-addressbook-column-label-addrbook2 =
     .label = Ευρετήριο
+# Variables:
+# $title (String) - Contact address for tooltip.
+about-addressbook-cell-addrbook2 =
+    .aria-label = Ευρετήριο διευθύνσεων
+    .title = { $title }
 about-addressbook-cards-context-write =
     .label = Σύνταξη
 about-addressbook-confirm-delete-mixed-title = Διαγραφή επαφών και λιστών

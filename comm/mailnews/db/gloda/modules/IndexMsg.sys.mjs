@@ -337,7 +337,7 @@ MessagesByMessageIdCallback.prototype = {
     maxLogLevelPref: "gloda.loglevel",
   }),
 
-  onItemsAdded(aItems, aCollection) {
+  onItemsAdded(aItems) {
     // just outright bail if we are shutdown
     if (GlodaDatastore.datastoreIsShutdown) {
       return;
@@ -350,7 +350,7 @@ MessagesByMessageIdCallback.prototype = {
   },
   onItemsModified() {},
   onItemsRemoved() {},
-  onQueryCompleted(aCollection) {
+  onQueryCompleted() {
     // just outright bail if we are shutdown
     if (GlodaDatastore.datastoreIsShutdown) {
       return;
@@ -739,15 +739,13 @@ export var GlodaMsgIndexer = {
         Ci.nsMsgSearchScope.offlineMail,
         this._indexingFolder
       );
-      const nsMsgSearchAttrib = Ci.nsMsgSearchAttrib;
-      const nsMsgSearchOp = Ci.nsMsgSearchOp;
 
       // first term: (GLODA_MESSAGE_ID_PROPERTY Is 0
       let searchTerm = searchSession.createTerm();
       searchTerm.booleanAnd = false; // actually don't care here
       searchTerm.beginsGrouping = true;
-      searchTerm.attrib = nsMsgSearchAttrib.Uint32HdrProperty;
-      searchTerm.op = nsMsgSearchOp.Is;
+      searchTerm.attrib = Ci.nsMsgSearchAttrib.Uint32HdrProperty;
+      searchTerm.op = Ci.nsMsgSearchOp.Is;
       let value = searchTerm.value;
       value.attrib = searchTerm.attrib;
       value.status = 0;
@@ -758,8 +756,8 @@ export var GlodaMsgIndexer = {
       // second term: || GLODA_MESSAGE_ID_PROPERTY Is GLODA_OLD_BAD_MESSAGE_ID
       searchTerm = searchSession.createTerm();
       searchTerm.booleanAnd = false; // OR
-      searchTerm.attrib = nsMsgSearchAttrib.Uint32HdrProperty;
-      searchTerm.op = nsMsgSearchOp.Is;
+      searchTerm.attrib = Ci.nsMsgSearchAttrib.Uint32HdrProperty;
+      searchTerm.op = Ci.nsMsgSearchOp.Is;
       value = searchTerm.value;
       value.attrib = searchTerm.attrib;
       value.status = GLODA_OLD_BAD_MESSAGE_ID;
@@ -771,8 +769,8 @@ export var GlodaMsgIndexer = {
       searchTerm = searchSession.createTerm();
       searchTerm.booleanAnd = false;
       searchTerm.endsGrouping = true;
-      searchTerm.attrib = nsMsgSearchAttrib.Uint32HdrProperty;
-      searchTerm.op = nsMsgSearchOp.Isnt;
+      searchTerm.attrib = Ci.nsMsgSearchAttrib.Uint32HdrProperty;
+      searchTerm.op = Ci.nsMsgSearchOp.Isnt;
       value = searchTerm.value;
       value.attrib = searchTerm.attrib;
       value.status = 0;
@@ -785,8 +783,8 @@ export var GlodaMsgIndexer = {
       //  the header property.
       searchTerm = searchSession.createTerm();
       searchTerm.booleanAnd = true;
-      searchTerm.attrib = nsMsgSearchAttrib.HdrProperty;
-      searchTerm.op = nsMsgSearchOp.Isnt;
+      searchTerm.attrib = Ci.nsMsgSearchAttrib.HdrProperty;
+      searchTerm.op = Ci.nsMsgSearchOp.Isnt;
       value = searchTerm.value;
       value.attrib = searchTerm.attrib;
       value.str = JUNK_SPAM_SCORE_STR;
@@ -800,8 +798,8 @@ export var GlodaMsgIndexer = {
           // third term: && Status Is nsMsgMessageFlags.Offline
           searchTerm = searchSession.createTerm();
           searchTerm.booleanAnd = true;
-          searchTerm.attrib = nsMsgSearchAttrib.MsgStatus;
-          searchTerm.op = nsMsgSearchOp.Is;
+          searchTerm.attrib = Ci.nsMsgSearchAttrib.MsgStatus;
+          searchTerm.op = Ci.nsMsgSearchOp.Is;
           value = searchTerm.value;
           value.attrib = searchTerm.attrib;
           value.status = Ci.nsMsgMessageFlags.Offline;
@@ -812,8 +810,8 @@ export var GlodaMsgIndexer = {
         // fourth term: && Status Isnt nsMsgMessageFlags.Expunged
         searchTerm = searchSession.createTerm();
         searchTerm.booleanAnd = true;
-        searchTerm.attrib = nsMsgSearchAttrib.MsgStatus;
-        searchTerm.op = nsMsgSearchOp.Isnt;
+        searchTerm.attrib = Ci.nsMsgSearchAttrib.MsgStatus;
+        searchTerm.op = Ci.nsMsgSearchOp.Isnt;
         value = searchTerm.value;
         value.attrib = searchTerm.attrib;
         value.status = Ci.nsMsgMessageFlags.Expunged;
@@ -844,18 +842,16 @@ export var GlodaMsgIndexer = {
         Ci.nsMsgSearchScope.offlineMail,
         this._indexingFolder
       );
-      const nsMsgSearchAttrib = Ci.nsMsgSearchAttrib;
-      const nsMsgSearchOp = Ci.nsMsgSearchOp;
 
       // first term: (GLODA_MESSAGE_ID_PROPERTY > GLODA_FIRST_VALID_MESSAGE_ID-1
       let searchTerm = searchSession.createTerm();
       searchTerm.booleanAnd = false; // actually don't care here
       searchTerm.beginsGrouping = true;
-      searchTerm.attrib = nsMsgSearchAttrib.Uint32HdrProperty;
+      searchTerm.attrib = Ci.nsMsgSearchAttrib.Uint32HdrProperty;
       // use != 0 if we're allow pre-bad ids.
       searchTerm.op = aAllowPreBadIds
-        ? nsMsgSearchOp.Isnt
-        : nsMsgSearchOp.IsGreaterThan;
+        ? Ci.nsMsgSearchOp.Isnt
+        : Ci.nsMsgSearchOp.IsGreaterThan;
       let value = searchTerm.value;
       value.attrib = searchTerm.attrib;
       value.status = aAllowPreBadIds ? 0 : GLODA_FIRST_VALID_MESSAGE_ID - 1;
@@ -867,8 +863,8 @@ export var GlodaMsgIndexer = {
       searchTerm = searchSession.createTerm();
       searchTerm.booleanAnd = true;
       searchTerm.endsGrouping = true;
-      searchTerm.attrib = nsMsgSearchAttrib.Uint32HdrProperty;
-      searchTerm.op = nsMsgSearchOp.Isnt;
+      searchTerm.attrib = Ci.nsMsgSearchAttrib.Uint32HdrProperty;
+      searchTerm.op = Ci.nsMsgSearchOp.Isnt;
       value = searchTerm.value;
       value.attrib = searchTerm.attrib;
       value.status = this.kMessageFilthy;
@@ -1090,7 +1086,7 @@ export var GlodaMsgIndexer = {
    * The only state we need to cleanup is that there is no longer an active
    *  indexing sweep.
    */
-  _cleanup_indexingSweep(aJob) {
+  _cleanup_indexingSweep() {
     this._indexingSweepActive = false;
   },
 
@@ -1300,7 +1296,7 @@ export var GlodaMsgIndexer = {
         //  We do not want to catch the exception if one happens.
         const idBasedHeader = oldHeaderMessageId
           ? this._indexingDatabase.getMsgHdrForMessageID(oldHeaderMessageId)
-          : false;
+          : null;
         // - Case 1b.
         // We want to mark the message as deleted.
         if (idBasedHeader == null) {
@@ -1524,7 +1520,7 @@ export var GlodaMsgIndexer = {
    *  _pendingAddJob if that is the job.  We do this so that work items are not
    *  added to _pendingAddJob while it is being processed.
    */
-  _schedule_messageIndex(aJob, aCallbackHandle) {
+  _schedule_messageIndex(aJob) {
     // we do not want new work items to be added as we are processing, so
     //  clear _pendingAddJob.  A new job will be created as needed.
     if (aJob === this._pendingAddJob) {
@@ -1637,7 +1633,7 @@ export var GlodaMsgIndexer = {
    * @returns 1 if we were able to recover (because we want the call stack
    *     popped down to our worker), false if we can't.
    */
-  _recover_indexMessage(aJob, aContextStack, aException) {
+  _recover_indexMessage(aJob, aContextStack) {
     // See if indexMessage is on the stack...
     if (
       aContextStack.length >= 2 &&
@@ -1769,8 +1765,8 @@ export var GlodaMsgIndexer = {
           });
         }
       },
-      handleError(aError) {},
-      handleCompletion(aReason) {
+      handleError() {},
+      handleCompletion() {
         GlodaDatastore._asyncCompleted();
         aCallbackHandle.wrappedCallback();
       },
@@ -2286,7 +2282,7 @@ export var GlodaMsgIndexer = {
      *  junk/trait classification has run (or decided not to run) and all
      *  filters have run.  The msgsClassified notification provides that for us.
      */
-    msgAdded(aMsgHdr) {
+    msgAdded() {
       // we are never called! we do not enable this bit!
     },
 
@@ -2302,7 +2298,7 @@ export var GlodaMsgIndexer = {
      *  ignore their msgsClassified events because we will have received a
      *  msgKeyChanged notification sometime in the recent past.
      */
-    msgsClassified(aMsgHdrs, aJunkClassified, aTraitClassified) {
+    msgsClassified(aMsgHdrs) {
       this.indexer._log.debug("msgsClassified notification");
       try {
         GlodaMsgIndexer._reindexChangedMessages(aMsgHdrs, false);
@@ -2678,7 +2674,7 @@ export var GlodaMsgIndexer = {
      *  and remove the folder from our URI table.  Currently, if a folder that
      *  contains other folders is deleted, we may either receive one
      *  notification for the folder that is deleted, or a notification for the
-     *  folder and one for each of its descendents.  This depends upon the
+     *  folder and one for each of its descendants.  This depends upon the
      *  underlying account implementation, so we explicitly handle each case.
      *  Namely, we treat it as if we're only planning on getting one, but we
      *  handle if the children are already gone for some reason.
@@ -2704,12 +2700,12 @@ export var GlodaMsgIndexer = {
           }
         };
 
-        const descendentFolders = aFolder.descendants;
+        const descendantFolders = aFolder.descendants;
         // (the order of operations does not matter; child, non-child, whatever.)
         // delete the parent
         delFunc(aFolder, this.indexer);
-        // delete all its descendents
-        for (const folder of descendentFolders) {
+        // delete all its descendants
+        for (const folder of descendantFolders) {
           delFunc(folder, this.indexer);
         }
 
@@ -2762,25 +2758,25 @@ export var GlodaMsgIndexer = {
       const specialFolderFlags =
         Ci.nsMsgFolderFlags.Trash | Ci.nsMsgFolderFlags.Junk;
       if (newFolder.isSpecialFolder(specialFolderFlags, true)) {
-        const descendentFolders = newFolder.descendants;
+        const descendantFolders = newFolder.descendants;
 
         // First thing to do: make sure we don't index the resulting folder and
-        //  its descendents.
+        //  its descendants.
         GlodaMsgIndexer.resetFolderIndexingPriority(newFolder);
-        for (const folder of descendentFolders) {
+        for (const folder of descendantFolders) {
           GlodaMsgIndexer.resetFolderIndexingPriority(folder);
         }
 
         // Remove from the index messages from the original folder
         this.folderDeleted(aOrigFolder);
       } else {
-        const descendentFolders = aOrigFolder.descendants;
+        const descendantFolders = aOrigFolder.descendants;
 
         const origURI = aOrigFolder.URI;
         // this rename is straightforward.
         GlodaDatastore.renameFolder(aOrigFolder, aNewURI);
 
-        for (const folder of descendentFolders) {
+        for (const folder of descendantFolders) {
           const oldSubURI = folder.URI;
           // mangle a new URI from the old URI.  we could also try and do a
           //  parallel traversal of the new folder hierarchy, but that seems like
@@ -2903,11 +2899,11 @@ export var GlodaMsgIndexer = {
       this.indexer = aIndexer;
     },
 
-    onFolderAdded(parentFolder, child) {},
-    onMessageAdded(parentFolder, msg) {},
-    onFolderRemoved(parentFolder, child) {},
-    onMessageRemoved(parentFolder, msg) {},
-    onFolderPropertyChanged(aItem, aProperty, aOldValue, aNewValue) {},
+    onFolderAdded() {},
+    onMessageAdded() {},
+    onFolderRemoved() {},
+    onMessageRemoved() {},
+    onFolderPropertyChanged() {},
     /**
      * Detect changes to folder flags and reset our indexing priority.  This
      * is important because (all?) folders start out without any flags and
@@ -2929,8 +2925,8 @@ export var GlodaMsgIndexer = {
       }
       GlodaMsgIndexer.resetFolderIndexingPriority(aFolderItem);
     },
-    onFolderBoolPropertyChanged(aItem, aProperty, aOldValue, aNewValue) {},
-    onFolderUnicharPropertyChanged(aItem, aProperty, aOldValue, aNewValue) {},
+    onFolderBoolPropertyChanged() {},
+    onFolderUnicharPropertyChanged() {},
     /**
      * Notice when user activity adds/removes tags or changes a message's
      *  status.
@@ -2991,7 +2987,7 @@ export var GlodaMsgIndexer = {
      * So this really ends up just being a correctness / safety protection
      *  mechanism.  At least now that we have better compaction support.
      */
-    onAnnouncerGoingAway(aDBChangeAnnouncer) {
+    onAnnouncerGoingAway() {
       // The fact that we are getting called means we have an active folder and
       //  that we therefore are the active job.  As such, we must kill the
       //  active job.
@@ -3003,14 +2999,14 @@ export var GlodaMsgIndexer = {
       GlodaIndexer.killActiveJob();
     },
 
-    onHdrFlagsChanged(aHdrChanged, aOldFlags, aNewFlags, aInstigator) {},
-    onHdrDeleted(aHdrChanged, aParentKey, aFlags, aInstigator) {},
-    onHdrAdded(aHdrChanged, aParentKey, aFlags, aInstigator) {},
-    onParentChanged(aKeyChanged, aOldParent, aNewParent, aInstigator) {},
-    onReadChanged(aInstigator) {},
-    onJunkScoreChanged(aInstigator) {},
-    onHdrPropertyChanged(aHdrToChange, aPreChange, aStatus, aInstigator) {},
-    onEvent(aDB, aEvent) {},
+    onHdrFlagsChanged() {},
+    onHdrDeleted() {},
+    onHdrAdded() {},
+    onParentChanged() {},
+    onReadChanged() {},
+    onJunkScoreChanged() {},
+    onHdrPropertyChanged() {},
+    onEvent() {},
   },
 
   /**
@@ -3310,7 +3306,7 @@ export var GlodaMsgIndexer = {
       const bodyPlain = aMimeMsg.coerceBodyToPlaintext(aMsgHdr.folder);
       if (bodyPlain) {
         curMsg._bodyLines = bodyPlain.split(/\r?\n/);
-        // curMsg._content gets set by GlodaFundAttr.jsm
+        // curMsg._content gets set by GlodaFundAttr.sys.mjs
       }
     }
 
@@ -3322,8 +3318,8 @@ export var GlodaMsgIndexer = {
     curMsg._subject = aMsgHdr.mime2DecodedSubject;
     curMsg._attachmentNames = attachmentNames;
 
-    // curMsg._indexAuthor gets set by GlodaFundAttr.jsm
-    // curMsg._indexRecipients gets set by GlodaFundAttr.jsm
+    // curMsg._indexAuthor gets set by GlodaFundAttr.sys.mjs
+    // curMsg._indexRecipients gets set by GlodaFundAttr.sys.mjs
 
     // zero the notability so everything in grokNounItem can just increment
     curMsg.notability = 0;

@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 const { XULStoreUtils } = ChromeUtils.importESModule(
   "resource:///modules/XULStoreUtils.sys.mjs"
@@ -11,7 +11,7 @@ const { XULStoreUtils } = ChromeUtils.importESModule(
 
 var { add_message_sets_to_folders, be_in_folder, create_thread } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+    "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
   );
 
 let tabmail,

@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-be@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Беларуская (Belarusian)",
   "description": "Thunderbird Language Pack for Беларуская (be) – Belarusian",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "be": {
-      "version": "20240423200120",
+      "version": "20240930174644",
       "chrome_resources": {
         "alerts": "chrome/be/locale/be/alerts/",
         "autoconfig": "chrome/be/locale/be/autoconfig/",
         "branding": "chrome/be/locale/branding/",
         "calendar": "chrome/be/locale/be/calendar/",
-        "chat": "chrome/be/locale/be/chat/",
         "communicator": "chrome/be/locale/be/communicator/",
         "devtools": "chrome/be/locale/be/devtools/client/",
         "devtools-shared": "chrome/be/locale/be/devtools/shared/",

@@ -135,6 +135,10 @@ struct EmbedderColorSchemes {
   FIELD(EmbedderInnerWindowId, uint64_t)                                      \
   FIELD(CurrentInnerWindowId, uint64_t)                                       \
   FIELD(HadOriginalOpener, bool)                                              \
+  /* Was this window created by a webpage through window.open or an anchor    \
+   * link? In general, windows created this way may be manipulated (e.g.      \
+   * closed, resized or moved) by content JS. */                              \
+  FIELD(TopLevelCreatedByWebContent, bool)                                    \
   FIELD(IsPopupSpam, bool)                                                    \
   /* Hold the audio muted state and should be used on top level browsing      \
    * contexts only */                                                         \
@@ -268,7 +272,10 @@ struct EmbedderColorSchemes {
   /* If true, this browsing context is within a hidden embedded document. */  \
   FIELD(IsUnderHiddenEmbedderElement, bool)                                   \
   /* If true, this browsing context is offline */                             \
-  FIELD(ForceOffline, bool)
+  FIELD(ForceOffline, bool)                                                   \
+  /* Used to propagate window.top's inner size for RFPTarget::Window*         \
+   * protections */                                                           \
+  FIELD(TopInnerSizeForRFP, CSSIntSize)
 
 // BrowsingContext, in this context, is the cross process replicated
 // environment in which information about documents is stored. In
@@ -331,6 +338,13 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   // it.
   static already_AddRefed<BrowsingContext> CreateIndependent(Type aType);
 
+  // Options which can be passed to CreateDetached.
+  struct CreateDetachedOptions {
+    bool isPopupRequested = false;
+    bool createdDynamically = false;
+    bool topLevelCreatedByWebContent = false;
+  };
+
   // Create a brand-new BrowsingContext object, but does not immediately attach
   // it. State such as OriginAttributes and PrivateBrowsingId may be customized
   // to configure the BrowsingContext before it is attached.
@@ -340,7 +354,7 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   static already_AddRefed<BrowsingContext> CreateDetached(
       nsGlobalWindowInner* aParent, BrowsingContext* aOpener,
       BrowsingContextGroup* aSpecificGroup, const nsAString& aName, Type aType,
-      bool aIsPopupRequested, bool aCreatedDynamically = false);
+      CreateDetachedOptions aOptions);
 
   void EnsureAttached();
 
@@ -1211,6 +1225,9 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   bool CanSet(FieldIndex<IDX_PendingInitialization>, bool aNewValue,
               ContentParent* aSource);
 
+  bool CanSet(FieldIndex<IDX_TopLevelCreatedByWebContent>,
+              const bool& aNewValue, ContentParent* aSource);
+
   bool CanSet(FieldIndex<IDX_PageAwakeRequestCount>, uint32_t aNewValue,
               ContentParent* aSource);
   void DidSet(FieldIndex<IDX_PageAwakeRequestCount>, uint32_t aOldValue);
@@ -1238,6 +1255,10 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
 
   bool CanSet(FieldIndex<IDX_ForceOffline>, bool aNewValue,
               ContentParent* aSource);
+
+  bool CanSet(FieldIndex<IDX_TopInnerSizeForRFP>, bool, ContentParent*) {
+    return IsTop();
+  }
 
   bool CanSet(FieldIndex<IDX_EmbeddedInContentDocument>, bool,
               ContentParent* aSource) {

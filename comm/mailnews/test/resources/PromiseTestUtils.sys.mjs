@@ -3,7 +3,7 @@
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * This file provides utilities useful in using Promises and Task.jsm
+ * This file provides utilities useful in using Promises and Task.sys.mjs
  * with mailnews tests.
  */
 
@@ -65,35 +65,37 @@ PromiseTestUtils.PromiseCopyListener = function (aWrapped) {
   this._result = { messageKeys: [], messageIds: [] };
 };
 
+/** @implements {nsIMsgCopyServiceListener} */
 PromiseTestUtils.PromiseCopyListener.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIMsgCopyServiceListener"]),
-  OnStartCopy() {
-    if (this.wrapped && this.wrapped.OnStartCopy) {
-      this.wrapped.OnStartCopy();
+  onStartCopy() {
+    if (this.wrapped && this.wrapped.onStartCopy) {
+      this.wrapped.onStartCopy();
     }
   },
-  OnProgress(aProgress, aProgressMax) {
-    if (this.wrapped && this.wrapped.OnProgress) {
-      this.wrapped.OnProgress(aProgress, aProgressMax);
+  onProgress(aProgress, aProgressMax) {
+    if (this.wrapped && this.wrapped.onProgress) {
+      this.wrapped.onProgress(aProgress, aProgressMax);
     }
   },
-  SetMessageKey(aKey) {
-    if (this.wrapped && this.wrapped.SetMessageKey) {
-      this.wrapped.SetMessageKey(aKey);
+  setMessageKey(aKey) {
+    if (this.wrapped && this.wrapped.setMessageKey) {
+      this.wrapped.setMessageKey(aKey);
     }
 
     this._result.messageKeys.push(aKey);
   },
-  SetMessageId(aMessageId) {
-    if (this.wrapped && this.wrapped.SetMessageId) {
-      this.wrapped.SetMessageId(aMessageId);
+  getMessageId() {
+    if (this.wrapped && this.wrapped.getMessageId) {
+      const mid = this.wrapped.getMessageId();
+      this._result.messageIds.push(mid);
+      return mid;
     }
-
-    this._result.messageIds.push(aMessageId);
+    return null;
   },
-  OnStopCopy(aStatus) {
-    if (this.wrapped && this.wrapped.OnStopCopy) {
-      this.wrapped.OnStopCopy(aStatus);
+  onStopCopy(aStatus) {
+    if (this.wrapped && this.wrapped.onStopCopy) {
+      this.wrapped.onStopCopy(aStatus);
     }
 
     if (aStatus == Cr.NS_OK) {
@@ -108,43 +110,71 @@ PromiseTestUtils.PromiseCopyListener.prototype = {
 };
 
 /**
- * Stream listener that can wrap another listener and trigger a callback.
- *
- * @param {nsIStreamListener} [aWrapped] - The nsIStreamListener to pass all
- *   notifications through to. This gets called prior to the callback
- *   (or async resumption).
+ * Request observer that can wrap another observer and be turned into a Promise.
  */
-PromiseTestUtils.PromiseStreamListener = function (aWrapped) {
-  this.wrapped = aWrapped;
-  this._promise = new Promise((resolve, reject) => {
-    this._resolve = resolve;
-    this._reject = reject;
-  });
-  this._data = null;
-  this._stream = null;
-};
+PromiseTestUtils.PromiseRequestObserver = class {
+  QueryInterface = ChromeUtils.generateQI(["nsIRequestObserver"]);
 
-PromiseTestUtils.PromiseStreamListener.prototype = {
-  QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+  /**
+   * @param {nsIRequestObserver} [wrapped] - The nsIRequestObserver to pass all
+   *   notifications through to. This gets called prior to the callback (or
+   *   async resumption).
+   */
+  constructor(wrapped) {
+    this.wrapped = wrapped;
+    this._promise = new Promise((resolve, reject) => {
+      this._resolve = resolve;
+      this._reject = reject;
+    });
+    this._resolveValue = null;
+  }
 
   onStartRequest(aRequest) {
     if (this.wrapped && this.wrapped.onStartRequest) {
       this.wrapped.onStartRequest(aRequest);
     }
-    this._data = "";
-    this._stream = null;
-  },
+  }
 
   onStopRequest(aRequest, aStatusCode) {
     if (this.wrapped && this.wrapped.onStopRequest) {
       this.wrapped.onStopRequest(aRequest, aStatusCode);
     }
     if (aStatusCode == Cr.NS_OK) {
-      this._resolve(this._data);
+      this._resolve(this._resolveValue);
     } else {
       this._reject(aStatusCode);
     }
-  },
+  }
+
+  get promise() {
+    return this._promise;
+  }
+};
+
+/**
+ * Stream listener that can wrap another listener and be turned into a Promise.
+ */
+PromiseTestUtils.PromiseStreamListener = class extends (
+  PromiseTestUtils.PromiseRequestObserver
+) {
+  QueryInterface = ChromeUtils.generateQI(["nsIStreamListener"]);
+
+  /**
+   * @param {nsIStreamListener} [wrapped] - The nsIStreamListener to pass all
+   *   notifications through to. This gets called prior to the callback (or
+   *   async resumption).
+   */
+  constructor(wrapped) {
+    super(wrapped);
+    this._stream = null;
+  }
+
+  onStartRequest(aRequest) {
+    super.onStartRequest(aRequest);
+
+    this._resolveValue = "";
+    this._stream = null;
+  }
 
   onDataAvailable(aRequest, aInputStream, aOff, aCount) {
     if (this.wrapped && this.wrapped.onDataAvailable) {
@@ -156,12 +186,8 @@ PromiseTestUtils.PromiseStreamListener.prototype = {
       );
       this._stream.init(aInputStream);
     }
-    this._data += this._stream.read(aCount);
-  },
-
-  get promise() {
-    return this._promise;
-  },
+    this._resolveValue += this._stream.read(aCount);
+  }
 };
 
 /**
@@ -173,7 +199,7 @@ PromiseTestUtils.PromiseStreamListener.prototype = {
  * @returns {Promise} Promise that resolves when the event occurs.
  */
 PromiseTestUtils.promiseFolderEvent = function (folder, event) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const folderListener = {
       QueryInterface: ChromeUtils.generateQI(["nsIFolderListener"]),
       onFolderEvent(aEventFolder, aEvent) {
@@ -199,7 +225,7 @@ PromiseTestUtils.promiseFolderEvent = function (folder, event) {
  * @returns {Promise} Promise that resolves when the event occurs.
  */
 PromiseTestUtils.promiseFolderNotification = function (folder, listenerMethod) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const mfnListener = {};
     mfnListener[listenerMethod] = function () {
       const args = Array.from(arguments);
@@ -236,7 +262,7 @@ PromiseTestUtils.promiseFolderNotification = function (folder, listenerMethod) {
  *   when the folder add completes.
  */
 PromiseTestUtils.promiseFolderAdded = function (folderName) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     var listener = {
       folderAdded: aFolder => {
         if (aFolder.name == folderName) {
@@ -259,7 +285,7 @@ PromiseTestUtils.promiseFolderAdded = function (folderName) {
  * @returns {Promise} Promise that resolves after the delay.
  */
 PromiseTestUtils.promiseDelay = function (aDelay) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
     timer.initWithCallback(resolve, aDelay, Ci.nsITimer.TYPE_ONE_SHOT);
   });
@@ -330,8 +356,8 @@ PromiseTestUtils.PromiseStoreScanListener.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIStoreScanListener"]),
 
   // nsIRequestObserver callbacks
-  onStartRequest(req) {},
-  onStopRequest(req, status) {},
+  onStartRequest() {},
+  onStopRequest() {},
 
   // nsIStreamListener callbacks
   onDataAvailable(req, stream, offset, count) {

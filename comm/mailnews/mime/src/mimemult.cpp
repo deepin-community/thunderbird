@@ -3,11 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "mimehdrs.h"
 #include "msgCore.h"
 #include "mimemult.h"
 #include "mimemoz2.h"
 #include "mimeeobj.h"
+#include "mimemsig.h"
 
+#include "nsMailHeaders.h"
 #include "prlog.h"
 #include "prmem.h"
 #include "plstr.h"
@@ -41,7 +44,7 @@ static int MimeMultipart_close_child(MimeObject*);
 
 extern "C" MimeObjectClass mimeMultipartAlternativeClass;
 extern "C" MimeObjectClass mimeMultipartRelatedClass;
-extern "C" MimeObjectClass mimeMultipartSignedClass;
+extern "C" MimeMultipartSignedClass mimeMultipartSignedClass;
 extern "C" MimeObjectClass mimeInlineTextVCardClass;
 extern "C" MimeExternalObjectClass mimeExternalObjectClass;
 extern "C" MimeSuppressedCryptoClass mimeSuppressedCryptoClass;
@@ -409,8 +412,11 @@ static int MimeMultipart_create_child(MimeObject* obj) {
    auto-uudecode-hack won't ever be done for subparts of a
    multipart, but only for untyped children of message/rfc822.
    */
+
+  const char* my_address = mime_part_address(obj);
   body = mime_create(((ct && *ct) ? ct : (dct ? dct : TEXT_PLAIN)), mult->hdrs,
-                     obj->options);
+                     obj->options, false, my_address, obj->content_type);
+  PR_Free((void*)my_address);
   PR_FREEIF(ct);
   if (!body) return MIME_OUT_OF_MEMORY;
   status = ((MimeContainerClass*)obj->clazz)->add_child(obj, body);

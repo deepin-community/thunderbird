@@ -16,7 +16,7 @@ var {
   open_compose_with_forward,
   open_compose_with_forward_as_attachments,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var {
   add_message_to_folder,
@@ -26,10 +26,10 @@ var {
   select_click_row,
   wait_for_popup_to_open,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { promise_modal_dialog } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 var messenger;
@@ -146,8 +146,8 @@ function check_no_attachment_size(win, index) {
     throw new Error("attachment.size attribute should be -1!");
   }
 
-  // If there's no size, the size attribute is empty.
-  if (node.getAttribute("size") != "") {
+  // For unknown size, the size attribute is set to empty.
+  if (node.getAttribute("size") !== "") {
     throw new Error("Attachment size should not be displayed!");
   }
 }

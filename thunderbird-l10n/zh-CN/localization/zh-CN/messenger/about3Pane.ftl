@@ -105,8 +105,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = 过滤符合条件的消息 <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = 过滤消息：
+quick-filter-bar-search2 =
+    .label = 筛选消息
+quick-filter-bar-searching =
+    .title = 正在搜索…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -486,3 +488,13 @@ threadpane-sort-header-unread-count = <span>{ $unread }</span> 封未读邮件�
 threadpane-sort-header-count = <span>{ $total }</span> 封邮件
 threadpane-card-menu-button =
     .title = 消息菜单
+message-list-placeholder-no-messages = 未找到消息
+message-list-placeholder-multiple-folders = 已选择多个文件夹
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label = 标记文件夹为已读
+    .accesskey = k

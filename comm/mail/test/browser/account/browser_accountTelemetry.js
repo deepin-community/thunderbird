@@ -5,13 +5,15 @@
  * Test telemetry related to account.
  */
 
-const { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
+const { FeedUtils } = ChromeUtils.importESModule(
+  "resource:///modules/FeedUtils.sys.mjs"
+);
 
 const { IMServices } = ChromeUtils.importESModule(
   "resource:///modules/IMServices.sys.mjs"
 );
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 const { MailTelemetryForTests } = ChromeUtils.importESModule(
   "resource:///modules/MailGlue.sys.mjs"
@@ -19,7 +21,7 @@ const { MailTelemetryForTests } = ChromeUtils.importESModule(
 
 const { add_message_to_folder, msgGen, get_special_folder, create_folder } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+    "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
   );
 const { TelemetryTestUtils } = ChromeUtils.importESModule(
   "resource://testing-common/TelemetryTestUtils.sys.mjs"

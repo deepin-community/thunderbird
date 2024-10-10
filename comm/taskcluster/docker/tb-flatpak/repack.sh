@@ -65,13 +65,16 @@ done
 
 # Download artifacts from dependencies and build the .desktop file.
 (
+[[ "$FLATPAK_BRANCH" = "stable" ]] && VERSION_FLAG="--esr" || VERSION_FLAG="--beta"
 source "${SCRIPT_DIR}/venv/bin/activate"
-python3 "${SCRIPT_DIR}/build_desktop_file.py" -o "${WORKSPACE}/org.mozilla.Thunderbird.desktop" \
+python3 "${SCRIPT_DIR}/build_desktop_file.py"               \
+  -o "${WORKSPACE}/org.mozilla.Thunderbird.desktop"         \
   -t "${SCRIPT_DIR}/org.mozilla.thunderbird.desktop.jinja2" \
-  -l "${WORKSPACE}/l10n-central" \
-  -L "${WORKSPACE}/l10n-changesets.json" \
-  -f "mail/branding/thunderbird/brand.ftl" \
-  -f "mail/messenger/flatpak.ftl"
+  -l "${WORKSPACE}/l10n-central"                            \
+  -L "${WORKSPACE}/l10n-changesets.json"                    \
+  -f "mail/branding/thunderbird/brand.ftl"                  \
+  -f "mail/messenger/flatpak.ftl"                           \
+  $VERSION_FLAG
 )
 
 # Generate AppData XML from template, add various 
@@ -156,28 +159,30 @@ install -D -m755 launch_script.sh "${appdir}/bin/thunderbird"
 # (org.mozilla.Thunderbird) does not match bus names
 # (org.mozilla.thunderbird, lowercase "t"). The app ID may be updated
 # in the future to match the default bus names.
-flatpak build-finish build                                      \
-        --allow=devel                                           \
-        --share=ipc                                             \
-        --share=network                                         \
-        --socket=pulseaudio                                     \
-        --socket=wayland                                        \
-        --socket=x11                                            \
-        --socket=pcsc                                           \
-        --socket=cups                                           \
-        --require-version=0.10.3                                \
-        --persist=.thunderbird                                  \
-        --filesystem=xdg-download:rw                            \
-        --filesystem=~/.gnupg                                   \
-        --filesystem=xdg-run/gnupg:ro                           \
-        --filesystem=xdg-run/speech-dispatcher:ro               \
-        --filesystem=/run/.heim_org.h5l.kcm-socket              \
-        --device=all                                            \
-        --own-name="org.mozilla.thunderbird.*"                  \
-        --own-name="org.mozilla.thunderbird_beta.*"             \
-        --talk-name="org.gtk.vfs.*"                             \
-        --talk-name=org.a11y.Bus                                \
-        --system-talk-name=org.freedesktop.NetworkManager       \
+flatpak build-finish build                                        \
+        --allow=devel                                             \
+        --share=ipc                                               \
+        --share=network                                           \
+        --socket=pulseaudio                                       \
+        --socket=wayland                                          \
+        --socket=x11                                              \
+        --socket=pcsc                                             \
+        --socket=cups                                             \
+        --require-version=0.10.3                                  \
+        --persist=.thunderbird                                    \
+        --env=DICPATH=/usr/share/hunspell                         \
+        --filesystem=xdg-download:rw                              \
+        --filesystem=~/.gnupg                                     \
+        --filesystem=xdg-run/gnupg:ro                             \
+        --filesystem=xdg-run/speech-dispatcher:ro                 \
+        --filesystem=/run/.heim_org.h5l.kcm-socket                \
+        --device=all                                              \
+        --own-name="org.mozilla.thunderbird.*"                    \
+        --own-name="org.mozilla.thunderbird_beta.*"               \
+        --talk-name="org.gtk.vfs.*"                               \
+        --talk-name=org.a11y.Bus                                  \
+        --system-talk-name=org.freedesktop.NetworkManager         \
+        --env=TMPDIR=~/.var/app/org.mozilla.Thunderbird/cache/tmp \
         --command=thunderbird
 
 # Export Flatpak build into repo

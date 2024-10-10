@@ -8,6 +8,8 @@ about-addressbook-title = Osoitekirja
 
 about-addressbook-toolbar-new-address-book =
     .label = Uusi osoitekirja
+about-addressbook-toolbar-add-address-book =
+    .label = Lisää paikallinen osoitekirja
 about-addressbook-toolbar-add-carddav-address-book =
     .label = Lisää CardDAV-osoitekirja
 about-addressbook-toolbar-add-ldap-address-book =
@@ -18,6 +20,14 @@ about-addressbook-toolbar-new-list =
     .label = Uusi lista
 about-addressbook-toolbar-import =
     .label = Tuo
+books-pane-create-contact-button = Uusi yhteyshenkilö
+    .title = Luo uusi yhteyshenkilö
+books-pane-create-book-button =
+    .title = Luo uusi osoitekirja
+books-pane-create-list-button =
+    .title = Luo uusi postituslista
+books-pane-import-button = Tuo
+    .title = Tuo osoitekirjoja
 
 ## Books
 
@@ -66,6 +76,14 @@ about-addressbook-search =
     .placeholder = Hae osoitekirjasta { $name }
 about-addressbook-search-all =
     .placeholder = Hae kaikista osoitekirjoista
+# Variables:
+# $name (String) - Name of the address book that will be searched.
+about-addressbook-search2 =
+    .label = Hae osoitekirjasta { $name }
+    .placeholder = Hae osoitekirjasta { $name }…
+about-addressbook-search-all2 =
+    .label = Hae kaikista osoitekirjoista
+    .placeholder = Hae kaikista osoitekirjoista…
 about-addressbook-sort-button2 =
     .title = Listanäkymän valinnat
 about-addressbook-name-format-display =
@@ -92,34 +110,83 @@ about-addressbook-column-header-generatedname2 = Nimi
     .title = Järjestä nimen mukaan
 about-addressbook-column-label-generatedname2 =
     .label = Nimi
+# Variables:
+# $title (String) - Contact name for tooltip.
+about-addressbook-cell-generatedname2 =
+    .aria-label = Nimi
+    .title = { $title }
 about-addressbook-column-header-emailaddresses2 = Sähköpostiosoitteet
     .title = Järjestä sähköpostiosoitteiden mukaan
 about-addressbook-column-label-emailaddresses2 =
     .label = Sähköpostiosoitteet
+# Variables:
+# $title (String) - Contact email addresses for tooltip.
+about-addressbook-cell-emailaddresses2 =
+    .aria-label = Sähköpostiosoitteet
+    .title = { $title }
 about-addressbook-column-header-nickname2 = Kutsumanimi
     .title = Järjestä kutsumanimen mukaan
 about-addressbook-column-label-nickname2 =
     .label = Kutsumanimi
+# Variables:
+# $title (String) - Contact nickname for tooltip.
+about-addressbook-cell-nickname2 =
+    .aria-label = Kutsumanimi
+    .title = { $title }
 about-addressbook-column-header-phonenumbers2 = Puhelinnumerot
     .title = Järjestä puhelinnumerojen mukaan
 about-addressbook-column-label-phonenumbers2 =
     .label = Puhelinnumerot
+# Variables:
+# $title (String) - Contact phone numbers for tooltip.
+about-addressbook-cell-phonenumbers2 =
+    .aria-label = Puhelinnumerot
+    .title = { $title }
 about-addressbook-column-header-addresses2 = Osoitteet
     .title = Järjestä osoitteen mukaan
 about-addressbook-column-label-addresses2 =
     .label = Osoitteet
+# Variables:
+# $title (String) - Contact addresses for tooltip.
+about-addressbook-cell-addresses2 =
+    .aria-label = Osoitteet
+    .title = { $title }
+about-addressbook-column-header-title2 = Työnimike
+    .title = Järjestä työnimikkeen mukaan
+about-addressbook-column-label-title2 =
+    .label = Työnimike
+# Variables:
+# $title (String) - Contact job title for tooltip.
+about-addressbook-cell-title2 =
+    .aria-label = Työnimike
+    .title = { $title }
 about-addressbook-column-header-department2 = Osasto
     .title = Järjestä osaston mukaan
 about-addressbook-column-label-department2 =
     .label = Osasto
+# Variables:
+# $title (String) - Contact department for tooltip.
+about-addressbook-cell-department2 =
+    .aria-label = Osasto
+    .title = { $title }
 about-addressbook-column-header-organization2 = Organisaatio
     .title = Järjestä organisaation mukaan
 about-addressbook-column-label-organization2 =
     .label = Organisaatio
+# Variables:
+# $title (String) - Contact organization for tooltip.
+about-addressbook-cell-organization2 =
+    .aria-label = Organisaatio
+    .title = { $title }
 about-addressbook-column-header-addrbook2 = Osoitekirja
     .title = Järjestä osoitekirjan mukaan
 about-addressbook-column-label-addrbook2 =
     .label = Osoitekirja
+# Variables:
+# $title (String) - Contact address for tooltip.
+about-addressbook-cell-addrbook2 =
+    .aria-label = Osoitekirja
+    .title = { $title }
 about-addressbook-cards-context-write =
     .label = Kirjoita viesti
 about-addressbook-confirm-delete-mixed-title = Poista yhteyshenkilöt ja listat
@@ -152,6 +219,14 @@ about-addressbook-confirm-remove-contacts-title =
 # $name (String) - The name of the contact to be removed.
 # $list (String) - The name of the list that contacts will be removed from.
 about-addressbook-confirm-remove-contacts-single = Haluatko varmasti poistaa { $name } listasta { $list }?
+# Variables:
+# $count (Number) - The number of contacts to be removed.
+# $list (String) - The name of the list that contacts will be removed from.
+about-addressbook-confirm-remove-contacts-multi =
+    { $count ->
+        [one] Haluatko varmasti poistaa { $count } yhteyshenkilön listalta { $list }?
+       *[other] Haluatko varmasti poistaa nämä { $count } yhteyshenkilöä listalta { $list }?
+    }
 # Variables:
 # $count (Number) - The number of contacts to be deleted.
 about-addressbook-confirm-delete-contacts-title =

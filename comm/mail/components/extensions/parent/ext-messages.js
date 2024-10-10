@@ -2,10 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "MailServices",
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 ChromeUtils.defineESModuleGetters(this, {
   AttachmentInfo: "resource:///modules/AttachmentInfo.sys.mjs",
@@ -25,8 +23,8 @@ var { getFolder } = ChromeUtils.importESModule(
   "resource:///modules/ExtensionAccounts.sys.mjs"
 );
 
-var { MailStringUtils } = ChromeUtils.import(
-  "resource:///modules/MailStringUtils.jsm"
+var { MailStringUtils } = ChromeUtils.importESModule(
+  "resource:///modules/MailStringUtils.sys.mjs"
 );
 
 var { XPCOMUtils } = ChromeUtils.importESModule(
@@ -107,7 +105,10 @@ function convertMessagePart(mimeTreePart, isRoot = true) {
     size: mimeTreePart.size,
     partName: mimeTreePart.partNum,
   };
-  if (mimeTreePart.body && !mimeTreePart.isAttachment) {
+
+  // Supress content of attachments or other binary parts.
+  const mediatype = mimeTreePart.headers.contentType.mediatype || "text";
+  if (mimeTreePart.body && !mimeTreePart.isAttachment && mediatype == "text") {
     partObject.body = mimeTreePart.body;
   }
   if (mimeTreePart.isAttachment) {
@@ -194,6 +195,13 @@ async function convertAttachment(msgHdr, mimeTreePart, extension) {
 
     rv.message = extension.messageManager.convert(attachedMsgHdr);
   }
+
+  // Include the content-Id, if available (for related parts).
+  if (mimeTreePart.headers._rawHeaders.has("content-id")) {
+    const cId = mimeTreePart.headers._rawHeaders.get("content-id")[0];
+    rv.contentId = cId.replace(/^<|>$/g, "");
+  }
+
   return rv;
 }
 
@@ -203,7 +211,7 @@ this.messages = class extends ExtensionAPIPersistent {
     // available after fire.wakeup() has fulfilled (ensuring the convert() function
     // has been called).
 
-    onNewMailReceived({ context, fire }, [monitorAllFolders]) {
+    onNewMailReceived({ fire }, [monitorAllFolders]) {
       const listener = async (event, folder, newMessages) => {
         const { extension } = this;
         // The msgHdr could be gone after the wakeup, convert it early.
@@ -225,13 +233,12 @@ this.messages = class extends ExtensionAPIPersistent {
         unregister: () => {
           messageTracker.off("messages-received", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onUpdated({ context, fire }) {
+    onUpdated({ fire }) {
       const listener = async (event, message, properties) => {
         const { extension } = this;
         // The msgHdr could be gone after the wakeup, convert it early.
@@ -249,13 +256,12 @@ this.messages = class extends ExtensionAPIPersistent {
         unregister: () => {
           messageTracker.off("message-updated", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onMoved({ context, fire }) {
+    onMoved({ fire }) {
       const listener = async (event, srcMessages, dstMessages) => {
         const { extension } = this;
         // The msgHdr could be gone after the wakeup, convert them early.
@@ -277,13 +283,12 @@ this.messages = class extends ExtensionAPIPersistent {
         unregister: () => {
           messageTracker.off("messages-moved", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onCopied({ context, fire }) {
+    onCopied({ fire }) {
       const listener = async (event, srcMessages, dstMessages) => {
         const { extension } = this;
         // The msgHdr could be gone after the wakeup, convert them early.
@@ -305,13 +310,12 @@ this.messages = class extends ExtensionAPIPersistent {
         unregister: () => {
           messageTracker.off("messages-copied", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onDeleted({ context, fire }) {
+    onDeleted({ fire }) {
       const listener = async (event, deletedMessages) => {
         const { extension } = this;
         // The msgHdr could be gone after the wakeup, convert them early.
@@ -329,9 +333,8 @@ this.messages = class extends ExtensionAPIPersistent {
         unregister: () => {
           messageTracker.off("messages-deleted", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
@@ -436,12 +439,15 @@ this.messages = class extends ExtensionAPIPersistent {
                     /* isDraftOrTemplate */ false,
                     /* aMsgFlags */ Ci.nsMsgMessageFlags.Read,
                     /* aMsgKeywords */ "",
+                    /** @implements {nsIMsgCopyServiceListener} */
                     {
-                      OnStartCopy() {},
-                      OnProgress(progress, progressMax) {},
-                      SetMessageKey(key) {},
-                      GetMessageId(messageId) {},
-                      OnStopCopy(status) {
+                      onStartCopy() {},
+                      onProgress() {},
+                      setMessageKey() {},
+                      getMessageId() {
+                        return null;
+                      },
+                      onStopCopy(status) {
                         if (status == Cr.NS_OK) {
                           resolve();
                         } else {
@@ -466,12 +472,15 @@ this.messages = class extends ExtensionAPIPersistent {
                 msgHeaders,
                 destinationFolder,
                 isMove && sourceFolder.canDeleteMessages,
+                /** @implements {nsIMsgCopyServiceListener} */
                 {
-                  OnStartCopy() {},
-                  OnProgress(progress, progressMax) {},
-                  SetMessageKey(key) {},
-                  GetMessageId(messageId) {},
-                  OnStopCopy(status) {
+                  onStartCopy() {},
+                  onProgress() {},
+                  setMessageKey() {},
+                  getMessageId() {
+                    return null;
+                  },
+                  onStopCopy(status) {
                     if (status == Cr.NS_OK) {
                       resolve();
                     } else {
@@ -632,6 +641,47 @@ this.messages = class extends ExtensionAPIPersistent {
           return new File([bytes], `message-${messageId}.eml`, {
             type: "message/rfc822",
           });
+        },
+        async listInlineTextParts(messageId) {
+          const msgHdr = messageManager.get(messageId);
+          if (!msgHdr) {
+            throw new ExtensionError(`Message not found: ${messageId}.`);
+          }
+          const msgHdrProcessor = new MsgHdrProcessor(msgHdr);
+          let mimeTree;
+          try {
+            mimeTree = await msgHdrProcessor.getDecryptedTree();
+          } catch (ex) {
+            console.error(ex);
+            throw new ExtensionError(`Error reading message ${messageId}`);
+          }
+
+          if (msgHdr.flags & Ci.nsMsgMessageFlags.Partial) {
+            // Do not include fake body parts.
+            mimeTree.subParts = [];
+          }
+
+          const extractInlineTextParts = mimeTreePart => {
+            const { mediatype, subtype } = mimeTreePart.headers.contentType;
+            if (mediatype == "multipart") {
+              for (const subPart of mimeTreePart.subParts) {
+                extractInlineTextParts(subPart);
+              }
+            } else if (
+              mediatype == "text" &&
+              mimeTreePart.body &&
+              !mimeTreePart.isAttachment
+            ) {
+              textParts.push({
+                contentType: `text/${subtype}`,
+                content: mimeTreePart.body,
+              });
+            }
+          };
+
+          const textParts = [];
+          extractInlineTextParts(mimeTree);
+          return textParts;
         },
         async listAttachments(messageId) {
           const msgHdr = messageManager.get(messageId);
@@ -824,8 +874,8 @@ this.messages = class extends ExtensionAPIPersistent {
 
           await new Promise(resolve => {
             const listener = {
-              OnStartRunningUrl(aUrl) {},
-              OnStopRunningUrl(aUrl, aExitCode) {
+              OnStartRunningUrl() {},
+              OnStopRunningUrl() {
                 resolve();
               },
             };
@@ -931,12 +981,15 @@ this.messages = class extends ExtensionAPIPersistent {
                     /* msgWindow */ null,
                     /* deleteStorage */ skipTrash,
                     /* isMove */ false,
+                    /** @implements {nsIMsgCopyServiceListener} */
                     {
-                      OnStartCopy() {},
-                      OnProgress(progress, progressMax) {},
-                      SetMessageKey(key) {},
-                      GetMessageId(messageId) {},
-                      OnStopCopy(status) {
+                      onStartCopy() {},
+                      onProgress() {},
+                      setMessageKey() {},
+                      getMessageId() {
+                        return null;
+                      },
+                      onStopCopy(status) {
                         if (status == Cr.NS_OK) {
                           resolve();
                         } else {
@@ -993,7 +1046,7 @@ this.messages = class extends ExtensionAPIPersistent {
                     finish(msgHdrs.get(newKey));
                   }
                 },
-                onFolderAdded(parent, child) {},
+                onFolderAdded() {},
               };
 
               // Note: Currently this API is not supported for IMAP. Once this gets added (Bug 1787104),
@@ -1032,10 +1085,11 @@ this.messages = class extends ExtensionAPIPersistent {
                 /* isDraftOrTemplate */ false,
                 /* aMsgFlags */ flags,
                 /* aMsgKeywords */ tags,
+                /** @implements {nsIMsgCopyServiceListener} */
                 {
-                  OnStartCopy() {},
-                  OnProgress(progress, progressMax) {},
-                  SetMessageKey(aKey) {
+                  onStartCopy() {},
+                  onProgress() {},
+                  setMessageKey(aKey) {
                     /* Note: Not fired for offline IMAP. Add missing
                      * if (aCopyState) {
                      *  ((nsImapMailCopyState*)aCopyState)->m_listener->SetMessageKey(fakeKey);
@@ -1048,8 +1102,10 @@ this.messages = class extends ExtensionAPIPersistent {
                       finish(msgHdrs.get(newKey));
                     }
                   },
-                  GetMessageId(messageId) {},
-                  OnStopCopy(status) {
+                  getMessageId() {
+                    return null;
+                  },
+                  onStopCopy(status) {
                     if (status == Cr.NS_OK) {
                       if (newKey && msgHdrs.has(newKey)) {
                         finish(msgHdrs.get(newKey));

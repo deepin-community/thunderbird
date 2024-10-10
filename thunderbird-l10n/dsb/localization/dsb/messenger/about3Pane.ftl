@@ -123,8 +123,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Toś te powěsći filtrowaś <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Powěsći filtrowaś:
+quick-filter-bar-search2 =
+    .label = Powěsći filtrowaś
+quick-filter-bar-searching =
+    .title = Pyta se…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -558,3 +560,19 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Powěsćowy meni
+message-list-placeholder-no-messages = Žedna powěsć namakana
+message-list-placeholder-multiple-folders = Někotare zarědniki wubrane
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Zarědnik ako pśecytany markěrowaś
+            [two] { $count } zarědnika ako pśecytanej markěrowaś
+            [few] { $count } zarědniku ako pśecytane markěrowaś
+           *[other] { $count } zarědnikow ako pśecytane markěrowaś
+        }
+    .accesskey = z

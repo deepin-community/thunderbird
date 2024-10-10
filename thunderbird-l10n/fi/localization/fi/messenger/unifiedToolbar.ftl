@@ -12,6 +12,8 @@ search-bar-button =
     .alt = Etsi
 search-bar-item =
     .label = Etsi:
+search-bar-item2 =
+    .label = Etsi
 search-bar-placeholder = Etsi…
 # Search bar placeholder with formatted key shortcut hint (platform dependent).
 # The key after the control modifier should match the key from quickSearchCmd.key
@@ -60,6 +62,9 @@ customize-save = Tallenna
 customize-unsaved-changes = Tallentamattomia muutoksia muissa näkymissä
 customize-search-bar =
     .label = Etsi työkalupalkin painikkeita…
+customize-search-bar2 =
+    .label = Etsi työkalupalkin painikkeita
+    .placeholder = Etsi työkalupalkin painikkeita…
 customize-spaces-tabs =
     .aria-label = Näkymät
 customize-main-toolbar-target =

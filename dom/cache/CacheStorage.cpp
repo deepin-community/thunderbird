@@ -226,14 +226,15 @@ already_AddRefed<CacheStorage> CacheStorage::CreateOnWorker(
 }
 
 // static
-bool CacheStorage::DefineCaches(JSContext* aCx, JS::Handle<JSObject*> aGlobal) {
+bool CacheStorage::DefineCachesForSandbox(JSContext* aCx,
+                                          JS::Handle<JSObject*> aGlobal) {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_DIAGNOSTIC_ASSERT(JS::GetClass(aGlobal)->flags & JSCLASS_DOM_GLOBAL,
                         "Passed object is not a global object!");
   js::AssertSameCompartment(aCx, aGlobal);
 
-  if (NS_WARN_IF(!CacheStorage_Binding::GetConstructorObject(aCx) ||
-                 !Cache_Binding::GetConstructorObject(aCx))) {
+  if (NS_WARN_IF(!CacheStorage_Binding::CreateAndDefineOnGlobal(aCx) ||
+                 !Cache_Binding::CreateAndDefineOnGlobal(aCx))) {
     return false;
   }
 
@@ -298,7 +299,7 @@ CacheStorage::CacheStorage(nsresult aFailureResult)
 }
 
 already_AddRefed<Promise> CacheStorage::Match(
-    JSContext* aCx, const RequestOrUSVString& aRequest,
+    JSContext* aCx, const RequestOrUTF8String& aRequest,
     const MultiCacheQueryOptions& aOptions, ErrorResult& aRv) {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
 

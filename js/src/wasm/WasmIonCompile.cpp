@@ -235,11 +235,18 @@ class FunctionCompiler {
   };
 
   using ControlFlowPatchVector = Vector<ControlFlowPatch, 0, SystemAllocPolicy>;
-  using ControlFlowPatchVectorVector =
-      Vector<ControlFlowPatchVector, 0, SystemAllocPolicy>;
+
+  struct PendingBlockTarget {
+    ControlFlowPatchVector patches;
+    BranchHint hint = BranchHint::Invalid;
+  };
+
+  using PendingBlockTargetVector =
+      Vector<PendingBlockTarget, 0, SystemAllocPolicy>;
 
   const ModuleEnvironment& moduleEnv_;
   IonOpIter iter_;
+  uint32_t functionBodyOffset_;
   const FuncCompileInput& func_;
   const ValTypeVector& locals_;
   size_t lastReadCallSite_;
@@ -254,7 +261,7 @@ class FunctionCompiler {
 
   uint32_t loopDepth_;
   uint32_t blockDepth_;
-  ControlFlowPatchVectorVector blockPatches_;
+  PendingBlockTargetVector pendingBlocks_;
   // Control flow patches created by `delegate` instructions that target the
   // outermost label of this function. These will be bound to a pad that will
   // do a rethrow in `emitBodyDelegateThrowPad`.
@@ -276,6 +283,7 @@ class FunctionCompiler {
                    MIRGenerator& mirGen, TryNoteVector& tryNotes)
       : moduleEnv_(moduleEnv),
         iter_(moduleEnv, decoder),
+        functionBodyOffset_(decoder.beginOffset()),
         func_(func),
         locals_(locals),
         lastReadCallSite_(0),
@@ -294,6 +302,9 @@ class FunctionCompiler {
   const ModuleEnvironment& moduleEnv() const { return moduleEnv_; }
 
   IonOpIter& iter() { return iter_; }
+  uint32_t relativeBytecodeOffset() {
+    return readBytecodeOffset() - functionBodyOffset_;
+  }
   TempAllocator& alloc() const { return alloc_; }
   // FIXME(1401675): Replace with BlockType.
   uint32_t funcIndex() const { return func_.index; }
@@ -301,6 +312,7 @@ class FunctionCompiler {
     return *moduleEnv_.funcs[func_.index].type;
   }
 
+  MBasicBlock* getCurBlock() const { return curBlock_; }
   BytecodeOffset bytecodeOffset() const { return iter_.bytecodeOffset(); }
   BytecodeOffset bytecodeIfNotAsmJS() const {
     return moduleEnv_.isAsmJS() ? BytecodeOffset() : iter_.bytecodeOffset();
@@ -384,8 +396,8 @@ class FunctionCompiler {
     MOZ_ASSERT(loopDepth_ == 0);
     MOZ_ASSERT(blockDepth_ == 0);
 #ifdef DEBUG
-    for (ControlFlowPatchVector& patches : blockPatches_) {
-      MOZ_ASSERT(patches.empty());
+    for (PendingBlockTarget& targets : pendingBlocks_) {
+      MOZ_ASSERT(targets.patches.empty());
     }
 #endif
     MOZ_ASSERT(inDeadCode());
@@ -2447,6 +2459,31 @@ class FunctionCompiler {
     return collectUnaryCallResult(builtin.retType, def);
   }
 
+  [[nodiscard]] bool stackSwitch(MDefinition* suspender, MDefinition* fn,
+                                 MDefinition* data, StackSwitchKind kind) {
+    MOZ_ASSERT(!inDeadCode());
+
+    MInstruction* ins;
+    switch (kind) {
+      case StackSwitchKind::SwitchToMain:
+        ins = MWasmStackSwitchToMain::New(alloc(), suspender, fn, data);
+        break;
+      case StackSwitchKind::SwitchToSuspendable:
+        ins = MWasmStackSwitchToSuspendable::New(alloc(), suspender, fn, data);
+        break;
+      case StackSwitchKind::ContinueOnSuspendable:
+        ins = MWasmStackContinueOnSuspendable::New(alloc(), suspender);
+        break;
+    }
+    if (!ins) {
+      return false;
+    }
+
+    curBlock_->add(ins);
+
+    return true;
+  }
+
 #ifdef ENABLE_WASM_GC
   [[nodiscard]] bool callRef(const FuncType& funcType, MDefinition* ref,
                              uint32_t lineOrBytecode,
@@ -2682,8 +2719,8 @@ class FunctionCompiler {
   }
 
   [[nodiscard]] bool startBlock() {
-    MOZ_ASSERT_IF(blockDepth_ < blockPatches_.length(),
-                  blockPatches_[blockDepth_].empty());
+    MOZ_ASSERT_IF(blockDepth_ < pendingBlocks_.length(),
+                  pendingBlocks_[blockDepth_].patches.empty());
     blockDepth_++;
     return true;
   }
@@ -2769,8 +2806,8 @@ class FunctionCompiler {
     }
 
     // Fix up phis stored in the slots Vector of pending blocks.
-    for (ControlFlowPatchVector& patches : blockPatches_) {
-      for (ControlFlowPatch& p : patches) {
+    for (PendingBlockTarget& pendingBlockTarget : pendingBlocks_) {
+      for (ControlFlowPatch& p : pendingBlockTarget.patches) {
         MBasicBlock* block = p.ins->block();
         if (block->loopDepth() >= loopEntry->loopDepth()) {
           fixupRedundantPhis(block);
@@ -2836,8 +2873,8 @@ class FunctionCompiler {
 
     if (!loopHeader) {
       MOZ_ASSERT(inDeadCode());
-      MOZ_ASSERT(headerLabel >= blockPatches_.length() ||
-                 blockPatches_[headerLabel].empty());
+      MOZ_ASSERT(headerLabel >= pendingBlocks_.length() ||
+                 pendingBlocks_[headerLabel].patches.empty());
       blockDepth_--;
       loopDepth_--;
       return true;
@@ -2896,17 +2933,20 @@ class FunctionCompiler {
     return inDeadCode() || popPushedDefs(loopResults);
   }
 
-  [[nodiscard]] bool addControlFlowPatch(MControlInstruction* ins,
-                                         uint32_t relative, uint32_t index) {
+  [[nodiscard]] bool addControlFlowPatch(
+      MControlInstruction* ins, uint32_t relative, uint32_t index,
+      BranchHint branchHint = BranchHint::Invalid) {
     MOZ_ASSERT(relative < blockDepth_);
     uint32_t absolute = blockDepth_ - 1 - relative;
 
-    if (absolute >= blockPatches_.length() &&
-        !blockPatches_.resize(absolute + 1)) {
+    if (absolute >= pendingBlocks_.length() &&
+        !pendingBlocks_.resize(absolute + 1)) {
       return false;
     }
 
-    return blockPatches_[absolute].append(ControlFlowPatch(ins, index));
+    pendingBlocks_[absolute].hint = branchHint;
+    return pendingBlocks_[absolute].patches.append(
+        ControlFlowPatch(ins, index));
   }
 
   [[nodiscard]] bool br(uint32_t relativeDepth, const DefVector& values) {
@@ -2929,7 +2969,7 @@ class FunctionCompiler {
   }
 
   [[nodiscard]] bool brIf(uint32_t relativeDepth, const DefVector& values,
-                          MDefinition* condition) {
+                          MDefinition* condition, BranchHint branchHint) {
     if (inDeadCode()) {
       return true;
     }
@@ -2940,7 +2980,8 @@ class FunctionCompiler {
     }
 
     MTest* test = MTest::New(alloc(), condition, nullptr, joinBlock);
-    if (!addControlFlowPatch(test, relativeDepth, MTest::TrueBranchIndex)) {
+    if (!addControlFlowPatch(test, relativeDepth, MTest::TrueBranchIndex,
+                             branchHint)) {
       return false;
     }
 
@@ -2950,6 +2991,7 @@ class FunctionCompiler {
 
     curBlock_->end(test);
     curBlock_ = joinBlock;
+
     return true;
   }
 
@@ -4158,11 +4200,11 @@ class FunctionCompiler {
   // WasmStructObject, a MIR pointer to a value, and a field descriptor,
   // generate MIR to write the value to the relevant field in the object.
   [[nodiscard]] bool writeValueToStructField(
-      uint32_t lineOrBytecode, const StructField& field,
-      MDefinition* structObject, MDefinition* value,
+      uint32_t lineOrBytecode, const StructType& structType,
+      uint32_t fieldIndex, MDefinition* structObject, MDefinition* value,
       WasmPreBarrierKind preBarrierKind) {
-    StorageType fieldType = field.type;
-    uint32_t fieldOffset = field.offset;
+    StorageType fieldType = structType.fields_[fieldIndex].type;
+    uint32_t fieldOffset = structType.fieldOffset(fieldIndex);
 
     bool areaIsOutline;
     uint32_t areaOffset;
@@ -4209,10 +4251,10 @@ class FunctionCompiler {
   // WasmStructObject, a field descriptor and a field widening operation,
   // generate MIR to read the value from the relevant field in the object.
   [[nodiscard]] MDefinition* readValueFromStructField(
-      const StructField& field, FieldWideningOp wideningOp,
-      MDefinition* structObject) {
-    StorageType fieldType = field.type;
-    uint32_t fieldOffset = field.offset;
+      const StructType& structType, uint32_t fieldIndex,
+      FieldWideningOp wideningOp, MDefinition* structObject) {
+    StorageType fieldType = structType.fields_[fieldIndex].type;
+    uint32_t fieldOffset = structType.fieldOffset(fieldIndex);
 
     bool areaIsOutline;
     uint32_t areaOffset;
@@ -4394,7 +4436,7 @@ class FunctionCompiler {
                                MDefinition* numElements, MDefinition* val,
                                WasmPreBarrierKind preBarrierKind) {
     mozilla::DebugOnly<MIRType> valMIRType = val->type();
-    StorageType elemType = arrayType.elementType_;
+    StorageType elemType = arrayType.elementType();
     MOZ_ASSERT(elemType.widenToValType().toMIRType() == valMIRType);
 
     uint32_t elemSize = elemType.size();
@@ -4521,7 +4563,7 @@ class FunctionCompiler {
     // Create the array object, uninitialized.
     MDefinition* arrayObject =
         createArrayObject(lineOrBytecode, typeIndex, numElements,
-                          arrayType.elementType_.size(), /*zeroFields=*/false);
+                          arrayType.elementType().size(), /*zeroFields=*/false);
     if (!arrayObject) {
       return nullptr;
     }
@@ -4785,17 +4827,23 @@ class FunctionCompiler {
   }
 
   [[nodiscard]] bool bindBranches(uint32_t absolute, DefVector* defs) {
-    if (absolute >= blockPatches_.length() || blockPatches_[absolute].empty()) {
+    if (absolute >= pendingBlocks_.length() ||
+        pendingBlocks_[absolute].patches.empty()) {
       return inDeadCode() || popPushedDefs(defs);
     }
 
-    ControlFlowPatchVector& patches = blockPatches_[absolute];
+    ControlFlowPatchVector& patches = pendingBlocks_[absolute].patches;
     MControlInstruction* ins = patches[0].ins;
     MBasicBlock* pred = ins->block();
 
     MBasicBlock* join = nullptr;
     if (!newBlock(pred, &join)) {
       return false;
+    }
+
+    // Use branch hinting information if any.
+    if (pendingBlocks_[absolute].hint != BranchHint::Invalid) {
+      join->setBranchHinting(pendingBlocks_[absolute].hint);
     }
 
     pred->mark();
@@ -4942,6 +4990,9 @@ static bool EmitLoop(FunctionCompiler& f) {
 }
 
 static bool EmitIf(FunctionCompiler& f) {
+  BranchHint branchHint =
+      f.iter().getBranchHint(f.funcIndex(), f.relativeBytecodeOffset());
+
   ResultType params;
   MDefinition* condition = nullptr;
   if (!f.iter().readIf(&params, &condition)) {
@@ -4951,6 +5002,11 @@ static bool EmitIf(FunctionCompiler& f) {
   MBasicBlock* elseBlock;
   if (!f.branchAndStartThen(condition, &elseBlock)) {
     return false;
+  }
+
+  // Store the branch hint in the basic block.
+  if (!f.inDeadCode() && branchHint != BranchHint::Invalid) {
+    f.getCurBlock()->setBranchHinting(branchHint);
   }
 
   f.iter().controlItem().block = elseBlock;
@@ -5088,11 +5144,15 @@ static bool EmitBrIf(FunctionCompiler& f) {
   ResultType type;
   DefVector values;
   MDefinition* condition;
+
+  BranchHint branchHint =
+      f.iter().getBranchHint(f.funcIndex(), f.relativeBytecodeOffset());
+
   if (!f.iter().readBrIf(&relativeDepth, &type, &values, &condition)) {
     return false;
   }
 
-  return f.brIf(relativeDepth, values, condition);
+  return f.brIf(relativeDepth, values, condition, branchHint);
 }
 
 static bool EmitBrTable(FunctionCompiler& f) {
@@ -5371,6 +5431,22 @@ static bool EmitCallIndirect(FunctionCompiler& f, bool oldStyle) {
   f.iter().setResults(results.length(), results);
   return true;
 }
+
+#ifdef ENABLE_WASM_JSPI
+static bool EmitStackSwitch(FunctionCompiler& f) {
+  StackSwitchKind kind;
+  MDefinition* suspender;
+  MDefinition* fn;
+  MDefinition* data;
+  if (!f.iter().readStackSwitch(&kind, &suspender, &fn, &data)) {
+    return false;
+  }
+  if (!f.stackSwitch(suspender, fn, data, kind)) {
+    return false;
+  }
+  return true;
+}
+#endif
 
 #ifdef ENABLE_WASM_TAIL_CALLS
 static bool EmitReturnCall(FunctionCompiler& f) {
@@ -7253,9 +7329,8 @@ static bool EmitStructNew(FunctionCompiler& f) {
     if (!f.mirGen().ensureBallast()) {
       return false;
     }
-    const StructField& field = structType.fields_[fieldIndex];
-    if (!f.writeValueToStructField(lineOrBytecode, field, structObject,
-                                   args[fieldIndex],
+    if (!f.writeValueToStructField(lineOrBytecode, structType, fieldIndex,
+                                   structObject, args[fieldIndex],
                                    WasmPreBarrierKind::None)) {
       return false;
     }
@@ -7323,8 +7398,8 @@ static bool EmitStructSet(FunctionCompiler& f) {
 
   // And fill in the field.
   const StructType& structType = (*f.moduleEnv().types)[typeIndex].structType();
-  const StructField& field = structType.fields_[fieldIndex];
-  return f.writeValueToStructField(lineOrBytecode, field, structObject, value,
+  return f.writeValueToStructField(lineOrBytecode, structType, fieldIndex,
+                                   structObject, value,
                                    WasmPreBarrierKind::Normal);
 }
 
@@ -7345,9 +7420,8 @@ static bool EmitStructGet(FunctionCompiler& f, FieldWideningOp wideningOp) {
 
   // And fetch the data.
   const StructType& structType = (*f.moduleEnv().types)[typeIndex].structType();
-  const StructField& field = structType.fields_[fieldIndex];
-  MDefinition* load =
-      f.readValueFromStructField(field, wideningOp, structObject);
+  MDefinition* load = f.readValueFromStructField(structType, fieldIndex,
+                                                 wideningOp, structObject);
   if (!load) {
     return false;
   }
@@ -7401,7 +7475,7 @@ static bool EmitArrayNewDefault(FunctionCompiler& f) {
   const ArrayType& arrayType = (*f.moduleEnv().types)[typeIndex].arrayType();
   MDefinition* arrayObject =
       f.createArrayObject(lineOrBytecode, typeIndex, numElements,
-                          arrayType.elementType_.size(), /*zeroFields=*/true);
+                          arrayType.elementType().size(), /*zeroFields=*/true);
   if (!arrayObject) {
     return false;
   }
@@ -7432,7 +7506,7 @@ static bool EmitArrayNewFixed(FunctionCompiler& f) {
 
   // Create the array object, uninitialized.
   const ArrayType& arrayType = (*f.moduleEnv().types)[typeIndex].arrayType();
-  StorageType elemType = arrayType.elementType_;
+  StorageType elemType = arrayType.elementType();
   uint32_t elemSize = elemType.size();
   MDefinition* arrayObject =
       f.createArrayObject(lineOrBytecode, typeIndex, numElementsDef, elemSize,
@@ -7663,7 +7737,7 @@ static bool EmitArraySet(FunctionCompiler& f) {
 
   // And do the store.
   const ArrayType& arrayType = (*f.moduleEnv().types)[typeIndex].arrayType();
-  StorageType elemType = arrayType.elementType_;
+  StorageType elemType = arrayType.elementType();
   uint32_t elemSize = elemType.size();
   MOZ_ASSERT(elemSize >= 1 && elemSize <= 16);
 
@@ -7695,7 +7769,7 @@ static bool EmitArrayGet(FunctionCompiler& f, FieldWideningOp wideningOp) {
 
   // And do the load.
   const ArrayType& arrayType = (*f.moduleEnv().types)[typeIndex].arrayType();
-  StorageType elemType = arrayType.elementType_;
+  StorageType elemType = arrayType.elementType();
 
   MDefinition* load =
       f.readGcArrayValueAtIndex(elemType, wideningOp, arrayObject,
@@ -9153,6 +9227,15 @@ static bool EmitBodyExprs(FunctionCompiler& f) {
           }
           CHECK(EmitCallBuiltinModuleFunc(f));
         }
+#ifdef ENABLE_WASM_JSPI
+        if (op.b1 == uint32_t(MozOp::StackSwitch)) {
+          if (!f.moduleEnv().isBuiltinModule() ||
+              !f.moduleEnv().jsPromiseIntegrationEnabled()) {
+            return f.iter().unrecognizedOpcode(&op);
+          }
+          CHECK(EmitStackSwitch(f));
+        }
+#endif
 
         if (!f.moduleEnv().isAsmJS()) {
           return f.iter().unrecognizedOpcode(&op);
@@ -9326,6 +9409,12 @@ bool wasm::IonCompileFunctions(const ModuleEnvironment& moduleEnv,
     const JitCompileOptions options;
     MIRGraph graph(&alloc);
     CompileInfo compileInfo(locals.length());
+    // Only activate branch hinting if the option is enabled and some hints were
+    // parsed.
+    if (moduleEnv.branchHintingEnabled() && !moduleEnv.branchHints.isEmpty()) {
+      compileInfo.setBranchHinting(true);
+    }
+
     MIRGenerator mir(nullptr, options, &alloc, &graph, &compileInfo,
                      IonOptimizations.get(OptimizationLevel::Wasm));
 

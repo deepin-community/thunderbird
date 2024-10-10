@@ -16,7 +16,7 @@ use audioipc::{ipccore, rpccore, sys, PlatformHandle};
 use cubeb::InputProcessingParams;
 use cubeb_core as cubeb;
 use cubeb_core::ffi;
-use std::convert::{From, TryInto};
+use std::convert::TryInto;
 use std::ffi::CStr;
 use std::mem::size_of;
 use std::os::raw::{c_long, c_void};
@@ -259,6 +259,11 @@ impl ServerStreamCallbacks {
                 self.shm.get_size()
             );
             return cubeb::ffi::CUBEB_ERROR.try_into().unwrap();
+        }
+
+        if nframes == 0 {
+            // Optimization: skip the RPC call when there are no frames.
+            return 0;
         }
 
         let r = self.data_callback_rpc.call(CallbackReq::Data {

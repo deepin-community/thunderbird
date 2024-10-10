@@ -20,23 +20,10 @@ customElements.whenDefined("autocomplete-input").then(() => {
   const lazy = {};
   ChromeUtils.defineESModuleGetters(lazy, {
     GlodaIMSearcher: "resource:///modules/GlodaIMSearcher.sys.mjs",
+    Gloda: "resource:///modules/gloda/GlodaPublic.sys.mjs",
+    GlodaMsgSearcher: "resource:///modules/gloda/GlodaMsgSearcher.sys.mjs",
+    GlodaConstants: "resource:///modules/gloda/GlodaConstants.sys.mjs",
   });
-  ChromeUtils.defineModuleGetter(
-    lazy,
-    "Gloda",
-    "resource:///modules/gloda/GlodaPublic.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    lazy,
-    "GlodaMsgSearcher",
-    "resource:///modules/gloda/GlodaMsgSearcher.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    lazy,
-    "GlodaConstants",
-    "resource:///modules/gloda/GlodaConstants.jsm"
-  );
-
   ChromeUtils.defineLazyGetter(
     lazy,
     "glodaCompleter",
@@ -111,7 +98,7 @@ customElements.whenDefined("autocomplete-input").then(() => {
 
       // @implements {nsIObserver}
       this.textObserver = {
-        observe: (subject, topic, data) => {
+        observe: (subject, topic) => {
           try {
             // Some autocomplete controllers throw NS_ERROR_NOT_IMPLEMENTED.
             subject.popupElement;

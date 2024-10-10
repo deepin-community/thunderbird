@@ -5,8 +5,6 @@
 
 // this file implements the nsMsgFilterList interface
 
-#include "nsTextFormatter.h"
-
 #include "msgCore.h"
 #include "nsMsgFilterList.h"
 #include "nsMsgFilter.h"
@@ -21,7 +19,6 @@
 #include "nsNetUtil.h"
 #include "nsIInputStream.h"
 #include "nsNativeCharsetUtils.h"
-#include "nsMemory.h"
 #include "prmem.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Components.h"
@@ -338,7 +335,7 @@ nsMsgFilterList::ApplyFiltersToHdr(nsMsgFilterTypeType filterType,
         filter->SetScope(nullptr);
         if (NS_SUCCEEDED(matchTermStatus) && result && listener) {
           nsCString msgId;
-          msgHdr->GetMessageId(getter_Copies(msgId));
+          msgHdr->GetMessageId(msgId);
           MOZ_LOG(FILTERLOGMODULE, LogLevel::Info,
                   ("(Auto) Filter matched message with key %" PRIu32,
                    msgKeyToInt(msgKey)));

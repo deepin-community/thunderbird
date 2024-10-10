@@ -51,6 +51,8 @@ calendar-event-listing-column-title =
 
 ## Interval dropdown options
 
+calendar-event-listing-interval-past =
+    .label = Εκδηλώσεις στο παρελθόν
 calendar-event-listing-interval-calendar-month =
     .label = Εκδηλώσεις σε αυτόν τον ημερολογιακό μήνα
 calendar-event-listing-interval-current-view =
@@ -65,6 +67,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Εκδηλώσεις στους επόμενους 6 μήνες
 calendar-event-listing-interval-next-12-months =
     .label = Εκδηλώσεις στους επόμενους 12 μήνες
+calendar-event-listing-interval-all =
+    .label = Όλες οι εκδηλώσεις
 calendar-event-listing-interval-selected-day =
     .label = Τρέχουσα επιλεγμένη ημέρα
 calendar-event-listing-interval-today =

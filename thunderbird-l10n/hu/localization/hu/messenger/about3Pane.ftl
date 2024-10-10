@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Ezen üzenetek szűrése… <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Üzenetek szűrése:
+quick-filter-bar-search2 =
+    .label = Üzenetek szűrése
+quick-filter-bar-searching =
+    .title = Keresés…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -504,17 +506,39 @@ apply-current-view-to-folder-with-children-message = Alkalmazza az aktuális map
 # Variables:
 # $unread (Number) - Number of unread messages in thread.
 # $total (Number) - Number of messages in thread.
-threadpane-sort-header-unread =
-    { $total ->
-        [one] <span data-l10n-name="threadpane-sort-header-unread-count">{ $unread }</span> olvasatlan / <span data-l10n-name="threadpane-sort-header-total-count"> { $total }</span> üzenetből
-       *[other] <span data-l10n-name="threadpane-sort-header-unread-count">{ $unread }</span> olvasatlan / <span data-l10n-name="threadpane-sort-header-total-count"> { $total }</span> üzenetből
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span> olvasatlan az <span>1</span> üzenetből
+               *[other] <span>1</span> olvasatlan az <span>{ $total }</span> üzenetből
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> olvasatlan az 1 üzenetből
+               *[other] <span>{ $unread }</span> olvasatlan az <span>{ $total }</span> üzenetből
+            }
     }
 # Variables:
 # $total (Number) - Number of messages in thread.
-threadpane-sort-header =
+threadpane-sort-header-count =
     { $total ->
-        [one] <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> üzenet
-       *[other] <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> üzenet
+        [one] <span>1</span> üzenet
+       *[other] <span>{ $total }</span> üzenet
     }
 threadpane-card-menu-button =
     .title = Üzenet menü
+message-list-placeholder-no-messages = Nem található üzenet
+message-list-placeholder-multiple-folders = Több mappa kijelölve
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Mappa megjelölése olvasottként
+           *[other] Mappák megjelölése olvasottként
+        }
+    .accesskey = j

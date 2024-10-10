@@ -16,5 +16,4 @@ thunderbird: embedded-library libjsoncpp [usr/lib/thunderbird/libxul.so]
 # NSS isn't packaged in the required version yet
 #thunderbird: embedded-library usr/lib/thunderbird/libnss3.so: nss
 
-thunderbird: embedded-library bzip2 [usr/lib/thunderbird/librnp.so]
 thunderbird: embedded-library freetype [usr/lib/thunderbird/libxul.so]

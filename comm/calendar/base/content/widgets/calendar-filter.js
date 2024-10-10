@@ -1123,6 +1123,35 @@ let CalendarFilteredViewMixin = Base =>
     }
 
     /**
+     * Set start and end range of the filter, all at once, avoiding the
+     * double #invalidate() calls that would otherwise take place.
+     *
+     * @param {?calIDateTime} start - Start time.
+     * @param {?calIDateTime} end - End time.
+     */
+    setDateRange(start, end) {
+      let changed = false;
+      if (
+        this.startDate?.compare(start) != 0 ||
+        this.startDate?.timezone.tzid != start.timezone.tzid
+      ) {
+        this.#filter.startDate = start.clone();
+        this.#filter.startDate.makeImmutable();
+        changed = true;
+      }
+
+      if (this.endDate?.compare(end) != 0 || this.endDate?.timezone.tzid != end.timezone.tzid) {
+        this.#filter.endDate = end.clone();
+        this.#filter.endDate.makeImmutable();
+        changed = true;
+      }
+
+      if (changed) {
+        this.#invalidate();
+      }
+    }
+
+    /**
      * One of the calICalendar.ITEM_FILTER_TYPE constants.
      * This must be set to a non-zero value in order to display any items.
      *
@@ -1289,9 +1318,8 @@ let CalendarFilteredViewMixin = Base =>
       }
       const iterator = cal.iterate.streamValues(this.#filter.getItems(calendar));
       this.#iterators.add(iterator);
-      for await (const chunk of iterator) {
-        this.addItems(chunk);
-      }
+      const items = await Array.fromAsync(iterator);
+      this.addItems(items.flat());
       this.#iterators.delete(iterator);
     }
 
@@ -1303,24 +1331,24 @@ let CalendarFilteredViewMixin = Base =>
     /**
      * Implement this method to add items to the UI.
      *
-     * @param {calIItemBase[]} items
+     * @param {calIItemBase[]} _items
      */
-    addItems(items) {}
+    addItems(_items) {}
 
     /**
      * Implement this method to remove items from the UI.
      *
-     * @param {calIItemBase[]} items
+     * @param {calIItemBase[]} _items
      */
-    removeItems(items) {}
+    removeItems(_items) {}
 
     /**
      * Implement this method to remove all items from a specific calendar from
      * the UI.
      *
-     * @param {string} calendarId
+     * @param {string} _calendarId
      */
-    removeItemsFromCalendar(calendarId) {}
+    removeItemsFromCalendar(_calendarId) {}
 
     /**
      * @implements {calIObserver}
@@ -1328,8 +1356,8 @@ let CalendarFilteredViewMixin = Base =>
     #calendarObserver = {
       QueryInterface: ChromeUtils.generateQI(["calIObserver"]),
 
-      onStartBatch(calendar) {},
-      onEndBatch(calendar) {},
+      onStartBatch() {},
+      onEndBatch() {},
       onLoad(calendar) {
         if (calendar.type == "ics") {
           // ICS doesn't bother telling us about events that disappeared when
@@ -1376,8 +1404,8 @@ let CalendarFilteredViewMixin = Base =>
 
         this.self.removeItems(this.self.#filter.getOccurrences(deletedItem));
       },
-      onError(calendar, errNo, message) {},
-      onPropertyChanged(calendar, name, newValue, oldValue) {
+      onError() {},
+      onPropertyChanged(calendar, name, newValue) {
         if (!["calendar-main-in-composite", "disabled"].includes(name)) {
           return;
         }
@@ -1392,6 +1420,6 @@ let CalendarFilteredViewMixin = Base =>
 
         this.self.#refreshCalendar(calendar);
       },
-      onPropertyDeleting(calendar, name) {},
+      onPropertyDeleting() {},
     };
   };

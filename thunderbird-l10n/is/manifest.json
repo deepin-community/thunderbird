@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-is@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Islenska (Icelandic)",
   "description": "Thunderbird Language Pack for Islenska (is) – Icelandic",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "is": {
-      "version": "20240423200236",
+      "version": "20240930174650",
       "chrome_resources": {
         "alerts": "chrome/is/locale/is/alerts/",
         "autoconfig": "chrome/is/locale/is/autoconfig/",
         "branding": "chrome/is/locale/branding/",
         "calendar": "chrome/is/locale/is/calendar/",
-        "chat": "chrome/is/locale/is/chat/",
         "communicator": "chrome/is/locale/is/communicator/",
         "devtools": "chrome/is/locale/is/devtools/client/",
         "devtools-shared": "chrome/is/locale/is/devtools/shared/",

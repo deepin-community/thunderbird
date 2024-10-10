@@ -407,21 +407,6 @@ class ContentChild final : public PContentChild,
 
   mozilla::ipc::IPCResult RecvShutdown();
 
-  mozilla::ipc::IPCResult RecvInvokeDragSession(
-      const MaybeDiscarded<WindowContext>& aSourceWindowContext,
-      const MaybeDiscarded<WindowContext>& aSourceTopWindowContext,
-      nsTArray<IPCTransferableData>&& aTransferables, const uint32_t& aAction);
-
-  mozilla::ipc::IPCResult RecvUpdateDragSession(
-      nsTArray<IPCTransferableData>&& aTransferables,
-      EventMessage aEventMessage);
-
-  MOZ_CAN_RUN_SCRIPT_BOUNDARY
-  mozilla::ipc::IPCResult RecvEndDragSession(
-      const bool& aDoneDrag, const bool& aUserCancelled,
-      const mozilla::LayoutDeviceIntPoint& aEndDragPoint,
-      const uint32_t& aKeyModifiers, const uint32_t& aDropEffect);
-
   mozilla::ipc::IPCResult RecvPush(const nsCString& aScope,
                                    nsIPrincipal* aPrincipal,
                                    const nsString& aMessageId);
@@ -661,7 +646,8 @@ class ContentChild final : public PContentChild,
       uint64_t aActionId);
   MOZ_CAN_RUN_SCRIPT_BOUNDARY mozilla::ipc::IPCResult RecvAdjustWindowFocus(
       const MaybeDiscarded<BrowsingContext>& aContext, bool aIsVisible,
-      uint64_t aActionId);
+      uint64_t aActionId, bool aShouldClearFocus,
+      const MaybeDiscarded<BrowsingContext>& aAncestorBrowsingContextToFocus);
   MOZ_CAN_RUN_SCRIPT_BOUNDARY mozilla::ipc::IPCResult RecvClearFocus(
       const MaybeDiscarded<BrowsingContext>& aContext);
   mozilla::ipc::IPCResult RecvSetFocusedBrowsingContext(
@@ -777,9 +763,6 @@ class ContentChild final : public PContentChild,
   mozilla::ipc::IPCResult RecvDispatchBeforeUnloadToSubtree(
       const MaybeDiscarded<BrowsingContext>& aStartingAt,
       DispatchBeforeUnloadToSubtreeResolver&& aResolver);
-
-  mozilla::ipc::IPCResult RecvDecoderSupportedMimeTypes(
-      nsTArray<nsCString>&& aSupportedTypes);
 
   mozilla::ipc::IPCResult RecvInitNextGenLocalStorageEnabled(
       const bool& aEnabled);

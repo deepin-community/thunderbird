@@ -4,90 +4,114 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/**
- This module implements the EnigmailKeyObj class with the following members:
-
-  - keyId           - 16 digits (8-byte) public key ID (/not/ preceded with 0x)
-  - userId          - main user ID
-  - fpr             - fingerprint
-  - fprFormatted    - a formatted version of the fingerprint following the scheme .... .... ....
-  - expiry          - Expiry date as printable string
-  - expiryTime      - Expiry time as seconds after 01/01/1970
-  - created         - Key creation date as printable string
-  - keyCreated      - Key creation date/time as number
-  - keyTrust        - key trust code as provided by GnuPG (calculated key validity)
-  - keyUseFor       - key usage type as provided by GnuPG (key capabilities)
-  - ownerTrust      - owner trust as provided by GnuPG
-  - photoAvailable  - [Boolean] true if photo is available
-  - secretAvailable - [Boolean] true if secret key is available
-  - algoSym         - public key algorithm type (String, e.g. RSA)
-  - keySize         - size of public key
-  - type            - "pub" or "grp"
-  - userIds  - [Array]: - Contains ALL UIDs (including the primary UID)
-                    * userId     - User ID
-                    * keyTrust   - trust level of user ID
-                    * uidFpr     - fingerprint of the user ID
-                    * type       - one of "uid" (regular user ID), "uat" (photo)
-                    * uatNum     - photo number (starting with 0 for each key)
-  - subKeys     - [Array]:
-                    * keyId      - subkey ID (16 digits (8-byte))
-                    * expiry     - Expiry date as printable string
-                    * expiryTime - Expiry time as seconds after 01/01/1970
-                    * created    - Subkey creation date as printable string
-                    * keyCreated - Subkey creation date/time as number
-                    * keyTrust   - key trust code as provided by GnuPG
-                    * keyUseFor  - key usage type as provided by GnuPG
-                    * algoSym    - subkey algorithm type (String, e.g. RSA)
-                    * keySize    - subkey size
-                    * type       -  "sub"
-
-  - methods:
-     * hasSubUserIds
-     * getKeyExpiry
-     * getEncryptionValidity
-     * getSigningValidity
-     * getPubKeyValidity
-     * clone
-     * getMinimalPubKey
-     * getVirtualKeySize
-*/
-
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
-  EnigmailCryptoAPI: "chrome://openpgp/content/modules/cryptoAPI.sys.mjs",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.sys.mjs",
   EnigmailKey: "chrome://openpgp/content/modules/key.sys.mjs",
-  EnigmailLog: "chrome://openpgp/content/modules/log.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
 
-export function newEnigmailKeyObj(keyData) {
-  return new EnigmailKeyObj(keyData);
-}
+/**
+ * Key object.
+ */
+export class EnigmailKeyObj {
+  /** @type {string} - 16 digits (8-byte) public key ID (/not/ preceded with 0x) */
+  keyId = "";
 
-class EnigmailKeyObj {
+  /** @type {string} - Main user ID. */
+  userId = "";
+
+  /**
+   * Fingerprint. Use `fprFormatted` getter to obtain a formatted version of the
+   * fingerprint, like .... .... ....
+   *
+   * @type {string} - Fingerprint.
+   */
+  fpr = "";
+
+  /** @type {string} - Expiry date as printable string */
+  expiry = "";
+
+  /** @type {integer} - Expiry time as seconds after 01/01/1970. */
+  expiryTime = 0;
+
+  /** @type {string} - Key creation date as printable string. */
+  created = "";
+
+  /** @type {integer} - Key creation date/time as number */
+  keyCreated = 0;
+
+  /** @type {string} - Key trust code as provided by GnuPG (calculated key validity). */
+  keyTrust = "";
+
+  /** @type {string} - Key usage type as provided by GnuPG (key capabilities). */
+  keyUseFor = "";
+
+  /** @type {string} - Owner trust. */
+  ownerTrust = "";
+
+  /** @type {boolean} - True if photo is available. */
+  photoAvailable = false;
+
+  /** @type {boolean} - True if secret key is available. */
+  secretAvailable = false;
+
+  /** @type {boolean} - Is secret key material available. */
+  secretMaterial = false;
+
+  /** @type {integer} - Bitmask of feature flags, see PGP_KEY_FEATURE_ . */
+  features = 0;
+
+  /** @type {string} - Public key algorithm type (e.g. RSA). */
+  algoSym = "";
+
+  /** @type {integer} - Size of public key. */
+  keySize = 0;
+
+  /** @type {string} - "pub" or "grp" */
+  type = "";
+
+  /**
+   * Contains all UIDs (including the primary UID).
+   *
+   * @type {object[]} ids
+   * @type {string} ids[].userId - User ID.
+   * @type {string} ids[].keyTrust - Trust level of user ID.
+   * @type {string} ids[].uidFpr - Fingerprint of the user ID
+   * @type {string} ids[].type - one of "uid" (regular user ID), "uat" (photo).
+   * @type {integer} ids[].uatNum - Photo number (starting with 0 for each key).
+   */
+  userIds = [];
+
+  /**
+   * Subkeys.
+   *
+   * @type {object[]} keys
+   * @type {string} keys[].keyId - Subkey ID (16 digits (8-byte)).
+   * @type {string} keys[].expiry - Expiry date as printable string.
+   * @type {integer} keys[].expiryTime - Expiry time as seconds after 01/01/1970.
+   * @type {string} keys[].created - Subkey creation date as printable string.
+   * @type {integer} keys[].keyCreated - Subkey creation date/time as number.
+   * @type {string} keys[].keyTrust - Key trust code as provided by GnuPG.
+   * @type {string} keys[].keyUseFor - Key usage type as provided by GnuPG.
+   * @type {string} keys[].algoSym - Subkey algorithm type (e.g. RSA).
+   * @type {integer} keys[].keySize - Subkey size.
+   * @type {"sub"} keys[].type - Type.
+   */
+  subKeys = [];
+
+  /** @type {Map<string,string>} - Email to minimal keyblock map. */
+  minimalKeyBlock = new Map();
+
+  /**
+   * Constructor.
+   *
+   * @param {object} keyData
+   */
   constructor(keyData) {
-    this.keyId = "";
-    this.expiry = "";
-    this.expiryTime = 0;
-    this.created = "";
-    this.keyTrust = "";
-    this.keyUseFor = "";
-    this.ownerTrust = "";
-    this.algoSym = "";
-    this.keySize = "";
-    this.userId = "";
-    this.userIds = [];
-    this.subKeys = [];
-    this.fpr = "";
-    this.minimalKeyBlock = [];
-    this.photoAvailable = false;
-    this.secretAvailable = false;
-    this.secretMaterial = false;
-
     this.type = keyData.type;
     if ("keyId" in keyData) {
       this.keyId = keyData.keyId;
@@ -125,6 +149,7 @@ class EnigmailKeyObj {
       "photoAvailable",
       "userId",
       "hasIgnoredAttributes",
+      "features",
     ];
     for (const i of ATTRS) {
       if (i in keyData) {
@@ -134,7 +159,7 @@ class EnigmailKeyObj {
   }
 
   /**
-   * create a copy of the object
+   * Create a copy of the object.
    */
   clone() {
     const cp = new EnigmailKeyObj(["copy"]);
@@ -172,7 +197,7 @@ class EnigmailKeyObj {
    * Get a formatted version of the fingerprint:
    * 1234 5678 90AB CDEF .... ....
    *
-   * @returns {string} The formatted fingerprint.
+   * @returns {string} the formatted fingerprint.
    */
   get fprFormatted() {
     let f = lazy.EnigmailKey.formatFpr(this.fpr);
@@ -186,8 +211,8 @@ class EnigmailKeyObj {
    * Determine if the public key is valid. If not, return a description why it's not
    *
    * @returns {object} validity
-   * @returns {boolean} validity.keyValid - true if key is valid
-   * @returns {string} validity.reason - explanation of invalidity
+   * @returns {boolean} validity.keyValid - true if key is valid.
+   * @returns {string} validity.reason - Explanation of invalidity.
    */
   getPubKeyValidity(exceptionReason = null) {
     const retVal = {
@@ -217,11 +242,12 @@ class EnigmailKeyObj {
   }
 
   /**
-   * Check whether a key can be used for signing and return a description of why not
+   * Check whether a key can be used for signing and return a description of
+   * why not.
    *
    * @returns {object} validity
-   * @returns {boolean} validity.keyValid - true if key is valid
-   * @returns {string} validity.reason - explanation of invalidity
+   * @returns {boolean} validity.keyValid - true if key is valid.
+   * @returns {string} validity.reason - Explanation of invalidity
    */
   getSigningValidity(exceptionReason = null) {
     const retVal = this.getPubKeyValidity(exceptionReason);
@@ -469,105 +495,12 @@ class EnigmailKeyObj {
   }
 
   /**
-   * Export the minimum key for the public key object:
-   * public key, desired UID, newest signing/encryption subkey
-   *
-   * @param {string} [emailAddr] - The email address of UID to extract.
-   *   Use primary UID if null.
-   * @returns {object} minimal
-   * @returns {integer} minimal.exitCode 0 for success.
-   * @returns {string} minimal.errorMsg error message, if exitCode != 0.
-   * @returns {string} minimal.keyData BASE64-encded string of key data.
-   */
-  getMinimalPubKey(emailAddr) {
-    lazy.EnigmailLog.DEBUG(
-      "keyObj.jsm: EnigmailKeyObj.getMinimalPubKey: " + this.keyId + "\n"
-    );
-
-    if (emailAddr) {
-      try {
-        emailAddr = lazy.EnigmailFuncs.stripEmail(emailAddr.toLowerCase());
-      } catch (x) {
-        emailAddr = emailAddr.toLowerCase();
-      }
-
-      let foundUid = false,
-        uid = "";
-      for (const i in this.userIds) {
-        try {
-          uid = lazy.EnigmailFuncs.stripEmail(
-            this.userIds[i].userId.toLowerCase()
-          );
-        } catch (x) {
-          uid = this.userIds[i].userId.toLowerCase();
-        }
-
-        if (uid == emailAddr) {
-          foundUid = true;
-          break;
-        }
-      }
-      if (!foundUid) {
-        emailAddr = false;
-      }
-    }
-
-    if (!emailAddr) {
-      emailAddr = this.userId;
-    }
-
-    try {
-      emailAddr = lazy.EnigmailFuncs.stripEmail(emailAddr.toLowerCase());
-    } catch (x) {
-      emailAddr = emailAddr.toLowerCase();
-    }
-
-    let newestSigningKey = 0,
-      newestEncryptionKey = 0,
-      subkeysArr = null;
-
-    // search for valid subkeys
-    for (const sk in this.subKeys) {
-      if (!"indDre".includes(this.subKeys[sk].keyTrust)) {
-        if (this.subKeys[sk].keyUseFor.search(/[sS]/) >= 0) {
-          // found signing subkey
-          if (this.subKeys[sk].keyCreated > newestSigningKey) {
-            newestSigningKey = this.subKeys[sk].keyCreated;
-          }
-        }
-        if (this.subKeys[sk].keyUseFor.search(/[eE]/) >= 0) {
-          // found encryption subkey
-          if (this.subKeys[sk].keyCreated > newestEncryptionKey) {
-            newestEncryptionKey = this.subKeys[sk].keyCreated;
-          }
-        }
-      }
-    }
-
-    if (newestSigningKey > 0 && newestEncryptionKey > 0) {
-      subkeysArr = [newestEncryptionKey, newestSigningKey];
-    }
-
-    if (!(emailAddr in this.minimalKeyBlock)) {
-      const cApi = lazy.EnigmailCryptoAPI();
-      this.minimalKeyBlock[emailAddr] = cApi.sync(
-        cApi.getMinimalPubKey(this.fpr, emailAddr, subkeysArr)
-      );
-    }
-    return this.minimalKeyBlock[emailAddr];
-  }
-
-  /**
    * Obtain a "virtual" key size that allows to compare different algorithms with each other
    * e.g. elliptic curve keys have small key sizes with high cryptographic strength
    *
-   * @returns {integer} a virtual size
+   * @returns {integer} a virtual size.
    */
   getVirtualKeySize() {
-    lazy.EnigmailLog.DEBUG(
-      "keyObj.jsm: EnigmailKeyObj.getVirtualKeySize: " + this.keyId + "\n"
-    );
-
     switch (this.algoSym) {
       case "DSA":
         return this.keySize / 2;
@@ -578,19 +511,6 @@ class EnigmailKeyObj {
       default:
         return this.keySize;
     }
-  }
-
-  /**
-   * @param {boolean} minimalKey - if true, reduce key to minimum required
-   *
-   * @returns {object}:
-   *   - {Number} exitCode:  result code (0: OK)
-   *   - {String} keyData:   ASCII armored key data material
-   *   - {String} errorMsg:  error message in case exitCode !== 0
-   */
-  getSecretKey(minimalKey) {
-    const cApi = lazy.EnigmailCryptoAPI();
-    return cApi.sync(cApi.extractSecretKey(this.fpr, minimalKey));
   }
 
   iSimpleOneSubkeySameExpiry() {
@@ -649,6 +569,7 @@ class EnigmailKeyObj {
   }
 
   getUserIdWithEmail(email) {
+    email = email.toLowerCase();
     for (const u of this.userIds) {
       let e;
       try {
@@ -663,5 +584,52 @@ class EnigmailKeyObj {
     }
 
     return null;
+  }
+
+  /**
+   * Convert the given encoded string (from keyObj attribute keyUseFor)
+   * of usages into a human readable description. Capital Letters in
+   * the string are ignored, as these reflect summary properties.
+   * Lowercase characters and their meaning:
+   * e = encrypt
+   * s = sign
+   * c = certify
+   * a = authentication
+   *
+   * @param {string} keyUseFor
+   * @returns {string} the human readable description
+   */
+  getUsageText(keyUseFor) {
+    let usagetext = "";
+
+    for (let i = 0; i < keyUseFor.length; i++) {
+      switch (keyUseFor.substr(i, 1)) {
+        case "e":
+          if (usagetext.length > 0) {
+            usagetext += ", ";
+          }
+          usagetext += lazy.l10n.formatValueSync("key-usage-encrypt");
+          break;
+        case "s":
+          if (usagetext.length > 0) {
+            usagetext += ", ";
+          }
+          usagetext += lazy.l10n.formatValueSync("key-usage-sign");
+          break;
+        case "c":
+          if (usagetext.length > 0) {
+            usagetext += ", ";
+          }
+          usagetext += lazy.l10n.formatValueSync("key-usage-certify");
+          break;
+        case "a":
+          if (usagetext.length > 0) {
+            usagetext += ", ";
+          }
+          usagetext += lazy.l10n.formatValueSync("key-usage-authentication");
+          break;
+      } // * case *
+    } // * for *
+    return usagetext;
   }
 }

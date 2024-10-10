@@ -3,33 +3,34 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!--LOCALIZATION NOTE messengercompose.dtd Main UI for message composition -->
-<!ENTITY msgComposeWindow.title "Укладанне: (без тэмы)">
+<!ENTITY msgComposeWindow.title "Стварэнне паведамлення: (без тэмы)">
 
 <!-- File Menu -->
 <!ENTITY fileMenu.label "Файл">
-<!ENTITY fileMenu.accesskey "ф">
-<!ENTITY newMenu.label "Новы">
-<!ENTITY newMenu.accesskey "н">
-<!ENTITY newMessage.label "Ліст">
+<!ENTITY fileMenu.accesskey "Ф">
+<!ENTITY newMenu.label "Стварыць">
+<!ENTITY newMenu.accesskey "С">
+<!ENTITY newMessage.label "Паведамленне">
+<!ENTITY newMessage.accesskey "П">
 <!ENTITY newMessageCmd2.key "N">
-<!ENTITY newContact.label "Сувязь з адраснай кнігі…">
-<!ENTITY newContact.accesskey "С">
-<!ENTITY attachMenu.label "Далучыць">
-<!ENTITY attachMenu.accesskey "л">
+<!ENTITY newContact.label "Кантакт з адраснай кнігі…">
+<!ENTITY newContact.accesskey "К">
+<!ENTITY attachMenu.label "Прымацаваць">
+<!ENTITY attachMenu.accesskey "П">
 <!ENTITY attachCloudCmd.label "Filelink">
 <!ENTITY attachCloudCmd.accesskey "i">
-<!ENTITY attachPageCmd.label "Старонку Сеціва…">
-<!ENTITY attachPageCmd.accesskey "С">
-<!ENTITY remindLater.label "Напомніць мне пазней">
-<!ENTITY remindLater.accesskey "п">
-<!ENTITY closeCmd.label "Зачыніць">
+<!ENTITY attachPageCmd.label "Вэб-старонку…">
+<!ENTITY attachPageCmd.accesskey "В">
+<!ENTITY remindLater.label "Нагадаць пазней">
+<!ENTITY remindLater.accesskey "Н">
+<!ENTITY closeCmd.label "Закрыць">
 <!ENTITY closeCmd.key "W">
-<!ENTITY closeCmd.accesskey "ч">
+<!ENTITY closeCmd.accesskey "З">
 <!ENTITY saveCmd.label "Захаваць">
 <!ENTITY saveCmd.key "S">
 <!ENTITY saveCmd.accesskey "З">
 <!ENTITY saveAsCmd.label "Захаваць як">
-<!ENTITY saveAsCmd.accesskey "Я">
+<!ENTITY saveAsCmd.accesskey "а">
 <!ENTITY saveAsFileCmd.label "Файл…">
 <!ENTITY saveAsFileCmd.accesskey "Ф">
 <!ENTITY saveAsDraftCmd.label "Чарнавік">
@@ -49,12 +50,12 @@
 <!-- Edit Menu -->
 <!ENTITY editMenu.label "Праўка">
 <!ENTITY editMenu.accesskey "П">
-<!ENTITY undoCmd.label "Адмяніць">
+<!ENTITY undoCmd.label "Адрабіць">
 <!ENTITY undoCmd.key "Z">
 <!ENTITY undoCmd.accesskey "А">
-<!ENTITY redoCmd.label "Вярнуць">
+<!ENTITY redoCmd.label "Узнавіць">
 <!ENTITY redoCmd.key "Y">
-<!ENTITY redoCmd.accesskey "В">
+<!ENTITY redoCmd.accesskey "У">
 <!ENTITY cutCmd.key "X">
 <!ENTITY copyCmd.key "C">
 <!ENTITY pasteCmd.key "V">
@@ -164,15 +165,15 @@
 <!ENTITY fileHereMenu.label "Пакласці тут">
 
 <!-- Tools Menu -->
-<!ENTITY tasksMenu.label "Прылады">
+<!ENTITY tasksMenu.label "Інструменты">
 <!ENTITY tasksMenu.accesskey "л">
-<!ENTITY messengerCmd.label "Пошта і Навінакупы">
+<!ENTITY messengerCmd.label "Пошта і групы навін">
 <!ENTITY messengerCmd.accesskey "П">
 <!ENTITY messengerCmd.commandkey "1">
 <!ENTITY addressBookCmd.label "Адрасная кніга">
 <!ENTITY addressBookCmd.accesskey "а">
 <!ENTITY addressBookCmd.key "B">
-<!ENTITY accountManagerCmd2.label "Наладжванні рахунку">
+<!ENTITY accountManagerCmd2.label "Налады ўліковага запісу">
 <!ENTITY accountManagerCmd2.accesskey "Н">
 <!ENTITY accountManagerCmdUnix2.accesskey "Н">
 
@@ -234,7 +235,7 @@
 <!ENTITY spellCheckIgnoreWord.accesskey "І">
 <!ENTITY spellCheckAddToDictionary.label "Дадаць у слоўнік">
 <!ENTITY spellCheckAddToDictionary.accesskey "с">
-<!ENTITY undo.label "Адмяніць">
+<!ENTITY undo.label "Адрабіць">
 <!ENTITY undo.accesskey "м">
 <!ENTITY cut.label "Выразаць">
 <!ENTITY cut.accesskey "р">
@@ -246,7 +247,7 @@
 <!ENTITY pasteQuote.accesskey "В">
 
 <!-- Attachment Item and List Context Menus -->
-<!ENTITY openAttachment.label "Адчыніць">
+<!ENTITY openAttachment.label "Адкрыць">
 <!ENTITY openAttachment.accesskey "А">
 <!ENTITY delete.label "Выдаліць">
 <!ENTITY delete.accesskey "д">
@@ -256,42 +257,46 @@
 <!ENTITY renameAttachment.accesskey "З">
 <!ENTITY reorderAttachments.label "Перапарадкаваць укладанні…">
 <!ENTITY reorderAttachments.accesskey "а">
+<!ENTITY removeAllAttachments.label "Выдаліць усе прымацаванні">
+<!ENTITY removeAllAttachments.accesskey "В">
 <!ENTITY selectAll.label "Вылучыць усё">
-<!ENTITY selectAll.accesskey "У">
+<!ENTITY selectAll.accesskey "ы">
 <!ENTITY attachCloud.label "Filelink…">
 <!ENTITY attachCloud.accesskey "i">
 <!ENTITY convertCloud.label "Ператварыць у…">
 <!ENTITY convertCloud.accesskey "т">
-<!ENTITY cancelUpload.label "Скасаваць зацягванне">
-<!ENTITY cancelUpload.accesskey "к">
-<!ENTITY convertRegularAttachment.label "Звычайнае далучэнне">
-<!ENTITY convertRegularAttachment.accesskey "д">
-<!ENTITY attachPage.label "Далучыць старонку Сеціва…">
-<!ENTITY attachPage.accesskey "с">
+<!ENTITY cancelUpload.label "Скасаваць запампоўванне">
+<!ENTITY cancelUpload.accesskey "С">
+<!ENTITY convertRegularAttachment.label "Звычайнае прымацаванне">
+<!ENTITY convertRegularAttachment.accesskey "п">
+<!ENTITY attachPage.label "Прымацаваць вэб-старонку…">
+<!ENTITY attachPage.accesskey "в">
 
 <!-- Attachment Pane Header Bar Context Menu -->
 <!-- LOCALIZATION NOTE (initiallyShowAttachmentPane.label):
      Should use the same wording as startExpandedCmd.label
      in msgHdrViewOverlay.dtd. -->
+<!ENTITY initiallyShowAttachmentPane.label "Спачатку паказваць панэль прымацаванняў">
+<!ENTITY initiallyShowAttachmentPane.accesskey "С">
 
 <!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Дадаць слоўнікі…">
 <!ENTITY spellAddDictionaries.accesskey "Д">
 
 <!-- Title for the address picker panel -->
-<!ENTITY addressesSidebarTitle.label "Сувязі">
+<!ENTITY addressesSidebarTitle.label "Кантакты">
 
 <!-- Identity popup customize menuitem -->
-<!ENTITY customizeFromAddress.label "Наладзіць адрас адпраўніка…">
-<!ENTITY customizeFromAddress.accesskey "Н">
+<!ENTITY customizeFromAddress.label "Персаналізаваць адрас адпраўніка…">
+<!ENTITY customizeFromAddress.accesskey "П">
 
 <!-- Accessibility name for the document -->
+<!ENTITY aria.message.bodyName "Цела паведамлення">
 
 <!-- Status Bar -->
 <!ENTITY languageStatusButton.tooltip "Мова праверкі правапісу">
-<!ENTITY encodingStatusPanel.tooltip "Кадаванне тэксту">
+<!ENTITY encodingStatusPanel.tooltip "Кадзіроўка тэксту">
 
-<!ENTITY newMessage.accesskey "M">
 <!ENTITY sortAttachmentsPanelBtn.key "y">
 <!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
     Subject: rows. It should be larger than the largest Header label  -->
@@ -302,12 +307,3 @@
 <!ENTITY followupAddr2.label "Followup-To">
 <!ENTITY subject2.label "Subject">
 <!ENTITY attachmentBucketCloseButton.tooltip "Hide the attachment pane">
-<!ENTITY removeAllAttachments.label "Remove All Attachments">
-<!ENTITY removeAllAttachments.accesskey "v">
-<!-- LOCALIZATION NOTE (initiallyShowAttachmentPane.label):
-     Should use the same wording as startExpandedCmd.label
-     in msgHdrViewOverlay.dtd. -->
-<!ENTITY initiallyShowAttachmentPane.label "Initially Show Attachment Pane">
-<!ENTITY initiallyShowAttachmentPane.accesskey "S">
-<!-- Accessibility name for the document -->
-<!ENTITY aria.message.bodyName "Message body">

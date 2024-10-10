@@ -163,9 +163,10 @@ void InitializeSSLServerCertVerificationThreads() {
   gCertVerificationThreadPool = new nsThreadPool();
   NS_ADDREF(gCertVerificationThreadPool);
 
-  (void)gCertVerificationThreadPool->SetIdleThreadLimit(5);
-  (void)gCertVerificationThreadPool->SetIdleThreadTimeout(30 * 1000);
   (void)gCertVerificationThreadPool->SetThreadLimit(5);
+  (void)gCertVerificationThreadPool->SetIdleThreadLimit(1);
+  (void)gCertVerificationThreadPool->SetIdleThreadMaximumTimeout(30 * 1000);
+  (void)gCertVerificationThreadPool->SetIdleThreadGraceTimeout(500);
   (void)gCertVerificationThreadPool->SetName("SSL Cert"_ns);
 }
 
@@ -758,14 +759,15 @@ SSLServerCertVerificationJob::Run() {
   // Runs on a cert verification thread and only on parent process.
   MOZ_ASSERT(XRE_IsParentProcess());
 
-  MOZ_LOG(
-      gPIPNSSLog, LogLevel::Debug,
-      ("[%" PRIx64 "] SSLServerCertVerificationJob::Run\n", mAddrForLogging));
+  MOZ_LOG(gPIPNSSLog, LogLevel::Debug,
+          ("[%" PRIx64 "] SSLServerCertVerificationJob::Run", mAddrForLogging));
 
   RefPtr<SharedCertVerifier> certVerifier(GetDefaultCertVerifier());
   if (!certVerifier) {
-    PR_SetError(SEC_ERROR_NOT_INITIALIZED, 0);
-    return NS_OK;
+    // We can't release this off the STS thread because some parts of it
+    // are not threadsafe. Just leak mResultTask.
+    Unused << mResultTask.forget();
+    return NS_ERROR_FAILURE;
   }
 
   TimeStamp jobStartTime = TimeStamp::Now();
@@ -775,34 +777,39 @@ SSLServerCertVerificationJob::Run() {
   bool madeOCSPRequests = false;
   nsTArray<nsTArray<uint8_t>> builtChainBytesArray;
   nsTArray<uint8_t> certBytes(mPeerCertChain.ElementAt(0).Clone());
-  Result rv = AuthCertificate(
+  Result result = AuthCertificate(
       *certVerifier, mPinArg, certBytes, mPeerCertChain, mHostName,
       mOriginAttributes, mStapledOCSPResponse, mSCTsFromTLSExtension, mDCInfo,
       mProviderFlags, mTime, mCertVerifierFlags, builtChainBytesArray, evStatus,
       certificateTransparencyInfo, isCertChainRootBuiltInRoot,
       madeOCSPRequests);
 
-  if (rv == Success) {
+  if (result == Success) {
     Telemetry::AccumulateTimeDelta(
         Telemetry::SSL_SUCCESFUL_CERT_VALIDATION_TIME_MOZILLAPKIX, jobStartTime,
         TimeStamp::Now());
     Telemetry::Accumulate(Telemetry::SSL_CERT_ERROR_OVERRIDES, 1);
 
-    mResultTask->Dispatch(
+    nsresult rv = mResultTask->Dispatch(
         std::move(builtChainBytesArray), std::move(mPeerCertChain),
         TransportSecurityInfo::ConvertCertificateTransparencyInfoToStatus(
             certificateTransparencyInfo),
         evStatus, true, 0,
         nsITransportSecurityInfo::OverridableErrorCategory::ERROR_UNSET,
         isCertChainRootBuiltInRoot, mProviderFlags, madeOCSPRequests);
-    return NS_OK;
+    if (NS_FAILED(rv)) {
+      // We can't release this off the STS thread because some parts of it
+      // are not threadsafe. Just leak mResultTask.
+      Unused << mResultTask.forget();
+    }
+    return rv;
   }
 
   Telemetry::AccumulateTimeDelta(
       Telemetry::SSL_INITIAL_FAILED_CERT_VALIDATION_TIME_MOZILLAPKIX,
       jobStartTime, TimeStamp::Now());
 
-  PRErrorCode error = MapResultToPRErrorCode(rv);
+  PRErrorCode error = MapResultToPRErrorCode(result);
   nsITransportSecurityInfo::OverridableErrorCategory overridableErrorCategory =
       nsITransportSecurityInfo::OverridableErrorCategory::ERROR_UNSET;
   nsCOMPtr<nsIX509Cert> cert(new nsNSSCertificate(std::move(certBytes)));
@@ -811,12 +818,22 @@ SSLServerCertVerificationJob::Run() {
       overridableErrorCategory);
 
   // NB: finalError may be 0 here, in which the connection will continue.
-  mResultTask->Dispatch(
+  nsresult rv = mResultTask->Dispatch(
       std::move(builtChainBytesArray), std::move(mPeerCertChain),
       nsITransportSecurityInfo::CERTIFICATE_TRANSPARENCY_NOT_APPLICABLE,
-      EVStatus::NotEV, false, finalError, overridableErrorCategory, false,
+      EVStatus::NotEV, false, finalError, overridableErrorCategory,
+      // If the certificate verifier returned Result::ERROR_BAD_CERT_DOMAIN, a
+      // chain was built, so isCertChainRootBuiltInRoot is valid and
+      // potentially useful. Otherwise, assume no chain was built.
+      result == Result::ERROR_BAD_CERT_DOMAIN ? isCertChainRootBuiltInRoot
+                                              : false,
       mProviderFlags, madeOCSPRequests);
-  return NS_OK;
+  if (NS_FAILED(rv)) {
+    // We can't release this off the STS thread because some parts of it
+    // are not threadsafe. Just leak mResultTask.
+    Unused << mResultTask.forget();
+  }
+  return rv;
 }
 
 // Takes information needed for cert verification, does some consistency
@@ -1039,7 +1056,7 @@ SSLServerCertVerificationResult::SSLServerCertVerificationResult(
           nsITransportSecurityInfo::OverridableErrorCategory::ERROR_UNSET),
       mProviderFlags(0) {}
 
-void SSLServerCertVerificationResult::Dispatch(
+nsresult SSLServerCertVerificationResult::Dispatch(
     nsTArray<nsTArray<uint8_t>>&& aBuiltChain,
     nsTArray<nsTArray<uint8_t>>&& aPeerCertChain,
     uint16_t aCertificateTransparencyStatus, EVStatus aEVStatus,
@@ -1059,15 +1076,22 @@ void SSLServerCertVerificationResult::Dispatch(
   mProviderFlags = aProviderFlags;
   mMadeOCSPRequests = aMadeOCSPRequests;
 
-  if (mSucceeded && mBuiltChain.IsEmpty()) {
+  if (mSucceeded &&
+      (mBuiltChain.IsEmpty() || mFinalError != 0 ||
+       mOverridableErrorCategory !=
+           nsITransportSecurityInfo::OverridableErrorCategory::ERROR_UNSET)) {
     MOZ_ASSERT_UNREACHABLE(
-        "if the handshake succeeded, the built chain shouldn't be empty");
+        "if certificate verification succeeded without overridden errors, the "
+        "built chain shouldn't be empty and any error bits should be unset");
     mSucceeded = false;
     mFinalError = SEC_ERROR_LIBRARY_FAILURE;
   }
+  // Note that mSucceeded can be false while mFinalError is 0, in which case
+  // the connection will proceed.
   if (!mSucceeded && mPeerCertChain.IsEmpty()) {
     MOZ_ASSERT_UNREACHABLE(
-        "if the handshake failed, the peer chain shouldn't be empty");
+        "if certificate verification failed, the peer chain shouldn't be "
+        "empty");
     mFinalError = SEC_ERROR_LIBRARY_FAILURE;
   }
 
@@ -1075,9 +1099,15 @@ void SSLServerCertVerificationResult::Dispatch(
   nsCOMPtr<nsIEventTarget> stsTarget =
       do_GetService(NS_SOCKETTRANSPORTSERVICE_CONTRACTID, &rv);
   MOZ_ASSERT(stsTarget, "Failed to get socket transport service event target");
+  if (!stsTarget) {
+    // This has to be released on STS; just leak it
+    Unused << mSocketControl.forget();
+    return NS_ERROR_FAILURE;
+  }
   rv = stsTarget->Dispatch(this, NS_DISPATCH_NORMAL);
   MOZ_ASSERT(NS_SUCCEEDED(rv),
              "Failed to dispatch SSLServerCertVerificationResult");
+  return rv;
 }
 
 NS_IMETHODIMP
@@ -1101,6 +1131,8 @@ SSLServerCertVerificationResult::Run() {
   }
 
   mSocketControl->SetMadeOCSPRequests(mMadeOCSPRequests);
+  mSocketControl->SetIsBuiltCertChainRootBuiltInRoot(
+      mIsBuiltCertChainRootBuiltInRoot);
 
   if (mSucceeded) {
     MOZ_LOG(gPIPNSSLog, LogLevel::Debug,
@@ -1109,9 +1141,6 @@ SSLServerCertVerificationResult::Run() {
     nsCOMPtr<nsIX509Cert> cert(new nsNSSCertificate(std::move(certBytes)));
     mSocketControl->SetServerCert(cert, mEVStatus);
     mSocketControl->SetSucceededCertChain(std::move(mBuiltChain));
-
-    mSocketControl->SetIsBuiltCertChainRootBuiltInRoot(
-        mIsBuiltCertChainRootBuiltInRoot);
     mSocketControl->SetCertificateTransparencyStatus(
         mCertificateTransparencyStatus);
   } else {

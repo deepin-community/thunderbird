@@ -2,9 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
-var { VirtualFolderHelper } = ChromeUtils.import(
-  "resource:///modules/VirtualFolderWrapper.jsm"
+var { FeedUtils } = ChromeUtils.importESModule(
+  "resource:///modules/FeedUtils.sys.mjs"
+);
+var { VirtualFolderHelper } = ChromeUtils.importESModule(
+  "resource:///modules/VirtualFolderWrapper.sys.mjs"
 );
 
 const about3Pane = document.getElementById("tabmail").currentAbout3Pane;
@@ -91,7 +93,12 @@ async function checkFolderTree(expectedTags) {
   for (const row of tagsList.children) {
     const key = keys.next().value;
     const { label, color } = values.next().value;
-    Assert.equal(row.uri, FOLDER_PREFIX + encodeURIComponent(key));
+    // Don't use encodeURIComponent, folder URLs escape more characters.
+    Assert.equal(
+      row.uri,
+      FOLDER_PREFIX +
+        Services.io.escapeString(key, Ci.nsINetUtil.ESCAPE_URL_PATH)
+    );
     Assert.equal(row.name, label);
     Assert.equal(row.icon.style.getPropertyValue("--icon-color"), color);
   }
@@ -113,12 +120,12 @@ add_task(async function testFolderTree() {
   expectedTags.set("testkey", { label: "testLabel", color: "#000000" });
   await checkFolderTree(expectedTags);
 
-  MailServices.tags.addTagForKey("anotherkey", "anotherLabel", "#333333", "");
+  MailServices.tags.addTagForKey("anotherkey!", "anotherLabel", "#333333", "");
   await TestUtils.waitForCondition(
     () => MailServices.tags.getAllTags().length == 7,
     "waiting for tag to be created"
   );
-  expectedTags.set("anotherkey", { label: "anotherLabel", color: "#333333" });
+  expectedTags.set("anotherkey!", { label: "anotherLabel", color: "#333333" });
   await checkFolderTree(expectedTags);
 
   // Delete the first custom tag and check it is removed.
@@ -136,12 +143,12 @@ add_task(async function testFolderTree() {
   await checkFolderTree(expectedTags);
 
   // Delete the second custom tag.
-  MailServices.tags.deleteKey("anotherkey");
+  MailServices.tags.deleteKey("anotherkey!");
   await TestUtils.waitForCondition(
     () => MailServices.tags.getAllTags().length == 5,
     "waiting for tag to be removed"
   );
-  expectedTags.delete("anotherkey");
+  expectedTags.delete("anotherkey!");
   await checkFolderTree(expectedTags);
 });
 

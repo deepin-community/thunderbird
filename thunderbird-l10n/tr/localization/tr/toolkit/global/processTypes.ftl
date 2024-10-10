@@ -17,6 +17,8 @@ process-type-privilegedmozilla = Ayrıcalıklı Mozilla içeriği
 process-type-extension = Uzantı
 # process used to open file:// URLs
 process-type-file = Yerel dosya
+# process used to instantiate new child processes
+process-type-forkserver = Fork sunucusu
 # process used to isolate a webpage from other web pages
 # to improve security
 process-type-webisolated = İzole web içeriği
@@ -39,6 +41,8 @@ process-type-gpu = GPU
 process-type-socket = Soket
 # process used to decode media
 process-type-rdd = RDD
+# process used to run inference
+process-type-inference = Çıkarsama
 # process used to run some IPC actor in their own sandbox
 process-type-utility = Korumalı IPC aktörü
 process-type-utility-actor-audio-decoder-generic = Genel ses çözücü aracı

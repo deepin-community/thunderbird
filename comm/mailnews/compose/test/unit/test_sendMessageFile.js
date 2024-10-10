@@ -25,12 +25,16 @@ var kTo = "to@foo.invalid";
 
 function msl() {}
 
+/**
+ * @implements {nsIMsgSendListener}
+ * @implements {nsIMsgCopyServiceListener}
+ */
 msl.prototype = {
   // nsIMsgSendListener
-  onStartSending(aMsgID, aMsgSize) {},
-  onProgress(aMsgID, aProgress, aProgressMax) {},
-  onStatus(aMsgID, aMsg) {},
-  onStopSending(aMsgID, aStatus, aMsg, aReturnFile) {
+  onStartSending() {},
+  onSendProgress() {},
+  onStatus() {},
+  onStopSending(aMsgID, aStatus) {
     try {
       Assert.equal(aStatus, 0);
 
@@ -54,16 +58,18 @@ msl.prototype = {
       }
     }
   },
-  onGetDraftFolderURI(aMsgID, aFolderURI) {},
-  onSendNotPerformed(aMsgID, aStatus) {},
-  onTransportSecurityError(msgID, status, secInfo, location) {},
+  onGetDraftFolderURI() {},
+  onSendNotPerformed() {},
+  onTransportSecurityError() {},
 
   // nsIMsgCopyServiceListener
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {},
-  GetMessageId(aMessageId) {},
-  OnStopCopy(aStatus) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey() {},
+  getMessageId() {
+    return null;
+  },
+  onStopCopy(aStatus) {
     Assert.equal(aStatus, 0);
     try {
       // Now do a comparison of what is in the sent mail folder

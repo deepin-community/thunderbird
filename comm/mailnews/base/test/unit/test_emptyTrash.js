@@ -28,16 +28,20 @@ var gRootFolder;
 
 var nsIMFNService = Ci.nsIMsgFolderNotificationService;
 
-// nsIMsgCopyServiceListener implementation
+/**
+ * @implements {nsIMsgCopyServiceListener}
+ */
 var copyListener = {
-  OnStartCopy() {},
-  OnProgress(aProgress, aProgressMax) {},
-  SetMessageKey(aKey) {
+  onStartCopy() {},
+  onProgress() {},
+  setMessageKey(aKey) {
     const hdr = localAccountUtils.inboxFolder.GetMessageHeader(aKey);
     gMsgHdrs.push({ hdr, ID: hdr.messageId });
   },
-  SetMessageId(aMessageId) {},
-  OnStopCopy(aStatus) {
+  getMessageId() {
+    return null;
+  },
+  onStopCopy(aStatus) {
     // Check: message successfully copied.
     Assert.equal(aStatus, 0);
     // Ugly hack: make sure we don't get stuck in a JS->C++->JS->C++... call stack
@@ -51,7 +55,7 @@ var copyListener = {
 };
 
 var urlListener = {
-  OnStartRunningUrl(aUrl) {},
+  OnStartRunningUrl() {},
   OnStopRunningUrl(aUrl, aExitCode) {
     // Check: message successfully copied.
     Assert.equal(aExitCode, 0);

@@ -7,6 +7,7 @@
  * loading system DNS libraries on Linux, Mac and Windows.
  */
 
+import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 import { BasePromiseWorker } from "resource://gre/modules/PromiseWorker.sys.mjs";
 
 // These constants are luckily shared, but with different names
@@ -30,19 +31,22 @@ export const DNS = {
    * one of SRVRecord, TXTRecord, or MXRecord objects as defined in
    * dnsWorker.js, or rejects with the error from the worker.
    *
-   * Example: DNS.lookup("_caldavs._tcp.example.com", DNS.SRV)
+   * Example: await DNS.lookup("_caldavs._tcp.example.com", DNS.SRV)
    *
-   * @param aName           The aName to look up.
-   * @param aTypeID         The RR type to look up as a constant.
-   * @returns A promise resolved when completed.
+   * @param {string} _name - The hostname to look up records for.
+   * @param {string} _recordTypeID - The RR type to look up as a constant.
+   * @returns {Promise<object[]>} records
    */
-  async lookup(aName, aTypeID) {
-    const worker = new BasePromiseWorker("resource:///modules/dnsWorker.js");
+  async lookup(_name, _recordTypeID) {
+    const worker = new BasePromiseWorker("resource:///modules/DNS.worker.mjs", {
+      type: "module",
+    });
     workers.add(worker);
     let result;
     try {
       result = await worker.post("execute", [
-        Services.appinfo.OS,
+        AppConstants.platform,
+        AppConstants.unixstyle,
         "lookup",
         [...arguments],
       ]);
@@ -52,14 +56,33 @@ export const DNS = {
     return result;
   },
 
-  /** Convenience functions */
-  srv(aName) {
-    return this.lookup(aName, NS_T_SRV);
+  /**
+   * Look up SRV records for hostname.
+   *
+   * @param {string} hostname
+   * @returns {Promise<SRVRecord[]>} records.
+   */
+  async srv(hostname) {
+    return this.lookup(hostname, NS_T_SRV);
   },
-  txt(aName) {
-    return this.lookup(aName, NS_T_TXT);
+
+  /**
+   * Look up TXT records for hostname.
+   *
+   * @param {string} hostname
+   * @returns {Promise<TXTRecord[]>} records.
+   */
+  async txt(hostname) {
+    return this.lookup(hostname, NS_T_TXT);
   },
-  mx(aName) {
-    return this.lookup(aName, NS_T_MX);
+
+  /**
+   * Look up MX records for hostname.
+   *
+   * @param {string} hostname
+   * @returns {Promise<MXRecord[]>} records.
+   */
+  async mx(hostname) {
+    return this.lookup(hostname, NS_T_MX);
   },
 };

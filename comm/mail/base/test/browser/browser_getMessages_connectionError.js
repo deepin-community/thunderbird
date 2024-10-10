@@ -128,7 +128,9 @@ add_task(async function testConnectionRefused() {
       () => MockAlertsService._alert,
       "waiting for connection alert to show"
     );
+    MockAlertsService._listener.observe(null, "alertfinished", alert.cookie);
     delete MockAlertsService._alert;
+    delete MockAlertsService._listener;
 
     Assert.equal(alert.imageURL, "chrome://branding/content/icon48.png");
     Assert.stringContains(
@@ -153,30 +155,27 @@ class MockAlertsService {
 
   static _alert;
 
-  showPersistentNotification(persistentData, alert, alertListener) {
+  showPersistentNotification(persistentData, alert) {
     info(`showPersistentNotification: ${alert.text}`);
     Assert.ok(false, "unexpected call to showPersistentNotification");
   }
 
   showAlert(alert, listener) {
     info(`showAlert: ${alert.text}`);
+    Assert.ok(
+      !MockAlertsService._alert,
+      "showAlert should not be called while an alert is showing"
+    );
     MockAlertsService._alert = alert;
+    MockAlertsService._listener = listener;
   }
 
-  showAlertNotification(
-    imageUrl,
-    title,
-    text,
-    textClickable,
-    cookie,
-    alertListener,
-    name
-  ) {
+  showAlertNotification(imageUrl, title, text) {
     info(`showAlertNotification: ${text}`);
     Assert.ok(false, "unexpected call to showAlertNotification");
   }
 
-  closeAlert(name) {
+  closeAlert() {
     Assert.ok(false, "unexpected call to closeAlert");
   }
 }

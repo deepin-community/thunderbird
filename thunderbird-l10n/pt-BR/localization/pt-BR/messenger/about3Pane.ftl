@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Filtrar estas mensagens <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Filtrar mensagens:
+quick-filter-bar-search2 =
+    .label = Filtrar mensagens
+quick-filter-bar-searching =
+    .title = Procurando…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -526,3 +528,17 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Menu de mensagens
+message-list-placeholder-no-messages = Nenhuma mensagem encontrada
+message-list-placeholder-multiple-folders = Várias pastas selecionadas
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Marcar pasta como lida
+           *[other] Marcar pastas como lidas
+        }
+    .accesskey = l

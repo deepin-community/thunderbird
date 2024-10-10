@@ -9,15 +9,15 @@ just extended about the macro __mips64
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/gfx/skia/skia/src/core/SkRasterPipeline.h b/gfx/skia/skia/src/core/SkRasterPipeline.h
-index 88c6cb2..41ae2e8 100644
+index 29095c6..fabd4e6 100644
 --- a/gfx/skia/skia/src/core/SkRasterPipeline.h
 +++ b/gfx/skia/skia/src/core/SkRasterPipeline.h
-@@ -24,7 +24,7 @@ enum SkColorType : int;
+@@ -26,7 +26,7 @@ enum SkColorType : int;
  struct SkImageInfo;
  struct skcms_TransferFunction;
  
--#if __has_cpp_attribute(clang::musttail) && !defined(__EMSCRIPTEN__) && !defined(SK_CPU_ARM32) && !defined(__powerpc__)
-+#if __has_cpp_attribute(clang::musttail) && !defined(__EMSCRIPTEN__) && !defined(SK_CPU_ARM32) && !defined(__powerpc__) && !defined(__mips64)
+-#if __has_cpp_attribute(clang::musttail) && !defined(__EMSCRIPTEN__) && !defined(SK_CPU_ARM32) && !defined(__powerpc__) && \
++#if __has_cpp_attribute(clang::musttail) && !defined(__EMSCRIPTEN__) && !defined(SK_CPU_ARM32) && !defined(__powerpc__) && !defined(__mips64) && \
+         !defined(SK_CPU_LOONGARCH)
      #define SK_HAS_MUSTTAIL 1
  #else
-     #define SK_HAS_MUSTTAIL 0

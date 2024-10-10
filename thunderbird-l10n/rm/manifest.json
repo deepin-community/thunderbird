@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-rm@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Rumantsch (Romansh)",
   "description": "Thunderbird Language Pack for Rumantsch (rm) – Romansh",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "rm": {
-      "version": "20240423195941",
+      "version": "20240930174323",
       "chrome_resources": {
         "alerts": "chrome/rm/locale/rm/alerts/",
         "autoconfig": "chrome/rm/locale/rm/autoconfig/",
         "branding": "chrome/rm/locale/branding/",
         "calendar": "chrome/rm/locale/rm/calendar/",
-        "chat": "chrome/rm/locale/rm/chat/",
         "communicator": "chrome/rm/locale/rm/communicator/",
         "devtools": "chrome/rm/locale/rm/devtools/client/",
         "devtools-shared": "chrome/rm/locale/rm/devtools/shared/",

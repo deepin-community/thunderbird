@@ -17,20 +17,6 @@ var messagePane =
   about3Pane.messageBrowser.contentWindow.getMessagePaneBrowser();
 
 /**
- * Right-click on something and wait for the context menu to appear.
- * For elements in the parent process only.
- *
- * @param {Element} menu - The <menu> that should appear.
- * @param {Element} element - The element to be clicked on.
- * @returns {Promise} A promise that resolves when the menu appears.
- */
-function rightClick(menu, element, win) {
-  const shownPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
-  EventUtils.synthesizeMouseAtCenter(element, { type: "contextmenu" }, win);
-  return shownPromise;
-}
-
-/**
  * Check the parameters of a browser.onShown event was fired.
  *
  * @see mail/components/extensions/schemas/menus.json
@@ -39,7 +25,7 @@ function rightClick(menu, element, win) {
  * @param {object} expectedInfo
  * @param {Array} expectedInfo.menuIds
  * @param {Array} expectedInfo.contexts
- * @param {Array?} expectedInfo.attachments
+ * @param {?Array} expectedInfo.attachments
  * @param {object} expectedTab
  * @param {boolean} expectedTab.active
  * @param {integer} expectedTab.index
@@ -82,8 +68,8 @@ async function checkShownEvent(extension, expectedInfo, expectedTab) {
  *
  * @param extension
  * @param {object} expectedInfo
- * @param {string?} expectedInfo.menuItemId
- * @param {Array?} expectedInfo.attachments
+ * @param {?string} expectedInfo.menuItemId
+ * @param {?Array} expectedInfo.attachments
  * @param {object} expectedTab
  * @param {boolean} expectedTab.active
  * @param {integer} expectedTab.index
@@ -255,7 +241,7 @@ async function subtest_attachmentItem(
     expectedShowData,
     expectedTab
   );
-  await rightClick(menu, element, win);
+  await openMenuPopup(menu, element, { type: "contextmenu" });
   const menuItem = menu.querySelector(
     `#menus_mochi_test-menuitem-_${expectedContext}`
   );
@@ -267,7 +253,7 @@ async function subtest_attachmentItem(
     expectedClickData,
     expectedTab
   );
-  await clickItemInMenuPopup(menu, menuItem);
+  await clickItemInMenuPopup(menuItem);
   await clickEventPromise;
 }
 

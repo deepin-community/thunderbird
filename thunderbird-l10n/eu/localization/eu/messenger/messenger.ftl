@@ -188,6 +188,51 @@ appmenu-addons-and-themes =
 
 ## Context menu
 
+context-menu-mark-read =
+    .aria-label = Markatu irakurritako gisa
+    .tooltiptext = Markatu irakurritako gisa
+context-menu-mark-unread =
+    .aria-label = Markatu irakurri gabeko gisa
+    .tooltiptext = Markatu irakurri gabeko gisa
+context-menu-mark-reply =
+    .aria-label = Erantzun
+    .tooltiptext = Erantzun
+context-menu-archive =
+    .aria-label = Artxibatu
+    .tooltiptext = Artxibatu
+context-menu-mark-junk =
+    .aria-label = Markatu zabor gisa
+    .tooltiptext = Markatu zabor gisa
+mail-context-menu-open =
+    .label = Ireki
+    .accesskey = I
+mail-context-menu-reply =
+    .label = Erantzun
+    .accesskey = E
+mail-context-menu-forward-redirect =
+    .label = Birbidali eta birbideratu
+    .accesskey = B
+mail-context-menu-forward-forward =
+    .label = Birbidali
+    .accesskey = B
+mail-context-menu-forward-inline =
+    .label = Barnean
+    .accesskey = B
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Eranskin gisa
+           *[other] Eranskin gisa
+        }
+    .accesskey = E
+mail-context-menu-organize =
+    .label = Antolatu
+    .accesskey = A
+mail-context-menu-threads =
+    .label = Hariak
+    .accesskey = H
 context-menu-redirect-msg =
     .label = Birbideratzea
 # This menu item is for canceling an NNTP message
@@ -209,6 +254,27 @@ mail-context-undelete-messages =
             [one] Desezabatu mezua
            *[other] Desezabatu hautatutako mezuak
         }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-delete =
+    .label =
+        { $count ->
+            [one] Ezabatu hautatutako mezua
+           *[other] Ezabatu hautatutako mezuak
+        }
+    .tooltiptext = { mail-context-messages-delete.label }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-messages-undelete =
+    .label =
+        { $count ->
+            [one] Desezabatu hautatutako mezua
+           *[other] Desezabatu hautatutako mezuak
+        }
+    .tooltiptext = { mail-context-messages-undelete.label }
+context-menu-decrypt-to-folder2 =
+    .label = Sortu deszifratutako kopia
+    .accesskey = k
 
 ## Message header pane
 

@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Εξερεύνηση λειτουργιών
     .accesskey = ν
+menu-help-get-release-help =
+    .label = Λήψη βοήθειας με το { -brand-short-name }
+    .accesskey = Λ
 menu-help-shortcuts =
     .label = Συντομεύσεις πληκτρολογίου
     .accesskey = υ
@@ -65,6 +68,12 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Έξοδος από το { -brand-shorter-name }{ -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Έξοδος από το { -brand-full-name }
+           *[other] Έξοδος από το { -brand-full-name }
+        }
 # Localization note: Do not translate unless your locale's keyboard layout
 # does not include this key, as it determines the keyboard shortcut for
 # shutting down the application.
@@ -133,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Λογαριασμός email…
+    .accesskey = e
 file-new-newsgroup-account =
     .label = Λογαριασμός ομάδας συζητήσεων…
     .accesskey = δ

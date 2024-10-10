@@ -259,7 +259,8 @@ class nsFocusManager final : public nsIFocusManager,
    * longer accept focus.
    */
   MOZ_CAN_RUN_SCRIPT void WindowHidden(mozIDOMWindowProxy* aWindow,
-                                       uint64_t aActionId);
+                                       uint64_t aActionId,
+                                       bool aIsEnteringBFCache);
 
   /**
    * Fire any events that have been delayed due to synchronized actions.
@@ -349,17 +350,21 @@ class nsFocusManager final : public nsIFocusManager,
       nsPIDOMWindowOuter* aWindow, mozilla::dom::BrowsingContext* aContext);
 
   /**
-   * When aBrowsingContext is focused, adjust the ancestors of aBrowsingContext
-   * so that they also have their corresponding frames focused. Thus, one can
-   * start at the active top-level window and navigate down the currently
-   * focused elements for each frame in the tree to get to aBrowsingContext.
+   * When aBrowsingContext is focused or blurred, adjust the ancestors of
+   * aBrowsingContext so that they also have their corresponding frames focused
+   * or blurred. Thus, one can start at the active top-level window and navigate
+   * down the currently focused elements for each frame in the tree to get to
+   * aBrowsingContext.
    */
   MOZ_CAN_RUN_SCRIPT bool AdjustInProcessWindowFocus(
       mozilla::dom::BrowsingContext* aBrowsingContext, bool aCheckPermission,
-      bool aIsVisible, uint64_t aActionId);
+      bool aIsVisible, uint64_t aActionId, bool aShouldClearAncestorFocus,
+      mozilla::dom::BrowsingContext* aAncestorBrowsingContextToFocus);
+
   MOZ_CAN_RUN_SCRIPT void AdjustWindowFocus(
       mozilla::dom::BrowsingContext* aBrowsingContext, bool aCheckPermission,
-      bool aIsVisible, uint64_t aActionId);
+      bool aIsVisible, uint64_t aActionId, bool aShouldClearAncestorFocus,
+      mozilla::dom::BrowsingContext* aAncestorBrowsingContextToFocus);
 
   /**
    * Returns true if aWindow is visible.
@@ -822,7 +827,8 @@ class nsFocusManager final : public nsIFocusManager,
   // Sets the BrowsingContext corresponding to top-level Web content
   // in the frontmost tab if focus is in Web content.
   void SetActiveBrowsingContextInContent(
-      mozilla::dom::BrowsingContext* aContext, uint64_t aActionId);
+      mozilla::dom::BrowsingContext* aContext, uint64_t aActionId,
+      bool aIsEnteringBFCache);
 
   // Content-only
   // Receives notification of another process setting the top-level Web

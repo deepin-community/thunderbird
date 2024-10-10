@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Sía póst <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Sía skilaboð:
+quick-filter-bar-search2 =
+    .label = Sía skilaboð
+quick-filter-bar-searching =
+    .title = Leita…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -526,3 +528,17 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Skilaboðavalmynd
+message-list-placeholder-no-messages = Engin skilaboð fundust
+message-list-placeholder-multiple-folders = Margar möppur valdar
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Merkja möppu sem lesna
+           *[other] Merkja möppur sem lesnar
+        }
+    .accesskey = k

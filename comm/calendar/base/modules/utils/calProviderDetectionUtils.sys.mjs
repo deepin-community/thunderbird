@@ -9,7 +9,7 @@ import { cal } from "resource:///modules/calendar/calUtils.sys.mjs";
  */
 
 // NOTE: This module should not be loaded directly, it is available when
-// including calUtils.jsm under the cal.provider.detection namespace.
+// including calUtils.sys.mjs under the cal.provider.detection namespace.
 
 /**
  * The base class marker for detection errors. Useful in instanceof checks.
@@ -94,12 +94,11 @@ export var detection = {
    * @param {string} aPassword - The password for logging in.
    * @param {string} aLocation - The location information.
    * @param {boolean} aSavePassword - If true, the credentials will be saved
-   *                                                      in the password manager if used.
+   *   in the password manager if used.
    * @param {ProviderFilter[]} aPreDetectFilters - Functions for filtering out providers.
    * @param {object} aExtraProperties - Extra properties to pass on to the
-   *                                                      providers.
-   * @returns {Promise<Map<string, calICalendar[]>>} A promise resolving with a Map of
-   *                                                      provider type to calendars found.
+   *   providers.
+   * @returns {Promise<Map<calICalendarProvider,calICalendar[]>>} a Map of provider type to calendars found.
    */
   async detect(
     aUsername,

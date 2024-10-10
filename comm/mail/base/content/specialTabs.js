@@ -360,7 +360,7 @@ var contentTabBaseType = {
   // as specified in inContentWhitelist.
   inContentOverlays: [
     // about:addons
-    function (aDocument, aTab) {
+    function (aDocument) {
       Services.scriptloader.loadSubScript(
         "chrome://messenger/content/aboutAddonsExtra.js",
         aDocument.defaultView
@@ -376,7 +376,7 @@ var contentTabBaseType = {
     null,
 
     // about:profiles
-    function (aDocument, aTab) {
+    function (aDocument) {
       const win = aDocument.defaultView;
       // Need a timeout to let the script run to create the needed buttons.
       win.setTimeout(() => {
@@ -499,7 +499,7 @@ var contentTabBaseType = {
 
   // Internal function used to set up the title listener on a content tab.
   _setUpTitleListener(aTab) {
-    function onDOMTitleChanged(aEvent) {
+    function onDOMTitleChanged() {
       aTab.title = aTab.browser.contentTitle;
       document.getElementById("tabmail").setTabTitle(aTab);
     }
@@ -530,7 +530,7 @@ var contentTabBaseType = {
     aTab.browser.addEventListener("DOMWindowClose", aTab.closeListener, true);
   },
 
-  supportsCommand(aCommand, aTab) {
+  supportsCommand(aCommand) {
     switch (aCommand) {
       case "cmd_fullZoomReduce":
       case "cmd_fullZoomEnlarge":
@@ -829,11 +829,25 @@ var specialTabs = {
         // get here via createContentWindowInFrame(). The remoteness must be set
         // before aTab.panel.appendChild(clone), otherwise the browser will get
         // a docShell, which runs into a MOZ_ASSERT later (see Bug 1770105).
-        aTab.browser.setAttribute("remote", "true");
+        // We must ensure the context is a parent window that is already
+        // marked as remote (see Bug 1843741)
+        if (aArgs.openWindowInfo?.isRemote) {
+          aTab.browser.setAttribute("remote", "true");
+        }
       }
       if (aArgs.userContextId) {
         aTab.browser.setAttribute("usercontextid", aArgs.userContextId);
       }
+
+      // Ensure the browser will initially load in the same group as other
+      // browsers from the same extension.
+      if (aArgs.initialBrowsingContextGroupId) {
+        aTab.browser.setAttribute(
+          "initialBrowsingContextGroupId",
+          aArgs.initialBrowsingContextGroupId
+        );
+      }
+
       aTab.panel.setAttribute("id", "contentTabWrapper" + this.lastBrowserId);
       aTab.panel.appendChild(clone);
       aTab.root = clone;
@@ -1017,9 +1031,10 @@ var specialTabs = {
     }
 
     if (AppConstants.MOZ_UPDATER) {
-      const update = Cc["@mozilla.org/updates/update-manager;1"].getService(
+      const um = Cc["@mozilla.org/updates/update-manager;1"].getService(
         Ci.nsIUpdateManager
-      ).readyUpdate;
+      );
+      const update = um.updateInstalledAtStartup;
 
       if (update && Services.vc.compare(update.appVersion, old_mstone) > 0) {
         let overridePage = Services.urlFormatter.formatURLPref(
@@ -1206,7 +1221,7 @@ var specialTabs = {
         label: rightsBundle.GetStringFromName("buttonLabel"),
         accessKey: rightsBundle.GetStringFromName("buttonAccessKey"),
         popup: null,
-        callback(aNotificationBar, aButton) {
+        callback() {
           // Show the about:rights tab
           document.getElementById("tabmail").openTab("contentTab", {
             url: "about:rights",

@@ -39,7 +39,7 @@ thread-pane-header-context-hide =
 # folders or opens new tabs. (When inactive, only the state of the text
 # filters are propagated between folder changes and when opening new tabs.)
 quick-filter-bar-sticky =
-    .title = Dizin değişince süzgeçleri uygulamayı sürdür
+    .title = Klasör değişince süzgeçleri uygulamayı sürdür
 # The tooltip for the filter button that replaces the quick filter buttons with
 # a dropdown menu.
 quick-filter-bar-dropdown =
@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Bu iletileri süz <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = İletileri süz:
+quick-filter-bar-search2 =
+    .label = İletileri süz
+quick-filter-bar-searching =
+    .title = Aranıyor…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -166,11 +168,11 @@ quick-filter-bar-text-filter-subject = Konu
 quick-filter-bar-text-filter-body = Gövde
 # The first line of the panel popup that tells the user we found no matches
 # but we can convert to a global search for them.
-quick-filter-bar-gloda-upsell-line1 = Bu aramayı tüm dizinlerde sürdür
+quick-filter-bar-gloda-upsell-line1 = Bu aramayı tüm klasörlerde sürdür
 # The second line of the panel popup that tells the user we found no matches.
 # Variables:
 # $text (String) - What the user has typed so far.
-quick-filter-bar-gloda-upsell-line2 = Şunu aramaya devam etmek için Enter'a yeniden basın: { $text }
+quick-filter-bar-gloda-upsell-line2 = Şunu aramaya devam etmek için Enter’a yeniden basın: { $text }
 
 ## Folder pane
 
@@ -182,10 +184,10 @@ folder-pane-get-all-messages-menuitem =
 folder-pane-write-message-button = Yeni ileti
     .title = Yeni bir ileti oluştur
 folder-pane-more-menu-button =
-    .title = Dizin bölmesi seçenekleri
+    .title = Klasör bölmesi seçenekleri
 # Context menu item to show/hide different folder types in the folder pane
 folder-pane-header-folder-modes =
-    .label = Dizin modları
+    .label = Klasör modları
 # Context menu item to toggle display of "Get messages" button in folder pane header
 folder-pane-header-context-toggle-get-messages =
     .label = “İletileri al” düğmesini göster
@@ -193,16 +195,16 @@ folder-pane-header-context-toggle-get-messages =
 folder-pane-header-context-toggle-new-message =
     .label = “Yeni ileti” düğmesini göster
 folder-pane-header-context-hide =
-    .label = Dizin bölmesi başlığını gizle
+    .label = Klasör bölmesi başlığını gizle
 folder-pane-show-total-toggle =
     .label = Toplam ileti sayısını göster
 # Context menu item to show or hide folder sizes
 folder-pane-header-toggle-folder-size =
-    .label = Dizin boyutunu göster
+    .label = Klasör boyutunu göster
 folder-pane-header-hide-local-folders =
-    .label = Yerel dizinleri gizle
+    .label = Yerel klasörleri gizle
 folder-pane-mode-context-button =
-    .title = Dizin modu seçenekleri
+    .title = Klasör modu seçenekleri
 folder-pane-mode-context-toggle-compact-mode =
     .label = Yoğun görünüm
     .accesskey = Y
@@ -482,25 +484,41 @@ apply-columns-to-menu =
 apply-current-view-to-menu =
     .label = Geçerli görünümü uygula…
 apply-current-view-to-folder =
-    .label = Dizin…
+    .label = Klasör…
 apply-current-view-to-folder-children =
-    .label = Dizin ve alt dizinlerine…
+    .label = Klasör ve alt klasörlerine…
 
 ## Apply columns confirmation dialog
 
 apply-changes-to-folder-title = Değişiklikler uygulansın mı?
 # Variables:
 #  $name (String): The name of the folder to apply to.
-apply-current-columns-to-folder-message = Geçerli dizinin sütunları { $name } dizinine uygulansın mı?
+apply-current-columns-to-folder-message = Geçerli klasörün sütunları { $name } klasörüne uygulansın mı?
 # Variables:
 #  $name (String): The name of the folder to apply to.
-apply-current-columns-to-folder-with-children-message = Geçerli dizinin sütunları { $name } ve alt dizinlerine uygulansın mı?
+apply-current-columns-to-folder-with-children-message = Geçerli klasörün sütunları { $name } ve alt klasörlerine uygulansın mı?
 # Variables:
 #  $name (String): The name of the folder to apply to.
-apply-current-view-to-folder-message = Geçerli dizinin görünümü { $name } dizinine uygulansın mı?
+apply-current-view-to-folder-message = Geçerli klasörün görünümü { $name } klasörüne uygulansın mı?
 # Variables:
 #  $name (String): The name of the folder to apply to.
-apply-current-view-to-folder-with-children-message = Geçerli dizinin görünümü { $name } ve alt dizinlerine uygulansın mı?
+apply-current-view-to-folder-with-children-message = Geçerli klasörün görünümü { $name } ve alt klasörlerine uygulansın mı?
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span> iletiden <span>1</span> tanesi okunmamış
+               *[other] <span>{ $total }</span> iletiden <span>1</span> tanesi okunmamış
+            }
+       *[other]
+            { $total ->
+                [one] <span>1</span> iletiden <span>{ $unread }</span> tanesi okunmamış
+               *[other] <span>{ $total }</span> iletiden <span>{ $unread }</span> tanesi okunmamış
+            }
+    }
 # Variables:
 # $total (Number) - Number of messages in thread.
 threadpane-sort-header-count =
@@ -510,3 +528,17 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = İleti menüsü
+message-list-placeholder-no-messages = İleti bulunamadı
+message-list-placeholder-multiple-folders = Birden çok klasör seçildi
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Klasörü okundu olarak işaretle
+           *[other] Klasörleri okundu olarak işaretle
+        }
+    .accesskey = K

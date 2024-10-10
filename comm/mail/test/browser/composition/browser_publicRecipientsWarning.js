@@ -8,8 +8,8 @@
  */
 
 "use strict";
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var {
@@ -18,7 +18,7 @@ var {
   open_compose_with_reply_to_all,
   setup_msg_contents,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var {
   add_message_to_folder,
@@ -27,7 +27,7 @@ var {
   create_message,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
 const publicRecipientLimit = Services.prefs.getIntPref(
@@ -653,7 +653,7 @@ add_task(async function testWarningNotShownAfterDismissal() {
   const notification = cwc.gComposeNotification.getNotificationWithValue(
     "warnPublicRecipientsNotification"
   );
-  EventUtils.synthesizeMouseAtCenter(notification.closeButtonEl, {}, cwc);
+  EventUtils.synthesizeMouseAtCenter(notification.closeButton, {}, cwc);
 
   await notificationHidden;
 

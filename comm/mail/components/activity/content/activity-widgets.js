@@ -8,8 +8,8 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { makeFriendlyDateAgo } = ChromeUtils.import(
-    "resource:///modules/TemplateUtils.jsm"
+  const { makeFriendlyDateAgo } = ChromeUtils.importESModule(
+    "resource:///modules/TemplateUtils.sys.mjs"
   );
 
   const activityStrings = Services.strings.createBundle(
@@ -260,7 +260,7 @@
       super();
 
       this.activityListener = {
-        onStateChanged: (activity, oldState) => {
+        onStateChanged: () => {
           // change the view of the element according to the new state
           // default states for each item
           let hideProgressMeter = false;

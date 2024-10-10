@@ -10,8 +10,8 @@
 const { MessageGenerator } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
 );
-const { OAuth2Module } = ChromeUtils.import(
-  "resource:///modules/OAuth2Module.jsm"
+const { OAuth2Module } = ChromeUtils.importESModule(
+  "resource:///modules/OAuth2Module.sys.mjs"
 );
 const { OAuth2TestUtils } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/OAuth2TestUtils.sys.mjs"
@@ -167,7 +167,7 @@ async function handleOAuthDialog() {
   );
 }
 
-function checkSavedPassword(inbox) {
+function checkSavedPassword() {
   const logins = Services.logins.findLogins("oauth://test.test", "", "");
   Assert.equal(
     logins.length,
@@ -404,30 +404,22 @@ class MockAlertsService {
 
   static _alert;
 
-  showPersistentNotification(persistentData, alert, alertListener) {
+  showPersistentNotification(persistentData, alert) {
     info(`showPersistentNotification: ${alert.text}`);
     Assert.ok(false, "unexpected call to showPersistentNotification");
   }
 
-  showAlert(alert, listener) {
+  showAlert(alert) {
     info(`showAlert: ${alert.text}`);
     MockAlertsService._alert = alert;
   }
 
-  showAlertNotification(
-    imageUrl,
-    title,
-    text,
-    textClickable,
-    cookie,
-    alertListener,
-    name
-  ) {
+  showAlertNotification(imageUrl, title, text) {
     info(`showAlertNotification: ${text}`);
     Assert.ok(false, "unexpected call to showAlertNotification");
   }
 
-  closeAlert(name) {
+  closeAlert() {
     Assert.ok(false, "unexpected call to closeAlert");
   }
 }

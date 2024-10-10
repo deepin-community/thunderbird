@@ -53,11 +53,13 @@
 #include "wasm/WasmCode.h"
 #include "wasm/WasmDebug.h"
 #include "wasm/WasmDebugFrame.h"
+#include "wasm/WasmFeatures.h"
 #include "wasm/WasmInitExpr.h"
 #include "wasm/WasmJS.h"
 #include "wasm/WasmMemory.h"
 #include "wasm/WasmModule.h"
 #include "wasm/WasmModuleTypes.h"
+#include "wasm/WasmPI.h"
 #include "wasm/WasmStubs.h"
 #include "wasm/WasmTypeDef.h"
 #include "wasm/WasmValType.h"
@@ -307,6 +309,13 @@ bool Instance::callImport(JSContext* cx, uint32_t funcImportIndex,
     return true;
   }
 
+#ifdef ENABLE_WASM_JSPI
+  // Disable jit exit optimization when JSPI is enabled.
+  if (JSPromiseIntegrationAvailable(cx)) {
+    return true;
+  }
+#endif
+
   // The import may already have become optimized.
   for (auto t : code().tiers()) {
     void* jitExitCode = codeBase(t) + fi.jitExitCodeOffset();
@@ -346,6 +355,11 @@ bool Instance::callImport(JSContext* cx, uint32_t funcImportIndex,
 Instance::callImport_general(Instance* instance, int32_t funcImportIndex,
                              int32_t argc, uint64_t* argv) {
   JSContext* cx = instance->cx();
+#ifdef ENABLE_WASM_JSPI
+  if (IsSuspendableStackActive(cx)) {
+    return CallImportOnMainThread(cx, instance, funcImportIndex, argc, argv);
+  }
+#endif
   return instance->callImport(cx, funcImportIndex, argc, argv);
 }
 
@@ -1500,7 +1514,7 @@ static bool ArrayCopyFromData(JSContext* cx, Handle<WasmArrayObject*> arrayObj,
   // Compute the number of bytes to copy, ensuring it's below 2^32.
   CheckedUint32 numBytesToCopy =
       CheckedUint32(numElements) *
-      CheckedUint32(typeDef->arrayType().elementType_.size());
+      CheckedUint32(typeDef->arrayType().elementType().size());
   if (!numBytesToCopy.isValid()) {
     // Because the request implies that 2^32 or more bytes are to be copied.
     ReportTrapError(cx, JSMSG_WASM_OUT_OF_BOUNDS);
@@ -1651,7 +1665,7 @@ static bool ArrayCopyFromElem(JSContext* cx, Handle<WasmArrayObject*> arrayObj,
   // Any data coming from an element segment will be an AnyRef. Writes into
   // array memory are done with raw pointers, so we must ensure here that the
   // destination size is correct.
-  MOZ_RELEASE_ASSERT(typeDef->arrayType().elementType_.size() ==
+  MOZ_RELEASE_ASSERT(typeDef->arrayType().elementType().size() ==
                      sizeof(AnyRef));
 
   Rooted<WasmArrayObject*> arrayObj(
@@ -1757,7 +1771,7 @@ static bool ArrayCopyFromElem(JSContext* cx, Handle<WasmArrayObject*> arrayObj,
   // Any data coming from an element segment will be an AnyRef. Writes into
   // array memory are done with raw pointers, so we must ensure here that the
   // destination size is correct.
-  MOZ_RELEASE_ASSERT(typeDef->arrayType().elementType_.size() ==
+  MOZ_RELEASE_ASSERT(typeDef->arrayType().elementType().size() ==
                      sizeof(AnyRef));
 
   // Get hold of the array.
@@ -1955,8 +1969,8 @@ static WasmArrayObject* UncheckedCastToArrayI16(HandleAnyRef ref) {
   JSObject& object = ref.toJSObject();
   WasmArrayObject& array = object.as<WasmArrayObject>();
   DebugOnly<const ArrayType*> type(&array.typeDef().arrayType());
-  MOZ_ASSERT(type->elementType_ == StorageType::I16);
-  MOZ_ASSERT(type->isMutable_ == isMutable);
+  MOZ_ASSERT(type->elementType() == StorageType::I16);
+  MOZ_ASSERT(type->isMutable() == isMutable);
   return &array;
 }
 
@@ -2355,7 +2369,7 @@ bool Instance::init(JSContext* cx, const JSObjectVector& funcImports,
         // StructLayout::close ensures this is an integral number of words.
         MOZ_ASSERT((typeDefData->structTypeSize % sizeof(uintptr_t)) == 0);
       } else {
-        uint32_t arrayElemSize = typeDef.arrayType().elementType_.size();
+        uint32_t arrayElemSize = typeDef.arrayType().elementType().size();
         typeDefData->arrayElemSize = arrayElemSize;
         MOZ_ASSERT(arrayElemSize == 16 || arrayElemSize == 8 ||
                    arrayElemSize == 4 || arrayElemSize == 2 ||
@@ -2373,6 +2387,23 @@ bool Instance::init(JSContext* cx, const JSObjectVector& funcImports,
   Tier callerTier = code_->bestTier();
   for (size_t i = 0; i < metadata(callerTier).funcImports.length(); i++) {
     JSObject* f = funcImports[i];
+
+#ifdef ENABLE_WASM_JSPI
+    if (JSObject* suspendingObject = MaybeUnwrapSuspendingObject(f)) {
+      // Compile suspending function Wasm wrapper.
+      const FuncImport& fi = metadata(callerTier).funcImports[i];
+      const FuncType& funcType = metadata().getFuncImportType(fi);
+      RootedObject wrapped(cx, suspendingObject);
+      RootedFunction wrapper(
+          cx, WasmSuspendingFunctionCreate(cx, wrapped, funcType));
+      if (!wrapper) {
+        return false;
+      }
+      MOZ_ASSERT(IsWasmExportedFunction(wrapper));
+      f = wrapper;
+    }
+#endif
+
     MOZ_ASSERT(f->isCallable());
     const FuncImport& fi = metadata(callerTier).funcImports[i];
     const FuncType& funcType = metadata().getFuncImportType(fi);
@@ -2617,7 +2648,25 @@ bool Instance::isInterrupted() const {
 
 void Instance::resetInterrupt(JSContext* cx) {
   interrupt_ = false;
+#ifdef ENABLE_WASM_JSPI
+  if (cx->wasm().suspendableStackLimit != JS::NativeStackLimitMin) {
+    stackLimit_ = cx->wasm().suspendableStackLimit;
+    return;
+  }
+#endif
   stackLimit_ = cx->stackLimitForJitCode(JS::StackForUntrustedScript);
+}
+
+void Instance::setTemporaryStackLimit(JS::NativeStackLimit limit) {
+  if (!isInterrupted()) {
+    stackLimit_ = limit;
+  }
+}
+
+void Instance::resetTemporaryStackLimit(JSContext* cx) {
+  if (!isInterrupted()) {
+    stackLimit_ = cx->stackLimitForJitCode(JS::StackForUntrustedScript);
+  }
 }
 
 bool Instance::debugFilter(uint32_t funcIndex) const {
@@ -2937,7 +2986,8 @@ static bool EnsureEntryStubs(const Instance& instance, uint32_t funcIndex,
 }
 
 static bool GetInterpEntryAndEnsureStubs(JSContext* cx, Instance& instance,
-                                         uint32_t funcIndex, CallArgs args,
+                                         uint32_t funcIndex,
+                                         const CallArgs& args,
                                          void** interpEntry,
                                          const FuncType** funcType) {
   const FuncExport* funcExport;
@@ -3099,8 +3149,8 @@ class MOZ_RAII ReturnToJSResultCollector {
   }
 };
 
-bool Instance::callExport(JSContext* cx, uint32_t funcIndex, CallArgs args,
-                          CoercionLevel level) {
+bool Instance::callExport(JSContext* cx, uint32_t funcIndex,
+                          const CallArgs& args, CoercionLevel level) {
   if (memory0Base_) {
     // If there has been a moving grow, this Instance should have been notified.
     MOZ_RELEASE_ASSERT(memoryBase(0).unwrap() == memory0Base_);

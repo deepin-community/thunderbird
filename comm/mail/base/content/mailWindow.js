@@ -15,11 +15,9 @@
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-XPCOMUtils.defineLazyModuleGetters(this, {
-  Gloda: "resource:///modules/gloda/GlodaPublic.jsm",
-});
 
 ChromeUtils.defineESModuleGetters(this, {
+  Gloda: "resource:///modules/gloda/GlodaPublic.sys.mjs",
   UIDensity: "resource:///modules/UIDensity.sys.mjs",
   appIdleManager: "resource:///modules/AppIdleManager.sys.mjs",
 });
@@ -368,9 +366,8 @@ nsMsgStatusFeedback.prototype = {
    * Set the statusbar display for hovered links, from browser.js.
    *
    * @param {String} url - The href to display.
-   * @param {Element} anchorElt - Element.
    */
-  setOverLink(url, anchorElt) {
+  setOverLink(url) {
     if (url) {
       url = Services.textToSubURI.unEscapeURIForUI(url);
 
@@ -392,12 +389,12 @@ nsMsgStatusFeedback.prototype = {
   },
 
   // Called before links are navigated to to allow us to retarget them if needed.
-  onBeforeLinkTraversal(originalTarget, linkURI, linkNode, isAppTab) {
+  onBeforeLinkTraversal(originalTarget) {
     return originalTarget;
   },
 
   // Called by BrowserParent::RecvShowTooltip, needed for tooltips in content tabs.
-  showTooltip(xDevPix, yDevPix, tooltip, direction, browser) {
+  showTooltip(xDevPix, yDevPix, tooltip, direction) {
     if (
       Cc["@mozilla.org/widget/dragservice;1"]
         .getService(Ci.nsIDragService)
@@ -658,14 +655,9 @@ nsMsgStatusFeedback.prototype = {
   },
 
   // nsIActivityListener
-  onStateChanged(aActivity, aOldState) {},
+  onStateChanged() {},
 
-  onProgressChanged(
-    aActivity,
-    aStatusText,
-    aWorkUnitsCompleted,
-    aTotalWorkUnits
-  ) {
+  onProgressChanged(aActivity, aStatusText) {
     const index = this._activeProcesses.indexOf(aActivity);
 
     // Iterate through the list trying to find the first active process, but
@@ -691,7 +683,7 @@ nsMsgStatusFeedback.prototype = {
     this.updateProgress();
   },
 
-  onHandlerChanged(aActivity) {},
+  onHandlerChanged() {},
 };
 
 /**
@@ -702,13 +694,6 @@ nsMsgStatusFeedback.prototype = {
 function getBrowser() {
   const tabmail = document.getElementById("tabmail");
   return tabmail ? tabmail.getBrowserForSelectedTab() : null;
-}
-
-// Given the server, open the twisty and the set the selection
-// on inbox of that server.
-// prompt if offline.
-function OpenInboxForServer(server) {
-  // TODO: Reimplement this or fix the caller?
 }
 
 /** Update state of zoom type (text vs. full) menu item. */
@@ -1123,6 +1108,14 @@ window.addEventListener("aboutMessageLoaded", event => {
   );
   // Also add a copy listener so we can process images.
   event.target.document.addEventListener("copy", onCopyOrDragStart, true);
+
+  event.target.document.addEventListener("keypress", event => {
+    if ((event.key == "Backspace" || event.key == "Delete") && event.repeat) {
+      // Bail on delete event if there is a repeat event to prevent deleteing
+      // multiple messages by mistake from a longer key press.
+      event.preventDefault();
+    }
+  });
 });
 
 // Listener to correctly set the busy flag on the webBrowser in about:3pane. All

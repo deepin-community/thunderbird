@@ -993,7 +993,7 @@ export var FeedUtils = {
     const uri = Services.io.newURI(url);
     const iconURL = await fetchFavicon(uri.prePath + "/favicon.ico")
       .then(blobToBase64)
-      .catch(e => {
+      .catch(() => {
         return discoverFaviconURL(url)
           .catch(() => discoverFaviconURL(uri.prePath))
           .then(fetchFavicon)
@@ -1074,7 +1074,7 @@ export var FeedUtils = {
     this.updateFolderChangeInFeedsDS(newFolder, aOrigFolder, null, null);
 
     // There may be subfolders, but we only get a single notification; iterate
-    // over all descendent folders of the folder whose location has changed.
+    // over all descendant folders of the folder whose location has changed.
     for (const newSubFolder of newFolder.descendants) {
       FeedUtils.updateFolderChangeInFeedsDS(
         newSubFolder,
@@ -1182,15 +1182,15 @@ export var FeedUtils = {
     // 1) Replace line breaks and tabs '\n\r\t' with a space.
     // 2) Remove nonprintable ascii.
     // 3) Remove invalid win chars '* | \ / : < > ? "'.
-    // 4) Remove all '.' as starting/ending with one is trouble on osx/win.
+    // 4) Remove all starting/ending '.' as that is trouble on osx/win.
     // 5) No leading/trailing spaces.
     /* eslint-disable no-control-regex */
     let folderName = aProposedName
       .replace(/[\n\r\t]+/g, " ")
       .replace(/[\x00-\x1F]+/g, "")
       .replace(/[*|\\\/:<>?"]+/g, "")
-      .replace(/[\.]+/g, "")
-      .trim();
+      .trim()
+      .replace(/(^[\.]+)|([\.]+$)/g, "");
     /* eslint-enable no-control-regex */
 
     // Prefix with __ if name is:
@@ -2081,7 +2081,7 @@ export var FeedUtils = {
       }
     },
 
-    onProgress(feed, aProgress, aProgressMax, aLengthComputable) {
+    onProgress(feed, aProgress, aProgressMax) {
       if (feed.url in this.mFeeds) {
         // Have we already seen this feed?
         this.mFeeds[feed.url].currentProgress = aProgress;

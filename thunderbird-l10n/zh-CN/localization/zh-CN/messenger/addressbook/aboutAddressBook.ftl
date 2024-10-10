@@ -8,6 +8,8 @@ about-addressbook-title = 通讯录
 
 about-addressbook-toolbar-new-address-book =
     .label = 新建通讯录
+about-addressbook-toolbar-add-address-book =
+    .label = 添加本地通讯录
 about-addressbook-toolbar-add-carddav-address-book =
     .label = 添加 CardDAV 通讯录
 about-addressbook-toolbar-add-ldap-address-book =
@@ -18,6 +20,14 @@ about-addressbook-toolbar-new-list =
     .label = 新建列表
 about-addressbook-toolbar-import =
     .label = 导入
+books-pane-create-contact-button = 新建联系人
+    .title = 新建联系人
+books-pane-create-book-button =
+    .title = 新建通讯录
+books-pane-create-list-button =
+    .title = 新建邮件列表
+books-pane-import-button = 导入
+    .title = 导入通讯录
 
 ## Books
 
@@ -66,6 +76,14 @@ about-addressbook-search =
     .placeholder = 搜索 { $name }
 about-addressbook-search-all =
     .placeholder = 搜索所有通讯录
+# Variables:
+# $name (String) - Name of the address book that will be searched.
+about-addressbook-search2 =
+    .label = 搜索 { $name }
+    .placeholder = 搜索 { $name }…
+about-addressbook-search-all2 =
+    .label = 搜索全部通讯录
+    .placeholder = 搜索全部通讯录…
 about-addressbook-sort-button2 =
     .title = 列表显示选项
 about-addressbook-name-format-display =
@@ -92,38 +110,83 @@ about-addressbook-column-header-generatedname2 = 名称
     .title = 按名称排序
 about-addressbook-column-label-generatedname2 =
     .label = 姓名
+# Variables:
+# $title (String) - Contact name for tooltip.
+about-addressbook-cell-generatedname2 =
+    .aria-label = 姓名
+    .title = { $title }
 about-addressbook-column-header-emailaddresses2 = 电子邮件地址
     .title = 按电子邮件地址排序
 about-addressbook-column-label-emailaddresses2 =
     .label = 电子邮件地址
+# Variables:
+# $title (String) - Contact email addresses for tooltip.
+about-addressbook-cell-emailaddresses2 =
+    .aria-label = 邮箱地址
+    .title = { $title }
 about-addressbook-column-header-nickname2 = 昵称
     .title = 按昵称排序
 about-addressbook-column-label-nickname2 =
     .label = 昵称
+# Variables:
+# $title (String) - Contact nickname for tooltip.
+about-addressbook-cell-nickname2 =
+    .aria-label = 昵称
+    .title = { $title }
 about-addressbook-column-header-phonenumbers2 = 电话号码
     .title = 按电话号码排序
 about-addressbook-column-label-phonenumbers2 =
     .label = 电话号码
+# Variables:
+# $title (String) - Contact phone numbers for tooltip.
+about-addressbook-cell-phonenumbers2 =
+    .aria-label = 手机号码
+    .title = { $title }
 about-addressbook-column-header-addresses2 = 地址
     .title = 按地址排序
 about-addressbook-column-label-addresses2 =
     .label = 地址
+# Variables:
+# $title (String) - Contact addresses for tooltip.
+about-addressbook-cell-addresses2 =
+    .aria-label = 地址
+    .title = { $title }
 about-addressbook-column-header-title2 = 标题
     .title = 按标题排序
 about-addressbook-column-label-title2 =
     .label = 标题
+# Variables:
+# $title (String) - Contact job title for tooltip.
+about-addressbook-cell-title2 =
+    .aria-label = 职位
+    .title = { $title }
 about-addressbook-column-header-department2 = 部门
     .title = 按部门排序
 about-addressbook-column-label-department2 =
     .label = 部门
+# Variables:
+# $title (String) - Contact department for tooltip.
+about-addressbook-cell-department2 =
+    .aria-label = 部门
+    .title = { $title }
 about-addressbook-column-header-organization2 = 组织
     .title = 按组织排序
 about-addressbook-column-label-organization2 =
     .label = 组织
+# Variables:
+# $title (String) - Contact organization for tooltip.
+about-addressbook-cell-organization2 =
+    .aria-label = 工作单位
+    .title = { $title }
 about-addressbook-column-header-addrbook2 = 通讯录
     .title = 按通讯录排序
 about-addressbook-column-label-addrbook2 =
     .label = 通讯录
+# Variables:
+# $title (String) - Contact address for tooltip.
+about-addressbook-cell-addrbook2 =
+    .aria-label = 通讯录
+    .title = { $title }
 about-addressbook-cards-context-write =
     .label = 写邮件
 about-addressbook-confirm-delete-mixed-title = 删除联系人和列表

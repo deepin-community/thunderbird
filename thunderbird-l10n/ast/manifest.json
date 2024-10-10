@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ast@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Asturianu (Asturian)",
   "description": "Thunderbird Language Pack for Asturianu (ast) – Asturian",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "ast": {
-      "version": "20240423200037",
+      "version": "20240930174601",
       "chrome_resources": {
         "alerts": "chrome/ast/locale/ast/alerts/",
         "autoconfig": "chrome/ast/locale/ast/autoconfig/",
         "branding": "chrome/ast/locale/branding/",
         "calendar": "chrome/ast/locale/ast/calendar/",
-        "chat": "chrome/ast/locale/ast/chat/",
         "communicator": "chrome/ast/locale/ast/communicator/",
         "devtools": "chrome/ast/locale/ast/devtools/client/",
         "devtools-shared": "chrome/ast/locale/ast/devtools/shared/",

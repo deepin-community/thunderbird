@@ -370,7 +370,7 @@ mark-read-no-delay =
     .label = Inmediatamente en pantalla
     .accesskey = I
 view-attachments-inline =
-    .label = Mirá los archivos adjuntos en linea
+    .label = Ver adjuntos integrados
     .accesskey = V
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
@@ -399,6 +399,17 @@ close-move-delete =
     .accesskey = C
 display-name-label =
     .value = Nombre para mostrar:
+address-display-legend = Lista de mensajes
+address-display-description = Formato preferido para mostrar la dirección:
+address-display-full =
+    .label = Nombre completo y correo electrónico
+    .accesskey = o
+address-display-email =
+    .label = Solo correo electrónico
+    .accesskey = e
+address-display-name =
+    .label = Solo el nombre
+    .accesskey = n
 condensed-addresses-label =
     .label = Ver solamente el nombre a mostrar para personas en mi libreta de direcciones
     .accesskey = S
@@ -560,6 +571,9 @@ primary-password-description = Una contraseña maestra protege todas sus contras
 primary-password-label =
     .label = Usar una contraseña maestra
     .accesskey = U
+# This operation requires the user to authenticate with the operating system (device sign-in)
+forms-os-reauth =
+    .label = Requerir inicio de sesión en el dispositivo para completar y administrar contraseñas
 primary-password-button =
     .label = Cambiar la contraseña maestra…
     .accesskey = C

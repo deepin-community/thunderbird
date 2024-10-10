@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const account = createAccount("pop3");
@@ -162,6 +162,7 @@ add_task(async function testHeaders() {
   const extension = ExtensionTestUtils.loadExtension({
     files,
     manifest: {
+      manifest_version: 2,
       background: { scripts: ["utils.js", "background.js"] },
       permissions: ["accountsRead", "addressBooks", "messagesRead"],
     },

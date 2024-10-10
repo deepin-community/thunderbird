@@ -6,6 +6,21 @@ const Cm = Components.manager;
 Cm.QueryInterface(Ci.nsIServiceManager);
 
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
+import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+
+const lazy = {};
+XPCOMUtils.defineLazyPreferenceGetter(
+  lazy,
+  "BROWSER_STARTUP_RECORD",
+  "browser.startup.record",
+  false
+);
+XPCOMUtils.defineLazyPreferenceGetter(
+  lazy,
+  "BROWSER_STARTUP_RECORD_IMAGES",
+  "browser.startup.recordImages",
+  false
+);
 
 let firstPaintNotification = "widget-first-paint";
 // widget-first-paint fires much later than expected on Linux.
@@ -98,10 +113,7 @@ StartupRecorder.prototype = {
         return;
       }
 
-      if (
-        !Services.prefs.getBoolPref("browser.startup.record", false) &&
-        !Services.prefs.getBoolPref("browser.startup.recordImages", false)
-      ) {
+      if (!lazy.BROWSER_STARTUP_RECORD && !lazy.BROWSER_STARTUP_RECORD_IMAGES) {
         this._resolve();
         this._resolve = null;
         return;
@@ -109,7 +121,7 @@ StartupRecorder.prototype = {
 
       // We can't ensure our observer will be called first or last, so the list of
       // topics we observe here should avoid the topics used to trigger things
-      // during startup (eg. the topics observed by BrowserGlue.jsm).
+      // during startup (eg. the topics observed by BrowserGlue.sys.mjs).
       let topics = [
         "profile-do-change", // This catches stuff loaded during app-startup
         "toplevel-window-ready", // Catches stuff from final-ui-startup
@@ -118,7 +130,7 @@ StartupRecorder.prototype = {
         "mail-startup-idle-tasks-finished",
       ];
 
-      if (Services.prefs.getBoolPref("browser.startup.recordImages", false)) {
+      if (lazy.BROWSER_STARTUP_RECORD_IMAGES) {
         // For code simplicify, recording images excludes the other startup
         // recorder behaviors, so we can observe only the image topics.
         topics = [
@@ -181,7 +193,7 @@ StartupRecorder.prototype = {
         this.record.bind(this, "before handling user events")
       );
     } else if (topic == "mail-startup-idle-tasks-finished") {
-      if (Services.prefs.getBoolPref("browser.startup.recordImages", false)) {
+      if (lazy.BROWSER_STARTUP_RECORD_IMAGES) {
         Services.obs.removeObserver(this, "image-drawing");
         Services.obs.removeObserver(this, "image-loading");
         this._resolve();

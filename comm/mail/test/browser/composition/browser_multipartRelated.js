@@ -10,21 +10,23 @@
 
 var { close_compose_window, open_compose_new_mail, save_compose_message } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+    "resource://testing-common/mail/ComposeHelpers.sys.mjs"
   );
 var { be_in_folder, get_special_folder, press_delete, select_click_row } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+    "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
   );
 var { click_menus_in_sequence, promise_modal_dialog } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+    "resource://testing-common/mail/WindowHelpers.sys.mjs"
   );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-var { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
+var { MimeParser } = ChromeUtils.importESModule(
+  "resource:///modules/mimeParser.sys.mjs"
+);
 
 var gDrafts;
 

@@ -138,7 +138,7 @@ mail-play-sound-label =
     .label =
         { PLATFORM() ->
             [macos] Chwarae'r ffeil sain ganlynol:
-           *[other] Canu nodyn
+           *[other] Canu sain
         }
     .accesskey =
         { PLATFORM() ->
@@ -199,7 +199,7 @@ smooth-scrolling-label =
 browsing-gtk-use-non-overlay-scrollbars =
     .label = Dango bariau sgrolio bob tro
     .accesskey = D
-window-layout-legend = Cynllun Ffenestr
+window-layout-legend = Cynllun Ffenestri
 draw-in-titlebar-label =
     .label = Cuddio bar teitl ffenestr y system
     .accesskey = C
@@ -219,7 +219,7 @@ check-default-button =
 search-engine-name =
     { PLATFORM() ->
         [macos] Sbotolau
-        [windows] Chwilio Ffenestri
+        [windows] Chwilio Windows
        *[other] { "" }
     }
 search-integration-label =
@@ -399,6 +399,17 @@ close-move-delete =
     .accesskey = C
 display-name-label =
     .value = Enw dangos:
+address-display-legend = Rhestr Negeseuon
+address-display-description = Fformat dangos y cyfeiriad gorau:
+address-display-full =
+    .label = Enw llawn a chyfeiriad e-bost
+    .accesskey = E
+address-display-email =
+    .label = E-bost yn unig
+    .accesskey = b
+address-display-name =
+    .label = Enw yn unig
+    .accesskey = n
 condensed-addresses-label =
     .label = Dangos dim ond enw dangos unigolion yn fy llyfr cyfeiriadau
     .accesskey = D
@@ -560,17 +571,20 @@ primary-password-description = Mae Prif Gyfrinair yn diogelu eich holl gyfrineir
 primary-password-label =
     .label = Defnyddio Prif Gyfrinair
     .accesskey = D
+# This operation requires the user to authenticate with the operating system (device sign-in)
+forms-os-reauth =
+    .label = Gofyn am fewngofnodi dyfais i lenwi a rheoli cyfrineiriau
 primary-password-button =
     .label = Newid y Prif Gyfrinair…
     .accesskey = N
 forms-primary-pw-fips-title = Rydych ym modd FIPS. Mae FIPS angen Prif Gyfrinair nad yw'n wag.
 forms-master-pw-fips-desc = Methodd Newid eich Cyfrinair
-junk-description = Yma gallwch osod eich gosodiadau sbam rhagosodedig. Mae modd ffurfweddu gosodiadau penodol ar gyfer sbam yn Gosodiadau Cyfrif.
+junk-description = Yma gallwch osod eich gosodiadau sbam rhagosodedig. Mae modd ffurfweddu gosodiadau penodol ar gyfer sbam yn y Gosodiadau Cyfrif.
 junk-label =
     .label = Pan fyddai'n marcio negeseuon fel sbam:
     .accesskey = P
 junk-marked-label =
-    .label = Pan fydd negeseuon wedi'u marcio fel sothach:
+    .label = Pan fydd negeseuon wedi'u marcio fel sbam:
     .accesskey = P
 junk-move-label =
     .label = Eu symud i ffolder "Sbam" y cyfrif
@@ -583,10 +597,10 @@ junk-read-label =
     .accesskey = a
 junk-read-description = Marcio negeseuon fel wedi'u darllen
 junk-read-manual-label =
-    .label = Pan wedi'i farcio â llaw fel sothach
+    .label = Pan wedi'i farcio â llaw fel sbam
     .accesskey = P
 junk-read-auto-label =
-    .label = Pan fydd { -brand-short-name } yn penderfynu eu bod yn sothach
+    .label = Pan fydd { -brand-short-name } yn penderfynu eu bod yn sbam
     .accesskey = P
 junk-log-label =
     .label = Galluogi cofnodi hidlo sbam addasol

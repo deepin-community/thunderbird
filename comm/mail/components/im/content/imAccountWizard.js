@@ -8,8 +8,8 @@
 var { IMServices } = ChromeUtils.importESModule(
   "resource:///modules/IMServices.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { ChatIcons } = ChromeUtils.importESModule(
   "resource:///modules/chatIcons.sys.mjs"
@@ -87,7 +87,7 @@ var accountWizard = {
   unload() {
     Services.obs.removeObserver(accountWizard, "prpl-quit");
   },
-  observe(aObject, aTopic, aData) {
+  observe(aObject, aTopic) {
     if (aTopic == "prpl-quit") {
       // libpurple is being uninitialized. We can't create any new
       // account so keeping this wizard open would be pointless, close it.
@@ -189,12 +189,12 @@ var accountWizard = {
     if (aDefaultValue) {
       input.setAttribute("value", aDefaultValue);
     }
-    input.addEventListener("input", event => {
+    input.addEventListener("input", () => {
       this.checkUsername();
     });
     // Only add the split logic to the first input field
     if (!this.userNameBoxes) {
-      input.addEventListener("blur", event => {
+      input.addEventListener("blur", () => {
         this.splitUsername();
       });
     }
@@ -520,6 +520,6 @@ var accountWizard = {
   },
 };
 
-window.addEventListener("load", event => {
+window.addEventListener("load", () => {
   accountWizard.onload();
 });

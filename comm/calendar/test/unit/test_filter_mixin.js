@@ -924,7 +924,7 @@ add_task(async function testChangeWhileRefreshing() {
     },
     addObserver() {},
 
-    getItems(filter, count, rangeStart, rangeEndEx) {
+    getItems() {
       return CalReadableStreamFactory.createReadableStream({
         async start(controller) {
           pumpCalendar.controller = controller;
@@ -945,10 +945,10 @@ add_task(async function testChangeWhileRefreshing() {
   const ready1 = widget.ready;
   let ready1Resolved, ready1Rejected;
   ready1.then(
-    arg => {
+    () => {
       ready1Resolved = true;
     },
-    arg => {
+    () => {
       ready1Rejected = true;
     }
   );
@@ -996,15 +996,17 @@ add_task(async function testChangeWhileRefreshing() {
   Assert.equal(widget.activate(), ready1, ".activate should return the same Promise");
   Assert.equal(widget.ready, ready1, ".ready should return the same Promise");
 
-  // Return some items from the calendar. They should be sent to addItems.
+  // Return some items from the calendar. They would be sent to addItems,
+  // unless the stream is closed before;
 
   pumpCalendar.controller.enqueue([testItems.during]);
-  await TestUtils.waitForCondition(() => widget.addedItems.length == 1, "first added item");
-  Assert.equal(widget.addedItems[0].title, testItems.during.title, "added item was expected");
 
-  // Make the widget inactive. This invalidates the earlier call to `refreshItems`.
-
+  // Make the widget inactive. This invalidates the earlier call to `refreshItems`
+  // ... which means the stream gets closed.
   widget.deactivate();
+
+  // Since the stream was not finished, should have no items.
+  Assert.equal(widget.addedItems.length, 0, "should have no items");
 
   // Return some more items from the calendar. These should be ignored.
 
@@ -1019,8 +1021,7 @@ add_task(async function testChangeWhileRefreshing() {
   // We're testing that nothing happens. Give it time to potentially happen.
   await new Promise(resolve => do_timeout(500, resolve));
 
-  Assert.equal(widget.addedItems.length, 1, "no more items added");
-  Assert.equal(widget.addedItems[0].title, testItems.during.title, "added item was expected");
+  Assert.equal(widget.addedItems.length, 0, "no more items added");
   Assert.equal(ready1Resolved, undefined, "Promise did not yet resolve");
   Assert.equal(ready1Rejected, undefined, "Promise did not yet reject");
 
@@ -1032,8 +1033,9 @@ add_task(async function testChangeWhileRefreshing() {
   Assert.equal(widget.ready, ready1, ".ready should return the same Promise");
 
   pumpCalendar.controller.enqueue([testItems.during]);
-  await TestUtils.waitForCondition(() => widget.addedItems.length == 1, "first added item");
-  Assert.equal(widget.addedItems[0].title, testItems.during.title, "added item was expected");
+
+  // Since the stream was not finished, should have no items.
+  Assert.equal(widget.addedItems.length, 0, "should have no items");
 
   // ... then before it finishes, force another refresh. We're still waiting for the original
   // Promise because no refresh has completed yet.

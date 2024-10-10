@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = 機能紹介
     .accesskey = F
+menu-help-get-release-help =
+    .label = { -brand-short-name } に関するヘルプ
+    .accesskey = R
 menu-help-shortcuts =
     .label = キーボードショートカット
     .accesskey = K
@@ -65,6 +68,12 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } を終了
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] { -brand-full-name } を終了
+           *[other] { -brand-full-name } を終了
+        }
 # Localization note: Do not translate unless your locale's keyboard layout
 # does not include this key, as it determines the keyboard shortcut for
 # shutting down the application.
@@ -134,6 +143,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = メールアカウント...
+    .accesskey = E
 file-new-newsgroup-account =
     .label = ニュースグループアカウント...
     .accesskey = N

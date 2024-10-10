@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-tr@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Türkçe (Turkish)",
   "description": "Thunderbird Language Pack for Türkçe (tr) – Turkish",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "tr": {
-      "version": "20240423195815",
+      "version": "20240930174724",
       "chrome_resources": {
         "alerts": "chrome/tr/locale/tr/alerts/",
         "autoconfig": "chrome/tr/locale/tr/autoconfig/",
         "branding": "chrome/tr/locale/branding/",
         "calendar": "chrome/tr/locale/tr/calendar/",
-        "chat": "chrome/tr/locale/tr/chat/",
         "communicator": "chrome/tr/locale/tr/communicator/",
         "devtools": "chrome/tr/locale/tr/devtools/client/",
         "devtools-shared": "chrome/tr/locale/tr/devtools/shared/",

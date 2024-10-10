@@ -8,25 +8,27 @@
  *  the the view and controller.
  *
  * Because much of the work related to faceting is not UI-specific, we try and
- *  push as much of it into mailnews/db/gloda/Facet.jsm.  In some cases we may
+ *  push as much of it into mailnews/db/gloda/Facet.sys.mjs.  In some cases we may
  *  get it wrong and it may eventually want to migrate.
  */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { TagUtils } = ChromeUtils.importESModule(
   "resource:///modules/TagUtils.sys.mjs"
 );
-var { Gloda } = ChromeUtils.import("resource:///modules/gloda/GlodaPublic.jsm");
-var { GlodaConstants } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaConstants.jsm"
+var { Gloda } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/GlodaPublic.sys.mjs"
 );
-var { GlodaSyntheticView } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaSyntheticView.jsm"
+var { GlodaConstants } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/GlodaConstants.sys.mjs"
 );
-var { FacetDriver, FacetUtils } = ChromeUtils.import(
-  "resource:///modules/gloda/Facet.jsm"
+var { GlodaSyntheticView } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/GlodaSyntheticView.sys.mjs"
+);
+var { FacetDriver, FacetUtils } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/Facet.sys.mjs"
 );
 
 var glodaFacetStrings = Services.strings.createBundle(
@@ -850,7 +852,7 @@ var FacetContext = {
   _timeoutHoverWrapper(aThis) {
     aThis._timeoutHover();
   },
-  unhoverFacet(aFaceter, aAttrDef, aGroupValue, aGroupItems) {
+  unhoverFacet(aFaceter, aAttrDef, aGroupValue) {
     // have we already brushed from some other source already?  ignore then.
     if (this._brushedFacet != aFaceter || this._brushedGroup != aGroupValue) {
       return;
@@ -1045,10 +1047,10 @@ var FacetContext = {
     });
   },
 
-  onItemsAdded(aItems, aCollection) {},
-  onItemsModified(aItems, aCollection) {},
-  onItemsRemoved(aItems, aCollection) {},
-  onQueryCompleted(aCollection) {
+  onItemsAdded() {},
+  onItemsModified() {},
+  onItemsRemoved() {},
+  onQueryCompleted() {
     if (
       this.tab.query.completed &&
       (!("IMQuery" in this.tab) || this.tab.IMQuery.completed)

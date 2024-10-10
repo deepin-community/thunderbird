@@ -19,7 +19,6 @@ Build-Depends:
  libatk-adaptor,
  libcairo2-dev (>= 1.10.2-1.1~),
  libclang-dev,
- libdbus-glib-1-dev (>= 0.60),
  libevent-dev (>= 1.4.1),
  libffi-dev,
  libfontconfig-dev,
@@ -35,6 +34,7 @@ Build-Depends:
  libpng-dev,
  libpulse-dev,
  libreadline-dev,
+ librnp-dev (>= 0.17.0),
  librust-toml-dev,
  libstartup-notification0-dev,
  libvpx-dev (>= 1.10.0),
@@ -48,7 +48,7 @@ Build-Depends:
  nasm,
  nodejs (>= 12.22.0),
  python3,
- rustc (>= 1.74),
+ rustc (>= 1.66),
  unzip,
  yasm (>= 1.1),
  zip,
@@ -61,10 +61,12 @@ X-Debian-Homepage: http://wiki.debian.org/Thunderbird
 Standards-Version: 4.7.0
 
 Package: thunderbird
-Architecture: amd64 arm64 i386 mips64el ppc64el s390x ppc64 riscv64 loong64
+Architecture: amd64 arm64 i386 mips64el ppc64el s390x ppc64 riscv64
 Depends:
  debianutils (>= 1.16),
  fontconfig,
+ libotr5t64,
+ librnp0 (>= 0.17.0),
  psmisc,
  x11-utils | kdialog | zenity,
  ${misc:Depends},
@@ -853,7 +855,7 @@ Depends:
 Homepage: https://wiki.mozilla.org/L10n:Teams:lv
 Recommends:
  hunspell-lv,
-Description: Ltavian language package for Thunderbird
+Description: Latvian language package for Thunderbird
  Thunderbird is an mail client suitable for free distribution. The goal of
  Thunderbird is to produce a cross platform stand-alone mail application using
  the XUL user interface language.

@@ -921,10 +921,6 @@
      -->
 <!ENTITY moveToNewWindow.label "Move to New Window">
 <!ENTITY moveToNewWindow.accesskey "W">
-<!ENTITY newCreateEmailAccountCmd.label "Get a New Mail Account…">
-<!ENTITY newCreateEmailAccountCmd.accesskey "G">
-<!ENTITY newExistingEmailAccountCmd.label "Existing Mail Account…">
-<!ENTITY newExistingEmailAccountCmd.accesskey "E">
 <!ENTITY newIMAccountCmd.label "Chat Account…">
 <!ENTITY newIMAccountCmd.accesskey "C">
 <!ENTITY newFeedAccountCmd.label "Feed Account…">
@@ -1128,12 +1124,6 @@
 <!ENTITY contextEditTemplate.accesskey "T">
 <!ENTITY contextReplyNewsgroup2.label "Followup to Newsgroup">
 <!ENTITY contextReplyNewsgroup2.accesskey "u">
-<!ENTITY contextForwardAsMenu.label "Forward As">
-<!ENTITY contextForwardAsMenu.accesskey "o">
-<!ENTITY contextForwardAsInline.label "Inline">
-<!ENTITY contextForwardAsInline.accesskey "I">
-<!ENTITY contextForwardAsAttachmentItem.label "Attachment">
-<!ENTITY contextForwardAsAttachmentItem.accesskey "A">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Favorites">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "F">
 <!ENTITY contextKillThreadMenu.label "Ignore Thread">

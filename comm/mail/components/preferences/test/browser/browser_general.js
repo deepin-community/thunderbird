@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 add_task(async () => {
@@ -103,6 +103,26 @@ add_task(async () => {
         id: "custom",
         prefValue: 1,
         enabledElements: ["#soundUrlLocation", "#browseForSound"],
+      },
+    ],
+  });
+});
+
+add_task(async () => {
+  await testRadioButtons("paneGeneral", "changeAddressDisplayFormat", {
+    pref: "mail.addressDisplayFormat",
+    states: [
+      {
+        id: "displayFull",
+        prefValue: 0,
+      },
+      {
+        id: "displayEmail",
+        prefValue: 1,
+      },
+      {
+        id: "displayName",
+        prefValue: 2,
       },
     ],
   });

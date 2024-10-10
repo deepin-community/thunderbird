@@ -50,7 +50,7 @@ calCachedCalendarObserverHelper.prototype = {
     this.home.mObservers.notify("onEndBatch", [this.home]);
   },
 
-  async onLoad(calendar) {
+  async onLoad() {
     if (this.isCachedObserver) {
       this.home.mObservers.notify("onLoad", [this.home]);
     } else {
@@ -64,25 +64,25 @@ calCachedCalendarObserverHelper.prototype = {
     }
   },
 
-  onAddItem(aItem) {
+  onAddItem() {
     if (this.isCachedObserver) {
       this.home.mObservers.notify("onAddItem", arguments);
     }
   },
 
-  onModifyItem(aNewItem, aOldItem) {
+  onModifyItem() {
     if (this.isCachedObserver) {
       this.home.mObservers.notify("onModifyItem", arguments);
     }
   },
 
-  onDeleteItem(aItem) {
+  onDeleteItem() {
     if (this.isCachedObserver) {
       this.home.mObservers.notify("onDeleteItem", arguments);
     }
   },
 
-  onError(aCalendar, aErrNo, aMessage) {
+  onError() {
     this.home.mObservers.notify("onError", arguments);
   },
 
@@ -143,7 +143,7 @@ calCachedCalendar.prototype = {
       // afterwards.
 
       const listener = {
-        onDeleteCalendar(aCalendar, aStatus, aDetail) {
+        onDeleteCalendar() {
           self.mCachedCalendar = null;
         },
       };
@@ -348,7 +348,7 @@ calCachedCalendar.prototype = {
       throw e; // Do not swallow this error.
     }
 
-    await new Promise((resolve, reject) => {
+    await new Promise(resolve => {
       cal.iterate.forEach(
         this.offlineCachedItems,
         item => {
@@ -656,7 +656,7 @@ calCachedCalendar.prototype = {
    *
    * @callback OnOperationCompleteHandler
    *
-   * @param {Ci.calICalendar} calendar
+   * @param {calICalendar} calendar
    * @param {number} status
    * @param {number} operationType
    * @param {string} id
@@ -678,7 +678,7 @@ calCachedCalendar.prototype = {
    * preserve the order of the "onAddItem" event.
    *
    * @param {calIItem} item
-   * @param {OnOperationCompleteHandler} handler
+   * @param {OnOperationCompleteHandler} listener
    */
   doAdoptItem(item, listener) {
     // Forwarding add/modify/delete to the cached calendar using the calIObserver
@@ -694,7 +694,14 @@ calCachedCalendar.prototype = {
 
     const onSuccess = item =>
       listener(item.calendar, Cr.NS_OK, Ci.calIOperationListener.ADD, item.id, item);
-    const onError = e => listener(null, e.result || Cr.NS_ERROR_FAILURE, null, null, e);
+    const onError = e =>
+      listener(
+        item.calendar,
+        e.result || Cr.NS_ERROR_FAILURE,
+        Ci.calIOperationListener.ADD,
+        item.id,
+        e
+      );
 
     if (this.offline) {
       // If we are offline, don't even try to add the item
@@ -706,13 +713,14 @@ calCachedCalendar.prototype = {
       // so this adoptItem() call returns first. This is a needed hack to keep the
       // cached calendar's "onAddItem" event firing before the endBatch() call of
       // the uncached calendar.
+      // @implements {OnOperationCompleteHandler}
       const adoptItemCallback = async (calendar, status, opType, id, detail) => {
         if (isUnavailableCode(status)) {
           // The item couldn't be added to the (remote) location,
           // this is like being offline. Add the item to the cached
           // calendar instead.
           cal.LOG(
-            "[calCachedCalendar] Calendar " + calendar.name + " is unavailable, adding item offline"
+            `[calCachedCalendar] Calendar ${calendar.name}' is unavailable, adding item offline`
           );
           await this.adoptOfflineItem(item).then(onSuccess, onError);
         } else if (Components.isSuccessCode(status)) {
@@ -732,7 +740,13 @@ calCachedCalendar.prototype = {
 
       this.mUncachedCalendar.wrappedJSObject._cachedAdoptItemCallback = adoptItemCallback;
       this.mUncachedCalendar.adoptItem(item).catch(e => {
-        adoptItemCallback(null, e.result || Cr.NS_ERROR_FAILURE, null, null, e);
+        adoptItemCallback(
+          item.calendar,
+          e.result || Cr.NS_ERROR_FAILURE,
+          Ci.calIOperationListener.ADD,
+          item.id,
+          e
+        );
       });
     }
   },
@@ -767,12 +781,19 @@ calCachedCalendar.prototype = {
    *
    * @param {calIItem} newItem
    * @param {calIItem} oldItem
-   * @param {OnOperationCompleteHandler} handler
+   * @param {OnOperationCompleteHandler} listener
    */
   doModifyItem(newItem, oldItem, listener) {
     const onSuccess = item =>
       listener(item.calendar, Cr.NS_OK, Ci.calIOperationListener.MODIFY, item.id, item);
-    const onError = e => listener(null, e.result || Cr.NS_ERROR_FAILURE, null, null, e);
+    const onError = e =>
+      listener(
+        oldItem.calendar,
+        e.result || Cr.NS_ERROR_FAILURE,
+        Ci.calIOperationListener.MODIFY,
+        oldItem.id,
+        e
+      );
 
     // Forwarding add/modify/delete to the cached calendar using the calIObserver
     // callbacks would be advantageous, because the uncached provider could implement
@@ -837,7 +858,13 @@ calCachedCalendar.prototype = {
           this._injectedCallbacks.push(modifyItemCallback);
 
           this.mUncachedCalendar.modifyItem(newItem, oldItem).catch(e => {
-            modifyItemCallback(null, e.result || Cr.NS_ERROR_FAILURE, null, null, e);
+            modifyItemCallback(
+              oldItem.calendar,
+              e.result || Cr.NS_ERROR_FAILURE,
+              Ci.calIOperationListener.MODIFY,
+              oldItem.id,
+              e
+            );
           });
         }
       });

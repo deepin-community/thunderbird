@@ -8,6 +8,8 @@ about-addressbook-title = Sổ địa chỉ
 
 about-addressbook-toolbar-new-address-book =
     .label = Sổ địa chỉ mới
+about-addressbook-toolbar-add-address-book =
+    .label = Thêm sổ địa chỉ cục bộ
 about-addressbook-toolbar-add-carddav-address-book =
     .label = Thêm sổ địa chỉ CardDAV
 about-addressbook-toolbar-add-ldap-address-book =
@@ -18,6 +20,14 @@ about-addressbook-toolbar-new-list =
     .label = Danh sách mới
 about-addressbook-toolbar-import =
     .label = Nhập
+books-pane-create-contact-button = Liên hệ mới
+    .title = Tạo một liên hệ mới
+books-pane-create-book-button =
+    .title = Tạo một sổ địa chỉ mới
+books-pane-create-list-button =
+    .title = Tạo một danh sách gửi thư mới
+books-pane-import-button = Nhập
+    .title = Nhập sổ địa chỉ
 
 ## Books
 
@@ -66,6 +76,14 @@ about-addressbook-search =
     .placeholder = Tìm kiếm { $name }
 about-addressbook-search-all =
     .placeholder = Tìm kiếm tất cả các sổ địa chỉ
+# Variables:
+# $name (String) - Name of the address book that will be searched.
+about-addressbook-search2 =
+    .label = Tìm kiếm { $name }
+    .placeholder = Tìm kiếm { $name }…
+about-addressbook-search-all2 =
+    .label = Tìm kiếm tất cả sổ địa chỉ
+    .placeholder = Tìm kiếm tất cả sổ địa chỉ…
 about-addressbook-sort-button2 =
     .title = Tùy chọn hiển thị liệt kê
 about-addressbook-name-format-display =
@@ -82,76 +100,93 @@ about-addressbook-sort-email-ascending =
     .label = Sắp xếp theo địa chỉ e-mail (A > Z)
 about-addressbook-sort-email-descending =
     .label = Sắp xếp theo địa chỉ e-mail (Z > A)
-about-addressbook-horizontal-layout =
-    .label = Chuyển sang bố cục ngang
-about-addressbook-vertical-layout =
-    .label = Chuyển sang bố cục dọc
 about-addressbook-table-layout =
     .label = Bố cục bảng
 
 ## Card column headers
 ## Each string is listed here twice, and the values should match.
 
-about-addressbook-column-header-generatedname = Tên
-about-addressbook-column-label-generatedname =
-    .label = { about-addressbook-column-header-generatedname }
-about-addressbook-column-header-emailaddresses = Địa chỉ email
-about-addressbook-column-label-emailaddresses =
-    .label = { about-addressbook-column-header-emailaddresses }
-about-addressbook-column-header-phonenumbers = Số điện thoại
-about-addressbook-column-label-phonenumbers =
-    .label = { about-addressbook-column-header-phonenumbers }
-about-addressbook-column-header-addresses = Địa chỉ
-about-addressbook-column-label-addresses =
-    .label = { about-addressbook-column-header-addresses }
-about-addressbook-column-header-title = Chức vụ
-about-addressbook-column-label-title =
-    .label = { about-addressbook-column-header-title }
-about-addressbook-column-header-department = Bộ phận
-about-addressbook-column-label-department =
-    .label = { about-addressbook-column-header-department }
-about-addressbook-column-header-organization = Tổ chức
-about-addressbook-column-label-organization =
-    .label = { about-addressbook-column-header-organization }
-about-addressbook-column-header-addrbook = Sổ địa chỉ
-about-addressbook-column-label-addrbook =
-    .label = { about-addressbook-column-header-addrbook }
 about-addressbook-column-header-generatedname2 = Tên
     .title = Sắp xếp theo tên
 about-addressbook-column-label-generatedname2 =
     .label = Tên
+# Variables:
+# $title (String) - Contact name for tooltip.
+about-addressbook-cell-generatedname2 =
+    .aria-label = Tên
+    .title = { $title }
 about-addressbook-column-header-emailaddresses2 = Địa chỉ email
     .title = Sắp xếp theo địa chỉ email
 about-addressbook-column-label-emailaddresses2 =
     .label = Địa chỉ email
+# Variables:
+# $title (String) - Contact email addresses for tooltip.
+about-addressbook-cell-emailaddresses2 =
+    .aria-label = Địa chỉ email
+    .title = { $title }
 about-addressbook-column-header-nickname2 = Biệt danh
     .title = Sắp xếp theo biệt danh
 about-addressbook-column-label-nickname2 =
     .label = Biệt danh
+# Variables:
+# $title (String) - Contact nickname for tooltip.
+about-addressbook-cell-nickname2 =
+    .aria-label = Biệt danh
+    .title = { $title }
 about-addressbook-column-header-phonenumbers2 = Số điện thoại
     .title = Sắp xếp theo số điện thoại
 about-addressbook-column-label-phonenumbers2 =
     .label = Số điện thoại
+# Variables:
+# $title (String) - Contact phone numbers for tooltip.
+about-addressbook-cell-phonenumbers2 =
+    .aria-label = Số điện thoại
+    .title = { $title }
 about-addressbook-column-header-addresses2 = Địa chỉ
     .title = Sắp xếp theo địa chỉ
 about-addressbook-column-label-addresses2 =
     .label = Địa chỉ
+# Variables:
+# $title (String) - Contact addresses for tooltip.
+about-addressbook-cell-addresses2 =
+    .aria-label = Địa chỉ
+    .title = { $title }
 about-addressbook-column-header-title2 = Chức vụ
     .title = Sắp xếp theo chức vụ
 about-addressbook-column-label-title2 =
     .label = Chức vụ
+# Variables:
+# $title (String) - Contact job title for tooltip.
+about-addressbook-cell-title2 =
+    .aria-label = Chức vụ
+    .title = { $title }
 about-addressbook-column-header-department2 = Bộ phận
     .title = Sắp xếp theo bộ phận
 about-addressbook-column-label-department2 =
     .label = Bộ phận
+# Variables:
+# $title (String) - Contact department for tooltip.
+about-addressbook-cell-department2 =
+    .aria-label = Bộ phận
+    .title = { $title }
 about-addressbook-column-header-organization2 = Tổ chức
     .title = Sắp xếp theo tổ chức
 about-addressbook-column-label-organization2 =
     .label = Tổ chức
+# Variables:
+# $title (String) - Contact organization for tooltip.
+about-addressbook-cell-organization2 =
+    .aria-label = Tổ chức
+    .title = { $title }
 about-addressbook-column-header-addrbook2 = Sổ địa chỉ
     .title = Sắp xếp theo sổ địa chỉ
 about-addressbook-column-label-addrbook2 =
     .label = Sổ địa chỉ
+# Variables:
+# $title (String) - Contact address for tooltip.
+about-addressbook-cell-addrbook2 =
+    .aria-label = Sổ địa chỉ
+    .title = { $title }
 about-addressbook-cards-context-write =
     .label = Viết
 about-addressbook-confirm-delete-mixed-title = Xóa liên hệ và danh sách
@@ -178,14 +213,6 @@ about-addressbook-confirm-remove-contacts-title =
        *[other] Xóa liên hệ
     }
 # Variables:
-# $count (Number) - The number of contacts to be removed.
-# $name (String) - The name of the contact to be removed, if $count is 1.
-# $list (String) - The name of the list that contacts will be removed from.
-about-addressbook-confirm-remove-contacts =
-    { $count ->
-       *[other] Bạn có chắc chắn muốn xóa { $count } địa chỉ liên hệ này khỏi { $list } không?
-    }
-# Variables:
 # $name (String) - The name of the contact to be removed.
 # $list (String) - The name of the list that contacts will be removed from.
 about-addressbook-confirm-remove-contacts-single = Bạn có chắc chắn muốn xóa { $name } khỏi { $list } không?
@@ -198,13 +225,6 @@ about-addressbook-confirm-remove-contacts-multi = Bạn có chắc chắn muốn
 about-addressbook-confirm-delete-contacts-title =
     { $count ->
        *[other] Xóa liên hệ
-    }
-# Variables:
-# $count (Number) - The number of contacts to be deleted.
-# $name (String) - The name of the contact to be deleted, if $count is 1.
-about-addressbook-confirm-delete-contacts =
-    { $count ->
-       *[other] Bạn có chắc chắn muốn xóa { $count } địa chỉ liên hệ này không?
     }
 # Variables:
 # $name (String) - The name of the contact to be deleted.
@@ -224,15 +244,6 @@ about-addressbook-placeholder-no-search-results = Không tìm thấy liên hệ
 
 ## Details
 
-# Variables:
-# $count (Number) - The number of selected items (will never be fewer than two)
-about-addressbook-selection-mixed-header = { $count } liên hệ và danh sách đã chọn
-# Variables:
-# $count (Number) - The number of selected contacts
-about-addressbook-selection-contacts-header = { $count } liên hệ đã chọn
-# Variables:
-# $count (Number) - The number of selected lists
-about-addressbook-selection-lists-header = { $count } danh sách đã chọn
 # Variables:
 # $count (Number) - The number of selected items (will never be fewer than 2).
 about-addressbook-selection-mixed-header2 = { $count } mục trong sổ địa chỉ đã chọn

@@ -5,8 +5,8 @@
 const { CardDAVDirectory } = ChromeUtils.importESModule(
   "resource:///modules/CardDAVDirectory.sys.mjs"
 );
-const { CardDAVServer } = ChromeUtils.import(
-  "resource://testing-common/CardDAVServer.jsm"
+const { CardDAVServer } = ChromeUtils.importESModule(
+  "resource://testing-common/CardDAVServer.sys.mjs"
 );
 const { DNS } = ChromeUtils.importESModule("resource:///modules/DNS.sys.mjs");
 const { HttpsProxy } = ChromeUtils.importESModule(
@@ -237,6 +237,45 @@ add_task(function testNoWellKnown() {
   );
 });
 
+/**
+ * Test a CardDAV server which returns a 207 response for /.well-known/carddav,
+ * but includes no useful information but a 404 status for the requested current
+ * user principal. Test that we continue to query the root, where the correct
+ * information is returned.
+ */
+add_task(function testAppleCardDAVServer() {
+  return wrappedTest(
+    () => {
+      CardDAVServer.server.registerPathHandler(
+        "/.well-known/carddav",
+        (request, response) => {
+          response.setStatusLine("1.1", 207, "Multi-Status");
+          response.setHeader("Content-Type", "text/xml");
+          response.write(
+            `<multistatus xmlns="DAV:">
+            <response>
+              <href>/.well-known/carddav/</href>
+              <propstat>
+                <prop>
+                  <current-user-principal/>
+                </prop>
+                <status>HTTP/1.1 404 Not Found</status>
+              </propstat>
+            </response>
+          </multistatus>`.replace(/>\s+</g, "><")
+          );
+        }
+      );
+    },
+    {
+      url: "/",
+      password: "alice",
+      expectedStatus: null,
+      expectedBooks: DEFAULT_BOOKS,
+    }
+  );
+});
+
 /** Test cancelling the password prompt when it appears. */
 add_task(function testPasswordCancelled() {
   return wrappedTest(null, {
@@ -361,7 +400,9 @@ add_task(async function testDNSWithTXT() {
     Assert.equal(name, "_carddavs._tcp.dnstest.invalid");
     return [
       {
-        data: "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+        strings: [
+          "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+        ],
       },
     ];
   };

@@ -20,7 +20,7 @@
 "use strict";
 
 var { ensure_card_exists, ensure_no_card_exists } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/AddressBookHelpers.sys.mjs"
+  "resource://testing-common/mail/AddressBookHelpers.sys.mjs"
 );
 var {
   add_message_sets_to_folders,
@@ -53,11 +53,11 @@ var {
   wait_for_blank_content_pane,
   wait_for_folder_events,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var folder;
@@ -351,7 +351,7 @@ add_task(async function test_summary_when_multiple_identities() {
   assert_summary_contains_N_elts(".item-header > .subject", 2);
 });
 
-function extract_first_address(thread) {
+function extract_first_address() {
   const addresses = MailServices.headerParser.parseEncodedHeader(
     thread1.getMsgHdr(0).mime2DecodedAuthor
   );
@@ -389,33 +389,12 @@ add_task(async function test_display_name_abook() {
   await be_in_folder(folder);
 
   const address = extract_first_address(thread1);
-  ensure_card_exists(address.email, "My Friend", true);
+  ensure_card_exists(address.email, "My Friend");
 
   await collapse_all_threads();
   await select_click_row(thread1);
 
   check_address_name("My Friend");
-});
-
-add_task(async function test_display_name_abook_no_pdn() {
-  await be_in_folder(folder);
-
-  const address = extract_first_address(thread1);
-  ensure_card_exists(address.email, "My Friend", false);
-
-  await collapse_all_threads();
-  await select_click_row(thread1);
-
-  // With address book entry but display name not preferred, we display name and
-  // e-mail address.
-  check_address_name(address.name + " <" + address.email + ">");
-
-  Assert.report(
-    false,
-    undefined,
-    undefined,
-    "Test ran to completion successfully"
-  );
 });
 
 add_task(async function test_archive_and_delete_messages() {

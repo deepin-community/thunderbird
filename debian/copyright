@@ -260,8 +260,6 @@ Copyright: 2007, Adrian Johnson
 License: MPL-1.1 or LGPL-2.1
 
 Files: gfx/cairo/cairo/src/cairo-arc.c
-       gfx/cairo/cairo/src/cairo-directfb-surface.c
-       gfx/cairo/cairo/src/cairo-directfb.h
        gfx/cairo/cairo/src/cairo-fixed.c
        gfx/cairo/cairo/src/cairo-hull.c
        gfx/cairo/cairo/src/cairo-matrix.c
@@ -285,7 +283,6 @@ Copyright: 2010, Andrea Canciani
 License: MPL-1.1 or LGPL-2.1
 
 Files: gfx/cairo/cairo/src/cairo-atomic.c
-       gfx/cairo/cairo/src/cairo-drm.h
        gfx/cairo/cairo/src/cairo-freed-pool-private.h
        gfx/cairo/cairo/src/cairo-freed-pool.c
        gfx/cairo/cairo/src/cairo-list-private.h
@@ -297,11 +294,8 @@ Files: gfx/cairo/cairo/src/cairo-atomic.c
        gfx/cairo/cairo/src/cairo-script.h
        gfx/cairo/cairo/src/cairo-surface-clipper-private.h
        gfx/cairo/cairo/src/cairo-surface-clipper.c
-       gfx/cairo/cairo/src/cairo-tee-surface-private.h
        gfx/cairo/cairo/src/cairo-tee.h
        gfx/cairo/cairo/src/cairo-xlib-display.c
-       gfx/cairo/cairo/src/cairo-xml-surface.c
-       gfx/cairo/cairo/src/cairo-xml.h
 Copyright: 2007-2009, Chris Wilson
 License: MPL-1.1 or LGPL-2.1
 
@@ -316,11 +310,6 @@ Files: gfx/cairo/cairo/src/cairo-bentley-ottmann-rectangular.c
 Copyright: 2008-2009, Chris Wilson
            2006, Red Hat, Inc
            2004, Carl Worth
-License: MPL-1.1 or LGPL-2.1
-
-Files: gfx/cairo/cairo/src/cairo-beos-surface.cpp
-       gfx/cairo/cairo/src/cairo-beos.h
-Copyright: 2005, Christian Biesinger <cbiesinger@web.de>
 License: MPL-1.1 or LGPL-2.1
 
 Files: gfx/cairo/cairo/src/cairo-botor-scan-converter.c
@@ -386,19 +375,9 @@ Copyright: 2005, 2006, Red Hat, Inc.
            2002, 2003, University of Southern California
 License: MPL-1.1 or LGPL-2.1
 
-Files: gfx/cairo/cairo/src/cairo-gl-private.h
-       gfx/cairo/cairo/src/cairo-gl-surface.c
-       gfx/cairo/cairo/src/cairo-glx-context.c
-Copyright: 2009, Eric Anholt
-           2009, Chris Wilson
-           2005, 2010, Red Hat, Inc
-License: MPL-1.1 or LGPL-2.1
-
 Files: gfx/cairo/cairo/src/cairo-fixed-private.h
        gfx/cairo/cairo/src/cairo-fixed-type-private.h
        gfx/cairo/cairo/src/cairo-malloc-private.h
-       gfx/cairo/cairo/src/cairo-qt-surface.cpp
-       gfx/cairo/cairo/src/cairo-qt.h
        gfx/cairo/cairo/src/cairo-quartz-font.c
        gfx/cairo/cairo/src/cairo-quartz-image-surface.c
        gfx/cairo/cairo/src/cairo-quartz-image.h
@@ -431,21 +410,6 @@ Copyright: 2010, Intel Corporation
            2000, Keith Packard
 License: MPL-1.1 or LGPL-2.1
 
-Files: gfx/cairo/cairo/src/cairo-gl-glyphs.c
-Copyright: 2010, Red Hat, Inc., Intel Corporation
-           2009, Chris Wilson
-License: MPL-1.1 or LGPL-2.1
-
-Files: gfx/cairo/cairo/src/cairo-gl-shaders.c
-Copyright: 2010, Red Hat, Inc., Eric Anholt
-           2009, T. Zachary Laine
-License: MPL-1.1 or LGPL-2.1
-
-Files: gfx/cairo/cairo/src/cairo-gl.h
-Copyright: 2009, Eric Anholt
-           2009, Chris Wilson
-License: MPL-1.1 or LGPL-2.1
-
 Files: gfx/cairo/cairo/src/cairo-image-surface.c
        gfx/cairo/cairo/src/cairo-xcb-surface.c
        gfx/cairo/cairo/src/cairo-xcb.h
@@ -470,12 +434,6 @@ License: MPL-1.1 or LGPL-2.1
 Files: gfx/cairo/cairo/src/cairo-mutex-list-private.h
        gfx/cairo/cairo/src/cairo-mutex.c
 Copyright: 2007, Mathias Hasselmann
-License: MPL-1.1 or LGPL-2.1
-
-Files: gfx/cairo/cairo/src/cairo-os2-private.h
-       gfx/cairo/cairo/src/cairo-os2-surface.c
-       gfx/cairo/cairo/src/cairo-os2.h
-Copyright: 2005, 2006, netlabs.org
 License: MPL-1.1 or LGPL-2.1
 
 Files: gfx/cairo/cairo/src/cairo-paginated-surface.c
@@ -549,16 +507,6 @@ License: MPL-1.1 or LGPL-2.1
 Files: gfx/cairo/cairo/src/cairo-unicode.c
 Copyright: 2005, Red Hat, Inc
            1999, Tom Tromey
-License: MPL-1.1 or LGPL-2.1
-
-Files: gfx/cairo/cairo/src/cairo-vg-surface.c
-Copyright: 2009, Chris Wilson
-           2008, Opened Hand Ltd
-License: MPL-1.1 or LGPL-2.1
-
-Files: gfx/cairo/cairo/src/cairo-vg.h
-Copyright: 2009, Chris Wilson
-           2007, Mozilla Corporation
 License: MPL-1.1 or LGPL-2.1
 
 Files: gfx/cairo/libpixman/src/*
@@ -823,10 +771,6 @@ Files: gfx/ots/*
 Copyright: 2009 The Chromium Authors
 License: BSD-3-clause
 
-Files: gfx/ots/sync.sh
-Copyright: no-info-found
-License: MPL-2.0
-
 Files: gfx/qcms/*
 Copyright: 2009, Mozilla Foundation
            1998-2007, Marti Maria
@@ -1010,18 +954,6 @@ License: BSD-3-clause
 
 Files: ipc/glue/StringUtil.cpp
 Copyright: 2006-2008, The Chromium Authors.
-License: MPL-2.0
-
-Files: ipc/ipdl/test/cxx/IPDLUnitTestProcessChild.cpp
-       ipc/ipdl/test/cxx/IPDLUnitTestProcessChild.h
-       ipc/ipdl/test/cxx/IPDLUnitTestSubprocess.cpp
-       ipc/ipdl/test/cxx/IPDLUnitTestSubprocess.h
-       ipc/ipdl/test/cxx/IPDLUnitTestTypes.h
-       ipc/ipdl/test/cxx/IPDLUnitTests.h
-       ipc/ipdl/test/cxx/TestHighestPrio.cpp
-       ipc/ipdl/test/cxx/genIPDLUnitTests.py
-       ipc/ipdl/test/cxx/app/*
-Copyright: no-info-found
 License: MPL-2.0
 
 Files: js/src/builtin/embedjs.py
@@ -1359,12 +1291,6 @@ Files: media/gmp-clearkey/0.1/WMFH264Decoder.cpp
        media/gmp-clearkey/0.1/WMFUtils.h
 Copyright: 2012-2014, Mozilla Foundation and contributors
 License: Apache-2.0
-
-Files: media/kiss_fft/_kiss_fft_guts.h
-       media/kiss_fft/kiss_fft.c
-       media/kiss_fft/kiss_fftr.c
-Copyright: 2003-2010, Mark Borgerding
-License: BSD-3-clause
 
 Files: media/libcubeb/src/android/*
 Copyright: 2005-2013, The Android Open Source Project
@@ -2058,10 +1984,6 @@ License: BSD-3-clause
 Files: toolkit/components/protobuf/*
 Copyright: 2005-2006, 2008-2013, Google Inc.
 License: BSD-3-clause
-
-Files: toolkit/components/reader/Readability.js
-Copyright: 2010, Arc90 Inc.
-License: Apache-2.0
 
 Files: toolkit/components/translation/cld2/*
 Copyright: 2013-2014, Google Inc.

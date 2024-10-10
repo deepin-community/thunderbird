@@ -22,11 +22,11 @@
 <!ENTITY accountAdvanced.newMailNotification.label   "Yeni posta gelince haber ver">
 <!ENTITY accountAliasGroupbox.caption "Yerel takma ad">
 <!ENTITY accountAliasField.label      "Takma ad:">
-<!ENTITY accountAliasInfo.label       "Bu, yalnızca siz konuşurken görüşmeleriniz sırasında görünecektir. Karşı taraf görmeyecektir.">
+<!ENTITY accountAliasInfo.label       "Bu, yalnızca siz konuşurken yazışmalarınız sırasında görünecektir. Karşı taraf görmeyecektir.">
 <!ENTITY accountProxySettings.caption "Vekil Sunucu Ayarları">
 <!ENTITY accountProxySettings.change.label     "Değiştir…">
 <!ENTITY accountProxySettings.change.accessKey "D">
 
 <!ENTITY accountSummaryTitle.label   "Özet">
 <!ENTITY accountSummaryInfo.label    "Girdiğiniz bilgilerin özeti aşağıda görüntülenmektedir. Lütfen hesabınızı oluşturmadan önce kontrol edin.">
-<!ENTITY accountSummary.connectNow.label "Bu hesabı şimdi bağla.">
+<!ENTITY accountSummary.connectNow.label "Bu hesaba şimdi bağlan.">

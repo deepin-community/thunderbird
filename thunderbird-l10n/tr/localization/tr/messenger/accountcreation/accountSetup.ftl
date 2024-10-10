@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-account-setup-tab-title = Hesap kurulumu
+account-setup-tab-title = Hesap Kurulumu
 
 ## Header
 
@@ -62,8 +62,8 @@ account-setup-button-manual-config = Elle yapılandır
     .accesskey = E
 account-setup-button-stop = Durdur
     .accesskey = D
-account-setup-button-retest = Tekrar sına
-    .accesskey = T
+account-setup-button-retest = Yeniden test et
+    .accesskey = Y
 account-setup-button-continue = Devam et
     .accesskey = D
 account-setup-button-done = Tamam
@@ -144,7 +144,7 @@ account-setup-result-username-different = Gelen: { $incoming }, giden: { $outgoi
 ## Error messages
 
 # Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
-account-setup-credentials-incomplete = Kimlik doğrulama başarısız oldu. Girilen kimlik bilgileri yanlış veya oturum açmak için ayrı bir kullanıcı adı gerekiyor. Bu kullanıcı adı genellikle Windows etki alanı hesabınızdır. Etki alanı dahil olabilir veya olmayabilir. (Örn. aliatabakar veya AD\\aliatabakar)
+account-setup-credentials-incomplete = Kimlik doğrulama başarısız oldu. Girilen kimlik bilgileri yanlış veya oturum açmak için ayrı bir kullanıcı adı gerekiyor. Bu kullanıcı adı genellikle Windows etki alanı hesabınızdır. Etki alanı dahil olabilir veya olmayabilir. (Örn. ahmetyilmaz veya AD\\ahmetyilmaz)
 account-setup-credentials-wrong = Kimlik doğrulama başarısız oldu. Lütfen kullanıcı adını ve parolayı kontrol edin
 account-setup-find-settings-failed = { -brand-short-name }, e-posta hesabınızın ayarlarını bulamadı
 account-setup-exchange-config-unverifiable = Yapılandırma doğrulanamadı. Kullanıcı adınız ve parolanız doğruysa sunucu yöneticisi hesabınız için seçili yapılandırmayı devre dışı bırakmış olabilir. Başka bir protokol seçmeyi deneyin.
@@ -181,14 +181,14 @@ account-setup-advanced-setup-button = Gelişmiş yapılandırma
 
 account-setup-insecure-title = Uyarı!
 account-setup-insecure-incoming-title = Gelen posta ayarları:
-account-setup-insecure-outgoing-title = Giden posta ayarları:
+account-setup-insecure-outgoing-title = Giden e-posta ayarları:
 # Variables:
 #  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = <b>{ $server }</b> sunucusu şifreleme kullanmıyor.
-account-setup-warning-cleartext-details = Güvensiz posta sunucuları, parolalarınızı ve özel bilgilerinizi korumak için şifrelenmiş bağlantı kullanmaz. Bu sunucuya bağlanarak parolanızı ve özel bilgilenizi ifşa ediyor olabilirsiniz.
+account-setup-warning-cleartext-details = Güvensiz posta sunucuları, parolalarınızı ve özel bilgilerinizi korumak için şifrelenmiş bağlantı kullanmaz. Bu sunucuya bağlanarak parolanızı ve özel bilgilerinizi ifşa ediyor olabilirsiniz.
 account-setup-insecure-server-checkbox = Riskleri anladım
     .accesskey = R
-account-setup-insecure-description = { -brand-short-name }, mevcut yapılandırmayı kullanarak e-postalarınızı almanızı sağlayabilir ama sorunlu bağlantılarla ilgili olarak sistem yöneticinizle veya e-posta sağlayıcınızla iletişime geçmelisiniz. Daha fazla bilgi için <a data-l10n-name="thunderbird-faq-link">Thunderbird SSS</a>'ye bakın.
+account-setup-insecure-description = { -brand-short-name }, mevcut yapılandırmayı kullanarak e-postalarınızı almanızı sağlayabilir ama sorunlu bağlantılarla ilgili olarak sistem yöneticinizle veya e-posta sağlayıcınızla iletişime geçmelisiniz. Daha fazla bilgi için <a data-l10n-name="thunderbird-faq-link">Thunderbird SSS</a>’ye bakın.
 insecure-dialog-cancel-button = Ayarları değiştir
     .accesskey = d
 insecure-dialog-confirm-button = Onayla

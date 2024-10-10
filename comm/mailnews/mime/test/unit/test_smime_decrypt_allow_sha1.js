@@ -372,10 +372,9 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA1.multipart.eml",
-    enc: false,
-    sig: true,
+    enc: true,
+    sig: false,
     sig_good: false,
-    extra: 1,
   },
   {
     filename: "alice.env.sig.SHA256.opaque.eml",
@@ -386,10 +385,9 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA256.multipart.eml",
-    enc: false,
-    sig: true,
+    enc: true,
+    sig: false,
     sig_good: false,
-    extra: 1,
   },
   {
     filename: "alice.env.sig.SHA384.opaque.eml",
@@ -400,10 +398,9 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA384.multipart.eml",
-    enc: false,
-    sig: true,
+    enc: true,
+    sig: false,
     sig_good: false,
-    extra: 1,
   },
   {
     filename: "alice.env.sig.SHA512.opaque.eml",
@@ -414,10 +411,9 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA512.multipart.eml",
-    enc: false,
-    sig: true,
+    enc: true,
+    sig: false,
     sig_good: false,
-    extra: 1,
   },
 
   // encrypt-then-sign, then sign again
@@ -667,9 +663,7 @@ add_task(async function check_smime_message() {
     const sinkPromise = smimeSink.expectResults(eventsExpected);
 
     const conversion = apply_mime_conversion(uri, smimeSink);
-    await conversion.promise;
-
-    const contents = conversion._data;
+    const contents = await conversion.promise;
     // dump("contents: " + contents + "\n");
 
     if (!msg.sig || msg.sig_good || "check_text" in msg) {

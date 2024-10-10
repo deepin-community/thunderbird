@@ -7,7 +7,6 @@
 #define nsWMImport_h___
 
 #include "nsIImportModule.h"
-#include "nsCOMPtr.h"
 
 #define NS_WMIMPORT_CID                              \
   { /* 42bc82bc-8e9f-4597-8b6e-e529daaf3af1 */       \
@@ -17,7 +16,7 @@
   }
 
 // currently only support setting import
-#define kWMSupportsString NS_IMPORT_SETTINGS_STR
+#define kWMSupportsString "settings"
 
 class nsWMImport : public nsIImportModule {
  public:

@@ -6,7 +6,6 @@
 #include <algorithm>
 #include "msgCore.h"
 #include "prmem.h"
-#include "nsArrayUtils.h"
 #include "nsIMsgCustomColumnHandler.h"
 #include "nsMsgDBView.h"
 #include "nsISupports.h"
@@ -27,22 +26,16 @@
 #include "nsISpamSettings.h"
 #include "nsIMsgAccountManager.h"
 #include "nsTreeColumns.h"
-#include "nsTextFormatter.h"
-#include "nsIMimeConverter.h"
 #include "nsMsgMessageFlags.h"
-#include "nsIPrompt.h"
-#include "nsIWindowWatcher.h"
 #include "nsIMsgFolderNotificationService.h"
 #include "nsServiceManagerUtils.h"
-#include "nsComponentManagerUtils.h"
-#include "nsMemory.h"
 #include "nsIAbManager.h"
 #include "nsIAbDirectory.h"
 #include "nsIAbCard.h"
 #include "mozilla/Components.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/dom/DataTransfer.h"
 #include "mozilla/mailnews/MimeHeaderParser.h"
+#include "mozilla/Preferences.h"
 #include "nsTArray.h"
 #include "mozilla/intl/OSPreferences.h"
 #include "mozilla/intl/LocaleService.h"
@@ -78,12 +71,6 @@ nsString nsMsgDBView::m_connectorPattern;
 nsCOMPtr<nsIStringBundle> nsMsgDBView::mMessengerStringBundle;
 
 static const uint32_t kMaxNumSortColumns = 2;
-
-static void GetCachedName(const nsCString& unparsedString,
-                          int32_t displayVersion, nsACString& cachedName);
-
-static void UpdateCachedName(nsIMsgDBHdr* aHdr, const char* header_field,
-                             const nsAString& newName);
 
 // viewSortInfo is context data passed into the sort comparison functions -
 // FnSortIdUint32 for comparing numeric fields, FnSortIdKey for everything
@@ -273,15 +260,84 @@ static nsresult GetDisplayNameInAddressBook(const nsACString& emailAddress,
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (cardForAddress) {
-    bool preferDisplayName = true;
-    rv = cardForAddress->GetPropertyAsBool("PreferDisplayName", true,
-                                           &preferDisplayName);
-
-    if (NS_FAILED(rv) || preferDisplayName)
-      rv = cardForAddress->GetDisplayName(displayName);
+    rv = cardForAddress->GetDisplayName(displayName);
   }
 
   return rv;
+}
+
+/**
+ * Generate a full expanded address string with the "Full name <email>" format.
+ */
+static nsString ExpandAddress(const nsString& name,
+                              const nsACString& emailAddress) {
+  if (name.IsEmpty() && emailAddress.IsEmpty()) {
+    return nsString();
+  }
+
+  nsString displayName;
+  displayName.Assign(name);
+
+  // We don't have a name, just return the email address.
+  if (displayName.IsEmpty()) {
+    CopyUTF8toUTF16(emailAddress, displayName);
+    return displayName;
+  }
+
+  // No email address, just return the name.
+  if (emailAddress.IsEmpty()) {
+    return displayName;
+  }
+
+  // We got both, compose the full string.
+  displayName.AppendLiteral(" <");
+  AppendUTF8toUTF16(emailAddress, displayName);
+  displayName.Append('>');
+  return displayName;
+}
+
+/**
+ * Ensure we're safeguarding from spoofing attempt on the recipients name.
+ */
+static nsString NoSpoofingSender(const nsString& name,
+                                 const nsACString& emailAddress) {
+  int32_t atPos;
+  if ((atPos = name.FindChar('@')) == kNotFound ||
+      name.FindChar('.', atPos) == kNotFound) {
+    return name;
+  }
+
+  // Found @ followed by a dot, so this looks like a spoofing case.
+  return ExpandAddress(name, emailAddress);
+}
+
+/**
+ * Get the sender full address base on the user's preference.
+ */
+static nsString GetSenderFullAddress(const nsString& name,
+                                     const nsACString& emailAddress) {
+  int32_t addressDisplayFormat =
+      mozilla::Preferences::GetInt("mail.addressDisplayFormat", 0);
+
+  nsString fullAddress;
+  if (addressDisplayFormat == 0) {
+    // Full name + address.
+    fullAddress = ExpandAddress(name, emailAddress);
+  } else if (addressDisplayFormat == 1 && !emailAddress.IsEmpty()) {
+    // Only email.
+    CopyUTF8toUTF16(emailAddress, fullAddress);
+  } else if (addressDisplayFormat == 2 && !name.IsEmpty()) {
+    // Only name.
+    fullAddress = NoSpoofingSender(name, emailAddress);
+  } else {
+    // Try to automatically generate a name from the data we get.
+    if (name.IsEmpty()) {
+      CopyUTF8toUTF16(emailAddress, fullAddress);
+    } else {
+      fullAddress = NoSpoofingSender(name, emailAddress);
+    }
+  }
+  return fullAddress;
 }
 
 /*
@@ -321,8 +377,8 @@ static void UpdateCachedName(nsIMsgDBHdr* aHdr, const char* header_field,
 
 nsresult nsMsgDBView::FetchAuthor(nsIMsgDBHdr* aHdr, nsAString& aSenderString) {
   nsCString unparsedAuthor;
-  bool showCondensedAddresses = false;
   int32_t currentDisplayNameVersion = 0;
+  bool showCondensedAddresses = false;
   nsCOMPtr<nsIPrefBranch> prefs(do_GetService(NS_PREFSERVICE_CONTRACTID));
 
   prefs->GetIntPref("mail.displayname.version", &currentDisplayNameVersion);
@@ -341,7 +397,7 @@ nsresult nsMsgDBView::FetchAuthor(nsIMsgDBHdr* aHdr, nsAString& aSenderString) {
   }
 
   nsCString author;
-  (void)aHdr->GetAuthor(getter_Copies(author));
+  aHdr->GetAuthor(author);
 
   nsCString headerCharset;
   aHdr->GetEffectiveCharset(headerCharset);
@@ -354,27 +410,14 @@ nsresult nsMsgDBView::FetchAuthor(nsIMsgDBHdr* aHdr, nsAString& aSenderString) {
 
   ExtractFirstAddress(addresses, name, emailAddress);
 
-  if (showCondensedAddresses)
+  if (showCondensedAddresses) {
     GetDisplayNameInAddressBook(emailAddress, aSenderString);
+  }
 
+  // If the sender string is empty it means we don't have a display name or a
+  // saved address matching in the address book.
   if (aSenderString.IsEmpty()) {
-    // We can't use the display name in the card; use the name contained in
-    // the header or email address.
-    if (name.IsEmpty()) {
-      CopyUTF8toUTF16(emailAddress, aSenderString);
-    } else {
-      int32_t atPos;
-      if ((atPos = name.FindChar('@')) == kNotFound ||
-          name.FindChar('.', atPos) == kNotFound) {
-        aSenderString = name;
-      } else {
-        // Found @ followed by a dot, so this looks like a spoofing case.
-        aSenderString = name;
-        aSenderString.AppendLiteral(" <");
-        AppendUTF8toUTF16(emailAddress, aSenderString);
-        aSenderString.Append('>');
-      }
-    }
+    aSenderString = GetSenderFullAddress(name, emailAddress);
   }
 
   if (multipleAuthors) {
@@ -444,7 +487,7 @@ nsresult nsMsgDBView::FetchRecipients(nsIMsgDBHdr* aHdr,
   }
 
   nsCString unparsedRecipients;
-  nsresult rv = aHdr->GetRecipients(getter_Copies(unparsedRecipients));
+  aHdr->GetRecipients(unparsedRecipients);
 
   nsCString headerCharset;
   aHdr->GetEffectiveCharset(headerCharset);
@@ -456,6 +499,7 @@ nsresult nsMsgDBView::FetchRecipients(nsIMsgDBHdr* aHdr,
 
   uint32_t numAddresses = names.Length();
 
+  nsresult rv;
   nsCOMPtr<nsIAbManager> abManager(
       do_GetService("@mozilla.org/abmanager;1", &rv));
 
@@ -468,27 +512,14 @@ nsresult nsMsgDBView::FetchRecipients(nsIMsgDBHdr* aHdr,
     nsCString& curAddress = emails[i];
     nsString& curName = names[i];
 
-    if (showCondensedAddresses)
+    if (showCondensedAddresses) {
       GetDisplayNameInAddressBook(curAddress, recipient);
+    }
 
+    // If the recipient string is empty it means we don't have a display name or
+    // a saved address matching in the address book.
     if (recipient.IsEmpty()) {
-      // We can't use the display name in the card; use the name contained in
-      // the header or email address.
-      if (curName.IsEmpty()) {
-        CopyUTF8toUTF16(curAddress, recipient);
-      } else {
-        int32_t atPos;
-        if ((atPos = curName.FindChar('@')) == kNotFound ||
-            curName.FindChar('.', atPos) == kNotFound) {
-          recipient = curName;
-        } else {
-          // Found @ followed by a dot, so this looks like a spoofing case.
-          recipient = curName;
-          recipient.AppendLiteral(" <");
-          AppendUTF8toUTF16(curAddress, recipient);
-          recipient.Append('>');
-        }
-      }
+      recipient = GetSenderFullAddress(curName, curAddress);
     }
 
     // Add ', ' between each recipient.
@@ -1130,7 +1161,8 @@ nsMsgDBView::GetRowProperties(int32_t index, nsAString& properties) {
   uint32_t flags;
   msgHdr->GetFlags(&flags);
 
-  if (!(flags & nsMsgMessageFlags::Read))
+  bool isRead = flags & nsMsgMessageFlags::Read;
+  if (!isRead)
     properties.AppendLiteral(" unread");
   else
     properties.AppendLiteral(" read");
@@ -1143,7 +1175,8 @@ nsMsgDBView::GetRowProperties(int32_t index, nsAString& properties) {
   if (flags & nsMsgMessageFlags::Redirected)
     properties.AppendLiteral(" redirected");
 
-  if (flags & nsMsgMessageFlags::New) properties.AppendLiteral(" new");
+  bool isNew = flags & nsMsgMessageFlags::New;
+  if (isNew) properties.AppendLiteral(" new");
 
   if (m_flags[index] & nsMsgMessageFlags::Marked)
     properties.AppendLiteral(" flagged");
@@ -1202,7 +1235,21 @@ nsMsgDBView::GetRowProperties(int32_t index, nsAString& properties) {
   if (NS_SUCCEEDED(rv) && thread) {
     uint32_t numUnreadChildren;
     thread->GetNumUnreadChildren(&numUnreadChildren);
+    // If only one message is unread and is the parent message, don't mark the
+    // child thread with hasUnread.
+    if (numUnreadChildren == 1 && !isRead) {
+      numUnreadChildren--;
+    }
     if (numUnreadChildren > 0) properties.AppendLiteral(" hasUnread");
+
+    uint32_t numNewChildren;
+    thread->GetNumNewChildren(&numNewChildren);
+    // If only one message is new and is the parent message, don't mark the
+    // child thread with hasNew.
+    if (numNewChildren == 1 && isNew) {
+      numNewChildren--;
+    }
+    if (numNewChildren > 0) properties.AppendLiteral(" hasNew");
 
     // For threaded display add the ignore/watch properties to the
     // thread top row. For non-threaded add it to all rows.
@@ -1258,7 +1305,8 @@ nsMsgDBView::GetCellProperties(int32_t aRow, nsTreeColumn* col,
   uint32_t flags;
   msgHdr->GetFlags(&flags);
 
-  if (!(flags & nsMsgMessageFlags::Read))
+  bool isRead = flags & nsMsgMessageFlags::Read;
+  if (!isRead)
     properties.AppendLiteral(" unread");
   else
     properties.AppendLiteral(" read");
@@ -1373,6 +1421,11 @@ nsMsgDBView::GetCellProperties(int32_t aRow, nsTreeColumn* col,
   if (NS_SUCCEEDED(rv) && thread) {
     uint32_t numUnreadChildren;
     thread->GetNumUnreadChildren(&numUnreadChildren);
+    // If only one message is unread and is the parent message, don't mark the
+    // child thread with hasUnread.
+    if (numUnreadChildren == 1 && !isRead) {
+      numUnreadChildren--;
+    }
     if (numUnreadChildren > 0) properties.AppendLiteral(" hasUnread");
 
     // For threaded display add the ignore/watch properties to the
@@ -1646,7 +1699,7 @@ nsMsgDBView::GetCellValue(int32_t aRow, nsTreeColumn* aCol, nsAString& aValue) {
 
 void nsMsgDBView::RememberDeletedMsgHdr(nsIMsgDBHdr* msgHdr) {
   nsCString messageId;
-  msgHdr->GetMessageId(getter_Copies(messageId));
+  msgHdr->GetMessageId(messageId);
   if (mRecentlyDeletedArrayIndex >= mRecentlyDeletedMsgIds.Length())
     mRecentlyDeletedMsgIds.AppendElement(messageId);
   else
@@ -1658,7 +1711,7 @@ void nsMsgDBView::RememberDeletedMsgHdr(nsIMsgDBHdr* msgHdr) {
 
 bool nsMsgDBView::WasHdrRecentlyDeleted(nsIMsgDBHdr* msgHdr) {
   nsCString messageId;
-  msgHdr->GetMessageId(getter_Copies(messageId));
+  msgHdr->GetMessageId(messageId);
   return mRecentlyDeletedMsgIds.Contains(messageId);
 }
 
@@ -1979,22 +2032,37 @@ nsMsgDBView::CellDataForColumns(int32_t aRow,
   nsresult rv;
   _retval.Clear();
 
-  uint32_t count = aColumnNames.Length();
-  _retval.SetCapacity(count);
-  for (nsString column : aColumnNames) {
-    nsString text;
-    rv = CellTextForColumn(aRow, column, text);
-    if (NS_FAILED(rv)) {
-      _retval.Clear();
-      return rv;
-    }
-    _retval.AppendElement(text);
-  }
-
   rv = GetRowProperties(aRow, aProperties);
   if (NS_FAILED(rv)) {
     _retval.Clear();
     return rv;
+  }
+
+  nsTArray<nsString> _columnNames = aColumnNames.Clone();
+  // If we're rendering a dummy row, always append unread and total count if we
+  // don't fetch them already as we need them for the subject column.
+  if (aProperties.LowerCaseEqualsLiteral("dummy")) {
+    nsString unreadColName = u"unreadCol"_ns;
+    if (!_columnNames.Contains(unreadColName)) {
+      _columnNames.AppendElement(unreadColName);
+    }
+    nsString totalColName = u"totalCol"_ns;
+    if (!_columnNames.Contains(totalColName)) {
+      _columnNames.AppendElement(totalColName);
+    }
+  }
+
+  uint32_t count = _columnNames.Length();
+  _retval.SetCapacity(count);
+  for (nsString column : _columnNames) {
+    nsString text;
+    rv = CellTextForColumn(aRow, column, text);
+    if (NS_FAILED(rv)) {
+      _retval.Clear();
+      aProperties.Truncate();
+      return rv;
+    }
+    _retval.AppendElement(text);
   }
 
   rv = GetLevel(aRow, aThreadLevel);
@@ -2153,6 +2221,15 @@ nsMsgDBView::Open(nsIMsgFolder* folder, nsMsgViewSortTypeValue sortType,
     SetMRUTimeForFolder(m_viewFolder);
 
     RestoreSortInfo();
+
+    // For newly created folders initialize m_sortColumns with the current sort,
+    // which UpdateSortInfo() will turn into the next secondary sort.
+    if (!m_sortColumns.Length()) {
+      MsgViewSortColumnInfo sortColumnInfo;
+      sortColumnInfo.mSortType = sortType;
+      sortColumnInfo.mSortOrder = sortOrder;
+      m_sortColumns.AppendElement(sortColumnInfo);
+    }
 
     // Determine if we are in a news folder or not. If yes, we'll show lines
     // instead of size, and special icons in the thread pane.
@@ -2974,92 +3051,6 @@ nsresult nsMsgDBView::DeleteMessages(nsIMsgWindow* window,
   AutoTArray<RefPtr<nsIMsgDBHdr>, 1> hdrs;
   rv = GetHeadersFromSelection(selection, hdrs);
   NS_ENSURE_SUCCESS(rv, rv);
-
-  const char* warnCollapsedPref = "mail.warn_on_collapsed_thread_operation";
-  const char* warnShiftDelPref = "mail.warn_on_shift_delete";
-  const char* warnNewsPref = "news.warn_on_delete";
-  const char* warnTrashDelPref = "mail.warn_on_delete_from_trash";
-  const char* activePref = nullptr;
-  nsString warningName;
-  nsCOMPtr<nsIPrefBranch> prefBranch(
-      do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  bool trashFolder = false;
-  rv = m_folder->GetFlag(nsMsgFolderFlags::Trash, &trashFolder);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  if (trashFolder) {
-    bool pref = false;
-    prefBranch->GetBoolPref(warnTrashDelPref, &pref);
-    if (pref) {
-      activePref = warnTrashDelPref;
-      warningName.AssignLiteral("confirmMsgDelete.deleteFromTrash.desc");
-    }
-  }
-
-  if (!activePref && (selection.Length() != hdrs.Length())) {
-    bool pref = false;
-    prefBranch->GetBoolPref(warnCollapsedPref, &pref);
-    if (pref) {
-      activePref = warnCollapsedPref;
-      warningName.AssignLiteral("confirmMsgDelete.collapsed.desc");
-    }
-  }
-
-  if (!activePref && deleteStorage && !trashFolder) {
-    bool pref = false;
-    prefBranch->GetBoolPref(warnShiftDelPref, &pref);
-    if (pref) {
-      activePref = warnShiftDelPref;
-      warningName.AssignLiteral("confirmMsgDelete.deleteNoTrash.desc");
-    }
-  }
-
-  if (!activePref && mIsNews) {
-    bool pref = false;
-    prefBranch->GetBoolPref(warnNewsPref, &pref);
-    if (pref) {
-      activePref = warnNewsPref;
-      warningName.AssignLiteral("confirmMsgDelete.deleteNoTrash.desc");
-    }
-  }
-
-  if (activePref) {
-    nsCOMPtr<nsIPrompt> dialog;
-
-    nsCOMPtr<nsIWindowWatcher> wwatch(
-        do_GetService(NS_WINDOWWATCHER_CONTRACTID, &rv));
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    rv = wwatch->GetNewPrompter(0, getter_AddRefs(dialog));
-    NS_ENSURE_SUCCESS(rv, rv);
-    // "Don't ask..." - unchecked by default.
-    bool dontAsk = false;
-    int32_t buttonPressed = 0;
-
-    nsString dialogTitle;
-    nsString confirmString;
-    nsString checkboxText;
-    nsString buttonApplyNowText;
-    GetString(u"confirmMsgDelete.title", dialogTitle);
-    GetString(u"confirmMsgDelete.dontAsk.label", checkboxText);
-    GetString(u"confirmMsgDelete.delete.label", buttonApplyNowText);
-
-    GetString(warningName.get(), confirmString);
-
-    const uint32_t buttonFlags =
-        (nsIPrompt::BUTTON_TITLE_IS_STRING * nsIPrompt::BUTTON_POS_0) +
-        (nsIPrompt::BUTTON_TITLE_CANCEL * nsIPrompt::BUTTON_POS_1);
-
-    rv = dialog->ConfirmEx(dialogTitle.get(), confirmString.get(), buttonFlags,
-                           buttonApplyNowText.get(), nullptr, nullptr,
-                           checkboxText.get(), &dontAsk, &buttonPressed);
-    NS_ENSURE_SUCCESS(rv, rv);
-    if (buttonPressed) return NS_ERROR_FAILURE;
-
-    if (dontAsk) prefBranch->SetBoolPref(activePref, false);
-  }
 
   if (!deleteStorage) {
     rv = m_folder->MarkMessagesRead(hdrs, true);
@@ -3914,7 +3905,7 @@ nsresult nsMsgDBView::DecodeColumnSort(nsString& columnSortString) {
 //  messages are in Date order.
 
 void nsMsgDBView::PushSort(const MsgViewSortColumnInfo& newSort) {
-  // Handle byNone (bug 901948) ala a mail/base/modules/DBViewerWrapper.jsm
+  // Handle byNone (bug 901948) ala a mail/base/modules/DBViewerWrapper.sys.mjs
   // where we don't push the secondary sort type if it's ::byNone;
   // (and secondary sort type is NOT the same as the first sort type
   // there). This code should behave the same way.
@@ -3931,6 +3922,52 @@ void nsMsgDBView::PushSort(const MsgViewSortColumnInfo& newSort) {
   m_sortColumns.InsertElementAt(0, newSort);
   if (m_sortColumns.Length() > kMaxNumSortColumns)
     m_sortColumns.RemoveElementAt(kMaxNumSortColumns);
+}
+
+// Update sort columns and secondary sort type and order.
+//
+// This should be called before performing an actual sort, including rebuilding
+// the view to apply a new sort type/order.
+//
+// NOTE: This does not update primary sort type or sort order.
+void nsMsgDBView::UpdateSortInfo(nsMsgViewSortTypeValue sortType,
+                                 nsMsgViewSortOrderValue sortOrder) {
+  // If a sortType has changed, or the sortType is byCustom and a column has
+  // changed, this is the new primary sortColumnInfo.
+  // Note: m_curCustomColumn is the desired (possibly new) custom column name,
+  // while m_sortColumns[0].mCustomColumnName is the name for the last completed
+  // sort, since these are persisted after each sort.
+  if (m_sortType != sortType ||
+      (sortType == nsMsgViewSortType::byCustom && m_sortColumns.Length() &&
+       !m_sortColumns[0].mCustomColumnName.Equals(m_curCustomColumn))) {
+    // For secondary sort, remember the sort order of the original primary sort!
+    if (m_sortColumns.Length()) {
+      m_sortColumns[0].mSortOrder = m_sortOrder;
+    }
+
+    MsgViewSortColumnInfo sortColumnInfo;
+    sortColumnInfo.mSortType = sortType;
+    sortColumnInfo.mSortOrder = sortOrder;
+    if (sortType == nsMsgViewSortType::byCustom) {
+      GetCurCustomColumn(sortColumnInfo.mCustomColumnName);
+      sortColumnInfo.mColHandler = GetCurColumnHandler();
+    }
+
+    PushSort(sortColumnInfo);
+  } else {
+    // Since m_sortType may not be in sync with m_sortColumns, update this in
+    // any case.
+    if (m_sortColumns.Length()) {
+      m_sortColumns[0].mSortType = sortType;
+      m_sortColumns[0].mSortOrder = sortOrder;
+    }
+  }
+
+  if (m_sortColumns.Length() > 1) {
+    m_secondarySort = m_sortColumns[1].mSortType;
+    m_secondarySortOrder = m_sortColumns[1].mSortOrder;
+    m_secondaryCustomColumn = m_sortColumns[1].mCustomColumnName;
+  }
 }
 
 nsresult nsMsgDBView::GetCollationKey(nsIMsgDBHdr* msgHdr,
@@ -4104,9 +4141,14 @@ nsresult nsMsgDBView::RestoreSortInfo() {
     folderInfo->GetProperty("sortColumns", sortColumnsString);
     DecodeColumnSort(sortColumnsString);
     if (m_sortColumns.Length() > 1) {
-      m_secondarySort = m_sortColumns[1].mSortType;
-      m_secondarySortOrder = m_sortColumns[1].mSortOrder;
-      m_secondaryCustomColumn = m_sortColumns[1].mCustomColumnName;
+      if (m_viewFlags & nsMsgViewFlagsType::kGroupBySort) {
+        // Discard any persisted secondary sort information.
+        m_sortColumns.RemoveElementAt(1);
+      } else {
+        m_secondarySort = m_sortColumns[1].mSortType;
+        m_secondarySortOrder = m_sortColumns[1].mSortOrder;
+        m_secondaryCustomColumn = m_sortColumns[1].mCustomColumnName;
+      }
     }
 
     // Restore curCustomColumn from db.
@@ -4251,38 +4293,9 @@ NS_IMETHODIMP nsMsgDBView::Sort(nsMsgViewSortTypeValue sortType,
 
   if (sortType == nsMsgViewSortType::byThread) return NS_OK;
 
-  // If a sortType has changed, or the sortType is byCustom and a column has
-  // changed, this is the new primary sortColumnInfo.
-  // Note: m_curCustomColumn is the desired (possibly new) custom column name,
-  // while m_sortColumns[0].mCustomColumnName is the name for the last completed
-  // sort, since these are persisted after each sort.
-  if (m_sortType != sortType ||
-      (sortType == nsMsgViewSortType::byCustom && m_sortColumns.Length() &&
-       !m_sortColumns[0].mCustomColumnName.Equals(m_curCustomColumn))) {
-    // For secondary sort, remember the sort order of the original primary sort!
-    if (m_sortColumns.Length()) m_sortColumns[0].mSortOrder = m_sortOrder;
-
-    MsgViewSortColumnInfo sortColumnInfo;
-    sortColumnInfo.mSortType = sortType;
-    sortColumnInfo.mSortOrder = sortOrder;
-    if (sortType == nsMsgViewSortType::byCustom) {
-      GetCurCustomColumn(sortColumnInfo.mCustomColumnName);
-      sortColumnInfo.mColHandler = GetCurColumnHandler();
-    }
-
-    PushSort(sortColumnInfo);
-  } else {
-    // For primary sort, remember the sort order on a per column basis.
-    if (m_sortColumns.Length()) m_sortColumns[0].mSortOrder = sortOrder;
-  }
-
-  if (m_sortColumns.Length() > 1) {
-    m_secondarySort = m_sortColumns[1].mSortType;
-    m_secondarySortOrder = m_sortColumns[1].mSortOrder;
-    m_secondaryCustomColumn = m_sortColumns[1].mCustomColumnName;
-  }
-
+  UpdateSortInfo(sortType, sortOrder);
   SaveSortInfo(sortType, sortOrder);
+
   // Figure out how much memory we'll need, and then malloc it.
   uint16_t maxLen;
   eFieldType fieldType;
@@ -5134,11 +5147,6 @@ nsMsgViewIndex nsMsgDBView::GetInsertIndex(nsIMsgDBHdr* msgHdr) {
 
 nsresult nsMsgDBView::AddHdr(nsIMsgDBHdr* msgHdr, nsMsgViewIndex* resultIndex) {
   uint32_t flags = 0;
-#ifdef DEBUG_bienvenu
-  NS_ASSERTION(m_keys.Length() == m_flags.Length() &&
-                   (int)m_keys.Length() == m_levels.Length(),
-               "view arrays out of sync!");
-#endif
 
   if (resultIndex) *resultIndex = nsMsgViewIndex_None;
 
@@ -5586,125 +5594,12 @@ nsMsgViewIndex nsMsgDBView::GetThreadRootIndex(nsIMsgDBHdr* msgHdr) {
   if (resultHdr != msgHdr) {
     NS_WARNING("didn't find hdr");
     highIndex = FindHdr(msgHdr);
-#ifdef DEBUG_David_Bienvenu
-    if (highIndex != nsMsgViewIndex_None) {
-      NS_WARNING("but find hdr did");
-      printf("level of found hdr = %d\n", m_levels[highIndex]);
-      ValidateSort();
-    }
-#endif
+
     return highIndex;
   }
 
   return msgHdr == resultHdr ? highIndex : nsMsgViewIndex_None;
 }
-
-#ifdef DEBUG_David_Bienvenu
-
-void nsMsgDBView::InitEntryInfoForIndex(nsMsgViewIndex i, IdKey& EntryInfo) {
-  nsresult rv;
-  uint16_t maxLen;
-  eFieldType fieldType;
-
-  // Get the custom column handler for the primary sort and pass it first
-  // to GetFieldTypeAndLenForSort to get the fieldType and then either
-  // GetCollationKey or GetLongField.
-  nsIMsgCustomColumnHandler* colHandler = GetCurColumnHandler();
-
-  // The following may leave fieldType undefined.
-  rv = GetFieldTypeAndLenForSort(m_sortType, &maxLen, &fieldType, colHandler);
-  NS_ASSERTION(NS_SUCCEEDED(rv), "failed to obtain fieldType");
-
-  nsCOMPtr<nsIMsgDBHdr> msgHdr;
-  GetMsgHdrForViewIndex(i, getter_AddRefs(msgHdr));
-
-  msgHdr->GetMessageKey(&EntryInfo.id);
-  msgHdr->GetFolder(&EntryInfo.folder);
-  EntryInfo.folder->Release();
-
-  nsCOMPtr<nsIMsgDatabase> hdrDB;
-  EntryInfo.folder->GetMsgDatabase(getter_AddRefs(hdrDB));
-  switch (fieldType) {
-    case kCollationKey:
-      rv = GetCollationKey(msgHdr, m_sortType, EntryInfo.key, colHandler);
-      NS_ASSERTION(NS_SUCCEEDED(rv), "failed to create collation key");
-      break;
-    case kU32:
-      if (m_sortType == nsMsgViewSortType::byId)
-        EntryInfo.dword = EntryInfo.id;
-      else
-        GetLongField(msgHdr, m_sortType, &EntryInfo.dword, colHandler);
-
-      break;
-    default:
-      NS_ERROR("invalid field type");
-  }
-}
-
-void nsMsgDBView::ValidateSort() {
-  IdKey EntryInfo1, EntryInfo2;
-  nsCOMPtr<nsIMsgDBHdr> hdr1, hdr2;
-
-  uint16_t maxLen;
-  eFieldType fieldType;
-
-  // Get the custom column handler for the primary sort and pass it first
-  // to GetFieldTypeAndLenForSort to get the fieldType and then either
-  // GetCollationKey or GetLongField.
-  nsIMsgCustomColumnHandler* colHandler = GetCurColumnHandler();
-
-  // It is not entirely clear what we should do since,
-  // if fieldType is not available, there is no way to know
-  // how to compare the field to check for sorting.
-  // So we bomb out here. It is OK since this is debug code
-  // inside  #ifdef DEBUG_David_Bienvenu
-  nsresult rv =
-      GetFieldTypeAndLenForSort(m_sortType, &maxLen, &fieldType, colHandler);
-  NS_ASSERTION(NS_SUCCEEDED(rv), "failed to obtain fieldType");
-
-  viewSortInfo comparisonContext;
-  comparisonContext.view = this;
-  comparisonContext.isSecondarySort = false;
-  comparisonContext.ascendingSort =
-      (m_sortOrder == nsMsgViewSortOrder::ascending);
-  nsCOMPtr<nsIMsgDatabase> db;
-  GetDBForViewIndex(0, getter_AddRefs(db));
-  // This is only for comparing collation keys - it could be any db.
-  comparisonContext.db = db.get();
-
-  for (nsMsgViewIndex i = 0; i < m_keys.Length();) {
-    // Ignore non threads.
-    if (m_levels[i]) {
-      i++;
-      continue;
-    }
-
-    // Find next header.
-    nsMsgViewIndex j = i + 1;
-    while (j < m_keys.Length() && m_levels[j]) j++;
-
-    if (j == m_keys.Length()) break;
-
-    InitEntryInfoForIndex(i, EntryInfo1);
-    InitEntryInfoForIndex(j, EntryInfo2);
-    const void *pValue1 = &EntryInfo1, *pValue2 = &EntryInfo2;
-    int retStatus = 0;
-    if (fieldType == kCollationKey)
-      retStatus = FnSortIdKey(&pValue1, &pValue2, &comparisonContext);
-    else if (fieldType == kU32)
-      retStatus = FnSortIdUint32(&pValue1, &pValue2, &comparisonContext);
-
-    if (retStatus &&
-        (retStatus < 0) == (m_sortOrder == nsMsgViewSortOrder::ascending)) {
-      NS_ERROR("view not sorted correctly");
-      break;
-    }
-    // j is the new i.
-    i = j;
-  }
-}
-
-#endif
 
 nsresult nsMsgDBView::ListUnreadIdsInThread(
     nsIMsgThread* threadHdr, nsMsgViewIndex startOfThreadViewIndex,
@@ -5814,6 +5709,22 @@ nsMsgDBView::OnHdrDeleted(nsIMsgDBHdr* aHdrChanged, nsMsgKey aParentKey,
     if (isMsgSelected) {
       // Now tell the front end that the delete happened.
       commandUpdater->SelectedMessageRemoved();
+    }
+    return NS_OK;
+  }
+
+  // The deleted message may be part of a collapsed thread. We need to find
+  // and update the row containing the root message of the thread.
+  if (m_viewFlags & nsMsgViewFlagsType::kThreadedDisplay &&
+      !(m_viewFlags & nsMsgViewFlagsType::kGroupBySort)) {
+    nsCOMPtr<nsIMsgThread> thread;
+    nsresult rv =
+        GetThreadContainingMsgHdr(aHdrChanged, getter_AddRefs(thread));
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsMsgViewIndex threadRootIndex =
+        GetIndexOfFirstDisplayedKeyInThread(thread);
+    if (IsValidIndex(threadRootIndex)) {
+      NoteChange(threadRootIndex, 1, nsMsgViewNotificationCode::changed);
     }
   }
 
@@ -6104,10 +6015,6 @@ bool nsMsgDBView::AdjustReadFlag(nsIMsgDBHdr* msgHdr, uint32_t* msgFlags) {
   msgHdr->GetMessageKey(&msgKey);
   m_db->IsRead(msgKey, &isRead);
   // Just make sure flag is right in db.
-#ifdef DEBUG_David_Bienvenu
-  NS_ASSERTION(isRead == ((*msgFlags & nsMsgMessageFlags::Read) != 0),
-               "msgFlags out of sync");
-#endif
   if (isRead)
     *msgFlags |= nsMsgMessageFlags::Read;
   else

@@ -2,7 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
+const { FeedUtils } = ChromeUtils.importESModule(
+  "resource:///modules/FeedUtils.sys.mjs"
+);
 
 const { MessageGenerator } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
@@ -10,12 +12,13 @@ const { MessageGenerator } = ChromeUtils.importESModule(
 const { NNTPServer } = ChromeUtils.importESModule(
   "resource://testing-common/NNTPServer.sys.mjs"
 );
-const { VirtualFolderHelper } = ChromeUtils.import(
-  "resource:///modules/VirtualFolderWrapper.jsm"
+const { VirtualFolderHelper } = ChromeUtils.importESModule(
+  "resource:///modules/VirtualFolderWrapper.sys.mjs"
 );
 
 const servers = ["server", "nntpRoot", "rssRoot"];
 const realFolders = ["plain", "inbox", "junk", "trash", "rssFeed"];
+const virtualFolders = ["virtual", "virtualFiltered"];
 
 const folderPaneContextData = {
   "folderPaneContext-getMessages": [...servers, "nntpGroup", "rssFeed"],
@@ -30,21 +33,46 @@ const folderPaneContextData = {
   "folderPaneContext-remove": [
     "plain",
     "junk",
-    "virtual",
+    ...virtualFolders,
     "nntpGroup",
     "rssFeed",
+    "multiselect-plain",
   ],
-  "folderPaneContext-rename": ["plain", "junk", "virtual", "rssFeed"],
-  "folderPaneContext-moveMenu": ["plain", "virtual", "rssFeed"],
-  "folderPaneContext-copyMenu": ["plain", "rssFeed"],
-  "folderPaneContext-compact": [...servers, ...realFolders],
-  "folderPaneContext-markMailFolderAllRead": [...realFolders, "virtual"],
+  "folderPaneContext-rename": ["plain", "junk", ...virtualFolders, "rssFeed"],
+  "folderPaneContext-moveMenu": [
+    "plain",
+    ...virtualFolders,
+    "rssFeed",
+    "multiselect-plain",
+  ],
+  "folderPaneContext-copyMenu": ["plain", "rssFeed", "multiselect-plain"],
+  "folderPaneContext-compact": [
+    ...servers,
+    ...realFolders,
+    "multiselect",
+    "multiselect-plain",
+  ],
+  "folderPaneContext-markMailFolderAllRead": [
+    ...realFolders,
+    "virtual",
+    "multiselect",
+    "multiselect-plain",
+    "multiselect-minimal",
+  ],
   "folderPaneContext-markNewsgroupAllRead": ["nntpGroup"],
   "folderPaneContext-emptyTrash": ["trash"],
   "folderPaneContext-emptyJunk": ["junk"],
   "folderPaneContext-sendUnsentMessages": [],
-  "folderPaneContext-favoriteFolder": [...realFolders, "virtual", "nntpGroup"],
-  "folderPaneContext-properties": [...realFolders, "virtual", "nntpGroup"],
+  "folderPaneContext-favoriteFolder": [
+    ...realFolders,
+    ...virtualFolders,
+    "nntpGroup",
+  ],
+  "folderPaneContext-properties": [
+    ...realFolders,
+    ...virtualFolders,
+    "nntpGroup",
+  ],
   "folderPaneContext-markAllFoldersRead": [...servers],
   "folderPaneContext-settings": [...servers],
   "folderPaneContext-manageTags": ["tags"],
@@ -63,7 +91,8 @@ let rootFolder,
   inboxSubfolder,
   junkFolder,
   trashFolder,
-  virtualFolder;
+  virtualFolder,
+  virtualFilteredFolder;
 let nntpRootFolder, nntpGroupFolder;
 let rssRootFolder, rssFeedFolder, rssTrashFolder;
 let tagsFolder;
@@ -103,10 +132,17 @@ add_setup(async function () {
     .createLocalSubfolder("folderPaneContextVirtual")
     .QueryInterface(Ci.nsIMsgLocalMailFolder);
   virtualFolder.setFlag(Ci.nsMsgFolderFlags.Virtual);
-  const msgDatabase = virtualFolder.msgDatabase;
-  const folderInfo = msgDatabase.dBFolderInfo;
-  folderInfo.setCharProperty("searchStr", "ALL");
-  folderInfo.setCharProperty("searchFolderUri", plainFolder.URI);
+  const folderInfoA = virtualFolder.msgDatabase.dBFolderInfo;
+  folderInfoA.setCharProperty("searchStr", "ALL");
+  folderInfoA.setCharProperty("searchFolderUri", plainFolder.URI);
+
+  virtualFilteredFolder = rootFolder
+    .createLocalSubfolder("folderPaneContextVirtualFiltered")
+    .QueryInterface(Ci.nsIMsgLocalMailFolder);
+  virtualFilteredFolder.setFlag(Ci.nsMsgFolderFlags.Virtual);
+  const folderInfoB = virtualFilteredFolder.msgDatabase.dBFolderInfo;
+  folderInfoB.setCharProperty("searchStr", "AND (date,is after,31-Dec-1999)");
+  folderInfoB.setCharProperty("searchFolderUri", plainFolder.URI);
 
   nntpServer = new NNTPServer();
   nntpServer.addGroup("folder.pane.context.newsgroup");
@@ -141,7 +177,8 @@ add_setup(async function () {
     .QueryInterface(Ci.nsIMsgLocalMailFolder);
 
   about3Pane.folderPane.activeModes = ["all", "tags"];
-  tagsFolder = about3Pane.folderPane._modes.tags._tagsFolder.subFolders[0];
+  tagsFolder =
+    about3Pane.folderPane._modes.tags._smartMailbox.tagsFolder.subFolders[0];
 
   registerCleanupFunction(() => {
     MailServices.accounts.removeAccount(account, false);
@@ -169,6 +206,8 @@ add_task(async function testShownItems() {
   await rightClickOn(trashFolder, "trash");
   leftClickOn(virtualFolder);
   await rightClickOn(virtualFolder, "virtual");
+  leftClickOn(virtualFilteredFolder);
+  await rightClickOn(virtualFilteredFolder, "virtualFiltered");
   leftClickOn(nntpRootFolder);
   await rightClickOn(nntpRootFolder, "nntpRoot");
   leftClickOn(nntpGroupFolder);
@@ -192,6 +231,20 @@ add_task(async function testShownItems() {
   await rightClickOn(rssRootFolder, "rssRoot");
   await rightClickOn(rssFeedFolder, "rssFeed");
   await rightClickOn(tagsFolder, "tags");
+
+  // Check the menu has the right items when multiple folders are selected.
+  leftClickOn(inboxFolder);
+  await rightClickOn(inboxFolder, "inbox");
+  leftClickOn(junkFolder, { accelKey: true });
+  await rightClickOn(junkFolder, "multiselect");
+  leftClickOn(plainFolder);
+  leftClickOn(inboxSubfolder, { accelKey: true });
+  await rightClickOn(plainFolder, "multiselect-plain");
+  leftClickOn(inboxFolder, { accelKey: true });
+  leftClickOn(trashFolder, { accelKey: true });
+  leftClickOn(virtualFolder, { accelKey: true });
+  leftClickOn(rssFeedFolder, { accelKey: true });
+  await rightClickOn(rssFeedFolder, "multiselect-minimal");
 });
 
 /**
@@ -801,10 +854,10 @@ add_task(async function testEmpty() {
   );
 });
 
-function leftClickOn(folder) {
+function leftClickOn(folder, modifiers = {}) {
   EventUtils.synthesizeMouseAtCenter(
     about3Pane.folderPane.getRowForFolder(folder).querySelector(".name"),
-    {},
+    modifiers,
     about3Pane
   );
 }

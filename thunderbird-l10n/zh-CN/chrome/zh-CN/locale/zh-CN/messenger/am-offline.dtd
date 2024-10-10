@@ -12,8 +12,8 @@
 <!ENTITY offlineNotDownload.accesskey "M">
 <!ENTITY autosyncNotDownload.label "不下载大小超过">
 <!ENTITY autosyncNotDownload.accesskey "m">
-<!ENTITY kb.label "千字节">
-<!ENTITY daysOld.label "天">
+<!ENTITY kb.label "KB 的消息">
+<!ENTITY daysOld.label "天前的消息">
 <!ENTITY message.label "条消息">
 <!ENTITY nntpNotDownloadRead.label "已读">
 <!ENTITY nntpNotDownloadRead.accesskey "d">
@@ -47,11 +47,11 @@
 -->
 <!ENTITY allAutosync.label               "同步所有消息至本地，忽略消息的时间">
 <!ENTITY allAutosync.accesskey           "c">
-<!ENTITY ageAutosyncBefore.label         "同步最近">
+<!ENTITY ageAutosyncBefore.label         "同步过去此时段内消息">
 <!ENTITY ageAutosync.accesskey           "z">
 <!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "天前的消息">
-<!ENTITY weekAgeInterval.label           "周前的消息">
-<!ENTITY monthAgeInterval.label          "个月前的消息">
-<!ENTITY yearAgeInterval.label           "年前的消息">
+<!ENTITY dayAgeInterval.label            "天">
+<!ENTITY weekAgeInterval.label           "星期">
+<!ENTITY monthAgeInterval.label          "个月">
+<!ENTITY yearAgeInterval.label           "年">
 <!ENTITY ageAutosyncAfter.label          "">

@@ -51,7 +51,8 @@ export MOZ_APP_LAUNCHER
 # let Thunderbird detect the system dictionaries
 export DICPATH=/usr/share/hunspell
 
-declare -a TB_ARGS=()
+# use app ID that matches the desktop file name
+declare -a TB_ARGS=(--name=thunderbird)
 
 for ARG in "$@"; do
     case "${ARG}" in

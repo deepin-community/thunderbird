@@ -43,37 +43,18 @@ var reporterListener = {
     "nsISupportsWeakReference",
   ]),
 
-  onStateChange(
-    /* in nsIWebProgress*/ aWebProgress,
-    /* in nsIRequest*/ aRequest,
-    /* in unsigned long*/ aStateFlags,
-    /* in nsresult*/ aStatus
-  ) {},
-
-  onProgressChange(
-    /* in nsIWebProgress*/ aWebProgress,
-    /* in nsIRequest*/ aRequest,
-    /* in long*/ aCurSelfProgress,
-    /* in long */ aMaxSelfProgress,
-    /* in long */ aCurTotalProgress,
-    /* in long */ aMaxTotalProgress
-  ) {},
-
+  onStateChange() {},
+  onProgressChange() {},
   onLocationChange(
     /* in nsIWebProgress*/ aWebProgress,
     /* in nsIRequest*/ aRequest,
     /* in nsIURI*/ aLocation
   ) {
-    document.getElementById("headerMessage").value = aLocation.spec;
+    if (aWebProgress.isTopLevel) {
+      document.getElementById("headerMessage").value = aLocation.spec;
+    }
   },
-
-  onStatusChange(
-    /* in nsIWebProgress*/ aWebProgress,
-    /* in nsIRequest*/ aRequest,
-    /* in nsresult*/ aStatus,
-    /* in wstring*/ aMessage
-  ) {},
-
+  onStatusChange() {},
   onSecurityChange(
     /* in nsIWebProgress*/ aWebProgress,
     /* in nsIRequest*/ aRequest,
@@ -111,12 +92,7 @@ var reporterListener = {
         break;
     }
   },
-
-  onContentBlockingEvent(
-    /* in nsIWebProgress*/ aWebProgress,
-    /* in nsIRequest*/ aRequest,
-    /* in unsigned long*/ aEvent
-  ) {},
+  onContentBlockingEvent() {},
 };
 
 function cancelRequest() {

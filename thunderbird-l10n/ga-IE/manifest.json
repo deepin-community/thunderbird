@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ga-IE@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Gaeilge (Irish)",
   "description": "Thunderbird Language Pack for Gaeilge (ga-IE) – Irish",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "ga-IE": {
-      "version": "20240423195823",
+      "version": "20240930174337",
       "chrome_resources": {
         "alerts": "chrome/ga-IE/locale/ga-IE/alerts/",
         "autoconfig": "chrome/ga-IE/locale/ga-IE/autoconfig/",
         "branding": "chrome/ga-IE/locale/branding/",
         "calendar": "chrome/ga-IE/locale/ga-IE/calendar/",
-        "chat": "chrome/ga-IE/locale/ga-IE/chat/",
         "communicator": "chrome/ga-IE/locale/ga-IE/communicator/",
         "devtools": "chrome/ga-IE/locale/ga-IE/devtools/client/",
         "devtools-shared": "chrome/ga-IE/locale/ga-IE/devtools/shared/",

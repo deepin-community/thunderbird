@@ -17,7 +17,6 @@
 #include "nsWMSettings.h"
 #include "nsTextFormatter.h"
 #include "nsWMStringBundle.h"
-#include "nsUnicharUtils.h"
 
 #include "ImportDebug.h"
 
@@ -32,10 +31,7 @@ class ImportWMMailImpl : public nsIImportMail {
 
   // nsIImportmail interface
 
-  /* void GetDefaultLocation (out nsIFile location, out boolean found, out
-   * boolean userVerify); */
-  NS_IMETHOD GetDefaultLocation(nsIFile** location, bool* found,
-                                bool* userVerify);
+  NS_IMETHOD GetDefaultLocation(nsIFile** location);
 
   /* nsIArray FindMailboxes (in nsIFile location); */
   NS_IMETHOD FindMailboxes(nsIFile* location,
@@ -70,40 +66,6 @@ nsWMImport::nsWMImport() {
 nsWMImport::~nsWMImport() { IMPORT_LOG0("nsWMImport Module Deleted\n"); }
 
 NS_IMPL_ISUPPORTS(nsWMImport, nsIImportModule)
-
-NS_IMETHODIMP nsWMImport::GetName(char16_t** name) {
-  NS_ENSURE_ARG_POINTER(name);
-  // nsString  title = "Windows Live Mail";
-  // *name = ToNewUnicode(title);
-  *name = nsWMStringBundle::GetStringByID(WMIMPORT_NAME);
-
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsWMImport::GetDescription(char16_t** name) {
-  NS_ENSURE_ARG_POINTER(name);
-
-  // nsString  desc = "Windows Live Mail mail and address books";
-  // *name = ToNewUnicode(desc);
-  *name = nsWMStringBundle::GetStringByID(WMIMPORT_DESCRIPTION);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsWMImport::GetSupports(char** supports) {
-  NS_ASSERTION(supports != nullptr, "null ptr");
-  if (!supports) return NS_ERROR_NULL_POINTER;
-
-  *supports = strdup(kWMSupportsString);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsWMImport::GetSupportsUpgrade(bool* pUpgrade) {
-  NS_ASSERTION(pUpgrade != nullptr, "null ptr");
-  if (!pUpgrade) return NS_ERROR_NULL_POINTER;
-
-  *pUpgrade = true;
-  return NS_OK;
-}
 
 NS_IMETHODIMP nsWMImport::GetImportInterface(const char* pImportType,
                                              nsISupports** ppInterface) {
@@ -144,8 +106,7 @@ NS_IMETHODIMP ImportWMMailImpl::TranslateFolderName(
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-NS_IMETHODIMP ImportWMMailImpl::GetDefaultLocation(nsIFile** ppLoc, bool* found,
-                                                   bool* userVerify) {
+NS_IMETHODIMP ImportWMMailImpl::GetDefaultLocation(nsIFile** ppLoc) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 

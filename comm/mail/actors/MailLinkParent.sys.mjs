@@ -3,17 +3,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   AttachmentInfo: "resource:///modules/AttachmentInfo.sys.mjs",
+  MailServices: "resource:///modules/MailServices.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailServices: "resource:///modules/MailServices.jsm",
 });
 
 export class MailLinkParent extends JSWindowActorParent {
@@ -42,25 +36,33 @@ export class MailLinkParent extends JSWindowActorParent {
   }
 
   _handleMailboxLink({ data, target }) {
-    // AttachmentInfo is defined in msgHdrView.js.
     const url = new URL(data);
+    const filename = url.searchParams.get("filename");
+    // When a message is received with a 'news:' link embedded as a MIME part
+    // of the message, the internal 'cid:' link is converted to a mailbox link
+    // containing `filename=message.rfc822`. In the following function, an
+    // attachment with content-type "message/rfc822" is processed before the
+    // filename is evaluated (by its extension), so we explicitly set the
+    // content-type in this case.
     new lazy.AttachmentInfo({
-      contentType: "",
+      contentType: /\.rfc822$/.test(filename) ? "message/rfc822" : "",
       url: data,
-      name: url.searchParams.get("filename"),
+      name: filename,
       uri: "",
       isExternalAttachment: false,
-    }).open(target.browsingContext.topChromeWindow, target.browsingContext.id);
+    }).open(target.browsingContext);
   }
 
   _handleMailToLink({ data, target }) {
     let identity = null;
 
-    // If the document with the link is a message, try to get the identity
-    // from the message and use it when composing.
+    // If the document with the link is a message from a local database,
+    // try to get the identity from the message and use it when composing.
     const documentURI = target.windowContext.documentURI;
-    if (documentURI instanceof Ci.nsIMsgMessageUrl) {
-      documentURI.QueryInterface(Ci.nsIMsgMessageUrl);
+    if (
+      documentURI instanceof Ci.nsIMsgMessageUrl &&
+      documentURI.messageHeader
+    ) {
       [identity] = lazy.MailUtils.getIdentityForHeader(
         documentURI.messageHeader
       );
@@ -75,16 +77,13 @@ export class MailLinkParent extends JSWindowActorParent {
 
   _handleMidLink({ data }) {
     // data is the mid: url.
-    lazy.MailUtils.openMessageByMessageId(data.slice(4));
+    lazy.MailUtils.openMessageForMessageId(data.slice(4));
   }
 
   _handleNewsLink({ data }) {
-    Services.ww.openWindow(
-      null,
-      "chrome://messenger/content/messageWindow.xhtml",
-      "_blank",
-      "all,chrome,dialog=no,status,toolbar",
-      Services.io.newURI(data)
+    lazy.MailUtils.handleNewsUri(
+      data,
+      Services.wm.getMostRecentWindow("mail:3pane")
     );
   }
 }

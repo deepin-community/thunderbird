@@ -25,24 +25,21 @@
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 ChromeUtils.defineESModuleGetters(this, {
   AttachmentInfo: "resource:///modules/AttachmentInfo.sys.mjs",
+  Gloda: "resource:///modules/gloda/GlodaPublic.sys.mjs",
+  GlodaUtils: "resource:///modules/gloda/GlodaUtils.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
   MessageArchiver: "resource:///modules/MessageArchiver.sys.mjs",
   PgpSqliteDb2: "chrome://openpgp/content/modules/sqliteDb.sys.mjs",
   PluralForm: "resource:///modules/PluralForm.sys.mjs",
-});
 
-XPCOMUtils.defineLazyModuleGetters(this, {
   calendarDeactivator:
-    "resource:///modules/calendar/calCalendarDeactivator.jsm",
-
-  Gloda: "resource:///modules/gloda/GlodaPublic.jsm",
-  GlodaUtils: "resource:///modules/gloda/GlodaUtils.jsm",
+    "resource:///modules/calendar/calCalendarDeactivator.sys.mjs",
 });
 
 XPCOMUtils.defineLazyServiceGetter(
@@ -83,13 +80,6 @@ var gMinNumberOfHeaders = 0;
 var gDummyHeaderIdIndex = 0;
 var gBuildAttachmentsForCurrentMsg = false;
 var gBuiltExpandedView = false;
-var gHeadersShowReferences = false;
-
-/**
- * Show the friendly display names for people I know,
- * instead of the name + email address.
- */
-var gShowCondensedEmailAddresses;
 
 /**
  * Other components may listen to on start header & on end header notifications
@@ -219,7 +209,7 @@ class FolderDBListener {
   }
 
   /** @implements {nsIDBChangeListener} */
-  onHdrFlagsChanged(hdrChanged, oldFlags, newFlags, instigator) {
+  onHdrFlagsChanged(hdrChanged, oldFlags, newFlags) {
     // Bail out if the changed message isn't the one currently displayed.
     if (hdrChanged != gMessage) {
       return;
@@ -233,13 +223,13 @@ class FolderDBListener {
       updateStarButton();
     }
   }
-  onHdrDeleted(hdrChanged, parentKey, flags, instigator) {}
-  onHdrAdded(hdrChanged, parentKey, flags, instigator) {}
-  onParentChanged(keyChanged, oldParent, newParent, instigator) {}
-  onAnnouncerGoingAway(instigator) {}
-  onReadChanged(instigator) {}
-  onJunkScoreChanged(instigator) {}
-  onHdrPropertyChanged(hdrToChange, property, preChange, status, instigator) {
+  onHdrDeleted() {}
+  onHdrAdded() {}
+  onParentChanged() {}
+  onAnnouncerGoingAway() {}
+  onReadChanged() {}
+  onJunkScoreChanged() {}
+  onHdrPropertyChanged(hdrToChange, property, preChange) {
     // Not interested before a change, or if the message isn't the one displayed,
     // or an .eml file from disk or an attachment.
     if (preChange || gMessage != hdrToChange) {
@@ -254,7 +244,7 @@ class FolderDBListener {
         break;
     }
   }
-  onEvent(db, event) {}
+  onEvent() {}
 }
 
 /**
@@ -404,19 +394,8 @@ async function OnLoadMsgHeaderPane() {
   gMinNumberOfHeaders = Services.prefs.getIntPref(
     "mailnews.headers.minNumHeaders"
   );
-  gShowCondensedEmailAddresses = Services.prefs.getBoolPref(
-    "mail.showCondensedAddresses"
-  );
-  gHeadersShowReferences = Services.prefs.getBoolPref(
-    "mailnews.headers.showReferences"
-  );
 
   Services.obs.addObserver(MsgHdrViewObserver, "remote-content-blocked");
-  Services.prefs.addObserver("mail.showCondensedAddresses", MsgHdrViewObserver);
-  Services.prefs.addObserver(
-    "mailnews.headers.showReferences",
-    MsgHdrViewObserver
-  );
 
   initializeHeaderViewTables();
 
@@ -460,14 +439,6 @@ function OnUnloadMsgHeaderPane() {
   }
 
   Services.obs.removeObserver(MsgHdrViewObserver, "remote-content-blocked");
-  Services.prefs.removeObserver(
-    "mail.showCondensedAddresses",
-    MsgHdrViewObserver
-  );
-  Services.prefs.removeObserver(
-    "mailnews.headers.showReferences",
-    MsgHdrViewObserver
-  );
 
   clearFolderDBListener();
   ClearPendingReadTimer();
@@ -483,20 +454,7 @@ function OnUnloadMsgHeaderPane() {
 
 var MsgHdrViewObserver = {
   observe(subject, topic, data) {
-    // verify that we're changing the mail pane config pref
-    if (topic == "nsPref:changed") {
-      // We don't need to call ReloadMessage() in either of these conditions
-      // because a preference observer for these preferences already does it.
-      if (data == "mail.showCondensedAddresses") {
-        gShowCondensedEmailAddresses = Services.prefs.getBoolPref(
-          "mail.showCondensedAddresses"
-        );
-      } else if (data == "mailnews.headers.showReferences") {
-        gHeadersShowReferences = Services.prefs.getBoolPref(
-          "mailnews.headers.showReferences"
-        );
-      }
-    } else if (topic == "remote-content-blocked") {
+    if (topic == "remote-content-blocked") {
       const browser = getMessagePaneBrowser();
       if (
         browser.browsingContext.id == data ||
@@ -536,19 +494,19 @@ var messageProgressListener = {
    * @param {nsresult} status
    * @see {nsIWebProgressListener}
    */
-  onStateChange(webProgress, request, stateFlags, status) {
+  onStateChange(webProgress, request, stateFlags) {
     if (
       !(request instanceof Ci.nsIMailChannel) ||
       !(stateFlags & Ci.nsIWebProgressListener.STATE_START)
     ) {
       return;
     }
-
     // Clear the previously displayed message.
-    const previousDocElement =
-      getMessagePaneBrowser().contentDocument?.documentElement;
-    if (previousDocElement) {
-      previousDocElement.style.display = "none";
+    // Note: Using .hidden = true or .style.display = "none" causes white
+    // flicker in dark mode.
+    const previousBodyElement = getMessagePaneBrowser().contentDocument?.body;
+    if (previousBodyElement) {
+      previousBodyElement.innerHTML = "";
     }
     ClearAttachmentList();
     gMessageNotificationBar.clearMsgNotifications();
@@ -566,6 +524,10 @@ var messageProgressListener = {
    * @see {nsIMailProgressListener}
    */
   onHeadersComplete(mailChannel) {
+    window.dispatchEvent(
+      new CustomEvent("MsgLoading", { detail: gMessage, bubbles: true })
+    );
+
     const domWindow = getMessagePaneBrowser().docShell.DOMWindow;
     domWindow.addEventListener(
       "DOMContentLoaded",
@@ -581,7 +543,7 @@ var messageProgressListener = {
    * @param {nsIMailChannel} mailChannel
    * @see {nsIMailProgressListener}
    */
-  onBodyComplete(mailChannel) {
+  onBodyComplete() {
     autoMarkAsRead();
   },
 
@@ -973,7 +935,7 @@ var messageProgressListener = {
           }
         }
 
-        img.addEventListener("load", function (event) {
+        img.addEventListener("load", function () {
           if (this.clientWidth > this.parentNode.clientWidth) {
             img.setAttribute("overflowing", "true");
             img.setAttribute("shrinktofit", "true");
@@ -1323,7 +1285,7 @@ function UpdateExpandedMessageHeaders() {
         headerName == "references" &&
         !(
           gViewAllHeaders ||
-          gHeadersShowReferences ||
+          Services.prefs.getBoolPref("mailnews.headers.showReferences") ||
           gFolder?.isSpecialFolder(Ci.nsMsgFolderFlags.Newsgroup, false)
         )
       ) {
@@ -1449,7 +1411,7 @@ function outputTags(headerEntry, headerValue) {
  */
 function outputMessageIds(headerEntry, headerValue) {
   headerEntry.enclosingBox.clear();
-  for (const id of headerValue.split(/\s+/)) {
+  for (const id of headerValue.match(/<[^>]*>/g)) {
     headerEntry.enclosingBox.addId(id);
   }
   headerEntry.enclosingBox.buildView();
@@ -1681,7 +1643,7 @@ function onShowSaveAttachmentMenuMultiple() {
  *
  * @param event  the event object
  */
-function attachmentItemCommand(event) {
+function attachmentItemCommand() {
   HandleSelectedAttachments("open");
 }
 
@@ -1733,7 +1695,7 @@ var AttachmentListController = {
     }
   },
 
-  onEvent(event) {},
+  onEvent() {},
 };
 
 var AttachmentMenuController = {
@@ -2979,7 +2941,9 @@ const gMessageHeader = {
         }
         menu.setAttribute(
           "value",
-          encodeURI(value.replace(/\s*<([^>]+)>.*/, "$1"))
+          encodeURI(
+            value.replace(/\s*<([^>]+)>.*/, "$1").replace(/[<>\s]/g, "")
+          )
         );
       }
     }
@@ -3001,10 +2965,13 @@ const gMessageHeader = {
     document.getElementById("messageIdContext-openMessageForMsgId").hidden =
       `<${gMessage.messageId}>` == element.id;
 
-    // We don't want to show "Open Browser With Message-ID" for non-nntp
-    // messages.
+    // Show "Open Browser With Message-ID" only for nntp messages or mailing
+    // lists hosted by Google.
     document.getElementById("messageIdContext-openBrowserWithMsgId").hidden =
-      !gFolder.isSpecialFolder(Ci.nsMsgFolderFlags.Newsgroup, false);
+      !gFolder.isSpecialFolder(Ci.nsMsgFolderFlags.Newsgroup, false) &&
+      !currentHeaderData["list-archive"]?.headerValue.includes(
+        "<https://groups.google.com/"
+      );
 
     const popup = document.getElementById("messageIdContext");
     popup.headerField = element;
@@ -3221,20 +3188,28 @@ const gMessageHeader = {
     const id = event.currentTarget.closest(".header-message-id").id;
     if (event.button == 0) {
       // Remove the < and > symbols.
-      OpenMessageForMessageId(id.substring(1, id.length - 1));
+      MailUtils.openMessageForMessageId(
+        id.substring(1, id.length - 1),
+        gFolder?.server,
+        window
+      );
     }
   },
 
   openMessage(event) {
     const id = event.currentTarget.parentNode.headerField.id;
     // Remove the < and > symbols.
-    OpenMessageForMessageId(id.substring(1, id.length - 1));
+    MailUtils.openMessageForMessageId(
+      id.substring(1, id.length - 1),
+      gFolder?.server,
+      window
+    );
   },
 
   openBrowser(event) {
     const id = event.currentTarget.parentNode.headerField.id;
     // Remove the < and > symbols.
-    OpenBrowserWithMessageId(id.substring(1, id.length - 1));
+    MailUtils.openBrowserWithMessageId(id.substring(1, id.length - 1));
   },
 
   copyMessageId(event) {
@@ -3289,65 +3264,6 @@ function MarkSelectedMessagesFlagged(markFlagged) {
       ? Ci.nsMsgViewCommandType.flagMessages
       : Ci.nsMsgViewCommandType.unflagMessages
   );
-}
-
-/**
- * Take the message id from the messageIdNode and use the url defined in the
- * hidden pref "mailnews.messageid_browser.url" to open it in a browser window
- * (%mid is replaced by the message id).
- * @param {string} messageId - The message id to open.
- */
-function OpenBrowserWithMessageId(messageId) {
-  var browserURL = Services.prefs.getComplexValue(
-    "mailnews.messageid_browser.url",
-    Ci.nsIPrefLocalizedString
-  ).data;
-  browserURL = browserURL.replace(/%mid/, messageId);
-  try {
-    Cc["@mozilla.org/uriloader/external-protocol-service;1"]
-      .getService(Ci.nsIExternalProtocolService)
-      .loadURI(Services.io.newURI(browserURL));
-  } catch (ex) {
-    console.error(
-      "Failed to open message-id in browser; browserURL=" + browserURL
-    );
-  }
-}
-
-/**
- * Take the message id from the messageIdNode, search for the corresponding
- * message in all folders starting with the current selected folder, then the
- * current account followed by the other accounts and open corresponding
- * message if found.
- * @param {string} messageId - The message id to open.
- */
-function OpenMessageForMessageId(messageId) {
-  const startServer = gFolder?.server;
-
-  window.setCursor("wait");
-  const msgHdr = MailUtils.getMsgHdrForMsgId(messageId, startServer);
-  window.setCursor("auto");
-
-  // If message was found open corresponding message.
-  if (msgHdr) {
-    if (parent.location == "about:3pane") {
-      // Message in 3pane.
-      parent.selectMessage(msgHdr);
-    } else {
-      // Message in tab, standalone message window.
-      const uri = msgHdr.folder.getUriForMsg(msgHdr);
-      window.displayMessage(uri);
-    }
-    return;
-  }
-  const messageIdStr = "<" + messageId + ">";
-  const bundle = document.getElementById("bundle_messenger");
-  const errorTitle = bundle.getString("errorOpenMessageForMessageIdTitle");
-  const errorMessage = bundle.getFormattedString(
-    "errorOpenMessageForMessageIdMessage",
-    [messageIdStr]
-  );
-  Services.prompt.alert(window, errorTitle, errorMessage);
 }
 
 /**
@@ -3802,7 +3718,7 @@ var gMessageNotificationBar = {
           label: this.stringBundle.getString("junkBarInfoButton"),
           accessKey: this.stringBundle.getString("junkBarInfoButtonKey"),
           popup: null,
-          callback(aNotification, aButton) {
+          callback() {
             // TODO: This doesn't work in a message window.
             top.openContentTab(
               "https://support.mozilla.org/kb/thunderbird-and-junk-spam-messages"
@@ -3814,7 +3730,7 @@ var gMessageNotificationBar = {
           label: this.stringBundle.getString("junkBarButton"),
           accessKey: this.stringBundle.getString("junkBarButtonKey"),
           popup: null,
-          callback(aNotification, aButton) {
+          callback() {
             commandController.doCommand("cmd_markAsNotJunk");
             // Return true (=don't close) since changing junk status will fire a
             // JunkStatusChanged notification which will make the junk bar go away
@@ -3931,7 +3847,7 @@ var gMessageNotificationBar = {
         label: buttonLabel,
         accessKey: buttonAccesskey,
         popup: "phishingOptions",
-        callback(aNotification, aButton) {},
+        callback() {},
       },
     ];
 
@@ -3997,7 +3913,7 @@ var gMessageNotificationBar = {
         label: this.stringBundle.getString("mdnBarSendReqButton"),
         accessKey: this.stringBundle.getString("mdnBarSendReqButtonKey"),
         popup: null,
-        callback(aNotification, aButton) {
+        callback() {
           SendMDNResponse();
           return false; // close notification
         },
@@ -4006,7 +3922,7 @@ var gMessageNotificationBar = {
         label: this.stringBundle.getString("mdnBarIgnoreButton"),
         accessKey: this.stringBundle.getString("mdnBarIgnoreButtonKey"),
         popup: null,
-        callback(aNotification, aButton) {
+        callback() {
           IgnoreMDNResponse();
           return false; // close notification
         },
@@ -4036,7 +3952,7 @@ var gMessageNotificationBar = {
           label: this.stringBundle.getString("draftMessageButton"),
           accessKey: this.stringBundle.getString("draftMessageButtonKey"),
           popup: null,
-          callback(aNotification, aButton) {
+          callback() {
             MsgComposeDraftMessage();
             return true; // keep notification open
           },
@@ -4228,11 +4144,10 @@ function OnMsgParsed(aUrl) {
   // If the find bar is visible and we just loaded a new message, re-run
   // the find command. This means the new message will get highlighted and
   // we'll scroll to the first word in the message that matches the find text.
-  var findBar = document.getElementById("FindToolbar");
+  const findBar = document.getElementById("FindToolbar");
   if (!findBar.hidden) {
     findBar.onFindAgainCommand(false);
   }
-
   const browser = getMessagePaneBrowser();
   // Run the phishing detector on the message if it hasn't been marked as not
   // a scam already.
@@ -4308,10 +4223,6 @@ function OnMsgParsed(aUrl) {
 }
 
 function OnMsgLoaded(aUrl) {
-  if (!aUrl) {
-    return;
-  }
-
   window.msgLoaded = true;
   window.dispatchEvent(
     new CustomEvent("MsgLoaded", { detail: gMessage, bubbles: true })
@@ -4388,17 +4299,15 @@ function autoMarkAsRead() {
 }
 
 /**
- * This function handles all mdn response generation (ie, imap and pop).
- * For pop the msg uid can be 0 (ie, 1st msg in a local folder) so no
+ * This function handles all MDN response generation.
+ * For pop the msg uid can be 0 (i.e., 1st msg in a local folder) so no
  * need to check uid here. No one seems to set mimeHeaders to null so
  * no need to check it either.
+ *
+ * @param {nsIMsgMailNewsUrl} url
  */
-function HandleMDNResponse(aUrl) {
-  if (!aUrl) {
-    return;
-  }
-
-  var msgFolder = aUrl.folder;
+function HandleMDNResponse(url) {
+  const msgFolder = url.folder;
   if (
     !msgFolder ||
     !gMessage ||
@@ -4416,7 +4325,7 @@ function HandleMDNResponse(aUrl) {
   var mimeHdr;
 
   try {
-    mimeHdr = aUrl.mimeHeaders;
+    mimeHdr = url.mimeHeaders;
   } catch (ex) {
     return;
   }
@@ -4425,7 +4334,7 @@ function HandleMDNResponse(aUrl) {
   // we cons up an md5: message id. If we've done that, we'll try to extract
   // the message id out of the mime headers for the whole message.
   const msgId = gMessage.messageId;
-  if (msgId.startsWith("md5:")) {
+  if (msgId.startsWith("md5:") || msgId.startsWith("x-moz-uuid:")) {
     var mimeMsgId = mimeHdr.extractHeader("Message-Id", false);
     if (mimeMsgId) {
       gMessage.messageId = mimeMsgId;

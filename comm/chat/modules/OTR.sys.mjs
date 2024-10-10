@@ -82,22 +82,40 @@ function Context(context) {
 Context.prototype = {
   constructor: Context,
   get username() {
+    if (this._context.isNull()) {
+      return null;
+    }
     return this._context.contents.username.readString();
   },
   get account() {
+    if (this._context.isNull()) {
+      return null;
+    }
     return this._context.contents.accountname.readString();
   },
   get protocol() {
+    if (this._context.isNull()) {
+      return null;
+    }
     return this._context.contents.protocol.readString();
   },
   get msgstate() {
+    if (this._context.isNull()) {
+      return null;
+    }
     return this._context.contents.msgstate;
   },
   get fingerprint() {
+    if (this._context.isNull()) {
+      return null;
+    }
     return this._context.contents.active_fingerprint;
   },
   get trust() {
     return trustFingerprint(this.fingerprint);
+  },
+  isNull() {
+    return this._context.isNull();
   },
 };
 
@@ -128,9 +146,7 @@ export var OTR = {
   fingerprintsPath: profilePath("otr.fingerprints"),
   instanceTagsPath: profilePath("otr.instance_tags"),
 
-  init(opts) {
-    opts = opts || {};
-
+  init() {
     if (!this.hasRan) {
       this.once();
     }
@@ -249,7 +265,9 @@ export var OTR = {
       );
     }
 
-    const worker = new BasePromiseWorker("chrome://chat/content/otrWorker.js");
+    const worker = new BasePromiseWorker("resource:///modules/OTR.worker.mjs", {
+      type: "module",
+    });
     return worker
       .post("generateKey", [OTRLib.path, OTRLib.otrl_version, address])
       .then(function () {
@@ -821,7 +839,7 @@ export var OTR = {
   /**
    * The list of known fingerprints has changed.  Write them to disk.
    */
-  write_fingerprint_cb(opdata) {
+  write_fingerprint_cb() {
     this.writeFingerprints();
   },
 
@@ -851,7 +869,7 @@ export var OTR = {
   /**
    * A ConnContext has left a secure state.
    */
-  gone_insecure_cb(opdata, context) {
+  gone_insecure_cb() {
     // This isn't used. See: https://bugs.otr.im/lib/libotr/issues/48
   },
 
@@ -911,7 +929,7 @@ export var OTR = {
    * We received a request from the buddy to use the current "extra"
    * symmetric key.
    */
-  received_symkey_cb(opdata, context, use, usedata, usedatalen, symkey) {
+  received_symkey_cb() {
     // Ignore until we have a use.
   },
 
@@ -952,7 +970,7 @@ export var OTR = {
   /**
    * Return a string that will be prefixed to any resent message.
    */
-  resent_msg_prefix_cb(opdata, context) {
+  resent_msg_prefix_cb() {
     return CLib.strdup(_str("resent"));
   },
 
@@ -1009,7 +1027,7 @@ export var OTR = {
    * Handle and send the appropriate message(s) to the sender/recipient
    * depending on the message events.
    */
-  handle_msg_event_cb(opdata, msg_event, context, message, err) {
+  handle_msg_event_cb(opdata, msg_event, context, message) {
     context = new Context(context);
     switch (msg_event) {
       case OTRLib.messageEvent.OTRL_MSGEVENT_NONE:
@@ -1178,7 +1196,7 @@ export var OTR = {
     this.getUIConvFromContext(context).systemMessage(msg, false, true);
   },
 
-  observe(aObject, aTopic, aMsg) {
+  observe(aObject, aTopic) {
     switch (aTopic) {
       case "sending-message":
         this.onSend(aObject);
