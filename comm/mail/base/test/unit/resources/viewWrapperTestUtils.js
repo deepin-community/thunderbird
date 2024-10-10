@@ -8,8 +8,8 @@ var { DBViewWrapper, IDBViewWrapperListener } = ChromeUtils.importESModule(
 var { MailViewManager, MailViewConstants } = ChromeUtils.importESModule(
   "resource:///modules/MailViewManager.sys.mjs"
 );
-var { VirtualFolderHelper } = ChromeUtils.import(
-  "resource:///modules/VirtualFolderWrapper.jsm"
+var { VirtualFolderHelper } = ChromeUtils.importESModule(
+  "resource:///modules/VirtualFolderWrapper.sys.mjs"
 );
 var { MessageGenerator, MessageScenarioFactory } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
@@ -18,7 +18,7 @@ var { MessageInjection } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageInjection.sys.mjs"
 );
 var { dump_view_state } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ViewHelpers.sys.mjs"
+  "resource://testing-common/mail/ViewHelpers.sys.mjs"
 );
 
 var gMessageGenerator;
@@ -86,7 +86,7 @@ function assert_bit_not_set(aWhat, aBit, aWhy) {
 var gFakeCommandUpdater = {
   updateCommandStatus() {},
 
-  displayMessageChanged(aFolder, aSubject, aKeywords) {},
+  displayMessageChanged() {},
 
   summarizeSelection() {},
 

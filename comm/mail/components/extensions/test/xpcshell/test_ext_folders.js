@@ -222,7 +222,7 @@ add_task(
           // Test reject on deleting non-existing folder.
           await browser.test.assertRejects(
             browser.folders.delete({ accountId, path: "/missing" }),
-            `Folder not found: /missing`,
+            `Folder not found: ${accountId}://missing`,
             "browser.folders.delete threw exception"
           );
 
@@ -395,6 +395,8 @@ add_task(
           specialUse: [],
           isFavorite: false,
           isRoot: false,
+          isTag: false,
+          isUnified: false,
           isVirtual: false,
           subFolders: [
             {
@@ -405,6 +407,8 @@ add_task(
               specialUse: [],
               isFavorite: false,
               isRoot: false,
+              isTag: false,
+              isUnified: false,
               isVirtual: false,
               subFolders: [
                 {
@@ -415,6 +419,8 @@ add_task(
                   specialUse: [],
                   isFavorite: false,
                   isRoot: false,
+                  isTag: false,
+                  isUnified: false,
                   isVirtual: false,
                   subFolders: [
                     {
@@ -425,6 +431,8 @@ add_task(
                       specialUse: [],
                       isFavorite: false,
                       isRoot: false,
+                      isTag: false,
+                      isUnified: false,
                       isVirtual: false,
                       subFolders: [],
                     },
@@ -595,6 +603,8 @@ add_task(
             specialUse: [],
             isFavorite: false,
             isRoot: false,
+            isTag: false,
+            isUnified: false,
             isVirtual: false,
           },
           {
@@ -605,6 +615,8 @@ add_task(
             specialUse: [],
             isFavorite: false,
             isRoot: false,
+            isTag: false,
+            isUnified: false,
             isVirtual: false,
           },
           {
@@ -615,6 +627,8 @@ add_task(
             specialUse: [],
             isFavorite: false,
             isRoot: false,
+            isTag: false,
+            isUnified: false,
             isVirtual: false,
           },
         ];

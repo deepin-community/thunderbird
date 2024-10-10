@@ -119,7 +119,8 @@ nsMsgIncomingServer::Observe(nsISupports* aSubject, const char* aTopic,
       nsAutoCString thisFullName;
       GetType(thisFullName);
       if (thisFullName.EqualsLiteral("pop3")) {
-        // Note: POP3 now handled by MsgIncomingServer.jsm so does not occur.
+        // Note: POP3 now handled by MsgIncomingServer.sys.mjs so does not
+        // occur.
         MOZ_ASSERT_UNREACHABLE("pop3 should not use nsMsgIncomingServer");
         thisFullName = "mailbox://"_ns + thisHostname;
       } else {
@@ -2009,7 +2010,7 @@ NS_IMETHODIMP nsMsgIncomingServer::IsNewHdrDuplicate(nsIMsgDBHdr* aNewHdr,
 
   nsAutoCString strHashKey;
   nsCString messageId, subject;
-  aNewHdr->GetMessageId(getter_Copies(messageId));
+  aNewHdr->GetMessageId(messageId);
   strHashKey.Append(messageId);
   aNewHdr->GetSubject(subject);
   // err on the side of caution and ignore messages w/o subject or messageid.

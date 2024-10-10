@@ -6,7 +6,7 @@ const { MessageGenerator } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
 );
 const { click_through_appmenu } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
 const tabmail = document.getElementById("tabmail");
@@ -156,13 +156,16 @@ add_task(async function testSwitchToCardsView() {
   );
 
   const tableRow = threadTree.getRowAtIndex(1);
-  const tableData = tableRow.querySelector(".thread-card-container");
+  const tableData = tableRow.querySelector(".card-container");
   const rowHeight = getComputedStyle(tableRow).getPropertyValue("height");
-  const containerHeight =
-    getComputedStyle(tableData).getPropertyValue("height");
+  const containerHeightNoPadding = getComputedStyle(tableData)
+    .getPropertyValue("height")
+    .slice(0, -2);
+  // Add 4 px of padding to the computed height.
+  const containerHeight = parseFloat(containerHeightNoPadding) + 4;
   Assert.equal(
     rowHeight,
-    containerHeight,
+    `${containerHeight}px`,
     "The message and content container height should be the same"
   );
 
@@ -257,7 +260,7 @@ add_task(async function testTagsInVerticalView() {
 
   await ensure_cards_view();
   about3Pane.folderTree.focus();
-}).__skipMe = true; // To Do: update the test for tags on Bug 1860900.
+}).skip(); // TODO: update the test for tags on Bug 1860900.
 
 /**
  * This test Checks that:

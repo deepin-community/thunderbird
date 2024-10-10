@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-cs@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Čeština (Czech)",
   "description": "Thunderbird Language Pack for Čeština (cs) – Czech",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "cs": {
-      "version": "20240423195818",
+      "version": "20240930174327",
       "chrome_resources": {
         "alerts": "chrome/cs/locale/cs/alerts/",
         "autoconfig": "chrome/cs/locale/cs/autoconfig/",
         "branding": "chrome/cs/locale/branding/",
         "calendar": "chrome/cs/locale/cs/calendar/",
-        "chat": "chrome/cs/locale/cs/chat/",
         "communicator": "chrome/cs/locale/cs/communicator/",
         "devtools": "chrome/cs/locale/cs/devtools/client/",
         "devtools-shared": "chrome/cs/locale/cs/devtools/shared/",

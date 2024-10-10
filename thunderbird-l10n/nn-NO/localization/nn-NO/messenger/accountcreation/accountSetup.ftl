@@ -76,6 +76,7 @@ account-setup-success-password = Passordet er OK
 account-setup-success-addon = Utvidinga vart installert
 # Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-success-settings-db = Fann konfigurasjonen i Mozillas ISP-database.
+account-setup-success-settings-isp = Oppsett funne hos e-postleverandøren.
 
 ## Illustrations
 
@@ -112,7 +113,7 @@ account-setup-result-pop-description = Behald mapper og e-postar på datamaskina
 account-setup-incoming-title = Innkomande
 account-setup-outgoing-title = Utgåande
 account-setup-username-title = Brukarnamn
-account-setup-exchange-title = Server
+account-setup-exchange-title = Sørvar
 account-setup-result-no-encryption = Inga kryptering
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -155,6 +156,9 @@ account-setup-insecure-outgoing-title = Utgåande innstillingar:
 # Variables:
 #  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = <b>{ $server }</b> brukar ikkje kryptering.
+account-setup-warning-cleartext-details = Usikre e-posttenarar brukar ikkje kryptering for å verne passord og privat informasjon. Ved å kople til denne tenaren kan du avsløre passordet ditt eller privat informasjon.
+account-setup-insecure-server-checkbox = Eg forstår risikoen
+    .accesskey = E
 insecure-dialog-cancel-button = Endre innstillingar
     .accesskey = n
 insecure-dialog-confirm-button = Stadfest
@@ -168,15 +172,22 @@ exchange-dialog-cancel-button = Avbryt
 ## Dismiss account creation dialog
 
 exit-dialog-title = Ingen e-postkonto konfigurert
+account-setup-no-account-checkbox = Bruk { -brand-short-name } utan ein e-postkonto
+    .accesskey = B
 exit-dialog-cancel-button = Hald fram med konfigurasjonen
     .accesskey = H
 
 ## Alert dialogs
 
+account-setup-creation-error-title = Klarte ikkje å opprette konto
+account-setup-error-server-exists = Innkomande tenar finst allereie.
+account-setup-confirm-advanced-title = Stadfest avansert oppsett
+account-setup-confirm-advanced-description = Denne dialogruta vil late seg att og ein konto med dei aktuelle innstillingane vil bli oppretta, sjølv om innstillingane er feil. Vil du fortsetje?
 
 ## Addon installation section
 
 account-setup-addon-install-title = Installer
+account-setup-addon-install-intro = Eit tredjepartstillegg kan gje deg tilgang til e-postkontoen din på denne serveren:
 
 ## Success view
 
@@ -192,6 +203,7 @@ account-setup-linked-services-description = { -brand-short-name } oppdaga andre 
 account-setup-no-linked-description = Konfigurer andre tenester for å få mest mogleg ut av { -brand-short-name }-opplevinga di.
 account-setup-button-finish = Fullfør
     .accesskey = F
+account-setup-looking-up-address-books = Søkjer etter adressebøker…
 account-setup-looking-up-calendars = Søkjer etter kalendrar…
 account-setup-address-books-button = Adressebøker
 account-setup-calendars-button = Kalendrar
@@ -200,6 +212,8 @@ account-setup-existing-address-book = Tilkopla
     .title = Adresseboka er allereie tilkopla
 account-setup-existing-calendar = Tilkopla
     .title = Kalender allereie tilkopla
+account-setup-connect-all-calendars = Kople til alle kalendrar
+account-setup-connect-all-address-books = Kople til alle adressebøker
 
 ## Calendar synchronization dialog
 
@@ -221,5 +235,9 @@ account-setup-calendar-refresh-interval =
         [one] Kvart minutt
        *[other] Kvart { $count }. minutt
     }
+account-setup-calendar-read-only = Skriveverna
+    .accesskey = S
+account-setup-calendar-show-reminders = Vis påminningar
+    .accesskey = V
 account-setup-calendar-offline-support = Fråkopla støtte
     .accesskey = F

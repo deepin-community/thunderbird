@@ -5,7 +5,7 @@
 "use strict";
 
 var { close_compose_window, compose_window_ready } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var {
   assert_content_tab_element_hidden,
@@ -18,15 +18,15 @@ var {
   open_content_tab_with_click,
   promise_content_tab_element_display,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
+  "resource://testing-common/mail/ContentTabHelpers.sys.mjs"
 );
 
 var { close_tab } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { click_menus_in_sequence, promise_new_window } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+    "resource://testing-common/mail/WindowHelpers.sys.mjs"
   );
 
 var warningText = new Map();
@@ -581,5 +581,30 @@ add_task(async function test_send_via_email_private() {
   }
 
   await close_compose_window(cwc);
+  close_tab(tab);
+});
+
+/**
+ * Ensure that opening links in about:support doesn't crash the process
+ * See: bug 1843741
+ */
+add_task(async function test_open_links_in_about_support() {
+  const tab = await open_about_support();
+  const elem = tab.browser.contentDocument.querySelector(
+    "[href='about:buildconfig']"
+  );
+  await promise_content_tab_element_display(tab, elem);
+
+  const tabmail = document.getElementById("tabmail");
+  const eventPromise = BrowserTestUtils.waitForEvent(
+    tabmail.tabContainer,
+    "TabOpen"
+  );
+  EventUtils.synthesizeMouseAtCenter(elem, { clickCount: 1 }, elem.ownerGlobal);
+  const event = await eventPromise;
+
+  const browser = event.detail.tabInfo.linkedBrowser;
+  Assert.ok(!browser.hasAttribute("remote"));
+  close_tab(event.detail.tabInfo);
   close_tab(tab);
 });

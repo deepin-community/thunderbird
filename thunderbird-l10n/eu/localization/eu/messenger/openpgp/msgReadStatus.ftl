@@ -28,6 +28,10 @@ openpgp-invalid-sig = Sinadura digital baliogabea
 # Variables:
 # $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Sinadura digital baliogabea - { $date } datan sinatua
+openpgp-bad-date-sig = Sinadura data ez dator bat
+# Variables:
+# $date (String) - Date with time the signature was made in a short format.
+openpgp-bad-date-sig-with-date = Sinadura data ez dator bat - sinadura data { $date }
 openpgp-good-sig = Sinadura digital ona
 # Variables:
 # $date (String) - Date with time the signature was made in a short format.
@@ -37,6 +41,7 @@ openpgp-sig-uncertain-uid-mismatch = Mezu honek sinadura digitala dauka, baina b
 openpgp-sig-uncertain-not-accepted = Mezu honek sinadura digitala dauka, baina zuk oraindik ez duzu erabaki sinatzailearen gakoa onartzen duzun.
 openpgp-sig-invalid-rejected = Mezuak sinadura digitala dauka, baina zuk aurrez erabaki zenuen gakoaren sinatzailea baztertzea.
 openpgp-sig-invalid-technical-problem = Mezu honek sinadura digitala dauka, baina akats tekniko bat detektatu da. Edo mezua hondatu da edo beste norbaitek mezua mezua aldatu du.
+openpgp-sig-invalid-date-mismatch = Mezu honek sinadura digital bat dauka, baina sinadura ez da egin mezu elektronikoa bidali zen aldi berean. Hau izan daiteke testuinguru okerreko edukiekin engainatzeko saiakera bat: adibidez. beste testuinguru puntual batean idatzitako edo beste norbaitentzat pentsatutako edukia.
 openpgp-sig-valid-unverified = Mezu honek badauka sinadura digital zuzen bat zuk aurrez onartutako gako batena. Edonola, oraindik egiaztatzeke daukazu benetan gakoa bidaltzailearena den.
 openpgp-sig-valid-verified = Mezu honek badauka sinadura digital zuzena egiaztatutako gako batena.
 openpgp-sig-valid-own-key = Mezu honek badauka sinadura digital zuzena zure gako pertsonal batena.

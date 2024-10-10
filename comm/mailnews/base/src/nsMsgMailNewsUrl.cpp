@@ -6,12 +6,13 @@
 #include "msgCore.h"
 #include "nsMsgMailNewsUrl.h"
 #include "nsIMsgAccountManager.h"
+#include "nsIMsgStatusFeedback.h"
+#include "nsIMsgWindow.h"
 #include "nsString.h"
 #include "nsILoadGroup.h"
 #include "nsIDocShell.h"
 #include "nsIWebProgress.h"
 #include "nsIWebProgressListener.h"
-#include "nsIInterfaceRequestor.h"
 #include "nsIInterfaceRequestorUtils.h"
 #include "nsIIOService.h"
 #include "nsNetCID.h"
@@ -314,10 +315,6 @@ NS_IMETHODIMP nsMsgMailNewsUrl::GetMsgWindow(nsIMsgWindow** aMsgWindow) {
 }
 
 NS_IMETHODIMP nsMsgMailNewsUrl::SetMsgWindow(nsIMsgWindow* aMsgWindow) {
-#ifdef DEBUG_David_Bienvenu
-  NS_ASSERTION(aMsgWindow || !m_msgWindowWeak,
-               "someone crunching non-null msg window");
-#endif
   m_msgWindowWeak = do_GetWeakReference(aMsgWindow);
   return NS_OK;
 }

@@ -5,10 +5,12 @@
 const { CardDAVDirectory } = ChromeUtils.importESModule(
   "resource:///modules/CardDAVDirectory.sys.mjs"
 );
-const { CardDAVServer } = ChromeUtils.import(
-  "resource://testing-common/CardDAVServer.jsm"
+const { CardDAVServer } = ChromeUtils.importESModule(
+  "resource://testing-common/CardDAVServer.sys.mjs"
 );
-const { ICAL } = ChromeUtils.import("resource:///modules/calendar/Ical.jsm");
+const { default: ICAL } = ChromeUtils.importESModule(
+  "resource:///modules/calendar/Ical.sys.mjs"
+);
 
 const dragService = Cc["@mozilla.org/widget/dragservice;1"].getService(
   Ci.nsIDragService
@@ -76,7 +78,10 @@ function dropFile(target, path) {
   dataTransfer.dropEffect = "copy";
   dataTransfer.mozSetDataAt("application/x-moz-file", file, 0);
 
-  dragService.startDragSessionForTests(Ci.nsIDragService.DRAGDROP_ACTION_COPY);
+  dragService.startDragSessionForTests(
+    abWindow,
+    Ci.nsIDragService.DRAGDROP_ACTION_COPY
+  );
   dragService.getCurrentSession().dataTransfer = dataTransfer;
 
   EventUtils.synthesizeDragOver(
@@ -95,7 +100,7 @@ function dropFile(target, path) {
     _domDispatchOnly: true,
   });
 
-  dragService.endDragSession(true);
+  dragService.getCurrentSession().endDragSession(true);
 }
 
 function checkDialogElements({
@@ -206,7 +211,7 @@ function setInputValues(changes) {
 
 add_setup(async function () {
   await openAddressBookWindow();
-  openDirectory(personalBook);
+  await openDirectory(personalBook);
 });
 
 registerCleanupFunction(async function cleanUp() {
@@ -220,7 +225,9 @@ async function subtest_add_photo(book) {
   const abWindow = getAddressBookWindow();
   const abDocument = abWindow.document;
 
-  const createContactButton = abDocument.getElementById("toolbarCreateContact");
+  const createContactButton = abDocument.getElementById(
+    "booksPaneCreateContact"
+  );
   const saveEditButton = abDocument.getElementById("saveEditButton");
   const photoButton = abDocument.getElementById("photoButton");
   const editPhoto = photoButton.querySelector(".contact-photo");
@@ -228,7 +235,7 @@ async function subtest_add_photo(book) {
   const dialog = abWindow.document.getElementById("photoDialog");
   const { saveButton } = dialog;
 
-  openDirectory(book);
+  await openDirectory(book);
 
   EventUtils.synthesizeMouseAtCenter(createContactButton, {}, abWindow);
   await inEditingMode();
@@ -297,7 +304,9 @@ async function subtest_dont_add_photo(book) {
   const abWindow = getAddressBookWindow();
   const abDocument = abWindow.document;
 
-  const createContactButton = abDocument.getElementById("toolbarCreateContact");
+  const createContactButton = abDocument.getElementById(
+    "booksPaneCreateContact"
+  );
   const saveEditButton = abDocument.getElementById("saveEditButton");
   const photoButton = abDocument.getElementById("photoButton");
   const editPhoto = photoButton.querySelector(".contact-photo");
@@ -444,7 +453,7 @@ async function subtest_discard_photo(book, checkPhotoCallback) {
   const dialog = abWindow.document.getElementById("photoDialog");
   const { discardButton } = dialog;
 
-  openDirectory(book);
+  await openDirectory(book);
 
   EventUtils.synthesizeMouseAtCenter(cardsList.getRowAtIndex(0), {}, abWindow);
   Assert.ok(
@@ -497,7 +506,9 @@ async function subtest_paste_url() {
   const abWindow = getAddressBookWindow();
   const abDocument = abWindow.document;
 
-  const createContactButton = abDocument.getElementById("toolbarCreateContact");
+  const createContactButton = abDocument.getElementById(
+    "booksPaneCreateContact"
+  );
   const cancelEditButton = abDocument.getElementById("cancelEditButton");
   const photoButton = abDocument.getElementById("photoButton");
   const editPhoto = photoButton.querySelector(".contact-photo");

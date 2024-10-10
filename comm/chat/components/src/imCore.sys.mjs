@@ -18,6 +18,13 @@ var kPrefTimeBeforeIdle = "messenger.status.timeBeforeIdle";
 var kPrefAwayWhenIdle = "messenger.status.awayWhenIdle";
 var kPrefDefaultMessage = "messenger.status.defaultIdleAwayMessage";
 
+const lazy = {};
+ChromeUtils.defineLazyGetter(
+  lazy,
+  "l10n",
+  () => new Localization(["chat/status.ftl"], true)
+);
+
 var NS_IOSERVICE_GOING_OFFLINE_TOPIC = "network:offline-about-to-go-offline";
 var NS_IOSERVICE_OFFLINE_STATUS_TOPIC = "network:offline-status-changed";
 
@@ -195,10 +202,14 @@ UserStatus.prototype = {
       this.idleTime = idleTime;
       if (Services.prefs.getBoolPref(kPrefAwayWhenIdle)) {
         this._idleStatusType = Ci.imIStatusInfo.STATUS_AWAY;
-        this._idleStatusText = Services.prefs.getComplexValue(
-          kPrefDefaultMessage,
-          Ci.nsIPrefLocalizedString
-        ).data;
+
+        this._idleStatusText = Services.prefs.prefHasUserValue(
+          kPrefDefaultMessage
+        )
+          ? Services.prefs.getCharValue(kPrefDefaultMessage, "")
+          : lazy.l10n.formatValueSync(
+              "messenger-status-default-idle-away-message"
+            );
       }
     } else {
       this.idleTime = 0;
@@ -371,7 +382,7 @@ class CoreService {
       });
     }
   }
-  observe(aObject, aTopic, aData) {
+  observe(aObject, aTopic) {
     if (aTopic == kQuitApplicationGranted) {
       this.quit();
     }

@@ -21,7 +21,7 @@ account-setup-name-label = Вашето цяло име
 account-setup-name-input =
     .placeholder = Иван Иванов
 account-setup-name-info-icon =
-    .title = Вашето име, както ще го видят другите
+    .title = Вашето име, както ще ги виждат другите
 account-setup-name-warning-icon =
     .title = Моля, въведете името си
 account-setup-email-label = Електронен адрес:
@@ -34,7 +34,7 @@ account-setup-email-warning-icon =
     .title = Недействителен адрес на ел. поща
 account-setup-password-label = Парола
     .accesskey = П
-    .title = { "" }
+    .title = Парола
 account-provisioner-button = Получете нов електронен адрес
     .accesskey = П
 account-setup-password-toggle-show =
@@ -275,7 +275,7 @@ account-setup-calendar-name-label = Име
 account-setup-calendar-name-input =
     .placeholder = Моят календар
 account-setup-calendar-color-label = Цвят
-account-setup-calendar-refresh-label = Опресняване
+account-setup-calendar-refresh-label = Презареждане
 account-setup-calendar-refresh-manual = Ръчно
 # Variables:
 # $count (Number) - Number of minutes in the calendar refresh interval.

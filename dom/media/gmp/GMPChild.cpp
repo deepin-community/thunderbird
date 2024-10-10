@@ -41,6 +41,7 @@
 #include "nsXULAppAPI.h"
 #include "nsIXULRuntime.h"
 #include "nsXPCOM.h"
+#include "nsXPCOMPrivate.h"  // for XUL_DLL
 #include "prio.h"
 #ifdef XP_WIN
 #  include <stdlib.h>  // for _exit()
@@ -172,6 +173,7 @@ mozilla::ipc::IPCResult GMPChild::RecvPreloadLibs(const nsCString& aLibs) {
       u"ole32.dll",        // required for OPM
       u"oleaut32.dll",     // For _bstr_t use in libwebrtc, see bug 1788592
       u"psapi.dll",        // For GetMappedFileNameW, see bug 1383611
+      u"shell32.dll",      // Dependency for widevine
       u"softokn3.dll",     // NSS for clearkey CDM
       u"winmm.dll",        // Dependency for widevine
   };
@@ -348,15 +350,11 @@ static bool IsFileLeafEqualToASCII(const nsCOMPtr<nsIFile>& aFile,
 #endif
 
 #if defined(XP_WIN)
-#  define FIREFOX_FILE u"firefox.exe"_ns
-#  define XUL_LIB_FILE u"xul.dll"_ns
-#elif defined(XP_MACOSX)
-#  define FIREFOX_FILE u"firefox"_ns
-#  define XUL_LIB_FILE u"XUL"_ns
+#  define FIREFOX_FILE MOZ_APP_NAME u".exe"_ns
 #else
-#  define FIREFOX_FILE u"firefox"_ns
-#  define XUL_LIB_FILE u"libxul.so"_ns
+#  define FIREFOX_FILE MOZ_APP_NAME u""_ns
 #endif
+#define XUL_LIB_FILE XUL_DLL u""_ns
 
 static nsCOMPtr<nsIFile> GetFirefoxAppPath(
     nsCOMPtr<nsIFile> aPluginContainerPath) {

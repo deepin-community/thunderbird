@@ -5,9 +5,6 @@
 #   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Legg til ein personleg OpenPGP-nøkkel for { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Fortset
-    .buttonlabelhelp = Gå tilbake
 key-wizard-dialog =
     .buttonlabelaccept = Hald fram
     .buttonlabelextra1 = Gå tilbake
@@ -26,6 +23,14 @@ radio-gnupg-key =
 ## Generate key section
 
 openpgp-generate-key-title = Generer OpenPGP-nøkkel
+openpgp-keygen-secret-protection = Vern av hemmeleg nøkkel
+radio-keygen-no-protection =
+    .label = Ubeskytta
+radio-keygen-protect-primary-pass =
+    .label = Beskytt med eit hovudpassord
+radio-keygen-passphrase-protection =
+    .label = Vern med ei passordfrase:
+openpgp-passphrase-repeat = Stadfest passordfrase:
 openpgp-generate-key-info = <b>Nøkkelgenerering kan ta opptil fleie minutt å fullføre.</b> Ikkje avslutt applikasjonen når nøkkelgenereringa held på. Dersom du aktivt surfar eller utfører diskintensive operasjonar under nøkkelgenerering, vil det fylle opp «randomness pool»-et og gjere prosessen raskare. Du blir varsla når nøkkelgenereringa er fullført.
 openpgp-keygen-expiry-title = Nøkkelen går ut
 openpgp-keygen-expiry-description = Definer når den nyleg genererte nøkkelenen skal gå ut. Du kan seinare kontrollere datoen for å forlenge den om nødvendig.
@@ -94,10 +99,10 @@ openpgp-import-key-list-amount-2 =
        *[other] { -brand-short-name } fann { $count } nøklar som kan importerast.
     }
 openpgp-import-key-list-description = Bekreft hvilke nøklar som kan behandles som dine personlige nøkler. Bare nøkler som du opprettet selv og som viser din egen identitet, skal brukes som personlige nøkler. Du kan endre dette alternativet senere i dialogboksen Nøkkelegenskaper.
-openpgp-import-key-list-caption = Nøklar merkte for å bli behandla som personlege nøklar vil bli oppførte i avsnittet ende-til-ende-kryptering. Dei andre vil vere tilgjengelege i nøkkelhandteraren.
+openpgp-import-key-list-caption = Nøklar merkte for å bli behandla som personlege nøklar vil bli oppførte i avsnittet ende-til-ende-kryptering. Dei andre vil vere tilgjengelege i nøkkelhandsamaren.
+openpgp-import-keep-passphrases =
+    .label = Behald passordfrasevern for importerte hemmelege nøklar
 openpgp-passphrase-prompt-title = Passordfrase påkravd
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Skriv inn passordfrasa for å låse opp følgjande nøkkel: { $key }
 openpgp-import-key-button =
     .label = Vel ei fil å importere…
     .accesskey = V
@@ -122,7 +127,7 @@ openpgp-import-key-props =
 
 openpgp-external-key-title = Ekstern GnuPG-nøkkel
 openpgp-external-key-description = Konfigurer ein ekstern GnuPG-nøkkel ved å skrive inn nøkkel-ID
-openpgp-external-key-info = I tillegg må du bruke nøkkelhandteraren for å importere og godta den tilsvareande offentlege nøkkelen.
+openpgp-external-key-info = I tillegg må du bruke nøkkelhandsamaren for å importere og godta den tilsvareande offentlege nøkkelen.
 openpgp-external-key-warning = <b>Du kan berre konfigurere ein ekstern GnuPG-nøkkel.</b> Den tidlegare oppføringa di vert erstatta.
 openpgp-save-external-button = Lagre nøkkel-ID
 openpgp-external-key-label = Hemmeleg nøkkel-ID:

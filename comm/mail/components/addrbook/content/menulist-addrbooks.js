@@ -10,8 +10,8 @@ if (!customElements.get("menulist")) {
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { MailServices } = ChromeUtils.import(
-    "resource:///modules/MailServices.jsm"
+  const { MailServices } = ChromeUtils.importESModule(
+    "resource:///modules/MailServices.sys.mjs"
   );
   /**
    * MozMenulistAddrbooks is a menulist widget that is automatically
@@ -62,11 +62,11 @@ if (!customElements.get("menulist")) {
           window.removeEventListener("unload", this);
         },
 
-        handleEvent(event) {
+        handleEvent() {
           this.cleanUp();
         },
 
-        observe: (subject, topic, data) => {
+        observe: (subject, topic) => {
           // Test-only reload of the address book manager.
           if (topic == "addrbook-reloaded") {
             this._rebuild();

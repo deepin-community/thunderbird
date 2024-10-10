@@ -2,12 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
-const { OAuth2Providers } = ChromeUtils.import(
-  "resource:///modules/OAuth2Providers.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
+
+import { OAuth2Providers } from "resource:///modules/OAuth2Providers.sys.mjs";
 import { AccountCreationUtils } from "resource:///modules/accountcreation/AccountCreationUtils.sys.mjs";
 
 /**
@@ -38,7 +35,7 @@ export class ConfigVerifier {
    * @param {nsIURI} url - The URL being processed.
    * @see {nsIUrlListener}
    */
-  OnStartRunningUrl(url) {
+  OnStartRunningUrl() {
     this._log.debug(`Starting to verify configuration;
       email as username=${
         this.config.incoming.username != this.config.identity.emailAddress

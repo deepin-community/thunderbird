@@ -234,7 +234,7 @@ add_task(async function testSortBySubject() {
     messagePaneVisible: true,
     folderURI: folderH.URI,
   });
-  goDoCommand("cmd_sort", { target: { value: "bySubject" } });
+  goDoCommand("cmd_sort", { target: { value: "subjectCol" } });
 
   await subtest();
 });
@@ -275,7 +275,7 @@ add_task(async function testDeletionWhileScrolling() {
     setNoScrollExpectation() {
       this.direction = 0;
     },
-    handleEvent(event) {
+    handleEvent() {
       if (this.direction === 0) {
         Assert.report(true, undefined, undefined, "unexpected scroll event");
         return;

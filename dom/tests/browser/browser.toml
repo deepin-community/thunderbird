@@ -44,6 +44,7 @@ tags = "geolocation"
 skip-if = ["os != 'mac'"]
 
 ["browser_bug1238427.js"]
+https_first_disabled = true
 
 ["browser_bug1316330.js"]
 
@@ -135,6 +136,8 @@ support-files = ["image.html"]
 
 ["browser_persist_mixed_content_image.js"]
 support-files = ["test_mixed_content_image.html"]
+
+["browser_pointerlock_popup.js"]
 
 ["browser_pointerlock_warning.js"]
 

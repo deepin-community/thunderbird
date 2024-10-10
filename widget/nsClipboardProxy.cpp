@@ -7,15 +7,19 @@
 #if defined(ACCESSIBILITY) && defined(XP_WIN)
 #  include "mozilla/a11y/Compatibility.h"
 #endif
+#include "mozilla/ClipboardContentAnalysisChild.h"
 #include "mozilla/ClipboardReadRequestChild.h"
 #include "mozilla/ClipboardWriteRequestChild.h"
+#include "mozilla/Components.h"
 #include "mozilla/dom/ContentChild.h"
 #include "mozilla/net/CookieJarSettings.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/dom/WindowGlobalChild.h"
 #include "mozilla/Unused.h"
+#include "mozilla/SpinEventLoopUntil.h"
 #include "nsArrayUtils.h"
 #include "nsBaseClipboard.h"
+#include "nsIContentAnalysis.h"
 #include "nsISupportsPrimitives.h"
 #include "nsCOMPtr.h"
 #include "nsComponentManagerUtils.h"
@@ -32,7 +36,8 @@ nsClipboardProxy::nsClipboardProxy() : mClipboardCaps(false, false, false) {}
 
 NS_IMETHODIMP
 nsClipboardProxy::SetData(nsITransferable* aTransferable,
-                          nsIClipboardOwner* anOwner, int32_t aWhichClipboard) {
+                          nsIClipboardOwner* anOwner, int32_t aWhichClipboard,
+                          mozilla::dom::WindowContext* aWindowContext) {
 #if defined(ACCESSIBILITY) && defined(XP_WIN)
   a11y::Compatibility::SuppressA11yForClipboardCopy();
 #endif
@@ -41,17 +46,19 @@ nsClipboardProxy::SetData(nsITransferable* aTransferable,
   IPCTransferable ipcTransferable;
   nsContentUtils::TransferableToIPCTransferable(aTransferable, &ipcTransferable,
                                                 false, nullptr);
-  child->SendSetClipboard(std::move(ipcTransferable), aWhichClipboard);
+  child->SendSetClipboard(std::move(ipcTransferable), aWhichClipboard,
+                          aWindowContext);
   return NS_OK;
 }
 
 NS_IMETHODIMP nsClipboardProxy::AsyncSetData(
-    int32_t aWhichClipboard, nsIAsyncClipboardRequestCallback* aCallback,
+    int32_t aWhichClipboard, mozilla::dom::WindowContext* aSettingWindowContext,
+    nsIAsyncClipboardRequestCallback* aCallback,
     nsIAsyncSetClipboardData** _retval) {
   RefPtr<ClipboardWriteRequestChild> request =
       MakeRefPtr<ClipboardWriteRequestChild>(aCallback);
   ContentChild::GetSingleton()->SendPClipboardWriteRequestConstructor(
-      request, aWhichClipboard);
+      request, aWhichClipboard, aSettingWindowContext);
   request.forget(_retval);
   return NS_OK;
 }
@@ -69,12 +76,33 @@ nsClipboardProxy::GetData(nsITransferable* aTransferable,
   nsTArray<nsCString> types;
   aTransferable->FlavorsTransferableCanImport(types);
 
-  IPCTransferableData transferable;
-  ContentChild::GetSingleton()->SendGetClipboard(types, aWhichClipboard,
-                                                 aWindowContext, &transferable);
+  IPCTransferableDataOrError transferableOrError;
+  if (MOZ_UNLIKELY(nsIContentAnalysis::MightBeActive())) {
+    RefPtr<ClipboardContentAnalysisChild> contentAnalysis =
+        ClipboardContentAnalysisChild::GetOrCreate();
+    if (!contentAnalysis) {
+      return NS_ERROR_FAILURE;
+    }
+    if (!contentAnalysis->SendGetClipboard(types, aWhichClipboard,
+                                           aWindowContext->InnerWindowId(),
+                                           &transferableOrError)) {
+      return NS_ERROR_FAILURE;
+    }
+  } else {
+    if (!ContentChild::GetSingleton()->SendGetClipboard(
+            types, aWhichClipboard, aWindowContext, &transferableOrError)) {
+      return NS_ERROR_FAILURE;
+    };
+  }
+
+  if (transferableOrError.type() == IPCTransferableDataOrError::Tnsresult) {
+    MOZ_ASSERT(NS_FAILED(transferableOrError.get_nsresult()));
+    return transferableOrError.get_nsresult();
+  }
+
   return nsContentUtils::IPCTransferableDataToTransferable(
-      transferable, false /* aAddDataFlavor */, aTransferable,
-      false /* aFilterUnknownFlavors */);
+      transferableOrError.get_IPCTransferableData(), false /* aAddDataFlavor */,
+      aTransferable, false /* aFilterUnknownFlavors */);
 }
 
 namespace {

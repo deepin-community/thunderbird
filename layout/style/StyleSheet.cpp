@@ -743,8 +743,7 @@ already_AddRefed<dom::Promise> StyleSheet::Replace(const nsACString& aText,
   loadData->mIsBeingParsed = true;
   MOZ_ASSERT(!mReplacePromise);
   mReplacePromise = promise;
-  RefPtr<css::SheetLoadDataHolder> holder(
-      new css::SheetLoadDataHolder(__func__, loadData, false));
+  auto holder = MakeRefPtr<css::SheetLoadDataHolder>(__func__, loadData, false);
   ParseSheet(*loader, aText, holder)
       ->Then(
           target, __func__,
@@ -842,15 +841,19 @@ StyleSheet::StyleSheetLoaded(StyleSheet* aSheet, bool aWasDeferred,
   if (!aSheet->GetParentSheet()) {
     return NS_OK;  // ignore if sheet has been detached already
   }
-  MOZ_ASSERT(this == aSheet->GetParentSheet(),
-             "We are being notified of a sheet load for a sheet that is not "
-             "our child!");
+  MOZ_DIAGNOSTIC_ASSERT(this == aSheet->GetParentSheet(),
+                        "We are being notified of a sheet load for a sheet "
+                        "that is not our child!");
   if (NS_FAILED(aStatus)) {
     return NS_OK;
   }
-
-  MOZ_ASSERT(aSheet->GetOwnerRule());
-  NOTIFY(ImportRuleLoaded, (*aSheet->GetOwnerRule(), *aSheet));
+  // The assert below should hold if we stop triggering import loads for invalid
+  // insertRule() calls, see bug 1914106.
+  // MOZ_ASSERT(aSheet->GetOwnerRule());
+  if (!aSheet->GetOwnerRule()) {
+    return NS_OK;
+  }
+  NOTIFY(ImportRuleLoaded, (*aSheet));
   return NS_OK;
 }
 
@@ -1156,8 +1159,8 @@ void StyleSheet::FixUpAfterInnerClone() {
 
 already_AddRefed<StyleSheet> StyleSheet::CreateEmptyChildSheet(
     already_AddRefed<dom::MediaList> aMediaList) const {
-  RefPtr<StyleSheet> child =
-      new StyleSheet(ParsingMode(), CORSMode::CORS_NONE, SRIMetadata());
+  auto child =
+      MakeRefPtr<StyleSheet>(ParsingMode(), CORSMode::CORS_NONE, SRIMetadata());
 
   child->mMedia = aMediaList;
   return child.forget();

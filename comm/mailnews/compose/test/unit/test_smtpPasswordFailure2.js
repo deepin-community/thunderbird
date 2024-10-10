@@ -34,16 +34,7 @@ var kUsername = "testsmtp";
 var kInvalidPassword = "smtptest";
 var kValidPassword = "smtptest1";
 
-function confirmExPS(
-  aDialogTitle,
-  aText,
-  aButtonFlags,
-  aButton0Title,
-  aButton1Title,
-  aButton2Title,
-  aCheckMsg,
-  aCheckState
-) {
+function confirmExPS() {
   switch (++attempt) {
     // First attempt, retry.
     case 1:
@@ -102,7 +93,8 @@ add_task(async function () {
   // Handle the server in a try/catch/finally loop so that we always will stop
   // the server if something fails.
   try {
-    // Start the fake SMTP server
+    // Start the fake SMTP server. The server's socket type defaults to
+    // Ci.nsMsgSocketType.plain, so no need to set it.
     server.start();
     var smtpServer = getBasicSmtpServer(server.port);
     var identity = getSmtpIdentity(kIdentityMail, smtpServer);
@@ -111,28 +103,24 @@ add_task(async function () {
     test = "Auth sendMailMessage";
 
     smtpServer.authMethod = Ci.nsMsgAuthMethod.passwordCleartext;
-    smtpServer.socketType = Ci.nsMsgSocketType.plain;
     smtpServer.username = kUsername;
 
     dump("Send\n");
 
-    const urlListener = new PromiseTestUtils.PromiseUrlListener();
-    MailServices.smtp.sendMailMessage(
+    const requestObserver = new PromiseTestUtils.PromiseRequestObserver();
+    smtpServer.sendMailMessage(
       testFile,
       kTo,
       identity,
       kSender,
       null,
-      urlListener,
-      null,
       null,
       false,
       "",
-      {},
-      {}
+      requestObserver
     );
 
-    await urlListener.promise;
+    await requestObserver.promise;
 
     dump("End Send\n");
 

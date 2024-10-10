@@ -37,18 +37,18 @@ export class LDAPSyncQuery {
     }
   }
 
-  onLDAPError(status, secInfo, location) {
+  onLDAPError(status) {
     this._statusCode = status;
     this._finished = true;
   }
 
   /** @see nsILDAPSyncQuery */
-  getQueryResults(ldapUrl, protocolVersion) {
+  getQueryResults(ldapUrl) {
     this._ldapUrl = ldapUrl;
     this._connection = Cc[
       "@mozilla.org/network/ldap-connection;1"
     ].createInstance(Ci.nsILDAPConnection);
-    this._connection.init(ldapUrl, "", this, null, protocolVersion);
+    this._connection.init(ldapUrl, "", this);
 
     this._statusCode = 0;
     this._result = "";
@@ -102,9 +102,9 @@ export class LDAPSyncQuery {
   /**
    * Handler of nsILDAPMessage.RES_SEARCH_RESULT message.
    *
-   * @param {nsILDAPMessage} msg - The received LDAP message.
+   * @param {nsILDAPMessage} _msg - The received LDAP message.
    */
-  _onLDAPSearchResult(msg) {
+  _onLDAPSearchResult(_msg) {
     this._finished = true;
   }
 }

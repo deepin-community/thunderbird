@@ -6,6 +6,8 @@
 
 #include "TRRLoadInfo.h"
 #include "mozilla/dom/ClientSource.h"
+#include "mozilla/dom/FeaturePolicy.h"
+#include "mozilla/dom/DOMTypes.h"
 #include "nsContentUtils.h"
 #include "nsIRedirectHistoryEntry.h"
 
@@ -724,6 +726,13 @@ already_AddRefed<nsIContentSecurityPolicy> TRRLoadInfo::GetCspToInherit() {
   return nullptr;
 }
 
+Maybe<FeaturePolicyInfo> TRRLoadInfo::GetContainerFeaturePolicyInfo() {
+  return Nothing();
+}
+
+void TRRLoadInfo::SetContainerFeaturePolicyInfo(
+    const FeaturePolicyInfo& aContainerFeaturePolicyInfo) {}
+
 NS_IMETHODIMP
 TRRLoadInfo::GetHttpsOnlyStatus(uint32_t* aHttpsOnlyStatus) {
   return NS_ERROR_NOT_IMPLEMENTED;
@@ -858,6 +867,16 @@ TRRLoadInfo::GetWasSchemelessInput(bool* aWasSchemelessInput) {
 
 NS_IMETHODIMP
 TRRLoadInfo::SetWasSchemelessInput(bool aWasSchemelessInput) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP
+TRRLoadInfo::GetIsNewWindowTarget(bool* aIsNewWindowTarget) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP
+TRRLoadInfo::SetIsNewWindowTarget(bool aIsNewWindowTarget) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 

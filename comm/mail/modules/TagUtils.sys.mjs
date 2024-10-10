@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 const lazy = {};
 
@@ -61,7 +59,7 @@ function addTagToSheet(aKey, aColor, aSheet) {
       selector +
       ", selected, focus) { color: SelectedItemText !important; }";
     ruleString3 =
-      "tree:-moz-lwtheme treechildren::-moz-tree-cell-text(" +
+      ":root[lwtheme] tree treechildren::-moz-tree-cell-text(" +
       selector +
       ", selected) { color: currentColor !important; }";
     ruleString4 =

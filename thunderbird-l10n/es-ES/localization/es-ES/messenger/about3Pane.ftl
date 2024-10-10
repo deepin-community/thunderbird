@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Filtrar estos mensajes <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Filtrar mensajes:
+quick-filter-bar-search2 =
+    .label = Filtrar mensajes
+quick-filter-bar-searching =
+    .title = Buscando…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -504,17 +506,39 @@ apply-current-view-to-folder-with-children-message = ¿Aplicar la vista de la ca
 # Variables:
 # $unread (Number) - Number of unread messages in thread.
 # $total (Number) - Number of messages in thread.
-threadpane-sort-header-unread =
-    { $total ->
-        [one] <span data-l10n-name="threadpane-sort-header-unread-count">{ $unread }</span> sin leer de  <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> mensaje
-       *[other] <span data-l10n-name="threadpane-sort-header-unread-count">{ $unread }</span> sin leer<span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> mensajes
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span> mensaje no leído de <span>1</span>
+               *[other] <span>1</span> mensaje no leído de <span>{ $total }</span>
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> mensajes no leídos de <span>1</span>
+               *[other] <span>{ $unread }</span> mensajes no leídos de <span>{ $total }</span>
+            }
     }
 # Variables:
 # $total (Number) - Number of messages in thread.
-threadpane-sort-header =
+threadpane-sort-header-count =
     { $total ->
-        [one] <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> mensaje
-       *[other] <span data-l10n-name="threadpane-sort-header-total-count">{ $total }</span> mensajes
+        [one] <span>1</span> mensaje
+       *[other] <span>{ $total }</span> mensajes
     }
 threadpane-card-menu-button =
     .title = Menú de mensajes
+message-list-placeholder-no-messages = No se encontró ningún mensaje
+message-list-placeholder-multiple-folders = Varias carpetas seleccionadas
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Marcar carpeta como leída
+           *[other] Marcar carpetas como leídas
+        }
+    .accesskey = c

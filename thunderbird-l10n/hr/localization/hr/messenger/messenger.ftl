@@ -149,8 +149,9 @@ menu-edit-unsubscribe-newsgroup =
 menu-edit-delete-messages =
     .label =
         { $count ->
-            [one] Obriši poruku
-           *[other] Obriši odabrane poruke
+            [one] Obriši $count poruku
+            [few] Obriši $count poruke
+           *[other] Obriši $count poruka
         }
     .accesskey = O
 # Variables:
@@ -158,10 +159,11 @@ menu-edit-delete-messages =
 menu-edit-undelete-messages =
     .label =
         { $count ->
-            [one] Vrati obrisanu poruku
-           *[other] Vrati odabrane poruke
+            [one] Vrati $count odabranu poruku
+            [few] Vrati $count odabrane poruke
+           *[other] Vrati $count odabranih poruka
         }
-    .accesskey = r
+    .accesskey = d
 menu-edit-properties =
     .label = Postavke
     .accesskey = o
@@ -213,6 +215,22 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Proslijedi i preusmjeri
     .accesskey = l
+mail-context-menu-forward-forward =
+    .label = Proslijedi
+    .accesskey = P
+mail-context-menu-forward-inline =
+    .label = Ugrađeno
+    .accesskey = U
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Kao $count privitak
+            [few] Kao $count privitka
+           *[other] Kao $count privitaka
+        }
+    .accesskey = a
 mail-context-menu-organize =
     .label = Organiziraj
     .accesskey = g
@@ -238,7 +256,8 @@ mail-context-delete-messages =
 mail-context-undelete-messages =
     .label =
         { $count ->
-            [one] Vrati obrisanu poruku
+            [one] Vrati odabrane poruke
+            [few] Vrati odabrane poruke
            *[other] Vrati odabrane poruke
         }
 # Variables:

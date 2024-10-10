@@ -16,9 +16,9 @@ category-compose =
 pane-privacy-title = Personvern og sikkerheit
 category-privacy =
     .tooltiptext = Personvern og sikkerheit
-pane-chat-title = Nettprat
+pane-chat-title = Chatt
 category-chat =
-    .tooltiptext = Nettprat
+    .tooltiptext = Chatt
 pane-calendar-title = Kalender
 category-calendar =
     .tooltiptext = Kalender
@@ -200,6 +200,13 @@ browsing-gtk-use-non-overlay-scrollbars =
     .label = Vis alltid rullefelt
     .accesskey = s
 window-layout-legend = Vindaugsoppsett
+draw-in-titlebar-label =
+    .label = Gøym tittellinja til systemvindauget
+    .accesskey = G
+auto-hide-tabbar-label =
+    .label = Gøym fanelinja automatisk
+    .accesskey = G
+auto-hide-tabbar-description = Gøym fanelinja når berre ei fane er open
 system-integration-legend = Systemintegrasjon
 always-check-default =
     .label = Alltid kontroller om { -brand-short-name } er standard e-postklient ved oppstart
@@ -280,6 +287,9 @@ smart-cache-label =
 clear-cache-button =
     .label = Tøm no
     .accesskey = T
+clear-cache-shutdown-label =
+    .label = Tøm snøgglageret ved avslutting
+    .accesskey = T
 fonts-legend = Skrifttypar og fargar
 default-font-label =
     .value = Standard skrifttype:
@@ -359,6 +369,9 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Med ein gong dei er viste
     .accesskey = M
+view-attachments-inline =
+    .label = Vis vedlegg som ein del av meldinga
+    .accesskey = V
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
@@ -386,6 +399,17 @@ close-move-delete =
     .accesskey = L
 display-name-label =
     .value = Visingsnamn:
+address-display-legend = Meldingsliste
+address-display-description = Føretrekt visingsformat for adresse:
+address-display-full =
+    .label = Fullt namn og e-postadresse
+    .accesskey = F
+address-display-email =
+    .label = Berre e-postadresse
+    .accesskey = B
+address-display-name =
+    .label = Berre namn
+    .accesskey = n
 condensed-addresses-label =
     .label = Vis berre visings-namnet for personar i adresseboka
     .accesskey = V
@@ -543,10 +567,13 @@ passwords-description = { -brand-short-name } kan hugse passordinformasjon for a
 passwords-button =
     .label = Lagra passord…
     .accesskey = L
-primary-password-description = Du kan bruke eit hovudpassord for å beskytte alle passorda, men då må du skrive inn passorda ein gong for kvar programøkt.
+primary-password-description = Du kan bruke eit hovudpassord for å beskytte alle passorda, men då må du skrive inn passordet ein gong for kvar programøkt.
 primary-password-label =
     .label = Bruk eit hovudpassord
     .accesskey = B
+# This operation requires the user to authenticate with the operating system (device sign-in)
+forms-os-reauth =
+    .label = Krev einingsinnlogging for å fylle ut og behandle passord
 primary-password-button =
     .label = Endre hovudpassord…
     .accesskey = E
@@ -555,6 +582,9 @@ forms-master-pw-fips-desc = Mislykka passordendring
 junk-description = Vel standard-innstilling for uønskt e-post. Konto-spesifikke innstillingar for uønskt e-post kan stillast inn i Konto-innstillingar.
 junk-label =
     .label = Når eg merkar meldingar som uønskte:
+    .accesskey = N
+junk-marked-label =
+    .label = Når meldingar er markerte som uønskte
     .accesskey = N
 junk-move-label =
     .label = Flytt dei til «Uønskt»-mappa på kontoen
@@ -565,6 +595,13 @@ junk-delete-label =
 junk-read-label =
     .label = Merk uønskte søppelmeldingar som lesne
     .accesskey = M
+junk-read-description = Merk meldingar som lesne
+junk-read-manual-label =
+    .label = Når meldingane manuelt er markerte som uønskt
+    .accesskey = N
+junk-read-auto-label =
+    .label = Når { -brand-short-name } avgjer at dei er uønskte
+    .accesskey = N
 junk-log-label =
     .label = Slå på logging for adaptiv filter for uønskt e-post
     .accesskey = l
@@ -598,6 +635,22 @@ certificate-button =
 security-devices-button =
     .label = Tryggingseiningar…
     .accesskey = e
+email-e2ee-header = Ende-til-ende-kryptering for e-post
+account-settings = Kontoinnstillingar
+email-e2ee-enable-info = Still inn e-postkonton og identitetar for ende-til-ende-kryptering i kontoinstillingar.
+email-e2ee-automatism = Automatisk bruk av kryptering
+email-e2ee-automatism-pre =
+    { -brand-short-name } kan hjelpe til ved å automatisk aktivere eller inaktivere kryptering når du skriv ei e-postmelding.
+    Automatisk aktivering/deaktivering er basert på tilgangen på gyldige og aksepterte korrespondentnøklar eller sertifikat.
+email-e2ee-auto-on =
+    .label = Slå automatisk på kryptering når det er muleg
+email-e2ee-auto-off =
+    .label = Slå av kryptering automatisk når mottakarar vert endra, og kryptering ikkje lenger er muleg.
+email-e2ee-auto-off-notify =
+    .label = Vis ei melding når kryptering automatisk er slått av
+email-e2ee-automatism-post =
+    Automatiske avgjerder kan tilsidesettast ved å manuelt aktivere eller deaktivere kryptering når du skriv ei melding.
+    Merk: kryptering vert alltid automatisk aktivert når du svarar på ei kryptert melding.
 
 ## Chat Tab
 
@@ -708,9 +761,18 @@ search-results-help-link = Treng du hjelp? Gå til <a data-l10n-name="url">{ -br
 
 ## Sync Tab
 
+sync-signedout-caption = Ta med deg nettet
+sync-signedout-description = Synkroniser kontoane dine, adressebøker, kalendrar, tillegg og innstillingar på alle einingane dine.
 # Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Logg inn for å synkronisere…
 sync-pane-header = Synkronisering
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = { $userEmail } er ikkje stadfesta.
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = Logg inn for å kople til på nytt «{ $userEmail }»
+sync-pane-resend-verification = Send stadfesting på nytt
 sync-pane-sign-in = Logg inn
 sync-pane-remove-account = Fjern kontoen
 sync-pane-edit-photo =
@@ -728,3 +790,13 @@ sync-panel-sync-now-syncing = Synkroniserer…
 show-synced-list-heading = Du synkroniserer for tida desse elementa:
 show-synced-learn-more = Les meir…
 show-synced-item-account = E-postkontoar
+show-synced-item-address = Adressebøker
+show-synced-item-calendar = Kalendrar
+show-synced-item-identity = Identitetar
+show-synced-item-passwords = Passord
+show-synced-change = Endre…
+synced-acount-item-server-config = Sørvarkonfigurasjon
+synced-acount-item-filters = Filter
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = Synkroniser e-postkontoane dine, adressebøker, kalendrar, og identitetar på alle einingane dine.
+sync-disconnected-turn-on-sync = Slå på synkronisering…

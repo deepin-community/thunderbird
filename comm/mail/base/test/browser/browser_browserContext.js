@@ -4,8 +4,8 @@
 
 /* eslint-env webextensions */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { MessageGenerator } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
@@ -24,7 +24,7 @@ async function getImageArrayBuffer() {
   const response = await fetch(TEST_IMAGE_URL);
   const blob = await response.blob();
 
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const reader = new FileReader();
     reader.addEventListener("loadend", event => {
       resolve(event.target.result);
@@ -68,7 +68,9 @@ async function checkABrowser(browser, doc = browser.ownerDocument) {
   }
 
   const browserContext = doc.getElementById("browserContext");
-  const isMac = AppConstants.platform == "macosx";
+  const isMacWithNativeContextMenus =
+    AppConstants.platform == "macosx" &&
+    Services.prefs.getBoolPref("widget.macos.native-context-menus", true);
   const isWebPage =
     browser.currentURI.schemeIs("http") || browser.currentURI.schemeIs("https");
   const isExtensionPage = browser.currentURI.schemeIs("moz-extension");
@@ -88,7 +90,7 @@ async function checkABrowser(browser, doc = browser.ownerDocument) {
 
   const expectedContextItems = [];
   if (isWebPage || isExtensionPage) {
-    if (isMac) {
+    if (isMacWithNativeContextMenus) {
       // Mac has the nav items directly in the context menu and not in the horizontal
       // context-navigation menugroup.
       expectedContextItems.push(

@@ -540,6 +540,7 @@ class nsPresContext : public nsISupports, public mozilla::SupportsWeakPtr {
   void SetFullZoom(float aZoom);
   void SetOverrideDPPX(float);
   void SetInRDMPane(bool aInRDMPane);
+  void UpdateTopInnerSizeForRFP();
 
  public:
   float GetFullZoom() { return mFullZoom; }
@@ -940,11 +941,6 @@ class nsPresContext : public nsISupports, public mozilla::SupportsWeakPtr {
    */
   uint64_t GetRestyleGeneration() const;
   uint64_t GetUndisplayedRestyleGeneration() const;
-
-  /**
-   * Returns whether there are any pending restyles or reflows.
-   */
-  bool HasPendingRestyleOrReflow();
 
   /**
    * Notify the prescontext that the presshell is about to reflow a reflow root.

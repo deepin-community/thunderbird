@@ -77,6 +77,13 @@ namespace ipc {
 class StructuredCloneData;
 }  // namespace ipc
 
+#define DOM_BROWSERPARENT_IID                        \
+  {                                                  \
+    0x58b47b52, 0x77dc, 0x44cf, {                    \
+      0x8b, 0xe5, 0x8e, 0x78, 0x24, 0xd9, 0xae, 0xc5 \
+    }                                                \
+  }
+
 /**
  * BrowserParent implements the parent actor part of the PBrowser protocol. See
  * PBrowser for more information.
@@ -98,6 +105,7 @@ class BrowserParent final : public PBrowserParent,
   // Helper class for ContentParent::RecvCreateWindow.
   struct AutoUseNewTab;
 
+  NS_DECLARE_STATIC_IID_ACCESSOR(DOM_BROWSERPARENT_IID)
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_NSIAUTHPROMPTPROVIDER
   // nsIDOMEventListener interfaces
@@ -131,7 +139,7 @@ class BrowserParent final : public PBrowserParent,
 
   const TabId GetTabId() const { return mTabId; }
 
-  ContentParent* Manager() const { return mManager; }
+  ContentParent* Manager() const;
 
   CanonicalBrowsingContext* GetBrowsingContext() { return mBrowsingContext; }
 
@@ -383,12 +391,9 @@ class BrowserParent final : public PBrowserParent,
       nsTArray<nsCString>&& aDisabledCommands);
 
   mozilla::ipc::IPCResult RecvSetCursor(
-      const nsCursor& aValue, const bool& aHasCustomCursor,
-      Maybe<BigBuffer>&& aCursorData, const uint32_t& aWidth,
-      const uint32_t& aHeight, const float& aResolutionX,
-      const float& aResolutionY, const uint32_t& aStride,
-      const gfx::SurfaceFormat& aFormat, const uint32_t& aHotspotX,
-      const uint32_t& aHotspotY, const bool& aForce);
+      const nsCursor& aValue, Maybe<IPCImage>&& aCustomCursor,
+      const float& aResolutionX, const float& aResolutionY,
+      const uint32_t& aHotspotX, const uint32_t& aHotspotY, const bool& aForce);
 
   mozilla::ipc::IPCResult RecvSetLinkStatus(const nsString& aStatus);
 
@@ -423,9 +428,9 @@ class BrowserParent final : public PBrowserParent,
       const nsString& aTitle, const nsString& aInitialColor,
       const nsTArray<nsString>& aDefaultColors);
 
-  PVsyncParent* AllocPVsyncParent();
+  already_AddRefed<PVsyncParent> AllocPVsyncParent();
 
-  bool DeallocPVsyncParent(PVsyncParent* aActor);
+  mozilla::ipc::IPCResult RecvPVsyncConstructor(PVsyncParent* aActor) override;
 
 #ifdef ACCESSIBILITY
   PDocAccessibleParent* AllocPDocAccessibleParent(
@@ -674,6 +679,9 @@ class BrowserParent final : public PBrowserParent,
       const MaybeDiscarded<WindowContext>& aSourceWindowContext,
       const MaybeDiscarded<WindowContext>& aSourceTopWindowContext);
 
+  mozilla::ipc::IPCResult RecvUpdateDropEffect(const uint32_t& aDragAction,
+                                               const uint32_t& aDropEffect);
+
   void AddInitialDnDDataTo(IPCTransferableData* aTransferableData,
                            nsIPrincipal** aPrincipal);
 
@@ -710,6 +718,8 @@ class BrowserParent final : public PBrowserParent,
 
   // Called when the BrowserParent is being destroyed or entering bfcache.
   void Deactivated();
+
+  void MaybeInvokeDragSession(EventMessage aMessage);
 
  protected:
   friend BrowserBridgeParent;
@@ -754,6 +764,9 @@ class BrowserParent final : public PBrowserParent,
   mozilla::ipc::IPCResult RecvReleasePointerCapture(const uint32_t& aPointerId);
 
   mozilla::ipc::IPCResult RecvShowDynamicToolbar();
+
+  void GetIPCTransferableData(nsIDragSession* aSession,
+                              nsTArray<IPCTransferableData>& aIPCTransferables);
 
  private:
   void SuppressDisplayport(bool aEnabled);
@@ -855,10 +868,8 @@ class BrowserParent final : public PBrowserParent,
  private:
   TabId mTabId;
 
-  RefPtr<ContentParent> mManager;
   // The root browsing context loaded in this BrowserParent.
   RefPtr<CanonicalBrowsingContext> mBrowsingContext;
-  nsCOMPtr<nsILoadContext> mLoadContext;
   RefPtr<Element> mFrameElement;
   nsCOMPtr<nsIBrowserDOMWindow> mBrowserDOMWindow;
   // We keep a strong reference to the frameloader after we've sent the
@@ -942,8 +953,6 @@ class BrowserParent final : public PBrowserParent,
 
   nsTArray<nsString> mVerifyDropLinks;
 
-  RefPtr<VsyncParent> mVsyncParent;
-
 #ifdef DEBUG
   int32_t mActiveSupressDisplayportCount = 0;
 #endif
@@ -994,6 +1003,8 @@ class BrowserParent final : public PBrowserParent,
   // True between ShowTooltip and HideTooltip messages.
   bool mShowingTooltip : 1;
 };
+
+NS_DEFINE_STATIC_IID_ACCESSOR(BrowserParent, DOM_BROWSERPARENT_IID)
 
 struct MOZ_STACK_CLASS BrowserParent::AutoUseNewTab final {
  public:

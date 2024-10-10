@@ -5,17 +5,24 @@
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  FolderUtils: "resource:///modules/FolderUtils.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
-});
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
+);
 
 ChromeUtils.defineESModuleGetters(this, {
   DeferredTask: "resource://gre/modules/DeferredTask.sys.mjs",
+  FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
+  SmartMailboxUtils: "resource:///modules/SmartMailboxUtils.sys.mjs",
+  VirtualFolderHelper: "resource:///modules/VirtualFolderWrapper.sys.mjs",
 });
-var { CachedFolder, folderURIToPath, getFolder, specialUseMap } =
-  ChromeUtils.importESModule("resource:///modules/ExtensionAccounts.sys.mjs");
+var {
+  CachedFolder,
+  folderURIToPath,
+  getFolder,
+  getMailAccounts,
+  getWildcardVirtualFolders,
+  specialUseMap,
+} = ChromeUtils.importESModule("resource:///modules/ExtensionAccounts.sys.mjs");
 
 /**
  * Tracks folder events.
@@ -126,7 +133,7 @@ var folderTracker = new (class extends EventEmitter {
     }
   }
 
-  onFolderBoolPropertyChanged(folder, property, oldValue, newValue) {
+  onFolderBoolPropertyChanged(folder, property) {
     if (!(folder instanceof Ci.nsIMsgFolder)) {
       return;
     }
@@ -245,40 +252,37 @@ async function doMoveCopyOperation(source, destination, extension, isMove) {
 
   // The schema file allows destination to be either a MailFolder or a
   // MailAccount.
-  const srcFolder = getFolder(source);
-  const dstFolder = getFolder(destination);
+  const { folder: srcFolder } = getFolder(source);
+  const {
+    folder: dstFolder,
+    path: dstFolderPath,
+    accountKey: dstFolderAccountKey,
+  } = getFolder(destination);
 
-  if (!dstFolder.folder.canCreateSubfolders) {
+  if (!dstFolder.canCreateSubfolders) {
     throw new ExtensionError(
-      `${functionName} failed, cannot create subfolders in ${dstFolder.folder.prettyName}`
+      `${functionName} failed, cannot create subfolders in ${dstFolder.prettyName}`
     );
   }
 
-  if (isMove && !srcFolder.folder.deletable) {
+  if (isMove && !FolderManager.canBeDeleted(srcFolder)) {
     throw new ExtensionError(
-      `${functionName} failed, cannot delete source folder ${srcFolder.folder.prettyName}`
+      `${functionName} failed, cannot delete source folder ${srcFolder.prettyName}`
     );
   }
 
-  if (dstFolder.folder.getFlag(Ci.nsMsgFolderFlags.Virtual)) {
+  if (dstFolder.getFlag(Ci.nsMsgFolderFlags.Virtual)) {
     throw new ExtensionError(
-      `The destination used in ${functionName} cannot be a search folder`
+      `The destination used in ${functionName} cannot be a virtual search folder`
     );
   }
 
   if (
-    dstFolder.folder.hasSubFolders &&
-    dstFolder.folder.subFolders.find(
-      f => f.prettyName == srcFolder.folder.prettyName
-    )
+    dstFolder.hasSubFolders &&
+    dstFolder.subFolders.find(f => f.prettyName == srcFolder.prettyName)
   ) {
     throw new ExtensionError(
-      `${functionName} failed, because ${
-        srcFolder.folder.prettyName
-      } already exists in ${folderURIToPath(
-        dstFolder.accountId,
-        dstFolder.folder.URI
-      )}`
+      `${functionName} failed, because ${srcFolder.prettyName} already exists in ${dstFolderPath}`
     );
   }
 
@@ -289,8 +293,8 @@ async function doMoveCopyOperation(source, destination, extension, isMove) {
         if (
           _destination != null ||
           _isMove != isMove ||
-          _srcFolder.URI != srcFolder.folder.URI ||
-          _dstFolder.URI != dstFolder.folder.URI
+          _srcFolder.URI != srcFolder.URI ||
+          _dstFolder.URI != dstFolder.URI
         ) {
           return;
         }
@@ -309,15 +313,18 @@ async function doMoveCopyOperation(source, destination, extension, isMove) {
       MailServices.mfn.folderMoveCopyCompleted
     );
     MailServices.copy.copyFolder(
-      srcFolder.folder,
-      dstFolder.folder,
+      srcFolder,
+      dstFolder,
       isMove,
+      /** @implements {nsIMsgCopyServiceListener} */
       {
-        OnStartCopy() {},
-        OnProgress() {},
-        SetMessageKey() {},
-        GetMessageId() {},
-        OnStopCopy(status) {
+        onStartCopy() {},
+        onProgress() {},
+        setMessageKey() {},
+        getMessageId() {
+          return null;
+        },
+        onStopCopy(status) {
           MailServices.mfn.removeListener(listener);
           resolve({
             status,
@@ -333,7 +340,7 @@ async function doMoveCopyOperation(source, destination, extension, isMove) {
     throw new ExtensionError(`${functionName} failed for unknown reasons`);
   }
 
-  return extension.folderManager.convert(rv.folder, dstFolder.accountId);
+  return extension.folderManager.convert(rv.folder, dstFolderAccountKey);
 }
 
 /**
@@ -387,7 +394,7 @@ this.folders = class extends ExtensionAPIPersistent {
     // available after fire.wakeup() has fulfilled (ensuring the convert() function
     // has been called).
 
-    onCreated({ context, fire }) {
+    onCreated({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -402,13 +409,12 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-created", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onRenamed({ context, fire }) {
+    onRenamed({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -426,13 +432,12 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-renamed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onMoved({ context, fire }) {
+    onMoved({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -450,13 +455,12 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-moved", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onCopied({ context, fire }) {
+    onCopied({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -474,13 +478,12 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-copied", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onDeleted({ context, fire }) {
+    onDeleted({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -495,13 +498,12 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-deleted", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onFolderInfoChanged({ context, fire }) {
+    onFolderInfoChanged({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -521,13 +523,12 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-info-changed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onUpdated({ context, fire }) {
+    onUpdated({ fire }) {
       const { extension } = this;
       const { folderManager } = extension;
 
@@ -545,9 +546,8 @@ this.folders = class extends ExtensionAPIPersistent {
         unregister: () => {
           folderTracker.off("folder-updated", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
@@ -635,15 +635,53 @@ this.folders = class extends ExtensionAPIPersistent {
           // Prepare folders, which are to be searched.
           const parentFolders = [];
           if (queryInfo.folderId) {
-            const { folder, accountId } = getFolder(queryInfo.folderId);
-            if (!queryInfo.accountId || queryInfo.accountId == accountId) {
+            const { folder, accountKey } = getFolder(queryInfo.folderId);
+            if (!queryInfo.accountId || queryInfo.accountId == accountKey) {
               parentFolders.push({
                 rootFolder: folder,
-                accountId,
+                accountId: accountKey,
               });
             }
+          } else if (queryInfo.isUnified || queryInfo.isTag) {
+            const smartMailbox = SmartMailboxUtils.getSmartMailbox();
+            // Unified mailbox folders are disjunct to virtual tag folders.
+            // Manually suppress the case both are specified.
+            if (
+              smartMailbox.account &&
+              queryInfo.isUnified &&
+              !queryInfo.isTag
+            ) {
+              const allowedFolderFlags =
+                SmartMailboxUtils.getFolderTypes().reduce(
+                  (acc, { flag }) => acc | flag,
+                  0
+                );
+              for (const folder of smartMailbox.rootFolder.subFolders) {
+                // Require unified folders to have an allowed folder type.
+                if (allowedFolderFlags & folder.flags) {
+                  parentFolders.push({
+                    rootFolder: folder,
+                    accountId: smartMailbox.account.key,
+                  });
+                }
+              }
+            }
+            if (
+              smartMailbox.account &&
+              !queryInfo.isUnified &&
+              queryInfo.isTag
+            ) {
+              const tags = MailServices.tags.getAllTags();
+              for (const tag of tags) {
+                const folder = smartMailbox.getTagFolder(tag);
+                parentFolders.push({
+                  rootFolder: folder,
+                  accountId: smartMailbox.account.key,
+                });
+              }
+            }
           } else {
-            for (const account of MailServices.accounts.accounts) {
+            for (const account of getMailAccounts()) {
               const accountId = account.key;
               if (!queryInfo.accountId || queryInfo.accountId == accountId) {
                 parentFolders.push({
@@ -662,10 +700,10 @@ this.folders = class extends ExtensionAPIPersistent {
           const specialUseFlags =
             specialUse && Array.isArray(specialUse) && specialUse.length > 0
               ? [...specialUseMap.entries()]
-                  .filter(([flag, specialUseName]) =>
+                  .filter(([, specialUseName]) =>
                     specialUse.includes(specialUseName)
                   )
-                  .map(([flag, specialUseName]) => flag)
+                  .map(([flag]) => flag)
                   .reduce((rv, f) => rv | f)
               : null;
 
@@ -715,6 +753,14 @@ this.folders = class extends ExtensionAPIPersistent {
               }
 
               if (queryInfo.isRoot != null && queryInfo.isRoot != isServer) {
+                continue;
+              }
+
+              if (
+                queryInfo.isUnified != null &&
+                queryInfo.isUnified !=
+                  (folder.server.hostName == "smart mailboxes")
+              ) {
                 continue;
               }
 
@@ -779,14 +825,14 @@ this.folders = class extends ExtensionAPIPersistent {
 
               if (
                 queryInfo.canBeDeleted != null &&
-                queryInfo.canBeDeleted != folder.deletable
+                queryInfo.canBeDeleted != FolderManager.canBeDeleted(folder)
               ) {
                 continue;
               }
 
               if (
                 queryInfo.canBeRenamed != null &&
-                queryInfo.canBeRenamed != folder.canRename
+                queryInfo.canBeRenamed != FolderManager.canBeRenamed(folder)
               ) {
                 continue;
               }
@@ -854,11 +900,11 @@ this.folders = class extends ExtensionAPIPersistent {
           );
         },
         async get(folderId, includeSubFolders) {
-          const { folder, accountId } = getFolder(folderId);
+          const { folder, accountKey } = getFolder(folderId);
           if (includeSubFolders) {
             return context.extension.folderManager.traverseSubfolders(
               folder,
-              accountId
+              accountKey
             );
           }
           return context.extension.folderManager.convert(folder);
@@ -866,11 +912,28 @@ this.folders = class extends ExtensionAPIPersistent {
         async create(destination, childName) {
           // The schema file allows parent to be either a MailFolder or a
           // MailAccount.
-          const { folder: parentFolder, accountId } = getFolder(destination);
+          const {
+            folder: parentFolder,
+            accountKey,
+            isUnified,
+            isTag,
+          } = getFolder(destination);
+
+          if (isUnified) {
+            throw new ExtensionError(
+              `The destination used in folders.create() cannot be a unified mailbox folder`
+            );
+          }
+
+          if (isTag) {
+            throw new ExtensionError(
+              `The destination used in folders.create() cannot be a virtual tag folder`
+            );
+          }
 
           if (parentFolder.getFlag(Ci.nsMsgFolderFlags.Virtual)) {
             throw new ExtensionError(
-              `The destination used in folders.create() cannot be a search folder`
+              `The destination used in folders.create() cannot be a virtual search folder`
             );
           }
 
@@ -886,7 +949,7 @@ this.folders = class extends ExtensionAPIPersistent {
           ) {
             throw new ExtensionError(
               `folders.create() failed, because ${childName} already exists in ${folderURIToPath(
-                accountId,
+                accountKey,
                 parentFolder.URI
               )}`
             );
@@ -901,13 +964,13 @@ this.folders = class extends ExtensionAPIPersistent {
           const childFolder = await childFolderPromise;
           return context.extension.folderManager.convert(
             childFolder,
-            accountId
+            accountKey
           );
         },
         async rename(target, newName) {
-          const { folder, accountId } = getFolder(target);
+          const { folder, accountKey } = getFolder(target);
 
-          if (!folder.canRename) {
+          if (!FolderManager.canBeRenamed(folder)) {
             const name = folder.isServer ? "Root" : folder.prettyName;
             throw new ExtensionError(
               `folders.rename() failed, the folder ${name} cannot be renamed`
@@ -917,7 +980,7 @@ this.folders = class extends ExtensionAPIPersistent {
           if (folder.parent.subFolders.find(f => f.prettyName == newName)) {
             throw new ExtensionError(
               `folders.rename() failed, because ${newName} already exists in ${folderURIToPath(
-                accountId,
+                accountKey,
                 folder.parent.URI
               )}`
             );
@@ -930,7 +993,7 @@ this.folders = class extends ExtensionAPIPersistent {
           folder.rename(newName, null);
 
           const newFolder = await newFolderPromise;
-          return context.extension.folderManager.convert(newFolder, accountId);
+          return context.extension.folderManager.convert(newFolder, accountKey);
         },
         async move(source, destination) {
           return doMoveCopyOperation(
@@ -960,7 +1023,7 @@ this.folders = class extends ExtensionAPIPersistent {
 
           const { folder } = getFolder(target);
 
-          if (!folder.deletable) {
+          if (!FolderManager.canBeDeleted(folder)) {
             const name = folder.isServer ? "Root" : folder.prettyName;
             throw new ExtensionError(
               `folders.delete() failed, the folder ${name} cannot be deleted`
@@ -1054,8 +1117,8 @@ this.folders = class extends ExtensionAPIPersistent {
           const mailFolderCapabilities = {
             canAddMessages: !!folder.canFileMessages,
             canAddSubfolders: !!folder.canCreateSubfolders,
-            canBeDeleted: !!folder.deletable,
-            canBeRenamed: !!folder.canRename,
+            canBeDeleted: !!FolderManager.canBeDeleted(folder),
+            canBeRenamed: !!FolderManager.canBeRenamed(folder),
             canDeleteMessages: !!folder.canDeleteMessages,
           };
 
@@ -1063,6 +1126,12 @@ this.folders = class extends ExtensionAPIPersistent {
         },
         async getFolderInfo(target) {
           const { folder } = getFolder(target);
+
+          if (folder.isServer) {
+            throw new ExtensionError(
+              `folders.getFolderInfo() failed, not supported for root folders`
+            );
+          }
 
           // Support quota names containing "STORAGE" or "MESSAGE", which are
           // defined in RFC2087. Excluding unusual quota names containing items
@@ -1095,12 +1164,28 @@ this.folders = class extends ExtensionAPIPersistent {
               .filter(quota => !!quota);
           }
 
+          // Virtual folders which search all folders without explicitly stating
+          // their searchfolders, do not correctly report message counts. The
+          // count is updated whenever a search was done in the UI!
+          if (folder.flags & Ci.nsMsgFolderFlags.Virtual) {
+            const wrappedVirtualFolder =
+              VirtualFolderHelper.wrapVirtualFolder(folder);
+            if (wrappedVirtualFolder.searchFolderURIs == "*") {
+              console.warn(
+                "folders.getFolderInfo() for virtual folders searching all folders may return invalid results"
+              );
+            }
+          }
+
           const mailFolderInfo = {
             totalMessageCount: folder.getTotalMessages(false),
             unreadMessageCount: folder.getNumUnread(false),
             newMessageCount: folder.msgDatabase.getNewList().length,
-            quota: folderQuota.length > 0 ? folderQuota : null,
           };
+
+          if (folderQuota.length) {
+            mailFolderInfo.quota = folderQuota;
+          }
 
           // MailFolderInfo.favorite property was moved to MailFolder.isFavorite
           // in MV3.
@@ -1121,8 +1206,16 @@ this.folders = class extends ExtensionAPIPersistent {
         },
         async getParentFolders(target, includeSubFolders) {
           const { folderManager } = context.extension;
-          let { folder, accountId } = getFolder(target);
+          let { folder, accountKey, isUnified, isTag } = getFolder(target);
+
           const parentFolders = [];
+          // Early exit for unified mailbox folders and virtual tag folders. For
+          // the WebExtension API, these folders exist independently of an account,
+          // and we do not want to expose them belonging to a common base account.
+          if (isUnified || isTag) {
+            return [];
+          }
+
           // MV3 considers the rootFolder as a true folder.
           while (
             folder.parent != null &&
@@ -1132,38 +1225,86 @@ this.folders = class extends ExtensionAPIPersistent {
 
             if (includeSubFolders) {
               parentFolders.push(
-                folderManager.traverseSubfolders(folder, accountId)
+                folderManager.traverseSubfolders(folder, accountKey)
               );
             } else {
-              parentFolders.push(folderManager.convert(folder, accountId));
+              parentFolders.push(folderManager.convert(folder, accountKey));
             }
           }
           return parentFolders;
         },
         async getSubFolders(target, includeSubFolders) {
           const { folderManager } = context.extension;
-          const { folder, accountId } = getFolder(target);
+          let { folder, accountKey, isUnified } = getFolder(target);
+          const directSubFolders = folderManager.getDirectSubfolders(
+            folder,
+            isUnified
+          );
+
+          // If the folder is a virtual folder, its subfolders could belong to a
+          // different account. Ignore the accountKey.
+          if (folder.getFlag(Ci.nsMsgFolderFlags.Virtual)) {
+            accountKey = null;
+          }
+
           const subFolders = [];
-          if (folder.hasSubFolders) {
-            // Use the same order as used by Thunderbird.
-            const directSubFolders = [...folder.subFolders].sort((a, b) =>
-              a.sortOrder == b.sortOrder
-                ? a.name.localeCompare(b.name)
-                : a.sortOrder - b.sortOrder
-            );
-            for (const directSubFolder of directSubFolders) {
-              if (includeSubFolders) {
-                subFolders.push(
-                  folderManager.traverseSubfolders(directSubFolder, accountId)
-                );
-              } else {
-                subFolders.push(
-                  folderManager.convert(directSubFolder, accountId)
-                );
-              }
+          for (const directSubFolder of directSubFolders) {
+            if (includeSubFolders) {
+              subFolders.push(
+                folderManager.traverseSubfolders(directSubFolder, accountKey)
+              );
+            } else {
+              subFolders.push(
+                folderManager.convert(directSubFolder, accountKey)
+              );
             }
           }
           return subFolders;
+        },
+        async getUnifiedFolder(requestedType, includeSubFolders) {
+          const { folderManager } = context.extension;
+          const { name: smartFolderName } =
+            SmartMailboxUtils.getFolderTypes().find(
+              ({ type }) => type == requestedType
+            );
+
+          if (!smartFolderName) {
+            throw new ExtensionError(
+              `folders.getUnifiedFolder() failed, the requested type ${requestedType} is unknown`
+            );
+          }
+
+          const smartMailbox = SmartMailboxUtils.getSmartMailbox();
+          const smartFolder = smartMailbox.getSmartFolder(smartFolderName);
+          if (!smartFolder) {
+            throw new ExtensionError(
+              `folders.getUnifiedFolder() failed, the folder for the requested type ${requestedType} does not exist`
+            );
+          }
+          if (includeSubFolders) {
+            return folderManager.traverseSubfolders(smartFolder);
+          }
+          return folderManager.convert(smartFolder);
+        },
+        async getTagFolder(requestedTagKey) {
+          const { folderManager } = context.extension;
+          const tag = MailServices.tags
+            .getAllTags()
+            .find(t => t.key == requestedTagKey);
+          if (!tag) {
+            throw new ExtensionError(
+              `folders.getTagFolder() failed, the requested tag key ${requestedTagKey} is unknown`
+            );
+          }
+
+          const smartMailbox = SmartMailboxUtils.getSmartMailbox();
+          const tagFolder = smartMailbox.getTagFolder(tag);
+          if (!tagFolder) {
+            throw new ExtensionError(
+              `folders.getTagFolder() failed, the folder for the requested tag key ${requestedTagKey} does not exist`
+            );
+          }
+          return folderManager.convert(tagFolder);
         },
         markAsRead(target) {
           const { folder, path } = getFolder(target);
@@ -1174,7 +1315,18 @@ this.folders = class extends ExtensionAPIPersistent {
             );
           }
 
-          folder.markAllMessagesRead(null);
+          if (folder.flags & Ci.nsMsgFolderFlags.Virtual) {
+            const virtualFolder = VirtualFolderHelper.wrapVirtualFolder(folder);
+            const folders = getWildcardVirtualFolders(virtualFolder);
+            for (const searchFolder of virtualFolder.searchFolders) {
+              folders.push(searchFolder);
+            }
+            for (const folder of folders) {
+              folder.markAllMessagesRead(null);
+            }
+          } else {
+            folder.markAllMessagesRead(null);
+          }
         },
       },
     };

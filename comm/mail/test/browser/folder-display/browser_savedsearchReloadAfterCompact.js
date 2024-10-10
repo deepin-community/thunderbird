@@ -19,7 +19,7 @@ var {
   press_delete,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
 var otherFolder;
@@ -56,8 +56,8 @@ add_task(async function test_setup_virtual_folder_and_compact() {
   const urlListener = {
     compactDone: false,
 
-    OnStartRunningUrl(aUrl) {},
-    OnStopRunningUrl(aUrl, aExitCode) {
+    OnStartRunningUrl() {},
+    OnStopRunningUrl() {
       this.compactDone = true;
     },
   };

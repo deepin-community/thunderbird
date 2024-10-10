@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hu@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Magyar (Hungarian)",
   "description": "Thunderbird Language Pack for Magyar (hu) – Hungarian",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "hu": {
-      "version": "20240423200028",
+      "version": "20240930174441",
       "chrome_resources": {
         "alerts": "chrome/hu/locale/hu/alerts/",
         "autoconfig": "chrome/hu/locale/hu/autoconfig/",
         "branding": "chrome/hu/locale/branding/",
         "calendar": "chrome/hu/locale/hu/calendar/",
-        "chat": "chrome/hu/locale/hu/chat/",
         "communicator": "chrome/hu/locale/hu/communicator/",
         "devtools": "chrome/hu/locale/hu/devtools/client/",
         "devtools-shared": "chrome/hu/locale/hu/devtools/shared/",

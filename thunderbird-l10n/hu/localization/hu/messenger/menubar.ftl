@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Funkciók felfedezése
     .accesskey = F
+menu-help-get-release-help =
+    .label = Kapjon segítséget a { -brand-short-name }höz
+    .accesskey = K
 menu-help-shortcuts =
     .label = Gyorsbillentyűk
     .accesskey = b
@@ -65,6 +68,15 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Kilépés a { -brand-shorter-name }ból
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Kilépés a { -brand-full-name }ból
+           *[other] Kilépés a { -brand-full-name }ból
+        }
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -130,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = E-mail-fiók…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Hírcsoportfiók…
     .accesskey = H

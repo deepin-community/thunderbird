@@ -8,7 +8,7 @@ Forwarded: needed
  1 file changed, 5 insertions(+)
 
 diff --git a/comm/mail/installer/package-manifest.in b/comm/mail/installer/package-manifest.in
-index 0cc7b8f..04c866a 100644
+index 092ab07..e23d48f 100644
 --- a/comm/mail/installer/package-manifest.in
 +++ b/comm/mail/installer/package-manifest.in
 @@ -123,6 +123,11 @@

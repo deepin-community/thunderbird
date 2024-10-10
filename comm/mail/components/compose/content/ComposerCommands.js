@@ -359,6 +359,8 @@ const gCommandMap = new Map([
   ["cmd_ul", "InsertUnorderedList"],
   ["cmd_ol", "InsertOrderedList"],
   ["cmd_fontFace", "fontName"],
+  ["cmd_indent", "indent"],
+  ["cmd_outdent", "outdent"],
 
   // This are currently implemented with the help of
   // color selection dialog box in the editor.js.
@@ -496,14 +498,14 @@ function doStatefulCommand(commandID, newState, updateUI) {
 }
 
 var nsDummyHTMLCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     // do nothing
     dump("Hey, who's calling the dummy command?\n");
   },
@@ -921,7 +923,7 @@ var gEditorOutputProgressListener = {
     }
   },
 
-  onLocationChange(aWebProgress, aRequest, aLocation, aFlags) {
+  onLocationChange(aWebProgress, aRequest, aLocation) {
     if (gShowDebugOutputLocationChange) {
       dump("***** onLocationChange: " + aLocation.spec + "\n");
       try {
@@ -959,7 +961,7 @@ var gEditorOutputProgressListener = {
     }
   },
 
-  onSecurityChange(aWebProgress, aRequest, state) {
+  onSecurityChange(aWebProgress, aRequest) {
     if (gShowDebugOutputSecurityChange) {
       try {
         var channel = aRequest.QueryInterface(Ci.nsIChannel);
@@ -968,7 +970,7 @@ var gEditorOutputProgressListener = {
     }
   },
 
-  onContentBlockingEvent(aWebProgress, aRequest, aEvent) {},
+  onContentBlockingEvent() {},
 
   QueryInterface: ChromeUtils.generateQI([
     "nsIWebProgressListener",
@@ -1291,8 +1293,8 @@ var nsFindReplaceCommand = {
     return editorElement.getEditor(editorElement.contentWindow) != null;
   },
 
-  getCommandStateParams(aCommand, aParams, editorElement) {},
-  doCommandParams(aCommand, aParams, editorElement) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
   doCommand(aCommand, editorElement) {
     window.openDialog(
@@ -1309,10 +1311,10 @@ var nsFindCommand = {
     return editorElement.getEditor(editorElement.contentWindow) != null;
   },
 
-  getCommandStateParams(aCommand, aParams, editorElement) {},
-  doCommandParams(aCommand, aParams, editorElement) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand, editorElement) {
+  doCommand() {
     document.getElementById("FindToolbar").onFindCommand();
   },
 };
@@ -1324,17 +1326,17 @@ var nsFindAgainCommand = {
     return editorElement.getEditor(editorElement.contentWindow) != null;
   },
 
-  getCommandStateParams(aCommand, aParams, editorElement) {},
-  doCommandParams(aCommand, aParams, editorElement) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand, editorElement) {
+  doCommand(aCommand) {
     const findPrev = aCommand == "cmd_findPrev";
     document.getElementById("FindToolbar").onFindAgainCommand(findPrev);
   },
 };
 
 var nsRewrapCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return (
       IsDocumentEditable() &&
       !IsInHTMLSourceMode() &&
@@ -1342,25 +1344,25 @@ var nsRewrapCommand = {
     );
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     GetCurrentEditor().QueryInterface(Ci.nsIEditorMailSupport).rewrap(false);
   },
 };
 
 var nsSpellingCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return (
       IsDocumentEditable() && !IsInHTMLSourceMode() && IsSpellCheckerInstalled()
     );
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     window.cancelSendMessage = false;
     try {
       var skipBlockQuotes =
@@ -1379,14 +1381,14 @@ var nsSpellingCommand = {
 };
 
 var nsImageCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdImageProps.xhtml",
       "_blank",
@@ -1396,14 +1398,14 @@ var nsImageCommand = {
 };
 
 var nsHLineCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     // Inserting an HLine is different in that we don't use properties dialog
     //  unless we are editing an existing line's attributes
     //  We get the last-used attributes from the prefs and insert immediately
@@ -1462,14 +1464,14 @@ var nsHLineCommand = {
 };
 
 var nsLinkCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     // If selected element is an image, launch that dialog instead
     // since last tab panel handles link around an image
     var element = GetObjectForProperties();
@@ -1492,14 +1494,14 @@ var nsLinkCommand = {
 };
 
 var nsAnchorCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdNamedAnchorProps.xhtml",
       "_blank",
@@ -1510,14 +1512,14 @@ var nsAnchorCommand = {
 };
 
 var nsInsertHTMLWithDialogCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     gMsgCompose.allowRemoteContent = true;
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdInsSrc.xhtml",
@@ -1529,14 +1531,14 @@ var nsInsertHTMLWithDialogCommand = {
 };
 
 var nsInsertMathWithDialogCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdInsertMath.xhtml",
       "_blank",
@@ -1547,27 +1549,27 @@ var nsInsertMathWithDialogCommand = {
 };
 
 var nsInsertCharsCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     EditorFindOrCreateInsertCharWindow();
   },
 };
 
 var nsInsertBreakAllCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentEditor().insertHTML("<br clear='all'>");
     } catch (e) {}
@@ -1575,14 +1577,14 @@ var nsInsertBreakAllCommand = {
 };
 
 var nsListPropertiesCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdListProps.xhtml",
       "_blank",
@@ -1592,7 +1594,7 @@ var nsListPropertiesCommand = {
 };
 
 var nsObjectPropertiesCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     var isEnabled = false;
     if (IsDocumentEditable() && IsEditingRenderedHTML()) {
       isEnabled =
@@ -1602,10 +1604,10 @@ var nsObjectPropertiesCommand = {
     return isEnabled;
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     // Launch Object properties for appropriate selected element
     var element = GetObjectForProperties();
     if (element) {
@@ -1658,12 +1660,12 @@ var nsObjectPropertiesCommand = {
 };
 
 var nsSetSmiley = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {
+  getCommandStateParams() {},
+  doCommandParams(aCommand, aParams) {
     try {
       const editor = GetCurrentEditor();
       const smileyCode = aParams.getStringValue("state_attribute");
@@ -1674,7 +1676,7 @@ var nsSetSmiley = {
     }
   },
   // This is now deprecated in favor of "doCommandParams"
-  doCommand(aCommand) {},
+  doCommand() {},
 };
 
 function doAdvancedProperties(element) {
@@ -1690,14 +1692,14 @@ function doAdvancedProperties(element) {
 }
 
 var nsColorPropertiesCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdColorProps.xhtml",
       "_blank",
@@ -1709,7 +1711,7 @@ var nsColorPropertiesCommand = {
 };
 
 var nsIncreaseFontCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     if (!(IsDocumentEditable() && IsEditingRenderedHTML())) {
       return false;
     }
@@ -1717,17 +1719,17 @@ var nsIncreaseFontCommand = {
     return setIndex < 6;
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     const setIndex = parseInt(getLegacyFontSize());
     EditorSetFontSize((setIndex + 1).toString());
   },
 };
 
 var nsDecreaseFontCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     if (!(IsDocumentEditable() && IsEditingRenderedHTML())) {
       return false;
     }
@@ -1735,39 +1737,39 @@ var nsDecreaseFontCommand = {
     return setIndex > 1;
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     const setIndex = parseInt(getLegacyFontSize());
     EditorSetFontSize((setIndex - 1).toString());
   },
 };
 
 var nsRemoveNamedAnchorsCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     // We could see if there's any link in selection, but it doesn't seem worth the work!
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     EditorRemoveTextProperty("name", "");
     window.content.focus();
   },
 };
 
 var nsInsertOrEditTableCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     if (IsInTableCell()) {
       EditorTableCellProperties();
     } else {
@@ -1777,27 +1779,27 @@ var nsInsertOrEditTableCommand = {
 };
 
 var nsEditTableCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTable();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     EditorInsertOrEditTable(false);
   },
 };
 
 var nsSelectTableCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTable();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().selectTable();
     } catch (e) {}
@@ -1806,14 +1808,14 @@ var nsSelectTableCommand = {
 };
 
 var nsSelectTableRowCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().selectTableRow();
     } catch (e) {}
@@ -1822,14 +1824,14 @@ var nsSelectTableRowCommand = {
 };
 
 var nsSelectTableColumnCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().selectTableColumn();
     } catch (e) {}
@@ -1838,14 +1840,14 @@ var nsSelectTableColumnCommand = {
 };
 
 var nsSelectTableCellCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().selectTableCell();
     } catch (e) {}
@@ -1854,14 +1856,14 @@ var nsSelectTableCellCommand = {
 };
 
 var nsSelectAllTableCellsCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTable();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().selectAllTableCells();
     } catch (e) {}
@@ -1870,27 +1872,27 @@ var nsSelectAllTableCellsCommand = {
 };
 
 var nsInsertTableCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsDocumentEditable() && IsEditingRenderedHTML();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     EditorInsertTable();
   },
 };
 
 var nsInsertTableRowAboveCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().insertTableRow(1, false);
     } catch (e) {}
@@ -1899,14 +1901,14 @@ var nsInsertTableRowAboveCommand = {
 };
 
 var nsInsertTableRowBelowCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().insertTableRow(1, true);
     } catch (e) {}
@@ -1915,14 +1917,14 @@ var nsInsertTableRowBelowCommand = {
 };
 
 var nsInsertTableColumnBeforeCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().insertTableColumn(1, false);
     } catch (e) {}
@@ -1931,14 +1933,14 @@ var nsInsertTableColumnBeforeCommand = {
 };
 
 var nsInsertTableColumnAfterCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().insertTableColumn(1, true);
     } catch (e) {}
@@ -1947,14 +1949,14 @@ var nsInsertTableColumnAfterCommand = {
 };
 
 var nsInsertTableCellBeforeCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().insertTableCell(1, false);
     } catch (e) {}
@@ -1963,14 +1965,14 @@ var nsInsertTableCellBeforeCommand = {
 };
 
 var nsInsertTableCellAfterCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().insertTableCell(1, true);
     } catch (e) {}
@@ -1979,14 +1981,14 @@ var nsInsertTableCellAfterCommand = {
 };
 
 var nsDeleteTableCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTable();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().deleteTable();
     } catch (e) {}
@@ -1995,14 +1997,14 @@ var nsDeleteTableCommand = {
 };
 
 var nsDeleteTableRowCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     var rows = GetNumberOfContiguousSelectedRows();
     // Delete at least one row
     if (rows == 0) {
@@ -2026,14 +2028,14 @@ var nsDeleteTableRowCommand = {
 };
 
 var nsDeleteTableColumnCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     var columns = GetNumberOfContiguousSelectedColumns();
     // Delete at least one column
     if (columns == 0) {
@@ -2057,14 +2059,14 @@ var nsDeleteTableColumnCommand = {
 };
 
 var nsDeleteTableCellCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().deleteTableCell(1);
     } catch (e) {}
@@ -2073,14 +2075,14 @@ var nsDeleteTableCellCommand = {
 };
 
 var nsDeleteTableCellContentsCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTableCell();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().deleteTableCellContents();
     } catch (e) {}
@@ -2089,7 +2091,7 @@ var nsDeleteTableCellContentsCommand = {
 };
 
 var nsJoinTableCellsCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     if (IsDocumentEditable() && IsEditingRenderedHTML()) {
       try {
         var editor = GetCurrentTableEditor();
@@ -2134,10 +2136,10 @@ var nsJoinTableCellsCommand = {
     return false;
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     // Param: Don't merge non-contiguous cells
     try {
       GetCurrentTableEditor().joinTableCells(false);
@@ -2147,7 +2149,7 @@ var nsJoinTableCellsCommand = {
 };
 
 var nsSplitTableCellCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     if (IsDocumentEditable() && IsEditingRenderedHTML()) {
       var tagNameObj = { value: "" };
       var countObj = { value: 0 };
@@ -2181,10 +2183,10 @@ var nsSplitTableCellCommand = {
     return false;
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     try {
       GetCurrentTableEditor().splitTableCell();
     } catch (e) {}
@@ -2193,20 +2195,20 @@ var nsSplitTableCellCommand = {
 };
 
 var nsTableOrCellColorCommand = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     return IsInTable();
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     EditorSelectColor("TableOrCell");
   },
 };
 
 var nsConvertToTable = {
-  isCommandEnabled(aCommand, dummy) {
+  isCommandEnabled() {
     if (IsDocumentEditable() && IsEditingRenderedHTML()) {
       var selection;
       try {
@@ -2246,10 +2248,10 @@ var nsConvertToTable = {
     return false;
   },
 
-  getCommandStateParams(aCommand, aParams, aRefCon) {},
-  doCommandParams(aCommand, aParams, aRefCon) {},
+  getCommandStateParams() {},
+  doCommandParams() {},
 
-  doCommand(aCommand) {
+  doCommand() {
     if (this.isCommandEnabled()) {
       window.openDialog(
         "chrome://messenger/content/messengercompose/EdConvertToTable.xhtml",

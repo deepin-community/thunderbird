@@ -76,10 +76,13 @@ def build_template(
     locales: List[str],
     fluent_resources: List[str],
     is_beta: bool,
+    is_esr: bool,
 ):
     wmclass = "thunderbird"
     if is_beta:
         wmclass = wmclass + "-beta"
+    elif is_esr:
+        wmclass = wmclass + "-esr"
     locales_plus = locales + ["en-US"]
     l10n_strings = FluentTranslator(l10n_base.resolve(), locales_plus, fluent_resources)
 
@@ -140,18 +143,32 @@ def main():
         default=False,
         help="Mark this build a beta version",
     )
+    parser.add_argument(
+        "--esr",
+        dest="is_esr",
+        action="store_true",
+        default=False,
+        help="Mark this build an ESR version",
+    )
 
     args = parser.parse_args()
 
     with open(args.locales_file) as fp:
         locale_data = json.load(fp)
         locales = [l for l in locale_data.keys() if l != "ja-JP-mac"]
-        comm_l10n_rev = locale_data.get("en-GB", {}).get("revision")
+        # Bug 1912126 - hard code this until this script is updated for Github proper
+        comm_l10n_rev = "4d226985e366c377cf397e4e42aa95e9e2ed3336"
 
     get_strings(args.l10n_base, comm_l10n_rev, args.fluent_files)
 
     build_template(
-        args.output, args.template, args.l10n_base, locales, args.fluent_files, args.is_beta
+        args.output,
+        args.template,
+        args.l10n_base,
+        locales,
+        args.fluent_files,
+        args.is_beta,
+        args.is_esr,
     )
 
 

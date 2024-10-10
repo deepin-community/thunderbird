@@ -96,9 +96,12 @@
 
    = free all the cached data
  */
+
+#include "mimehdrs.h"
 #include "nsCOMPtr.h"
 #include "mimemrel.h"
 #include "mimemapl.h"
+#include "nsMailHeaders.h"
 #include "prmem.h"
 #include "prprf.h"
 #include "prlog.h"
@@ -108,7 +111,6 @@
 #include "msgCore.h"
 #include "nsMimeStringResources.h"
 #include "nsMimeTypes.h"
-#include "mimebuf.h"
 #include "nsMsgUtils.h"
 #include "nsMsgCompUtils.h"
 #include <ctype.h>
@@ -734,8 +736,9 @@ static bool accept_related_part(MimeMultipartRelated* relobj,
   /* before accepting it as a valid related part, make sure we
      are able to display it inline as an embedded object. Else just ignore
      it, that will prevent any bad surprise... */
-  MimeObjectClass* clazz = mime_find_class(
-      part_obj->content_type, part_obj->headers, part_obj->options, false);
+  MimeObjectClass* clazz =
+      mime_find_class(part_obj->content_type, part_obj->headers,
+                      part_obj->options, false, nullptr, nullptr);
   if (clazz ? clazz->displayable_inline_p(clazz, part_obj->headers) : false)
     return true;
 

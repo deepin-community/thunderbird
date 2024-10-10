@@ -7,23 +7,11 @@ import { SearchBar } from "chrome://messenger/content/search-bar.mjs";
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
+  Gloda: "resource:///modules/gloda/GlodaPublic.sys.mjs",
+  GlodaConstants: "resource:///modules/gloda/GlodaConstants.sys.mjs",
   GlodaIMSearcher: "resource:///modules/GlodaIMSearcher.sys.mjs",
+  GlodaMsgSearcher: "resource:///modules/gloda/GlodaMsgSearcher.sys.mjs",
 });
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "GlodaMsgSearcher",
-  "resource:///modules/gloda/GlodaMsgSearcher.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "GlodaConstants",
-  "resource:///modules/gloda/GlodaConstants.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  lazy,
-  "Gloda",
-  "resource:///modules/gloda/GlodaPublic.jsm"
-);
 ChromeUtils.defineLazyGetter(
   lazy,
   "glodaCompleter",
@@ -49,7 +37,7 @@ class GlobalSearchBar extends SearchBar {
     stopSearch() {
       lazy.glodaCompleter.stopSearch();
     },
-    handleEnter: (isAutocomplete, event) => {
+    handleEnter: isAutocomplete => {
       if (!isAutocomplete) {
         return;
       }
@@ -223,7 +211,7 @@ class GlobalSearchBar extends SearchBar {
     }
   };
 
-  #handleFocus = event => {
+  #handleFocus = () => {
     if (this.controller.searchString && this.controller.matchCount >= 1) {
       this.popup.openAutocompletePopup(
         this,

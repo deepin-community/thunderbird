@@ -4,6 +4,37 @@
 
 e2e-intro-description = Щоб надсилати захищені або підписані цифровим підписом повідомлення, вам необхідно налаштувати технологію шифрування OpenPGP або S/MIME.
 e2e-intro-description-more = Виберіть свій особистий ключ, щоб дозволити використання OpenPGP, або ваш особистий сертифікат, щоб дозволити використання S/MIME. Для особистого ключа або сертифіката ви отримаєте відповідний секретний ключ.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = Щоб отримати новий персональний сертифікат S/MIME, створіть запит на підписання сертифіката (CSR) і надішліть його до центру сертифікації (CA).
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = Виберіть локальний каталог і назву для файлу CSR і дайте відповіді на запитання щодо встановлення алгоритму та надійності.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = Згенерувати CSR
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Продовжити
+# A label for a button that goes back one step
+e2e-csr-back = Назад
+# Do not translate: CSR
+e2e-csr-button =
+    .label = Згенерувати і зберегти файл CSR як…
+# Do not translate: CSR
+e2e-csr-select-title = Алгоритм CSR
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = Оберіть RSA (рекомендовано) або ECC як криптографічний алгоритм для нового сертифіката S/MIME.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Оберіть бажану криптографічну стійкість (менші числа для швидкості; більші числа для кращого захисту) для нового сертифіката S/MIME або залиште типові налаштування.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = Новий секретний ключ { $type } { $strength } буде згенеровано в налаштуваннях { -brand-short-name }. Цей процес може тривати деякий час і призвести до тимчасового припинення роботи; Просимо проявити терплячість під час цієї дії. Тим часом буде створено файл запиту на підписання сертифіката (CSR), збереженого як { $file }.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = Включити електронну адресу ({ $email }) у CSR (рекомендовано)
+# $file A filename
+e2e-csr-success = CSR успішно збережено в { $file }
+# $file A filename
+e2e-csr-failure = Не вдалося зберегти CSR у файл { $file }
 e2e-signing-description = Цифровий підпис дає змогу отримувачам пересвідчитися, що повідомлення надіслали ви, а його вміст не змінено. Зашифровані повідомлення типово завжди підписуються.
 e2e-sign-message =
     .label = Підписати незашифровані повідомлення
@@ -98,16 +129,16 @@ openpgp-key-man-discover-prompt = Щоб дослідити ключі OpenPGP �
 openpgp-key-man-discover-progress = Пошук…
 # Variables:
 # $keyserver (String) - The address of a server that contains a directory of OpenPGP public keys
-openpgp-key-publish-ok = Відкритий ключ надіслано на «{ $keyserver }».
+openpgp-key-publish-ok = Відкритий ключ надіслано на "{ $keyserver }".
 # Variables:
 # $keyserver (String) - The address of a server that contains a directory of OpenPGP public keys
-openpgp-key-publish-fail = Не вдалося надіслати відкритий ключ на «{ $keyserver }».
+openpgp-key-publish-fail = Не вдалося надіслати відкритий ключ на "{ $keyserver }".
 openpgp-key-copy-key =
-    .label = Скопіюйте відкритий ключ
-    .accesskey = к
+    .label = Копіювати відкритий ключ
+    .accesskey = К
 openpgp-key-export-key =
-    .label = Експорт відкритого ключа до файлу
-    .accesskey = п
+    .label = Експортувати відкритий ключ у файл
+    .accesskey = Е
 openpgp-key-backup-key =
     .label = Резервне копіювання таємного ключа до файлу
     .accesskey = є
@@ -398,6 +429,9 @@ window-locked = Вікно написання заблоковано; надси
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Скасовано
 keyserver-error-unknown = Сталася невідома помилка
 keyserver-error-server-error = Сервер ключів повідомив про помилку.
@@ -409,6 +443,9 @@ keyserver-error-unsupported = Сервер ключів не підтримує�
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     Ваш постачальник електронної пошти обробив ваш запит щодо вивантаження вашого відкритого ключа до каталогу
     мережних ключів OpenPGP. Підтвердьте, щоб вивантаження відкритого ключа.
@@ -418,6 +455,9 @@ wkd-message-body-process =
 
 ## Strings in persistentCrypto.jsm
 
+
+## Strings in persistentCrypto.sys.mjs
+
 # Variables:
 # $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
@@ -426,6 +466,9 @@ converter-decrypt-body-failed =
     Бажаєте спробувати з іншою парольною фразою чи хочете пропустити повідомлення?
 
 ## Strings filters.jsm
+
+
+## Strings filters.sys.mjs
 
 filter-folder-required = Виберіть теку для збереження.
 filter-decrypt-move-warn-experimental =
@@ -443,6 +486,9 @@ filter-warn-key-not-secret =
     Якщо у вас немає таємного ключа для '{ $desc }', ви більше не зможете читати електронні листи.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Завжди розшифрувати (OpenPGP)
 filter-decrypt-copy-label = Створити розшифровану копію (OpenPGP)
@@ -490,6 +536,7 @@ key-man-button-export-pub-key = Експортувати лише &відкри�
 key-man-button-refresh-all = &Оновити всі ключі
 key-man-loading-keys = Ключі завантажуються, зачекайте…
 ascii-armor-file = Захищені ASCII файли (*.asc)
+text-file = Текстові файли (*.txt)
 no-key-selected = Виберіть хоча б один ключ, щоб виконати вибрану операцію
 export-to-file = Експортувати відкритий ключ до файлу
 export-keypair-to-file = Експортувати відкритий і таємний ключі до файлу
@@ -517,6 +564,12 @@ openpgp-export-secret-fail = <b>Не вдається експортувати �
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = Ключ { $userId } (ID ключа { $keyId }) відкликано.
 key-ring-pub-key-expired = Ключ { $userId } (ID ключа { $keyId }) втратив чинність.
 key-ring-no-secret-key = Схоже ви не маєте таємного ключа для { $userId } (ID ключа { $keyId }) серед ваших ключів; ви не можете скористатися ключем для підписання.
@@ -529,10 +582,16 @@ key-ring-enc-sub-keys-expired = Усі дочірні ключі { $userId } (ID
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Світлина
 user-att-photo = Атрибут користувача (зображення JPEG)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Цей ключ вже відкликано.
 #   $identity (String) - the id and associated user identity of the key being revoked
@@ -556,6 +615,9 @@ after-revoke-info =
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &Імпортувати
 delete-key-title = Видалити ключ OpenPGP
 delete-external-key-title = Вилучити зовнішній ключ GnuPG
@@ -565,6 +627,9 @@ delete-key-in-use-description = Неможливо продовжити! Клю�
 revoke-key-in-use-description = Неможливо продовжити! Ключ, який ви хочете відхилити, в цей час використовується цією особою. Виберіть інший ключ або виберіть "немає" та спробуйте ще раз.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -576,18 +641,30 @@ key-error-not-accepted-as-personal = Ви не підтвердили, що кл
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = Вибрана вами функція недоступна в автономному режимі. Увімкніть з'єднання з Мережею та спробуйте знову.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Не вдалося знайти жодного використовуваного ключа, який би відповідав вказаним умовам пошуку.
 no-update-found = У вас уже є ключі, які були знайдені онлайн.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Помилка - не вдалося виконати команду розпакування ключа
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Помилка - користувач скасував надсилання ключа
 not-first-block = Помилка - перший блок OpenPGP не є блоком відкритого ключа
@@ -600,6 +677,13 @@ no-pgp-block = Помилка - не знайдено дійсного дода�
 confirm-permissive-import = Не вдалося імпортувати. Ключ, який ви намагаєтеся імпортувати, може бути пошкоджено або використовує невідомі атрибути. Бажаєте імпортувати правильні подробиці? Це може призвести до імпорту неповних та непридатних ключів.
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Деякі з імпортованих секретних ключів містять непідтримувані функції. Якщо ви використаєте такий ключ як особистий, то кореспонденти можуть надсилати вам електронні листи або відкриті ключі в несумісному форматі. Це впливає на імпортовані секретні ключі з такими відбитками: { $fingerprints }.
+help-button = Довідка
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = невідомо
 key-valid-invalid = недійсний
@@ -721,6 +805,9 @@ cannot-send-enc-because-no-own-key = Не вдається надіслати ц
 
 ## Strings used in decryption.jsm
 
+
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -744,9 +831,15 @@ dlg-button-view = &Переглянути
 
 ## Strings used in encryption.jsm
 
+
+## Strings used in encryption.sys.mjs
+
 not-required = Помилка - не вимагається шифрування
 
 ## Strings used in windows.jsm
+
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = Немає світлини
 # Variables:
@@ -765,6 +858,9 @@ repeat-suffix-singular = раз.
 repeat-suffix-plural = разів.
 no-repeat = Це попередження більше не з'являтиметься.
 dlg-keep-setting = Запам’ятати моє рішення і більше не запитувати
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &OK
 dlg-button-close = &Закрити
 dlg-button-cancel = &Скасувати
@@ -775,6 +871,9 @@ enig-alert = Сповіщення OpenPGP
 enig-info = Відомості OpenPGP
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = &Повторити
 dlg-button-skip = &Пропустити

@@ -26,12 +26,15 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Разучaване на възможностите
     .accesskey = { "" }
+menu-help-get-release-help =
+    .label = Получете помощ с { -brand-short-name }
+    .accesskey = щ
 menu-help-shortcuts =
     .label = Клавишни комбинации
     .accesskey = { "" }
 menu-help-get-involved =
     .label = Включване към проекта
-    .accesskey = { "" }
+    .accesskey = { "в" }
 menu-help-donation =
     .label = Подкрепа на проекта
     .accesskey = П
@@ -65,6 +68,12 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Изход от { -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Изход от { -brand-full-name }
+           *[other] Изход от { -brand-full-name }
+        }
 # Localization note: Do not translate unless your locale's keyboard layout
 # does not include this key, as it determines the keyboard shortcut for
 # shutting down the application.
@@ -133,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Профил за поща
+    .accesskey = П
 file-new-newsgroup-account =
     .label = Профил в дискусионна група...
     .accesskey = г

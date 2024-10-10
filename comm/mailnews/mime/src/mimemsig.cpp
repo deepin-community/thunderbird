@@ -5,6 +5,7 @@
 
 #include "modmimee.h"
 #include "mimemsig.h"
+#include "nsMailHeaders.h"
 #include "nspr.h"
 
 #include "prmem.h"
@@ -16,7 +17,6 @@
 #include "mimemoz2.h"
 #include "mimeeobj.h"
 #include "modmimee.h"  // for MimeConverterOutputCallback
-#include "mozilla/Attributes.h"
 
 #define MIME_SUPERCLASS mimeMultipartClass
 MimeDefClass(MimeMultipartSigned, MimeMultipartSignedClass,
@@ -538,6 +538,33 @@ static int MimeMultipartSigned_emit_child(MimeObject* obj) {
   }
 
   NS_ASSERTION(sig->crypto_closure, "no crypto closure");
+
+  const char* my_address = mime_part_address(obj);
+  if (!strcmp(my_address, "1")) {
+    char* ct =
+        (sig->body_hdrs
+             ? MimeHeaders_get(sig->body_hdrs, HEADER_CONTENT_TYPE, true, false)
+             : 0);
+    char* ctp =
+        (sig->body_hdrs ? MimeHeaders_get(sig->body_hdrs, HEADER_CONTENT_TYPE,
+                                          false, false)
+                        : 0);
+    char* st =
+        ctp ? MimeHeaders_get_parameter(ctp, "smime-type", nullptr, nullptr)
+            : nullptr;
+
+    if (ct && st &&
+        (!PL_strcasecmp(ct, APPLICATION_XPKCS7_MIME) ||
+         !PL_strcasecmp(ct, APPLICATION_PKCS7_MIME)) &&
+        !PL_strcasecmp(st, "enveloped-data")) {
+      (((MimeMultipartSignedClass*)obj->clazz)->crypto_signature_ignore)(
+          ((MimeMultipartSigned*)obj)->crypto_closure);
+    }
+    PR_FREEIF(st);
+    PR_FREEIF(ctp);
+    PR_FREEIF(ct);
+  }
+  PR_Free((void*)my_address);
 
   /* Emit some HTML saying whether the signature was cool.
    But don't emit anything if in FO_QUOTE_MESSAGE mode.

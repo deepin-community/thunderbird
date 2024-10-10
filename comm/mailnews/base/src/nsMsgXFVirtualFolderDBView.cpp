@@ -7,7 +7,6 @@
 #include "nsMsgXFVirtualFolderDBView.h"
 #include "nsIMsgHdr.h"
 #include "nsIMsgThread.h"
-#include "nsQuickSort.h"
 #include "nsIDBFolderInfo.h"
 #include "nsIMsgCopyService.h"
 #include "nsMsgUtils.h"
@@ -387,7 +386,7 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
 
   rv = MsgTermListToString(searchTerms, curSearchAsString);
   // Trim off the initial AND/OR, which is irrelevant and inconsistent between
-  // what SearchSpec.jsm generates, and what's in virtualFolders.dat.
+  // what SearchSpec.sys.mjs generates, and what's in virtualFolders.dat.
   curSearchAsString.Cut(0,
                         StringBeginsWith(curSearchAsString, "AND"_ns) ? 3 : 2);
   terms.Cut(0, StringBeginsWith(terms, "AND"_ns) ? 3 : 2);
@@ -489,21 +488,6 @@ nsMsgXFVirtualFolderDBView::GetMsgFolder(nsIMsgFolder** aMsgFolder) {
   NS_ENSURE_ARG_POINTER(aMsgFolder);
   NS_IF_ADDREF(*aMsgFolder = m_viewFolder);
   return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgXFVirtualFolderDBView::SetViewFlags(nsMsgViewFlagsTypeValue aViewFlags) {
-  nsresult rv = NS_OK;
-  // If the grouping/threading has changed, rebuild the view.
-  if ((m_viewFlags & (nsMsgViewFlagsType::kGroupBySort |
-                      nsMsgViewFlagsType::kThreadedDisplay)) !=
-      (aViewFlags & (nsMsgViewFlagsType::kGroupBySort |
-                     nsMsgViewFlagsType::kThreadedDisplay))) {
-    rv = RebuildView(aViewFlags);
-  }
-
-  nsMsgDBView::SetViewFlags(aViewFlags);
-  return rv;
 }
 
 nsresult nsMsgXFVirtualFolderDBView::GetMessageEnumerator(

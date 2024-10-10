@@ -4,6 +4,37 @@
 
 e2e-intro-description = För att skicka krypterade eller digitalt signerade meddelanden måste du konfigurera en krypteringsteknik, antingen OpenPGP eller S/MIME.
 e2e-intro-description-more = Välj din personliga nyckel för att aktivera användning av OpenPGP eller ditt personliga certifikat för att aktivera användning av S/MIME. För en personlig nyckel eller certifikat äger du motsvarande hemlig nyckel.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = För att erhålla ett nytt personligt S/MIME-certifikat, skapa en certifikatsigneringsbegäran (CSR) och skicka den till en certifikatutfärdare (CA).
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = Välj en lokal katalog och filnamn för din CSR-fil och svara på följande frågor för att ställa in algoritm och styrka.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = Skapa CSR
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Fortsätt
+# A label for a button that goes back one step
+e2e-csr-back = Tillbaka
+# Do not translate: CSR
+e2e-csr-button =
+    .label = Skapa och spara en CSR-fil som…
+# Do not translate: CSR
+e2e-csr-select-title = CSR-algoritm
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = Välj mellan RSA (rekommenderas) eller ECC som din kryptografiska algoritm för det nya S/MIME-certifikatet.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Välj önskad kryptografisk styrka (snabbare med färre nummer eller bättre säkerhet med högre nummer) för det nya S/MIME-certifikatet eller behåll standardinställningen.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = En ny { $type } { $strong } hemlig nyckel kommer att genereras i inställningarna för { -brand-short-name }. Den här processen kan ta lite tid och tillfälligt sluta svara. Ha tålamod under detta steg. Filen CSR (Certificate Signing Request), sparad som { $file }, kommer att skapas under tiden.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = Inkludera e-postadress ({ $email }) i CSR (rekommenderas)
+# $file A filename
+e2e-csr-success = CSR har sparats till { $file }
+# $file A filename
+e2e-csr-failure = Det gick inte att spara CSR till fil { $file }
 e2e-signing-description = En digital signatur låter mottagarna verifiera att meddelandet skickades av dig och att dess innehåll inte har ändrats. Krypterade meddelanden signeras alltid som standard.
 e2e-sign-message =
     .label = Signera okrypterade meddelanden
@@ -391,6 +422,9 @@ window-locked = Skrivfönstret är låst; skicka avbruten
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Avbruten
 keyserver-error-unknown = Ett okänt fel uppstod
 keyserver-error-server-error = Nyckelservern rapporterade ett fel.
@@ -402,6 +436,9 @@ keyserver-error-unsupported = Nyckelservern stöds inte.
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     Din e-postleverantör behandlade din begäran om att ladda upp din publika nyckel till OpenPGP Web Key Directory.
     Bekräfta för att slutföra publiceringen av din publika nyckel.
@@ -411,6 +448,9 @@ wkd-message-body-process =
 
 ## Strings in persistentCrypto.jsm
 
+
+## Strings in persistentCrypto.sys.mjs
+
 # Variables:
 # $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
@@ -419,6 +459,9 @@ converter-decrypt-body-failed =
     Vill du försöka igen med en annan lösenfras eller vill du hoppa över meddelandet?
 
 ## Strings filters.jsm
+
+
+## Strings filters.sys.mjs
 
 filter-folder-required = Du måste välja en målmapp.
 filter-decrypt-move-warn-experimental =
@@ -436,6 +479,9 @@ filter-warn-key-not-secret =
     Om du inte har den hemliga nyckeln för '{ $desc }' kommer du inte längre att kunna läsa e-postmeddelandena.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Dekryptera permanent (OpenPGP)
 filter-decrypt-copy-label = Skapa dekrypterad kopia (OpenPGP)
@@ -483,6 +529,7 @@ key-man-button-export-pub-key = Exportera endast &publika nycklar
 key-man-button-refresh-all = &Uppdatera alla nycklar
 key-man-loading-keys = Laddar nycklar, vänta…
 ascii-armor-file = ASCII armerade filer (*.asc)
+text-file = Textfiler (*.txt)
 no-key-selected = Du bör välja minst en nyckel för att utföra den valda åtgärden
 export-to-file = Exportera publik nyckel till fil
 export-keypair-to-file = Exportera hemlig och publik nyckel till fil
@@ -510,6 +557,12 @@ openpgp-export-secret-fail = <b>Det går inte att exportera den valda hemliga ny
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = Nyckeln { $userId } (nyckel-ID { $keyId }) har återkallats.
 key-ring-pub-key-expired = Nyckeln { $userId } (nyckel-ID { $keyId }) har upphört.
 key-ring-no-secret-key = Du verkar inte ha den hemliga nyckeln för { $userId } (nyckel-ID { $keyId }) på din nyckelring; du kan inte använda nyckeln för att signera.
@@ -522,10 +575,16 @@ key-ring-enc-sub-keys-expired = Alla krypteringsundernycklar för nyckel { $user
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Foto
 user-att-photo = Användarattribut (JPEG-bild)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Denna nyckel har redan återkallats.
 #   $identity (String) - the id and associated user identity of the key being revoked
@@ -549,6 +608,9 @@ after-revoke-info =
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &Importera
 delete-key-title = Ta bort OpenPGP-nyckel
 delete-external-key-title = Ta bort den externa GnuPG-nyckeln
@@ -558,6 +620,9 @@ delete-key-in-use-description = Det går inte att fortsätta! Den nyckel som du 
 revoke-key-in-use-description = Det går inte att fortsätta! Den nyckel du valt för återkallelse används för närvarande av denna identitet. Välj en annan nyckel eller välj ingen och försök igen.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -569,18 +634,33 @@ key-error-not-accepted-as-personal = Du har inte bekräftat att nyckeln med ID '
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = Funktionen du har valt är inte tillgänglig i offline-läge. Gå online och försök igen.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Vi kunde inte hitta någon användbar nyckel som matchade de angivna sökkriterierna.
 no-update-found = Du har redan nycklarna som upptäcktes online.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
+
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Fel - nyckelutvinning misslyckades
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Fel - nyckelmottagning avbruten av användaren
 not-first-block = Fel - första OpenPGP-blocket inte blocket för en publik nyckel
@@ -593,6 +673,13 @@ no-pgp-block = Fel - inget giltigt, armerat OpenPGP-datablock hittades
 confirm-permissive-import = Importen misslyckades. Nyckeln du försöker importera kan vara skadad eller använda okända attribut. Vill du försöka importera de korrekta delarna? Detta kan resultera i import av ofullständiga och oanvändbara nycklar.
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Vissa av de importerade hemliga nycklarna annonserar en funktion som inte stöds. Om du använder en sådan nyckel som din personliga nyckel kan korrespondenter skicka dig e-postmeddelanden eller publika nycklar i ett inkompatibelt format. Detta påverkar importerade hemliga nycklar med följande fingeravtryck: { $fingerprints }.
+help-button = Hjälp
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = okänd
 key-valid-invalid = ogiltig
@@ -714,6 +801,9 @@ cannot-send-enc-because-no-own-key = Det går inte att skicka det här meddeland
 
 ## Strings used in decryption.jsm
 
+
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -737,9 +827,15 @@ dlg-button-view = &Visa
 
 ## Strings used in encryption.jsm
 
+
+## Strings used in encryption.sys.mjs
+
 not-required = Fel - ingen kryptering krävs
 
 ## Strings used in windows.jsm
+
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = Inget foto tillgängligt
 # Variables:
@@ -758,6 +854,9 @@ repeat-suffix-singular = gång till.
 repeat-suffix-plural = gånger till.
 no-repeat = Denna varning visas inte igen.
 dlg-keep-setting = Kom ihåg mitt svar och fråga mig inte igen
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &OK
 dlg-button-close = &Stäng
 dlg-button-cancel = &Avbryt
@@ -768,6 +867,9 @@ enig-alert = OpenPGP Varning
 enig-info = OpenPGP Information
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = &Försök igen
 dlg-button-skip = &Hoppa över

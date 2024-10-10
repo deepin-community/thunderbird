@@ -180,9 +180,9 @@
 <!ENTITY sortByUnreadCmd.accesskey "L">
 <!ENTITY sortByOrderReceivedCmd.label "Ordem de chegada">
 <!ENTITY sortByOrderReceivedCmd.accesskey "c">
-<!ENTITY sortAscending.label "Ordem crescente">
+<!ENTITY sortAscending.label "Crescente">
 <!ENTITY sortAscending.accesskey "O">
-<!ENTITY sortDescending.label "Ordem decrescente">
+<!ENTITY sortDescending.label "Decrescente">
 <!ENTITY sortDescending.accesskey "r">
 <!ENTITY sortThreaded.label "Agrupar tópicos">
 <!ENTITY sortThreaded.accesskey "c">
@@ -206,7 +206,7 @@
 <!ENTITY unreadMsgsCmd.accesskey "N">
 <!ENTITY threadsWithUnreadCmd.label "Tópicos com não lidas">
 <!ENTITY threadsWithUnreadCmd.accesskey "T">
-<!ENTITY watchedThreadsWithUnreadCmd.label "Monitorados com não lidas">
+<!ENTITY watchedThreadsWithUnreadCmd.label "Tópicos monitorados com mensagens não lidas">
 <!ENTITY watchedThreadsWithUnreadCmd.accesskey "M">
 <!ENTITY ignoredThreadsCmd.label "Tópicos ignorados">
 <!ENTITY ignoredThreadsCmd.accesskey "i">
@@ -515,7 +515,7 @@
 <!ENTITY stopButton.label "Parar">
 <!ENTITY throbberItem.title "Indicador de atividade">
 <!ENTITY junkItem.title "Spam">
-<!ENTITY addressBookButton.label "Catálogo">
+<!ENTITY addressBookButton.label "Catálogo de endereços">
 <!ENTITY chatButton.label "Conversa">
 <!ENTITY glodaSearch.title "Pesquisa global">
 <!ENTITY searchItem.title "Pesquisa rápida">
@@ -526,12 +526,12 @@
 <!ENTITY appmenuButton.label "AppMenu">
 
 <!-- Mail Toolbar Tooltips-->
-<!ENTITY advancedButton.tooltip "Mais opções de pesquisa">
+<!ENTITY advancedButton.tooltip "Pesquisa avançada de mensagens">
 <!ENTITY getMsgButton.tooltip "Receber mensagens desta conta">
 <!ENTITY getAllNewMsgCmd.label "Receber de todas as contas">
 <!ENTITY getAllNewMsgCmd.accesskey "t">
 <!ENTITY newMsgButton.tooltip "Nova mensagem">
-<!ENTITY replyButton.tooltip "Responder mensagem">
+<!ENTITY replyButton.tooltip "Responder à mensagem">
 <!ENTITY replyAllButton.tooltip "Responder ao remetente e a todos os destinatários">
 <!ENTITY replyListButton.tooltip "Responder à lista de emails">
 <!ENTITY forwardButton.tooltip "Encaminhar mensagem selecionada">
@@ -570,9 +570,9 @@
 <!-- Phishing Button Popup -->
 <!ENTITY phishingOptionIgnore.label "Ignorar aviso desta mensagem">
 <!ENTITY phishingOptionIgnore.accesskey "n">
-<!ENTITY phishingOptionSettings.label "Editar opções da detecção de fraudes…">
+<!ENTITY phishingOptionSettings.label "Editar opções de detecção de fraude…">
 <!ENTITY phishingOptionSettings.accesskey "d">
-<!ENTITY phishingOptionSettingsUnix.label "Editar preferências da detecção de fraudes…">
+<!ENTITY phishingOptionSettingsUnix.label "Editar preferências de detecção de fraude…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "p">
 
 <!-- AppMenu Popup -->

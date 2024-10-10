@@ -25,7 +25,6 @@
 #include <stdint.h>  // int32_t, int64_t, uint32_t
 
 #include "gc/Barrier.h"        // HeapPtr
-#include "gc/SweepingAPI.h"    // WeakCache
 #include "gc/ZoneAllocator.h"  // ZoneAllocPolicy
 #include "js/AllocPolicy.h"    // SystemAllocPolicy
 #include "js/Class.h"          // JSClassOps, ClassSpec
@@ -33,6 +32,7 @@
 #include "js/GCVector.h"       // GCVector
 #include "js/PropertySpec.h"   // JSPropertySpec, JSFunctionSpec
 #include "js/RootingAPI.h"     // StableCellHasher
+#include "js/SweepingAPI.h"    // JS::WeakCache
 #include "js/TypeDecls.h"  // HandleValue, HandleObject, MutableHandleObject, MutableHandleFunction
 #include "js/Vector.h"  // JS::Vector
 #include "js/WasmFeatures.h"
@@ -284,10 +284,9 @@ class WasmMemoryObject : public NativeObject {
   static bool discard(JSContext* cx, unsigned argc, Value* vp);
   static uint64_t growShared(Handle<WasmMemoryObject*> memory, uint64_t delta);
 
-  using InstanceSet =
-      WeakCache<GCHashSet<WeakHeapPtr<WasmInstanceObject*>,
-                          StableCellHasher<WeakHeapPtr<WasmInstanceObject*>>,
-                          CellAllocPolicy>>;
+  using InstanceSet = JS::WeakCache<GCHashSet<
+      WeakHeapPtr<WasmInstanceObject*>,
+      StableCellHasher<WeakHeapPtr<WasmInstanceObject*>>, CellAllocPolicy>>;
   bool hasObservers() const;
   InstanceSet& observers() const;
   InstanceSet* getOrCreateObservers(JSContext* cx);
@@ -502,6 +501,30 @@ class WasmNamespaceObject : public NativeObject {
 };
 
 extern const JSClass WasmFunctionClass;
+
+bool IsWasmSuspendingObject(JSObject* obj);
+
+#ifdef ENABLE_WASM_JSPI
+
+class WasmSuspendingObject : public NativeObject {
+ public:
+  static const ClassSpec classSpec_;
+  static const JSClass class_;
+  static const JSClass& protoClass_;
+  static const unsigned WRAPPED_FN_SLOT = 0;
+  static const unsigned RESERVED_SLOTS = 1;
+  static bool construct(JSContext*, unsigned, Value*);
+
+  JSObject* wrappedFunction() const {
+    return getReservedSlot(WRAPPED_FN_SLOT).toObjectOrNull();
+  }
+  void setWrappedFunction(HandleObject fn) {
+    return setReservedSlot(WRAPPED_FN_SLOT, ObjectValue(*fn));
+  }
+};
+
+JSObject* MaybeUnwrapSuspendingObject(JSObject* wrapper);
+#endif
 
 }  // namespace js
 

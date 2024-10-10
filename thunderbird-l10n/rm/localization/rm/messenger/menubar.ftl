@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Scuvrir las funcziuns
     .accesskey = f
+menu-help-get-release-help =
+    .label = Retschaiver agid per { -brand-short-name }
+    .accesskey = R
 menu-help-shortcuts =
     .label = Scursanidas da tastas
     .accesskey = c
@@ -65,6 +68,15 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Terminar { -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Terminar { -brand-full-name }
+           *[other] Terminar { -brand-full-name }
+        }
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -130,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Conto dad e-mail…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Conto da gruppas da discussiun…
     .accesskey = n

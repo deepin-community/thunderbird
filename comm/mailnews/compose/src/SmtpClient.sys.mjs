@@ -62,7 +62,7 @@ export class SmtpClient {
    *
    * @class
    *
-   * @param {nsISmtpServer} server - The associated nsISmtpServer instance.
+   * @param {SmtpServer} server - The associated SmtpServer instance.
    */
   constructor(server) {
     this.options = {
@@ -111,12 +111,12 @@ export class SmtpClient {
     this.logger = MsgUtils.smtpLogger;
 
     // Event placeholders
-    this.onerror = (e, failedSecInfo) => {}; // Will be run when an error occurs. The `onclose` event will fire subsequently.
+    this.onerror = () => {}; // Will be run when an error occurs. The `onclose` event will fire subsequently.
     this.ondrain = () => {}; // More data can be buffered in the socket.
     this.onclose = () => {}; // The connection to the server has been closed
     this.onidle = () => {}; // The connection is established and idle, you can send mail now
-    this.onready = failedRecipients => {}; // Waiting for mail body, lists addresses that were not accepted as recipients
-    this.ondone = success => {}; // The mail has been sent. Wait for `onidle` next. Indicates if the message was queued by the server.
+    this.onready = () => {}; // Waiting for mail body, lists addresses that were not accepted as recipients
+    this.ondone = () => {}; // The mail has been sent. Wait for `onidle` next. Indicates if the message was queued by the server.
     // Callback when this client is ready to be reused.
     this.onFree = () => {};
   }
@@ -222,8 +222,9 @@ export class SmtpClient {
 
       for (let recipient of recipients) {
         if (!recipient) {
-          // This happens when nsISmtpService.sendMailMessage() is called with
-          // recipients without @, for example in test_sendMailAddressIDN.js.
+          // This happens when SmtpServer.sendMailMessage() is
+          // called with recipients without @, for example in
+          // test_sendMailAddressIDN.js.
           continue;
         }
         let lastAt = null;
@@ -502,7 +503,7 @@ export class SmtpClient {
     }
 
     // Use nsresult to integrate with other parts of sending process, e.g.
-    // MessageSend.jsm will show an error message depending on the nsresult.
+    // MessageSend.sys.mjs will show an error message depending on the nsresult.
     this.onerror(nsError, "", secInfo);
   };
 
@@ -690,9 +691,9 @@ export class SmtpClient {
   /**
    * Intitiate authentication sequence if needed
    *
-   * @param {boolean} forceNewPassword - Discard cached password.
+   * @param {boolean} _forceNewPassword - Discard cached password.
    */
-  async _authenticateUser(forceNewPassword) {
+  async _authenticateUser(_forceNewPassword) {
     if (
       this._preferredAuthMethods.length == 0 ||
       this._supportedAuthMethods.length == 0
@@ -1343,7 +1344,7 @@ export class SmtpClient {
       }
 
       this._currentAction = this._actionIdle;
-      this.ondone(0);
+      this.ondone();
     } else {
       // For SMTP the message either fails or succeeds, there is no information
       // about individual recipients
@@ -1387,7 +1388,7 @@ export class SmtpClient {
 
       this._currentAction = this._actionIdle;
       if (command.success) {
-        this.ondone(0);
+        this.ondone();
       } else {
         this._onNsError(MsgUtils.NS_ERROR_SENDING_MESSAGE, command.data);
       }

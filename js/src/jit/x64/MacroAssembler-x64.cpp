@@ -16,6 +16,7 @@
 #include "vm/JitActivation.h"  // js::jit::JitActivation
 #include "vm/JSContext.h"
 #include "vm/StringType.h"
+#include "wasm/WasmStubs.h"
 
 #include "jit/MacroAssembler-inl.h"
 
@@ -638,10 +639,7 @@ void MacroAssemblerX64::handleFailureWithHandlerTail(Label* profilerExitTail,
 
   // Found a wasm catch handler, restore state and jump to it.
   bind(&wasmCatch);
-  loadPtr(Address(rsp, ResumeFromException::offsetOfTarget()), rax);
-  loadPtr(Address(rsp, ResumeFromException::offsetOfFramePointer()), rbp);
-  loadPtr(Address(rsp, ResumeFromException::offsetOfStackPointer()), rsp);
-  jmp(Operand(rax));
+  wasm::GenerateJumpToCatchHandler(asMasm(), rsp, rax, rbx);
 }
 
 void MacroAssemblerX64::profilerEnterFrame(Register framePtr,
@@ -1082,6 +1080,7 @@ void MacroAssembler::wasmLoad(const wasm::MemoryAccessDesc& access,
     }
     case Scalar::Int64:
       MOZ_CRASH("int64 loads must use load64");
+    case Scalar::Float16:
     case Scalar::BigInt64:
     case Scalar::BigUint64:
     case Scalar::Uint8Clamped:
@@ -1135,6 +1134,7 @@ void MacroAssembler::wasmLoadI64(const wasm::MemoryAccessDesc& access,
              FaultingCodeOffset(currentOffset()));
       movq(srcAddr, out.reg);
       break;
+    case Scalar::Float16:
     case Scalar::Float32:
     case Scalar::Float64:
     case Scalar::Simd128:
@@ -1199,6 +1199,7 @@ void MacroAssembler::wasmStore(const wasm::MemoryAccessDesc& access,
     case Scalar::Uint8Clamped:
     case Scalar::BigInt64:
     case Scalar::BigUint64:
+    case Scalar::Float16:
     case Scalar::MaxTypedArrayViewType:
       MOZ_CRASH("unexpected array type");
   }
@@ -1653,7 +1654,7 @@ void MacroAssembler::wasmBoundsCheck64(Condition cond, Register64 index,
 }
 
 #ifdef ENABLE_WASM_TAIL_CALLS
-void MacroAssembler::wasmMarkSlowCall() {
+void MacroAssembler::wasmMarkCallAsSlow() {
   static_assert(InstanceReg == r14);
   orPtr(Imm32(0), r14);
 }

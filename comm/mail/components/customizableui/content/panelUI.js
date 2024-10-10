@@ -565,7 +565,6 @@ const PanelUI = {
           n.options.onDismissed(window);
         }
       });
-      this._clearBadge();
       if (!notifications[0].options.badgeOnly) {
         this._showBannerItem(notifications[0]);
       }
@@ -847,7 +846,7 @@ var gExtensionsNotifications = {
       this._createAddonButton(
         "webext-perms-update-menu-item",
         update.addon,
-        evt => {
+        () => {
           ExtensionsUI.showUpdate(gBrowser, update);
         }
       );
@@ -857,7 +856,7 @@ var gExtensionsNotifications = {
       if (++items > 4) {
         break;
       }
-      this._createAddonButton("webext-perms-sideload-menu-item", addon, evt => {
+      this._createAddonButton("webext-perms-sideload-menu-item", addon, () => {
         // We need to hide the main menu manually because the toolbarbutton is
         // removed immediately while processing this event, and PanelUI is
         // unable to identify which panel should be closed automatically.

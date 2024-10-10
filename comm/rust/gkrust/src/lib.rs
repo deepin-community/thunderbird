@@ -4,3 +4,5 @@
 
 // Add new crates to Cargo.toml and build them here to get into gkrust/libxul
 extern crate gkrust_shared;
+
+extern crate ews_xpcom;

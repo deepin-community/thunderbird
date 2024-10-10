@@ -10,7 +10,7 @@
 
 var { create_contact, create_mailing_list, load_contacts_into_address_book } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/AddressBookHelpers.sys.mjs"
+    "resource://testing-common/mail/AddressBookHelpers.sys.mjs"
   );
 var {
   be_in_folder,
@@ -19,7 +19,7 @@ var {
   get_special_folder,
   wait_for_popup_to_open,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var {
   clear_recipients,
@@ -28,14 +28,14 @@ var {
   open_compose_new_mail,
   setup_msg_contents,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var { promise_modal_dialog, wait_for_frame_load } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var account = null;
@@ -295,7 +295,11 @@ add_task(async function test_send_enabled_address_contacts_sidebar() {
     () => abTree.view.rowCount > 0,
     "Addressbook cards didn't load"
   );
-  await click_tree_row(abTree, 0);
+  EventUtils.synthesizeMouseAtCenter(
+    abTree.getRowAtIndex(0),
+    {},
+    contactsBrowser.contentWindow
+  );
 
   contactsBrowser.contentDocument.getElementById("ccButton").click();
 

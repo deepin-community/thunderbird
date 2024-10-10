@@ -33,50 +33,49 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 }
 
 @media not (prefers-contrast) {
-  :root:not(:-moz-lwtheme) {
-    background-color: light-dark(var(--color-gray-10), var(--color-gray-90));
+  :root:not([lwtheme]) {
+    background-color: light-dark(var(--color-gray-20), var(--color-gray-90));
 
-    &:-moz-lwtheme {
-      background-color: var(--lwt-accent-color);
+    &:-moz-window-inactive {
+      background-color: light-dark(var(--color-gray-10), var(--color-gray-90));
+    }
+  }
+
+  :root[lwtheme] {
+    background-color: var(--lwt-accent-color);
+
+    &:-moz-window-inactive {
+      background-color: var(--lwt-accent-color-inactive, var(--lwt-accent-color));
+    }
+  }
+
+  :root[tabsintitlebar][sizemode=normal] {
+    border-top: .5px solid rgba(0, 0, 0, 0.7);
+
+    @media (-moz-windows-accent-color-in-titlebar) {
+      border-top-color: ActiveBorder;
 
       &:-moz-window-inactive {
-        background-color: var(--lwt-accent-color-inactive, var(--lwt-accent-color));
-      }
-    }
-  }
-
-  @media (-moz-windows-accent-color-in-titlebar: 0) {
-    :root[sizemode=normal][tabsintitlebar] {
-      border-top: 1px solid rgba(0, 0, 0, 0.7);
-
-      &[always-use-accent-color-for-window-border]:not(:-moz-window-inactive) {
-        border-top-color: AccentColor;
-      }
-    }
-    :root[tabsintitlebar]:not(:-moz-window-inactive,:-moz-lwtheme) {
-      background-color: light-dark(var(--color-gray-20), var(--color-gray-90));
-    }
-  }
-
-  @media (-moz-windows-accent-color-in-titlebar) {
-    :root[tabsintitlebar]:not(:-moz-window-inactive,:-moz-lwtheme) {
-      background-color: AccentColor;
-
-      & #navigation-toolbox {
-        color: AccentColorText;
+        border-top-color: InactiveBorder;
       }
     }
   }
 }
 
 @media (prefers-contrast) {
-  :root[tabsintitlebar] #navigation-toolbox:not(:-moz-lwtheme) {
+  :root[tabsintitlebar]:not([lwtheme]) {
+    padding-top: 2px;
     background-color: ActiveCaption;
     color: CaptionText;
 
     &:-moz-window-inactive {
       background-color: InactiveCaption;
       color: InactiveCaptionText;
+    }
+
+    & #navigation-toolbox {
+      background-color: -moz-Dialog;
+      color: -moz-DialogText;
     }
   }
 }
@@ -92,14 +91,6 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
   padding: 9px 17px;
   -moz-context-properties: stroke;
   stroke: currentColor;
-
-  @media not (prefers-contrast) {
-    @media (-moz-windows-accent-color-in-titlebar) {
-      &:not(:-moz-window-inactive, :-moz-lwtheme) {
-        stroke: AccentColorText;
-      }
-    }
-  }
 
   & > .toolbarbutton-icon {
     display: inline-flex;
@@ -149,25 +140,15 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 
   @media not (prefers-contrast) {
     &:hover {
-      background-color: hsla(0, 0%, 0%, 0.12);
+      background-color: light-dark(hsla(0, 0%, 0%, 0.12), hsla(0, 0%, 100%, 0.12));
 
       &:active {
-        background-color: hsla(0, 0%, 0%, 0.22);
+        background-color: light-dark(hsla(0, 0%, 0%, 0.22), hsla(0, 0%, 100%, 0.22));
       }
     }
 
     &:not(:hover) > .toolbarbutton-icon:-moz-window-inactive {
       opacity: 0.5;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      &:hover {
-        background-color: hsla(0, 0%, 100%, 0.12);
-
-        &:active {
-          background-color: hsla(0, 0%, 100%, 0.22);
-        }
-      }
     }
   }
 
@@ -187,6 +168,10 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 }
 
 .titlebar-min {
+  /* Even though we use appearance: none, -moz-default-appearance is necessary
+   * for Windows 11's "snap layouts" feature, see
+   * DealWithWindowsAppearanceHacks */
+  -moz-default-appearance: -moz-window-button-minimize;
   list-style-image: url("chrome://messenger/skin/window-controls/minimize.svg");
   margin-inline-end: 2px;
 
@@ -200,6 +185,7 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 }
 
 .titlebar-max {
+  -moz-default-appearance: -moz-window-button-maximize;
   list-style-image: url("chrome://messenger/skin/window-controls/maximize.svg");
 
   :root[lwtheme-image] & {
@@ -212,6 +198,7 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 }
 
 .titlebar-restore {
+  -moz-default-appearance: -moz-window-button-restore;
   list-style-image: url("chrome://messenger/skin/window-controls/restore.svg");
 
   &:-moz-locale-dir(rtl) {
@@ -228,6 +215,7 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 }
 
 .titlebar-close {
+  -moz-default-appearance: -moz-window-button-close;
   list-style-image: url("chrome://messenger/skin/window-controls/close.svg");
 
   :root[lwtheme-image] & {
@@ -241,20 +229,10 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
   @media not (prefers-contrast) {
     &:hover {
       stroke: white;
-      background-color: var(--color-red-60);
+      background-color: light-dark(var(--color-red-60), var(--color-red-70));
 
       &:hover:active {
-        background-color: var(--color-red-50);
-      }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      &:hover {
-        background-color: var(--color-red-70);
-
-        &:hover:active {
-          background-color: var(--color-red-60);
-        }
+        background-color: light-dark(var(--color-red-50), var(--color-red-60));
       }
     }
   }
@@ -266,13 +244,13 @@ treechildren::-moz-tree-row(dummy, selected, focus) {
 }
 
 @media (prefers-contrast) {
-  :root:not(:-moz-lwtheme)
+  :root:not([lwtheme])
     treechildren::-moz-tree-image(selected) {
     color: inherit;
   }
 }
 
-:root:not([lwt-tree], :-moz-lwtheme) #folderTree {
+:root:not([lwt-tree],[lwtheme]) #folderTree {
   background-color: #fafafa;
 }
 

@@ -13,22 +13,22 @@ const {
   get_account_tree_row,
   promise_account_tree_load,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/AccountManagerHelpers.sys.mjs"
+  "resource://testing-common/mail/AccountManagerHelpers.sys.mjs"
 );
 var { open_content_tab_with_url } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ContentTabHelpers.sys.mjs"
+  "resource://testing-common/mail/ContentTabHelpers.sys.mjs"
 );
 const { wait_for_frame_load } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+  "resource://testing-common/mail/WindowHelpers.sys.mjs"
 );
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 const { MockFilePicker } = ChromeUtils.importESModule(
   "resource://testing-common/MockFilePicker.sys.mjs"
 );
 const { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
 
 var gAccount;
@@ -179,7 +179,7 @@ add_task(async function generate_new_key() {
 });
 
 /**
- * Import a previously exported secret OpenPGP Key.
+ * Import an OpenPGP secret key from file.
  */
 add_task(async function import_secret_key() {
   // Open the key wizard from the "Add Key" button.

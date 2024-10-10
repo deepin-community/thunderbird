@@ -7,6 +7,7 @@
 #define _nsMsgDBView_H_
 
 #include "nsIMsgDBView.h"
+#include "nsIMsgTagService.h"
 #include "nsIMsgWindow.h"
 #include "nsIMessenger.h"
 #include "nsIMsgDatabase.h"
@@ -22,7 +23,6 @@
 #include "nsIImapIncomingServer.h"
 #include "nsIMsgFilterPlugin.h"
 #include "nsIStringBundle.h"
-#include "nsMsgTagService.h"
 #include "nsCOMArray.h"
 #include "nsTArray.h"
 #include "nsTHashtable.h"
@@ -84,10 +84,10 @@ class nsMsgDBViewService final : public nsIMsgDBViewService {
   NS_DECL_ISUPPORTS
   NS_DECL_NSIMSGDBVIEWSERVICE
 
-  nsMsgDBViewService(){};
+  nsMsgDBViewService() {};
 
  protected:
-  ~nsMsgDBViewService(){};
+  ~nsMsgDBViewService() {};
 };
 
 // This is an abstract implementation class.
@@ -371,6 +371,8 @@ class nsMsgDBView : public nsIMsgDBView,
   nsresult GetLocationCollationKey(nsIMsgDBHdr* msgHdr,
                                    nsTArray<uint8_t>& result);
   void PushSort(const MsgViewSortColumnInfo& newSort);
+  void UpdateSortInfo(nsMsgViewSortTypeValue sortType,
+                      nsMsgViewSortOrderValue sortOrder);
   nsresult EncodeColumnSort(nsString& columnSortString);
   nsresult DecodeColumnSort(nsString& columnSortString);
   // For view navigation.
@@ -514,11 +516,6 @@ class nsMsgDBView : public nsIMsgDBView,
   nsIMsgCustomColumnHandler* GetCurColumnHandler();
   bool CustomColumnsInSortAndNotRegistered();
   void EnsureCustomColumnsValid();
-
-#ifdef DEBUG_David_Bienvenu
-  void InitEntryInfoForIndex(nsMsgViewIndex i, IdKey& EntryInfo);
-  void ValidateSort();
-#endif
 
  protected:
   static nsresult InitDisplayFormats();

@@ -22,7 +22,7 @@ var taskDetailsView = {
    * XXXberend Please document this function, possibly also consolidate since
    * its the only function in taskDetailsView.
    */
-  onSelect(event) {
+  onSelect() {
     function displayElement(id, flag) {
       document.getElementById(id).hidden = !flag;
       return flag;
@@ -244,18 +244,20 @@ var taskDetailsView = {
     }
     for (const cat of categoryList) {
       const menuitem = document.createXULElement("menuitem");
-      menuitem.setAttribute("class", "menuitem-iconic calendar-category");
+      menuitem.setAttribute("class", "calendar-category");
       menuitem.setAttribute("label", cat);
       menuitem.setAttribute("value", cat);
       menuitem.setAttribute("type", maxCount === null || maxCount > 1 ? "checkbox" : "radio");
       if (itemCategories.includes(cat)) {
         menuitem.setAttribute("checked", "true");
       }
+      const cssSafeId = cal.view.formatStringForCSSRule(cat);
+      menuitem.style.setProperty("--item-color", `var(--category-${cssSafeId}-color)`);
       categoryPopup.appendChild(menuitem);
     }
   },
 
-  saveCategories(event) {
+  saveCategories() {
     const categoryPopup = document.getElementById("task-actions-category-popup");
     const item = document.getElementById("calendar-task-tree").currentTask;
 

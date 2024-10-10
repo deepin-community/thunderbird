@@ -7,6 +7,7 @@
 #ifndef mozilla_LoadInfo_h
 #define mozilla_LoadInfo_h
 
+#include "mozilla/dom/FeaturePolicy.h"
 #include "nsIContentSecurityPolicy.h"
 #include "nsIInterceptionInfo.h"
 #include "nsILoadInfo.h"
@@ -195,6 +196,11 @@ class LoadInfo final : public nsILoadInfo {
     mIsThirdPartyContextToTopWindow.reset();
   }
 
+  void SetContinerFeaturePolicy(
+      const Maybe<dom::FeaturePolicyInfo>& aContainerFeaturePolicy) {
+    mContainerFeaturePolicyInfo = aContainerFeaturePolicy;
+  }
+
 #ifdef DEBUG
   void MarkOverriddenFingerprintingSettingsAsSet() {
     mOverriddenFingerprintingSettingsIsSet = true;
@@ -252,7 +258,9 @@ class LoadInfo final : public nsILoadInfo {
       nsILoadInfo::CrossOriginEmbedderPolicy aLoadingEmbedderPolicy,
       bool aIsOriginTrialCoepCredentiallessEnabledForTopLevel,
       nsIURI* aUnstrippedURI, nsIInterceptionInfo* aInterceptionInfo,
-      bool aHasInjectedCookieForCookieBannerHandling, bool aWasSchemelessInput);
+      bool aHasInjectedCookieForCookieBannerHandling, bool aWasSchemelessInput,
+      bool aIsNewWindowTarget);
+
   LoadInfo(const LoadInfo& rhs);
 
   NS_IMETHOD GetRedirects(JSContext* aCx,
@@ -299,6 +307,7 @@ class LoadInfo final : public nsILoadInfo {
   nsCOMPtr<nsICSPEventListener> mCSPEventListener;
   nsCOMPtr<nsICookieJarSettings> mCookieJarSettings;
   nsCOMPtr<nsIContentSecurityPolicy> mCspToInherit;
+  Maybe<dom::FeaturePolicyInfo> mContainerFeaturePolicyInfo;
   nsCString mTriggeringRemoteType;
   nsID mSandboxedNullPrincipalID;
 
@@ -401,6 +410,8 @@ class LoadInfo final : public nsILoadInfo {
 
   bool mHasInjectedCookieForCookieBannerHandling = false;
   bool mWasSchemelessInput = false;
+
+  bool mIsNewWindowTarget = false;
 };
 
 // This is exposed solely for testing purposes and should not be used outside of

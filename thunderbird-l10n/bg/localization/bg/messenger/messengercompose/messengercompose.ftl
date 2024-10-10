@@ -228,7 +228,7 @@ to-address-row-label =
     .value = До
 #   $key (String) - the shortcut key for this field
 show-to-row-main-menuitem =
-    .label = Поле "До"
+    .label = Поле „До“
     .accesskey = К
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
 # No acceltext should be shown.
@@ -412,3 +412,5 @@ link-preview-yes-replace = Да
 spell-add-dictionaries =
     .label = Добавяне на речници…
     .accesskey = р
+subject-encription-icon =
+    .title = Темата няма да бъде шифрована

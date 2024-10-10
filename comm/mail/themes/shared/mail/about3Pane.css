@@ -3,51 +3,33 @@
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
 @import url("chrome://messenger/skin/shared/threadPane.css");
+@import url("chrome://messenger/skin/shared/list-container.css");
 @import url("chrome://messenger/skin/shared/serverMenuItems.css");
 
 :root {
-  --foldertree-background: -moz-Dialog;
-  --treeitem-border-radius: 3px;
   --folder-mode-name-padding: 6px;
-  --folder-tree-header-gap: 9px;
-  --folder-tree-header-padding: 9px;
   --folder-pane-icon-size: 16px;
   --folder-pane-icon-new: var(--icon-add);
   --folder-pane-icon-more: var(--icon-more);
   --folder-pane-icon-download: var(--icon-cloud-download);
   --folder-pane-icon-kebab: var(--icon-kebab);
 
+  --sidebar-background: var(--sidebar-background-color, var(--foldertree-background));
+
   @media not (prefers-contrast) {
-    --foldertree-background: var(--color-gray-05);
+    --foldertree-background: light-dark(var(--color-gray-10), var(--color-gray-80));
     --folderpane-unread-count-background: var(--color-gray-50);
     --folderpane-unread-count-text: var(--color-white);
-    --folderpane-total-count-background: var(--color-gray-20);
-    --folderpane-total-count-text: var(--color-gray-90);
-    --folderpane-unread-new-count-background: var(--color-blue-60);
-    --treeitem-background-selected: var(--color-gray-20);
-    --treeitem-background-hover: var(--color-gray-10);
-    --treeitem-text-active: var(--color-white);
-    --treeitem-background-active: var(--color-blue-50);
-    --in-content-item-selected-unfocused: var(--color-gray-20);
-
-    @media (prefers-color-scheme: dark) {
-      --foldertree-background: var(--color-gray-80);
-      --folderpane-unread-new-count-background: var(--color-blue-50);
-      --folderpane-total-count-background: var(--color-gray-60);
-      --folderpane-total-count-text: var(--color-white);
-      --treeitem-background-selected: var(--color-gray-70);
-      --treeitem-background-hover: var(--color-gray-60);
-      --treeitem-background-active: var(--color-blue-60);
-      --in-content-item-selected-unfocused: rgba(249, 249, 250, 0.05);
-      --in-content-primary-button-background: #45a1ff;
-      --in-content-primary-button-background-hover: #65c1ff;
-      --in-content-primary-button-background-active: #85e1ff;
-      --in-content-focus-outline-color: #45a1ff;
-    }
+    --folderpane-total-count-background: light-dark(var(--color-gray-20), var(--color-gray-60));
+    --folderpane-total-count-text: light-dark(var(--color-gray-90), var(--color-white));
+    --folderpane-unread-new-count-background: light-dark(var(--color-blue-60), var(--color-blue-50));
+    --treeitem-background-selected: light-dark(var(--color-gray-30), var(--color-gray-70));
+    --treeitem-background-hover: light-dark(var(--color-gray-20), var(--color-gray-60));
+    --treeitem-text-active: var(--selected-item-text-color);
+    --treeitem-background-active: var(--selected-item-color);
   }
 
   &[lwt-tree] {
-    --foldertree-background: var(--sidebar-background-color);
     --treeitem-background-selected: color-mix(in srgb, transparent 70%, var(--sidebar-highlight-background-color));
     --treeitem-background-hover: color-mix(in srgb, transparent 80%, var(--sidebar-highlight-background-color));
     --treeitem-text-active: var(--sidebar-highlight-text-color);
@@ -56,13 +38,10 @@
 
   &[uidensity="compact"] {
     --folder-mode-name-padding: 3px;
-    --folder-tree-header-gap: 6px;
-    --folder-tree-header-padding: 4px 6px 3px;
   }
 
   &[uidensity="touch"] {
     --folder-mode-name-padding: 9px;
-    --folder-tree-header-gap: 12px;
     --folder-pane-icon-size: 20px;
     --folder-pane-icon-new: var(--icon-add-md);
     --folder-pane-icon-more: var(--icon-more-md);
@@ -70,7 +49,8 @@
   }
 
   @media (prefers-contrast) {
-    &:not(:-moz-lwtheme) {
+    &:not([lwtheme]) {
+      --foldertree-background: -moz-Dialog;
       --folderpane-unread-count-background: var(--selected-item-color);
       --folderpane-unread-count-text: var(--selected-item-text-color);
       --folderpane-total-count-background: var(--selected-item-color);
@@ -148,8 +128,8 @@ body {
   /* Matches the collapse-width on the splitter. */
   min-width: 100px;
   overflow: hidden;
-  background-color: var(--sidebar-background-color, var(--foldertree-background));
-  color: var(--sidebar-text-color, inherit);
+  background-color: var(--sidebar-background);
+  color: var(--sidebar-text-color, var(--layout-color-1));
   user-select: none;
   display: flex;
   flex-direction: column;
@@ -184,6 +164,7 @@ body {
   min-width: 300px;
   overflow: auto;
   display: flex;
+  flex-direction: column;
 }
 
 #accountCentralBrowser {
@@ -209,17 +190,9 @@ body {
 
 /* Folder tree pane. */
 
-#folderPaneHeaderBar:not([hidden]) {
-  --button-margin: 0;
-  display: flex;
+#folderPaneHeaderBar {
   flex-direction: row-reverse;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--folder-tree-header-gap);
   background-color: var(--sidebar-background-color, var(--foldertree-background));
-  color: var(--layout-color-2);
-  padding: var(--folder-tree-header-padding);
-  z-index: 1;
 }
 
 #folderPaneGetMessages,
@@ -279,12 +252,6 @@ body {
     border-top-style: none;
   }
 
-  &:focus-within li.selected > .container,
-  & li.drop-target > .container {
-    background-color: var(--treeitem-background-active);
-    color: var(--treeitem-text-active);
-  }
-
   & .icon {
     position: relative;
     width: 16px;
@@ -298,27 +265,6 @@ body {
   }
 
   & li {
-    & .twisty {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--list-item-buttons-size);
-      height: var(--list-item-buttons-size);
-    }
-
-    &:not(.children) .twisty-icon {
-      display: none;
-    }
-
-    &.children.collapsed {
-      & > .container .twisty-icon {
-        transform: rotate(-90deg);
-      }
-
-      &:dir(rtl) > .container .twisty-icon {
-        transform: rotate(90deg);
-      }
-    }
 
     &[data-server-type] > .container > .icon {
       --icon-color: var(--primary);
@@ -414,7 +360,7 @@ body {
     &[data-is-busy="true"] > .container > .icon {
       content: var(--icon-clock) !important;
       background-image: none;
-      --icon-color: var(--button-primary-background-color);
+      --icon-color: var(--button-primary-background-color) !important;
 
       @media (prefers-reduced-motion: no-preference) {
         content: var(--icon-loading) !important;
@@ -427,7 +373,7 @@ body {
     &[data-has-error="true"] > .container > .icon {
       content: var(--icon-warning) !important;
       background-image: none;
-      fill: var(--color-amber-30);
+      --icon-color: var(--color-amber-30) !important;
       stroke: var(--color-amber-60);
     }
 
@@ -438,21 +384,33 @@ body {
     &[data-server-type] > .container > .name {
       font-weight: bold;
     }
+
+    @media (prefers-contrast) {
+      &:focus-within li.selected > .container,
+      & li.drop-target > .container {
+        background-color: var(--treeitem-background-active);
+        color: var(--treeitem-text-active);
+      }
+    }
   }
 
   &:focus-within li {
-    &.selected > .container {
-      & > .icon {
-        --icon-color: currentColor !important; /* Override the user customized folder color. */
-      }
 
-      & > .unread-count {
-        background-color: var(--folderpane-unread-count-text);
-        color: var(--treeitem-background-active);
-      }
+    &.selected > .container {
 
       & > .folder-size {
         color: currentColor;
+      }
+
+      @media (prefers-contrast) {
+        & > .icon {
+          --icon-color: currentColor !important; /* Override the user customized folder color. */
+        }
+
+        & > .unread-count {
+          background-color: var(--folderpane-unread-count-text);
+          color: var(--treeitem-background-active);
+        }
       }
     }
 
@@ -460,15 +418,19 @@ body {
       opacity: 0.8;
     }
 
-    &.selected.new-messages > .container > .name {
-      color: currentColor;
+    &.selected.unread.children.collapsed > .container > .unread-count {
+      color: var(--selected-item-color);
+      background-color: var(--selected-item-text-color);
+      border-color: var(--selected-item-color);
     }
 
-    &.selected.unread.children.collapsed > .container > .unread-count {
-      color: var(--folderpane-unread-count-text);
-      background-color: transparent;
-      border-color: var(--folderpane-unread-count-text);
+    @media (prefers-contrast) {
+
+      &.selected.new-messages > .container > .name {
+        color: currentColor;
+      }
     }
+
   }
 
   & > li {
@@ -503,9 +465,9 @@ body {
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    & .twisty-icon {
-      transition: transform var(--transition-duration) var(--transition-timing);
-    }
+     .icon {
+       transition: fill 300ms ease, stroke 300ms ease;
+     }
   }
 }
 
@@ -515,29 +477,6 @@ body {
 }
 
 .container {
-  display: flex;
-  align-items: center;
-  -moz-context-properties: fill;
-  margin-inline: 6px;
-  border-radius: var(--treeitem-border-radius);
-  fill: currentColor;
-  cursor: default;
-  padding-inline-start: var(--indent);
-
-  li.selected > & {
-    background-color: var(--treeitem-background-selected);
-  }
-
-  li:not(.selected) > &:hover {
-    background-color: var(--treeitem-background-hover);
-  }
-
-  @media (prefers-contrast) {
-    li:not(:focus-visible) > &:hover {
-      outline: var(--treeitem-outline-hover);
-      outline-offset: -2px;
-    }
-  }
 
   li.context-menu-target:not(.selected) > &,
   li.context-menu-target:not(.selected) > &:hover {
@@ -618,14 +557,14 @@ body {
     background-color: var(--folderpane-unread-new-count-background);
   }
 
-  .unread.children.collapsed > .container > & {
+  .unread.children.collapsed:has(ul > .unread) > .container > & {
     color: var(--folderpane-unread-count-background);
     background-color: transparent;
     border: 1px solid var(--folderpane-unread-count-background);
     padding-block: 0;
   }
 
-  .new-messages.unread.children.collapsed > .container > & {
+  .new-messages.unread.children.collapsed:has(ul > .new-messages) > .container > & {
     color: var(--folderpane-unread-new-count-background);
     border-color: var(--folderpane-unread-new-count-background);
   }
@@ -648,4 +587,12 @@ body {
 #messageBrowser,
 #multiMessageBrowser {
   flex: 1;
+}
+
+#placeholderNoMessages::before {
+  background-image: var(--icon-mail-lg);
+}
+
+#placeholderMultipleFolders::before {
+  background-image: var(--icon-folder);
 }

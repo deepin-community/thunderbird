@@ -8,7 +8,7 @@ The AppStream data is missing the lauchable element.
  1 file changed, 1 insertion(+)
 
 diff --git a/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml b/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml
-index d31e2dd..1f20e06 100644
+index 4e38090..2d93007 100644
 --- a/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml
 +++ b/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml
 @@ -2,6 +2,7 @@

@@ -77,7 +77,7 @@ update-setting-write-failure-title = Zmólka pśi składowanju aktualizěrowańs
 # The newlines between the main text and the line containing the path is
 # intentional so the path is easier to identify.
 update-setting-write-failure-message =
-    { -brand-short-name } jo starcył na zmólku a njejo toś tu změnu składł. Źiwajśo na to, až se toś to aktualizěrowańske nastajenje pisańske pšawo za slědujucu dataju pomina. Wy abo systemowy administrator móžotej zmólku pórěźiś, gaž wužywarskej kupce połnu kontrolu nad toś teju dataju dajotej.
+    { -brand-short-name } jo starcył na zmólku a njejo toś tu změnu składł. Źiwajśo na to, až se toś to aktualizěrowańske nastajenje pisańske pšawo za slědujucu dataju pomina. Wy abo systemowy administrator móžotej zmólku pórěźiś, gaž wužywaŕskej kupce połnu kontrolu nad toś teju dataju dajotej.
     
     Njedajo se do dataje pisaś: { $path }
 update-in-progress-title = Aktualizacija běžy
@@ -109,7 +109,7 @@ focus-search-shortcut-alt =
     .key = k
 general-legend = { -brand-short-name } startowy bok
 start-page-label =
-    .label = Gaž { -brand-short-name } se startujo, startowy bok w powěsćowym póli pokazaś
+    .label = Gaž { -brand-short-name } se startujo, startowy bok w powěsćowem póli pokazaś
     .accesskey = G
 location-label =
     .value = Městno:
@@ -399,6 +399,17 @@ close-move-delete =
     .accesskey = P
 display-name-label =
     .value = Zwobraznjone mě:
+address-display-legend = Lisćina powěsćow
+address-display-description = Nejlubšy adresowy pokazowański format:
+address-display-full =
+    .label = Dopołne mě a e-mailowa adresa
+    .accesskey = D
+address-display-email =
+    .label = Jano e-mailowa adresa
+    .accesskey = J
+address-display-name =
+    .label = Jano mě
+    .accesskey = m
 condensed-addresses-label =
     .label = Jano zwobraznjeńske mě za luźe w adresniku pokazaś
     .accesskey = J
@@ -560,6 +571,9 @@ primary-password-description = Głowne gronidło šćita wšykne waše gronidła
 primary-password-label =
     .label = Głowne gronidło wužywaś
     .accesskey = G
+# This operation requires the user to authenticate with the operating system (device sign-in)
+forms-os-reauth =
+    .label = Rědowe pśizjawjenje za wupołnjenje a zastojanje gronidłow pominaś
 primary-password-button =
     .label = Głowne gronidło změniś…
     .accesskey = z

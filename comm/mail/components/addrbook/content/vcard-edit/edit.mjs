@@ -217,16 +217,6 @@ class VCardEdit extends HTMLElement {
       );
     });
 
-    // Only set the strings and define this selector if we're inside the
-    // address book edit panel.
-    if (document.getElementById("detailsPane")) {
-      this.preferDisplayName = this.querySelector("vcard-fn").preferDisplayEl;
-      document.l10n.setAttributes(
-        this.preferDisplayName.closest(".vcard-checkbox").querySelector("span"),
-        "about-addressbook-prefer-display-name"
-      );
-    }
-
     this.nickName = this.querySelector("vcard-nickname").nickNameEl;
     this.nickName.addEventListener("input", () => this.updateNickName());
 
@@ -756,7 +746,7 @@ class VCardEdit extends HTMLElement {
     const addSpecialDate = document.getElementById(
       "vcard-add-bday-anniversary"
     );
-    addSpecialDate.addEventListener("click", e => {
+    addSpecialDate.addEventListener("click", () => {
       let newVCardProperty;
       if (!this.vCardProperties.getFirstEntry("bday")) {
         newVCardProperty = VCardEdit.createVCardProperty("bday");
@@ -770,7 +760,7 @@ class VCardEdit extends HTMLElement {
 
     // Organizational Properties.
     const addOrg = document.getElementById("vcard-add-org");
-    addOrg.addEventListener("click", event => {
+    addOrg.addEventListener("click", () => {
       const title = VCardEdit.createVCardProperty("title");
       const role = VCardEdit.createVCardProperty("role");
       const org = VCardEdit.createVCardProperty("org");
@@ -806,7 +796,7 @@ class VCardEdit extends HTMLElement {
     });
 
     const addCustom = document.getElementById("vcard-add-custom");
-    addCustom.addEventListener("click", event => {
+    addCustom.addEventListener("click", () => {
       const el = new VCardCustomComponent();
 
       // When the custom properties are deleted and added again ensure that
@@ -837,8 +827,16 @@ class VCardEdit extends HTMLElement {
     this.querySelector(
       "#addr-book-edit-org .remove-property-button"
     ).addEventListener("click", event => {
-      this.querySelector("vcard-title").remove();
-      this.querySelector("vcard-role").remove();
+      const title = this.querySelector("vcard-title");
+      title.dispatchEvent(
+        new CustomEvent("vcard-remove-property", { bubbles: true })
+      );
+      title.remove();
+      const role = this.querySelector("vcard-role");
+      role.dispatchEvent(
+        new CustomEvent("vcard-remove-property", { bubbles: true })
+      );
+      role.remove();
       const org = this.querySelector("vcard-org");
       // Reveal the "Add" button so we can focus it.
       document.getElementById("vcard-add-org").hidden = false;
@@ -861,7 +859,7 @@ class VCardEdit extends HTMLElement {
    * Like different focus instead of an input field.
    */
   registerAddButton(addButton, VCardPropertyName, callback) {
-    addButton.addEventListener("click", event => {
+    addButton.addEventListener("click", () => {
       const newVCardProperty = VCardEdit.createVCardProperty(VCardPropertyName);
       const el = this.insertVCardElement(newVCardProperty, true);
 
@@ -1030,7 +1028,7 @@ class VCardTypeSelectionComponent extends HTMLElement {
     }
 
     // Change the value on the vCardPropertyEntry.
-    this.selectEl.addEventListener("change", e => {
+    this.selectEl.addEventListener("change", () => {
       if (this.selectEl.value) {
         vCardPropertyEntry.params.type = this.selectEl.value;
       } else {

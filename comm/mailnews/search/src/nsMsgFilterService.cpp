@@ -9,7 +9,6 @@
 #include "nsMsgFilterService.h"
 #include "nsMsgFilterList.h"
 #include "nsMsgSearchScopeTerm.h"
-#include "nsDirectoryServiceDefs.h"
 #include "nsIPrompt.h"
 #include "nsIDocShell.h"
 #include "nsIStringBundle.h"
@@ -575,7 +574,7 @@ NS_IMETHODIMP nsMsgFilterAfterTheFact::OnSearchHit(nsIMsgDBHdr* header,
   header->GetMessageKey(&msgKey);
 
   nsCString msgId;
-  header->GetMessageId(getter_Copies(msgId));
+  header->GetMessageId(msgId);
   // clang-format off
   MOZ_LOG(FILTERLOGMODULE, LogLevel::Info,
           ("(Post) Filter matched message with key %" PRIu32,

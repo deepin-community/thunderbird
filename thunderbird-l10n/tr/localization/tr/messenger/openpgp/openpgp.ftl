@@ -4,6 +4,30 @@
 
 e2e-intro-description = Şifrelenmiş veya dijital olarak imzalanmış iletiler göndermek için OpenPGP veya S/MIME gibi bir şifreleme teknolojisini yapılandırmanız gerekir.
 e2e-intro-description-more = OpenPGP kullanımını etkinleştirmek için kişisel anahtarınızı veya S/MIME kullanımını etkinleştirmek için kişisel sertifikanızı seçin. Kişisel anahtar veya sertifikanın gizli anahtarına da sahip olmalısınız.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = Yeni bir kişisel S/MIME sertifikası almak için sertifika imzalama isteği (CSR) oluşturup sertifika makamına (CA) gönderin.
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = CSR dosyanız için bir yerel dizin ve dosya adı seçin. Algoritma ve güç ayarlarıyla ilgili aşağıdaki soruları yanıtlayın.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = CSR oluştur
+# A label for a button that proceeds to the next step
+e2e-csr-continue = İleri
+# A label for a button that goes back one step
+e2e-csr-back = Geri
+# Do not translate: CSR
+e2e-csr-button =
+    .label = CSR dosyası oluştur ve kaydet…
+# Do not translate: CSR
+e2e-csr-select-title = CSR algoritması
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = ﻿﻿Yeni S/MIME sertifikası için şifreleme algoritmanız olarak RSA (önerilen) veya ECC arasından seçim yapın.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = E-posta adresini ({ $email }) CSR içine dahil et (önerilir)
+# $file A filename
+e2e-csr-success = CSR, { $file } dosyasına başarıyla kaydedildi
+# $file A filename
+e2e-csr-failure = CSR, { $file } dosyasına kaydedilemedi
 e2e-signing-description = Dijital imza sayesinde alıcılar iletinin sizin tarafınızdan gönderildiğini ve içeriğinin değiştirilmediğini doğrulayabilir. Şifrelenmiş iletiler varsayılan olarak her zaman imzalanır.
 e2e-sign-message =
     .label = Şifrelenmemiş iletileri imzala
@@ -82,7 +106,7 @@ openpgp-key-man-export-to-file =
     .label = Ortak anahtar(lar)ı dosyaya aktar
     .accesskey = O
 openpgp-key-man-send-keys =
-    .label = Ortak anahtarları e-postayla gönder
+    .label = Ortak anahtar(lar)ı e-postayla gönder
     .accesskey = e
 openpgp-key-man-backup-secret-keys =
     .label = Gizli anahtar(lar)ı dosyaya yedekle
@@ -391,6 +415,9 @@ window-locked = Oluşturma penceresi kilitli; gönderme iptal edildi
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Durduruldu
 keyserver-error-unknown = Bilinmeyen bir hata oluştu
 keyserver-error-server-error = Anahtar sunucusu bir hata bildirdi.
@@ -402,26 +429,44 @@ keyserver-error-unsupported = Anahtar sunucusu desteklenmiyor.
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     E-posta sağlayıcınız ortak anahtarınızı OpenPGP web anahtarı dizinine yükleme isteğinizi işleme koydu.
     Lütfen ortak anahtarınızın yayımlanmasını tamamlamak için onaylayın.
 wkd-message-body-process =
-    Bu, ortak anahtarınızı OpenPGP Web Anahtar Dizini'ne yüklemek için otomatik işlemeyle ilgili bir e-postadır.
+    Bu, ortak anahtarınızı OpenPGP web anahtar dizinine yüklemek için otomatik işlemeyle ilgili bir e-postadır.
     Şu anda herhangi bir işlem yapmanız gerekmiyor.
 
 ## Strings in persistentCrypto.jsm
 
 
+## Strings in persistentCrypto.sys.mjs
+
+# Variables:
+# $subject (String) - Subject of the message.
+converter-decrypt-body-failed =
+    { $subject } konulu iletinin şifresi
+    çözülemedi.
+    Farklı bir parolayla yeniden denemek mi yoksa iletiyi geçmek mi istiyorsunuz?
+
 ## Strings filters.jsm
+
+
+## Strings filters.sys.mjs
 
 filter-folder-required = Bir hedef klasör seçmelisiniz.
 filter-term-pgpencrypted-label = OpenPGP ile şifrelenmiş
 filter-key-required = Bir alıcı anahtarı seçmelisiniz.
 # Variables:
 # $desc (String) - Email address to look for a key of.
-filter-key-not-found = '{ $desc }' için şifreleme anahtarı bulunamadı.
+filter-key-not-found = ‘{ $desc }’ için şifreleme anahtarı bulunamadı.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Kalıcı olarak şifresini çöz (OpenPGP)
 filter-decrypt-copy-label = Şifresi çözülmüş bir kopya oluştur (OpenPGP)
@@ -460,6 +505,7 @@ key-man-button-export-pub-key = Yalnızca &ortak anahtarları dışa aktar
 key-man-button-refresh-all = &Tüm anahtarları yenile
 key-man-loading-keys = Anahtarlar yükleniyor, lütfen bekleyin…
 ascii-armor-file = ASCII korumalı dosyalar (*.asc)
+text-file = Metin dosyaları (*.txt)
 no-key-selected = Seçilen işlemi gerçekleştirmek için en az bir anahtar seçmelisiniz
 export-to-file = Ortak anahtarı dosyaya aktar
 export-keypair-to-file = Gizli ve ortak anahtarı dosyaya aktar
@@ -487,6 +533,12 @@ openpgp-export-secret-fail = <b>Seçilen gizli anahtar dışa aktarılamadı.</b
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = { $userId } anahtarı (anahtar kimliği { $keyId }) iptal edildi.
 key-ring-pub-key-expired = { $userId } anahtarının (anahtar kimliği { $keyId }) süresi doldu.
 key-ring-no-secret-key = Anahtarlığınızda { $userId } (anahtar kimliği { $keyId }) için gizli anahtar yok. İmzalama için bu anahtarı kullanamazsınız.
@@ -499,10 +551,16 @@ key-ring-enc-sub-keys-expired = { $userId } anahtarının tüm şifreleme alt an
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Fotoğraf
 user-att-photo = Kullanıcı özniteliği (JPEG resmi)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Bu anahtar zaten iptal edilmiş.
 #   $keyId (String) - the id of the key being revoked
@@ -512,15 +570,21 @@ openpgp-key-revoke-success = Anahtar başarıyla iptal edildi.
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &İçe aktar
 delete-key-title = OpenPGP anahtarını sil
 delete-external-key-title = Harici GnuPG anahtarını çıkar
 delete-external-key-description = Bu harici GnuPG anahtar kimliğini kaldırmak istiyor musunuz?
 key-in-use-title = Şu anda kullanılan OpenPGP anahtarı
-delete-key-in-use-description = Devam edilemiyor! Silmek için seçtiğiniz anahtar şu anda bu kimlik tarafından kullanılıyor. Farklı bir anahtar seçip ya da hiçbirini seçip tekrar deneyin.
-revoke-key-in-use-description = Devam edilemiyor! İptal için seçtiğiniz anahtar şu anda bu kimlik tarafından kullanılıyor. Farklı bir anahtar seçip ya da hiçbirini seçip tekrar deneyin.
+delete-key-in-use-description = Devam edilemiyor! Silmek için seçtiğiniz anahtar şu anda bu kimlik tarafından kullanılıyor. Farklı bir anahtar seçip ya da hiçbirini seçip yeniden deneyin.
+revoke-key-in-use-description = Devam edilemiyor! İptal için seçtiğiniz anahtar şu anda bu kimlik tarafından kullanılıyor. Farklı bir anahtar seçip ya da hiçbirini seçip yeniden deneyin.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -532,18 +596,33 @@ key-error-not-accepted-as-personal = '{ $keySpec }' kimliğine sahip anahtarın 
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
-need-online = Seçtiğiniz işlev çevrimdışı modda kullanılamaz. Lütfen çevrimiçi olun ve tekrar deneyin.
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
+need-online = Seçtiğiniz işlev çevrimdışı modda kullanılamaz. Lütfen çevrimiçi olup yeniden deneyin.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Belirtilen arama ölçütleriyle eşleşen kullanılabilir bir anahtar bulamadık.
 no-update-found = Çevrimiçi keşfedilmiş anahtarlara zaten sahipsiniz.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs & GnuPGCryptoAPI.sys.mjs
+
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Hata - Anahtar çıkarma komutu başarısız oldu
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Hata - Anahtar alımı kullanıcı tarafından iptal edildi
 not-first-block = Hata - İlk OpenPGP bloku ortak anahtar bloku değil
@@ -556,6 +635,10 @@ no-pgp-block = Hata - Geçerli bir zırhlı OpenPGP veri bloku bulunamadı
 confirm-permissive-import = İçe aktarma başarısız oldu. İçe aktarmaya çalıştığınız anahtar bozuk veya bilinmeyen öznitelikler kullanıyor olabilir. Düzgün görünen kısımları içe aktarmayı denemek ister misiniz? Bu, eksik ve kullanılamaz anahtarların içe aktarılmasına neden olabilir.
 
 ## Strings used in trust.jsm
+
+help-button = Yardım
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = bilinmiyor
 key-valid-invalid = geçersiz
@@ -598,7 +681,7 @@ expiry-too-short = Anahtarınız en az bir gün geçerli olmalıdır.
 expiry-too-long = Süresi 100 yıldan fazla olan bir anahtar oluşturamazsınız.
 # Variables:
 # $id (String) - Name and/or email address to generate keys for.
-key-confirm = '{ $id }' için ortak ve gizli anahtar oluşturulsun mu?
+key-confirm = ‘{ $id }’ için ortak ve gizli anahtar oluşturulsun mu?
 key-man-button-generate-key = Anahtar &oluştur
 key-abort = Anahtar üretimi iptal edilsin mi?
 key-man-button-generate-key-abort = Anahtar üretmeyi &iptal et
@@ -610,10 +693,10 @@ failed-decrypt = Hata - şifre çözme başarısız oldu
 fix-broken-exchange-msg-failed = Bu ileti onarılamadı.
 # Variables:
 # $attachment (String) - File name of the signature file.
-attachment-no-match-from-signature = '{ $attachment }' imza dosyası bir ekle eşleştirilemedi
+attachment-no-match-from-signature = ‘{ $attachment }’ imza dosyası bir ekle eşleştirilemedi
 # Variables:
 # $attachment (String) - File name of the attachment.
-attachment-no-match-to-signature = '{ $attachment }' eki ile imza dosyası eşleştirilemedi
+attachment-no-match-to-signature = ‘{ $attachment }’ eki ile imza dosyası eşleştirilemedi
 # Variables:
 # $attachment (String) - File name of the attachment
 signature-verified-ok = { $attachment } ekinin imzası başarıyla doğrulandı
@@ -637,13 +720,13 @@ send-aborted = Gönderme işlemi iptal edildi.
 key-not-trusted = ‘{ $key }’ anahtarı için güven yetersiz
 # Variables:
 # $key (String) - Key id.
-key-not-found = '{ $key }' anahtarı bulunamadı
+key-not-found = ‘{ $key }’ anahtarı bulunamadı
 # Variables:
 # $key (String) - Key id.
-key-revoked = '{ $key }' anahtarı iptal edildi
+key-revoked = ‘{ $key }’ anahtarı iptal edildi
 # Variables:
 # $key (String) - Key id.
-key-expired = '{ $key }' anahtarının süresi doldu
+key-expired = ‘{ $key }’ anahtarının süresi doldu
 msg-compose-internal-error = Dahili bir hata oluştu.
 keys-to-export = Eklenecek OpenPGP anahtarlarını seçin
 msg-compose-cannot-save-draft = Taslak kaydedilirken hata oluştu
@@ -657,6 +740,7 @@ sending-news =
     Şifrelenmiş gönderme işlemi iptal edildi.
     Alıcılar arasında haber grubu alıcıları olduğu için bu ileti şifrelenemez. Lütfen iletiyi şifrelemeden tekrar gönderin.
 save-attachment-header = Şifresi çözülmüş eki kaydet
+possibly-pgp-mime = Büyük olasılıkla PGP/MIME şifreli veya imzalı ileti. Doğrulamak için ‘Şifreyi çöz/Doğrula’ işlevini kullanın
 # Variables:
 # $key (String) - Sender email address.
 cannot-send-sig-because-no-own-key = <{ $key }> için uçtan uca şifrelemeyi henüz yapılandırmadığınız için bu iletiyi dijital olarak imzalayamazsınız
@@ -665,6 +749,9 @@ cannot-send-sig-because-no-own-key = <{ $key }> için uçtan uca şifrelemeyi he
 cannot-send-enc-because-no-own-key = <{ $key }> anahtarı için uçtan uca şifrelemeyi henüz yapılandırmadığınız için bu ileti şifrelenmiş olarak gönderilemiyor
 
 ## Strings used in decryption.jsm
+
+
+## Strings used in decryption.sys.mjs
 
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
@@ -689,14 +776,20 @@ dlg-button-view = &Göster
 
 ## Strings used in encryption.jsm
 
+
+## Strings used in encryption.sys.mjs
+
 not-required = Hata - şifreleme gerekmiyor
 
 ## Strings used in windows.jsm
 
+
+## Strings used in windows.sys.mjs
+
 no-photo-available = Fotoğraf yok
 # Variables:
 # $photo (String) - Path of the photo in the key.
-error-photo-path-not-readable = '{ $photo }' fotoğraf yolu okunamıyor
+error-photo-path-not-readable = ‘{ $photo }’ fotoğraf yolu okunamıyor
 debug-log-title = OpenPGP hata ayıklama günlüğü
 
 ## Strings used in dialog.jsm
@@ -710,6 +803,9 @@ repeat-suffix-singular = kere daha tekrarlanacak.
 repeat-suffix-plural = kere daha tekrarlanacak.
 no-repeat = Bu uyarı bir daha gösterilmeyecek.
 dlg-keep-setting = Yanıtımı hatırla ve bir daha sorma
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &Tamam
 dlg-button-close = &Kapat
 dlg-button-cancel = &Vazgeç
@@ -720,6 +816,9 @@ enig-alert = OpenPGP Uyarısı
 enig-info = OpenPGP Bilgilendirmesi
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = &Yeniden dene
 dlg-button-skip = &Geç

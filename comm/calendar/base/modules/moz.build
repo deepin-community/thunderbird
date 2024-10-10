@@ -29,8 +29,7 @@ EXTRA_JS_MODULES.calendar.utils += [
 EXTRA_JS_MODULES.calendar += [
     "calCalendarDeactivator.sys.mjs",
     "calExtract.sys.mjs",
-    "calHashedArray.sys.mjs",
     "calRecurrenceUtils.sys.mjs",
     "calUtils.sys.mjs",
-    "Ical.jsm",
+    "Ical.sys.mjs",
 ]

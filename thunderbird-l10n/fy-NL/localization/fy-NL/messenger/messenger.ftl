@@ -212,6 +212,21 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Trochstjoere en omliede
     .accesskey = T
+mail-context-menu-forward-forward =
+    .label = Trochstjoere
+    .accesskey = s
+mail-context-menu-forward-inline =
+    .label = Inline
+    .accesskey = I
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] As bylage
+           *[other] As bylagen
+        }
+    .accesskey = b
 mail-context-menu-organize =
     .label = Oarderje
     .accesskey = O

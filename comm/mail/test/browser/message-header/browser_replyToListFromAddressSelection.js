@@ -10,15 +10,15 @@
 
 var { close_compose_window, open_compose_with_reply_to_list } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+    "resource://testing-common/mail/ComposeHelpers.sys.mjs"
   );
 var { assert_selected_and_displayed, be_in_folder, select_click_row } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+    "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
   );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 var testFolder = null;
@@ -35,7 +35,6 @@ function addMessageToFolder(aFolder) {
   var msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   var source =
-    "From - Sat Nov  1 12:39:54 2008\n" +
     "X-Mozilla-Status: 0001\n" +
     "X-Mozilla-Status2: 00000000\n" +
     "Delivered-To: <tinderbox_identity333@foo.invalid>\n" +

@@ -20,9 +20,8 @@ add_setup(async function () {
   book.addCard(emily);
 
   felix = new AddrBookCard();
-  felix.displayName = "Felix's Flower Co.";
+  felix.displayName = "";
   felix.primaryEmail = "felix@flowers.invalid";
-  felix.setPropertyAsBool("PreferDisplayName", false);
   book.addCard(felix);
 
   const generator = new MessageGenerator();
@@ -34,6 +33,7 @@ add_setup(async function () {
     await ensure_cards_view();
     book.deleteCards(book.childCards);
     MailServices.accounts.removeAccount(account, false);
+    Services.prefs.clearUserPref("mail.addressDisplayFormat");
   });
 
   const rootFolder = account.incomingServer.rootFolder.QueryInterface(
@@ -108,7 +108,7 @@ add_task(async function () {
   );
   Assert.equal(
     row.querySelector(".recipientcol-column").textContent,
-    "Felix Flowers",
+    "Felix Flowers <felix@flowers.invalid>",
     "initial state of Recipient column"
   );
   Assert.equal(
@@ -175,21 +175,21 @@ add_task(async function () {
     "From multi-line address should not change"
   );
 
-  // Stop preferring Emily's display name.
+  // Remove Emily's display name.
 
-  emily.setPropertyAsBool("PreferDisplayName", false);
+  emily.displayName = "";
   book.modifyCard(emily);
 
   row = about3Pane.threadTree.getRowAtIndex(2);
   Assert.equal(
     row.querySelector(".correspondentcol-column").textContent,
-    "Emily Ekberg",
-    "Correspondent column should be the name from the header"
+    "Emily Ekberg <emily@ekberg.invalid>",
+    "Correspondent column should be the full name and email address"
   );
   Assert.equal(
     row.querySelector(".sendercol-column").textContent,
-    "Emily Ekberg",
-    "Sender column should be the name from the header"
+    "Emily Ekberg <emily@ekberg.invalid>",
+    "Sender column should be the full name and email address"
   );
   Assert.equal(
     fromSingleLine.textContent,
@@ -212,9 +212,9 @@ add_task(async function () {
     "From multi-line address should not change"
   );
 
-  // Prefer Emily's display name.
+  // Set Emily's display name.
 
-  emily.setPropertyAsBool("PreferDisplayName", true);
+  emily.displayName = "I'm Emily!";
   book.modifyCard(emily);
 
   row = about3Pane.threadTree.getRowAtIndex(2);
@@ -249,9 +249,9 @@ add_task(async function () {
     "From multi-line address should not change"
   );
 
-  // Prefer Felix's display name.
+  // Set Felix's display name.
 
-  felix.setPropertyAsBool("PreferDisplayName", true);
+  felix.displayName = "Felix's Flower Co.";
   book.modifyCard(felix);
 
   row = about3Pane.threadTree.getRowAtIndex(2);
@@ -271,16 +271,16 @@ add_task(async function () {
     "To single-line title should match the header"
   );
 
-  // Stop preferring Felix's display name.
+  // Clear Felix's display name.
 
-  felix.setPropertyAsBool("PreferDisplayName", false);
+  felix.displayName = "";
   book.modifyCard(felix);
 
   row = about3Pane.threadTree.getRowAtIndex(2);
   Assert.equal(
     row.querySelector(".recipientcol-column").textContent,
-    "Felix Flowers",
-    "Recipient column should be the name from the header"
+    "Felix Flowers <felix@flowers.invalid>",
+    "Recipient column should be the full name and address"
   );
   Assert.equal(
     toSingleLine.textContent,
@@ -293,9 +293,9 @@ add_task(async function () {
     "To single-line title should be cleared"
   );
 
-  // Prefer Felix's display name.
+  // Set Felix's display name.
 
-  felix.setPropertyAsBool("PreferDisplayName", true);
+  felix.displayName = "Felix's Flower Co.";
   book.modifyCard(felix);
 
   // Set global prefer display name preference to false.
@@ -322,13 +322,13 @@ add_task(async function () {
   row = about3Pane.threadTree.getRowAtIndex(2);
   Assert.equal(
     row.querySelector(".correspondentcol-column").textContent,
-    "Emily Ekberg",
-    "Correspondent column should be the name from the header"
+    "Emily Ekberg <emily@ekberg.invalid>",
+    "Correspondent column should be the full name and address"
   );
   Assert.equal(
     row.querySelector(".sendercol-column").textContent,
-    "Emily Ekberg",
-    "Sender column should be the name from the header"
+    "Emily Ekberg <emily@ekberg.invalid>",
+    "Sender column should be the full name and address"
   );
   Assert.equal(
     fromSingleLine.textContent,
@@ -352,8 +352,8 @@ add_task(async function () {
   );
   Assert.equal(
     row.querySelector(".recipientcol-column").textContent,
-    "Felix Flowers",
-    "Recipient column should be the name from the header"
+    "Felix Flowers <felix@flowers.invalid>",
+    "Recipient column should be the full name and address"
   );
   Assert.equal(
     toSingleLine.textContent,
@@ -434,25 +434,54 @@ add_task(async function () {
     "To single-line title should match the header"
   );
 
-  // Restore the default for Felix.
+  // Test addresses not in address book respecting the
+  // `mail.addressDisplayFormat` preference and that the
+  // `mail.showCondensedAddresses` is ignored since these addresses are not
+  // saved in the address book.
+  threadTree.selectedIndex = 3;
+  await BrowserTestUtils.browserLoaded(messagePaneBrowser);
 
-  felix.deleteProperty("PreferDisplayName");
-  book.modifyCard(felix);
-
-  row = about3Pane.threadTree.getRowAtIndex(2);
+  row = about3Pane.threadTree.getRowAtIndex(3);
   Assert.equal(
-    row.querySelector(".recipientcol-column").textContent,
-    "Felix's Flower Co.",
-    "Recipient column should be the display name"
+    row.querySelector(".correspondentcol-column").textContent,
+    "Gillian Gilbert <gillian@gilbert.invalid>",
+    "Correspondent column should be the full name and email address"
   );
   Assert.equal(
-    toSingleLine.textContent,
-    "Felix's Flower Co.",
-    "To single-line label should be the display name"
+    row.querySelector(".sendercol-column").textContent,
+    "Gillian Gilbert <gillian@gilbert.invalid>",
+    "Sender column should be the full name and email address"
+  );
+
+  // Prefer email only. Changing the preference causes the message to reload.
+  Services.prefs.setIntPref("mail.addressDisplayFormat", 1);
+  await BrowserTestUtils.browserLoaded(messagePaneBrowser);
+
+  row = about3Pane.threadTree.getRowAtIndex(3);
+  Assert.equal(
+    row.querySelector(".correspondentcol-column").textContent,
+    "gillian@gilbert.invalid",
+    "Correspondent column should be the email address"
   );
   Assert.equal(
-    toSingleLine.title,
-    "Felix Flowers <felix@flowers.invalid>",
-    "To single-line title should match the header"
+    row.querySelector(".sendercol-column").textContent,
+    "gillian@gilbert.invalid",
+    "Sender column should be the email address"
+  );
+
+  // Prefer name only. Changing the preference causes the message to reload.
+  Services.prefs.setIntPref("mail.addressDisplayFormat", 2);
+  await BrowserTestUtils.browserLoaded(messagePaneBrowser);
+
+  row = about3Pane.threadTree.getRowAtIndex(3);
+  Assert.equal(
+    row.querySelector(".correspondentcol-column").textContent,
+    "Gillian Gilbert",
+    "Correspondent column should be the name"
+  );
+  Assert.equal(
+    row.querySelector(".sendercol-column").textContent,
+    "Gillian Gilbert",
+    "Sender column should be the name"
   );
 });

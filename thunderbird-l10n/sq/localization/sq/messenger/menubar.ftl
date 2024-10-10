@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Eksploroni Veçori
     .accesskey = E
+menu-help-get-release-help =
+    .label = Merrni Ndihmë për { -brand-short-name }
+    .accesskey = R
 menu-help-shortcuts =
     .label = Shkurtore Tastiere
     .accesskey = S
@@ -65,6 +68,12 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Dilni prej { -brand-shorter-name }-it
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Dilni nga { -brand-full-name }-i
+           *[other] Mbylle { -brand-full-name }-in
+        }
 # Localization note: Do not translate unless your locale's keyboard layout
 # does not include this key, as it determines the keyboard shortcut for
 # shutting down the application.
@@ -130,6 +139,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Llogari Email…
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Llogari Grupi Lajmesh…
     .accesskey = L

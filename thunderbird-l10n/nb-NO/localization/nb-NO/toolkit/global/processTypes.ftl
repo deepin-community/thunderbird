@@ -17,6 +17,8 @@ process-type-privilegedmozilla = Privilegert Mozilla-innhold
 process-type-extension = Utvidelse
 # process used to open file:// URLs
 process-type-file = Lokal fil
+# process used to instantiate new child processes
+process-type-forkserver = Fork-server
 # process used to isolate a webpage from other web pages
 # to improve security
 process-type-webisolated = Isolert nettinnhold
@@ -39,6 +41,8 @@ process-type-gpu = GPU
 process-type-socket = Socket
 # process used to decode media
 process-type-rdd = RDD
+# process used to run inference
+process-type-inference = Inferens
 # process used to run some IPC actor in their own sandbox
 process-type-utility = Isolert IPC-aktør
 process-type-utility-actor-audio-decoder-generic = Verktøy generisk lyddekoder

@@ -14,6 +14,8 @@ perftools-intro-title = Postavke profiliranja
 perftools-heading-settings = Potpune postavke
 perftools-heading-buffer = Postavke međuspremnika
 perftools-heading-features = Funkcije
+perftools-heading-features-disabled = Deaktivirane funkcije
+perftools-heading-features-experimental = Eksperimentalno
 
 ##
 
@@ -27,6 +29,8 @@ perftools-devtools-settings-label = Postavke
 
 ## Various statuses that affect the current state of profiling, not typically displayed.
 
+perftools-status-recording-stopped-by-another-tool = Jedan drugi alat je zaustavio snimanje.
+perftools-status-restart-required = Za aktiviranje ove funkcije preglednik se mora ponovo pokrenuti.
 
 ## These are shown briefly when the user is waiting for the profiler to respond.
 
@@ -35,17 +39,19 @@ perftools-request-to-get-profile-and-stop-profiler = Snimanje profila
 
 ##
 
-perftools-button-start-recording = Pokreni snimanje
+perftools-button-start-recording = Počni snimati
 perftools-button-capture-recording = Snimi snimku
 perftools-button-cancel-recording = Zaustavi snimanje
 perftools-button-save-settings = Spremi postavke i idi natrag
-perftools-button-restart = Ponovno pokreni
+perftools-button-restart = Pokreni ponovo
 perftools-button-add-directory = Dodaj mapu
 perftools-button-remove-directory = Ukloni odabrano
 perftools-button-edit-settings = Uredi postavke…
 
 ## These messages are descriptions of the threads that can be enabled for the profiler.
 
+perftools-thread-compositor =
+    .title = Spaja različite obojene elemente na stranici
 
 ##
 
@@ -58,13 +64,14 @@ perftools-button-edit-settings = Uredi postavke…
 
 
 # Presets and their l10n IDs are defined in the file
-# devtools/client/performance-new/popup/background.jsm.js
+# devtools/client/performance-new/shared/background.jsm.js
 # The same labels and descriptions are also defined in appmenu.ftl.
 
 
 # Presets and their l10n IDs are defined in the file
-# devtools/client/performance-new/shared/background.jsm.js
+# devtools/client/performance-new/shared/background.sys.mjs
 # The same labels and descriptions are also defined in appmenu.ftl.
+
 
 ##
 

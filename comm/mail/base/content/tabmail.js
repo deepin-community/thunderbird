@@ -30,7 +30,7 @@ ChromeUtils.defineESModuleGetters(this, {
 
       this.tabmail = document.getElementById("tabmail");
 
-      this._mutationObserver = new MutationObserver((records, observer) => {
+      this._mutationObserver = new MutationObserver(records => {
         records.forEach(mutation => {
           const menuItem = mutation.target.mCorrespondingMenuitem;
           if (menuItem) {
@@ -39,7 +39,7 @@ ChromeUtils.defineESModuleGetters(this, {
         });
       });
 
-      this.addEventListener("popupshowing", event => {
+      this.addEventListener("popupshowing", () => {
         // Set up the menu popup.
         const tabcontainer = this.tabmail.tabContainer;
         const tabs = tabcontainer.allTabs;
@@ -64,7 +64,7 @@ ChromeUtils.defineESModuleGetters(this, {
         this._updateTabsVisibilityStatus();
       });
 
-      this.addEventListener("popuphiding", event => {
+      this.addEventListener("popuphiding", () => {
         // Clear out the menu popup and remove the listeners.
         while (this.hasChildNodes()) {
           const menuItem = this.lastElementChild;
@@ -942,6 +942,8 @@ ChromeUtils.defineESModuleGetters(this, {
 
         if (!background) {
           this.setDocumentTitle(tab);
+          // Force layout to happen so that it doesn't happen after "TabOpen".
+          this.panelContainer.selectedPanel.getBoundingClientRect();
           // Move the focus on the newly selected tab.
           this.panelContainer.selectedPanel.focus();
         }
@@ -1455,7 +1457,7 @@ ChromeUtils.defineESModuleGetters(this, {
      * @type {?Window}
      */
     get currentAbout3Pane() {
-      if (this.currentTabInfo.mode.name == "mail3PaneTab") {
+      if (this.currentTabInfo?.mode.name == "mail3PaneTab") {
         return this.currentTabInfo.chromeBrowser.contentWindow;
       }
       return null;
@@ -1862,7 +1864,7 @@ ChromeUtils.defineESModuleGetters(this, {
     }
 
     // Called by <browser>, unused by tabmail.
-    finishBrowserRemotenessChange(browser, loadSwitchId) {}
+    finishBrowserRemotenessChange() {}
 
     /**
      * Returns the find bar for a tab.

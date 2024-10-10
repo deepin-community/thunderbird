@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hsb@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Hornjoserbšćina (Upper Sorbian)",
   "description": "Thunderbird Language Pack for Hornjoserbšćina (hsb) – Upper Sorbian",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "hsb": {
-      "version": "20240423195806",
+      "version": "20240930174727",
       "chrome_resources": {
         "alerts": "chrome/hsb/locale/hsb/alerts/",
         "autoconfig": "chrome/hsb/locale/hsb/autoconfig/",
         "branding": "chrome/hsb/locale/branding/",
         "calendar": "chrome/hsb/locale/hsb/calendar/",
-        "chat": "chrome/hsb/locale/hsb/chat/",
         "communicator": "chrome/hsb/locale/hsb/communicator/",
         "devtools": "chrome/hsb/locale/hsb/devtools/client/",
         "devtools-shared": "chrome/hsb/locale/hsb/devtools/shared/",

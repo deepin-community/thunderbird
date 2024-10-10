@@ -4,12 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsMsgCompose.h"
+#include "MailNewsTypes.h"
 #include "mozilla/dom/Document.h"
 #include "nsPIDOMWindow.h"
 #include "mozIDOMWindow.h"
+#include "nsIMsgMessageService.h"
 #include "nsISelectionController.h"
 #include "nsMsgI18N.h"
-#include "nsMsgQuote.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsIDocumentEncoder.h"  // for editor output flags
@@ -19,8 +20,7 @@
 #include "nsMailHeaders.h"
 #include "nsMsgPrompts.h"
 #include "nsMimeTypes.h"
-#include "nsICharsetConverterManager.h"
-#include "nsTextFormatter.h"
+#include "mozilla/Encoding.h"
 #include "nsIHTMLEditor.h"
 #include "nsIEditor.h"
 #include "plstr.h"
@@ -31,7 +31,6 @@
 #include "nsIDocShellTreeItem.h"
 #include "nsIDocShellTreeOwner.h"
 #include "nsIWindowMediator.h"
-#include "nsIURL.h"
 #include "mozilla/intl/AppDateTimeFormat.h"
 #include "nsIMsgComposeService.h"
 #include "nsIMsgComposeProgressParams.h"
@@ -49,7 +48,6 @@
 #include "nsMsgFolderFlags.h"
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgDatabase.h"
-#include "nsStringStream.h"
 #include "nsArrayUtils.h"
 #include "nsIMsgWindow.h"
 #include "nsITextToSubURI.h"
@@ -65,7 +63,8 @@
 #include "mozilla/dom/HTMLAnchorElement.h"
 #include "mozilla/dom/HTMLImageElement.h"
 #include "mozilla/dom/Selection.h"
-#include "mozilla/dom/Promise-inl.h"
+#include "mozilla/dom/Promise.h"
+#include "mozilla/dom/Promise-inl.h"  // IWYU pragma: keep
 #include "mozilla/Utf8.h"
 #include "nsStreamConverter.h"
 #include "nsIObserverService.h"
@@ -232,7 +231,7 @@ bool nsMsgCompose::IsEmbeddedObjectSafe(const char* originalScheme,
                                         Element* element) {
   nsresult rv;
 
-  nsAutoString objURL;
+  nsAutoCString objURL;
 
   if (!originalScheme || !originalPath)  // Having a null host is OK.
     return false;
@@ -240,12 +239,15 @@ bool nsMsgCompose::IsEmbeddedObjectSafe(const char* originalScheme,
   RefPtr<HTMLImageElement> image = HTMLImageElement::FromNode(element);
   RefPtr<HTMLAnchorElement> anchor = HTMLAnchorElement::FromNode(element);
 
-  if (image)
-    image->GetSrc(objURL);
-  else if (anchor)
+  if (image) {
+    nsAutoString src;
+    image->GetSrc(src);
+    objURL = NS_ConvertUTF16toUTF8(src);
+  } else if (anchor) {
     anchor->GetHref(objURL);
-  else
+  } else {
     return false;
+  }
 
   if (!objURL.IsEmpty()) {
     nsCOMPtr<nsIURI> uri;
@@ -776,13 +778,6 @@ nsMsgCompose::ConvertAndLoadComposeWindow(nsString& aPrefix, nsString& aBuf,
   htmlEditor->EnableUndo(true);
   SetBodyModified(false);
 
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-  nsCOMPtr<nsIMsgComposeService> composeService(
-      do_GetService("@mozilla.org/messengercompose;1"));
-  composeService->TimeStamp(
-      "Finished inserting data into the editor. The window is finally ready!",
-      false);
-#endif
   return NS_OK;
 }
 
@@ -1580,7 +1575,7 @@ nsresult nsMsgCompose::CreateMessage(const nsACString& originalMsgURI,
     rv = GetMsgDBHdrFromURI(msgUri, getter_AddRefs(msgHdr));
     if (NS_SUCCEEDED(rv)) {
       nsAutoCString messageId;
-      msgHdr->GetMessageId(getter_Copies(messageId));
+      msgHdr->GetMessageId(messageId);
 
       nsAutoCString reference;
       // When forwarding we only use the original message for "References:" -
@@ -1600,7 +1595,7 @@ nsresult nsMsgCompose::CreateMessage(const nsACString& originalMsgURI,
         }
         reference.Trim(" ", false, true);
       }
-      msgHdr->GetMessageId(getter_Copies(messageId));
+      msgHdr->GetMessageId(messageId);
       reference.Append('<');
       reference.Append(messageId);
       reference.Append('>');
@@ -1754,7 +1749,7 @@ nsresult nsMsgCompose::CreateMessage(const nsACString& originalMsgURI,
         case nsIMsgCompType::ForwardAsAttachment: {
           // Add the forwarded message in the references, first
           nsAutoCString messageId;
-          msgHdr->GetMessageId(getter_Copies(messageId));
+          msgHdr->GetMessageId(messageId);
           if (isFirstPass) {
             nsAutoCString reference;
             reference.Append('<');
@@ -1831,7 +1826,7 @@ nsresult nsMsgCompose::CreateMessage(const nsACString& originalMsgURI,
           // For a redirect, set the Reply-To: header to what was in the
           // original From: header...
           nsAutoCString author;
-          msgHdr->GetAuthor(getter_Copies(author));
+          msgHdr->GetAuthor(author);
           m_compFields->SetSubject(subject);
           m_compFields->SetReplyTo(author.get());
 
@@ -1847,7 +1842,7 @@ nsresult nsMsgCompose::CreateMessage(const nsACString& originalMsgURI,
           // will work when the new recipient eventually replies to the
           // original sender.
           nsAutoCString messageId;
-          msgHdr->GetMessageId(getter_Copies(messageId));
+          msgHdr->GetMessageId(messageId);
           if (isFirstPass) {
             nsAutoCString reference;
             reference.Append('<');
@@ -1922,14 +1917,14 @@ NS_IMETHODIMP nsMsgCompose::GetOriginalMsgURI(nsACString& originalMsgURI) {
 QuotingOutputStreamListener::~QuotingOutputStreamListener() {}
 
 QuotingOutputStreamListener::QuotingOutputStreamListener(
-    nsIMsgDBHdr* originalMsgHdr, bool quoteHeaders, bool headersOnly,
+    nsIMsgDBHdr* origMsgHdr, bool quoteHeaders, bool headersOnly,
     nsIMsgIdentity* identity, nsIMsgQuote* msgQuote, bool quoteOriginal,
     const nsACString& htmlToQuote) {
   nsresult rv;
   mQuoteHeaders = quoteHeaders;
   mHeadersOnly = headersOnly;
   mIdentity = identity;
-  mOrigMsgHdr = originalMsgHdr;
+  mOrigMsgHdr = origMsgHdr;
   mUnicodeBufferCharacterLength = 0;
   mQuoteOriginal = quoteOriginal;
   mHtmlToQuote = htmlToQuote;
@@ -1947,10 +1942,10 @@ QuotingOutputStreamListener::QuotingOutputStreamListener(
         replyHeaderAuthorWroteOnDate, replyHeaderOriginalmessage);
 
     // For the built message body...
-    if (originalMsgHdr && !quoteHeaders) {
+    if (origMsgHdr && !quoteHeaders) {
       // Setup the cite information....
       nsCString myGetter;
-      if (NS_SUCCEEDED(originalMsgHdr->GetMessageId(getter_Copies(myGetter)))) {
+      if (NS_SUCCEEDED(origMsgHdr->GetMessageId(myGetter))) {
         if (!myGetter.IsEmpty()) {
           nsAutoCString buf;
           mCiteReference.AssignLiteral("mid:");
@@ -2004,7 +1999,7 @@ QuotingOutputStreamListener::QuotingOutputStreamListener(
 
         if (headerDate) {
           PRTime originalMsgDate;
-          rv = originalMsgHdr->GetDate(&originalMsgDate);
+          rv = origMsgHdr->GetDate(&originalMsgDate);
           if (NS_SUCCEEDED(rv)) {
             nsAutoString citeDatePart;
             if ((placeholderIndex = mCitePrefix.Find(u"#2")) != kNotFound) {
@@ -2030,7 +2025,7 @@ QuotingOutputStreamListener::QuotingOutputStreamListener(
 
         if ((placeholderIndex = mCitePrefix.Find(u"#1")) != kNotFound) {
           nsAutoCString author;
-          rv = originalMsgHdr->GetAuthor(getter_Copies(author));
+          rv = origMsgHdr->GetAuthor(author);
           if (NS_SUCCEEDED(rv)) {
             nsAutoString citeAuthor;
             ExtractName(EncodedHeader(author), citeAuthor);
@@ -2489,23 +2484,9 @@ QuotingOutputStreamListener::OnStopRequest(nsIRequest* request,
     }
   }
 
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-  nsCOMPtr<nsIMsgComposeService> composeService(
-      do_GetService("@mozilla.org/messengercompose;1"));
-  composeService->TimeStamp(
-      "Done with MIME. Now we're updating the UI elements", false);
-#endif
-
   if (mQuoteOriginal)
     compose->NotifyStateListeners(
         nsIMsgComposeNotificationType::ComposeFieldsReady, NS_OK);
-
-#ifdef MSGCOMP_TRACE_PERFORMANCE
-  composeService->TimeStamp(
-      "Addressing widget, window title and focus are now set, time to insert "
-      "the body",
-      false);
-#endif
 
   if (!mHeadersOnly) mMsgBody.AppendLiteral("</html>");
 
@@ -2885,7 +2866,7 @@ NS_IMETHODIMP nsMsgCompose::RememberQueuedDisposition() {
 
       nsCString messageId;
       mMsgSend->GetMessageId(messageId);
-      msgHdr->SetMessageId(messageId.get());
+      msgHdr->SetMessageId(messageId);
       if (!mOriginalMsgURI.IsEmpty()) {
         msgDB->SetAttributeOnPendingHdr(msgHdr, ORIG_URI_PROPERTY,
                                         mOriginalMsgURI.get());
@@ -2973,15 +2954,16 @@ NS_IMETHODIMP nsMsgCompose::OnStartSending(const char* aMsgID,
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgCompose::OnProgress(const char* aMsgID, uint32_t aProgress,
-                                       uint32_t aProgressMax) {
+NS_IMETHODIMP nsMsgCompose::OnSendProgress(const char* aMsgID,
+                                           uint32_t aProgress,
+                                           uint32_t aProgressMax) {
   nsTObserverArray<nsCOMPtr<nsIMsgSendListener>>::ForwardIterator iter(
       mExternalSendListeners);
   nsCOMPtr<nsIMsgSendListener> externalSendListener;
 
   while (iter.HasMore()) {
     externalSendListener = iter.GetNext();
-    externalSendListener->OnProgress(aMsgID, aProgress, aProgressMax);
+    externalSendListener->OnSendProgress(aMsgID, aProgress, aProgressMax);
   }
   return NS_OK;
 }
@@ -3104,14 +3086,14 @@ nsresult nsMsgComposeSendListener::OnStartSending(const char* aMsgID,
   return NS_OK;
 }
 
-nsresult nsMsgComposeSendListener::OnProgress(const char* aMsgID,
-                                              uint32_t aProgress,
-                                              uint32_t aProgressMax) {
+nsresult nsMsgComposeSendListener::OnSendProgress(const char* aMsgID,
+                                                  uint32_t aProgress,
+                                                  uint32_t aProgressMax) {
   nsresult rv;
   nsCOMPtr<nsIMsgSendListener> composeSendListener =
       do_QueryReferent(mWeakComposeObj, &rv);
   if (NS_SUCCEEDED(rv) && composeSendListener)
-    composeSendListener->OnProgress(aMsgID, aProgress, aProgressMax);
+    composeSendListener->OnSendProgress(aMsgID, aProgress, aProgressMax);
   return NS_OK;
 }
 

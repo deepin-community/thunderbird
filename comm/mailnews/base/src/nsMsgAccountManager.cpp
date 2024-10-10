@@ -11,21 +11,14 @@
 #include "nsISupports.h"
 #include "nsIThread.h"
 #include "nscore.h"
-#include "mozilla/Assertions.h"
-#include "mozilla/Likely.h"
-#include "mozilla/MemoryReporting.h"
-#include "mozilla/RefCountType.h"
 #include "mozilla/RefPtr.h"
 #include "nsIComponentManager.h"
-#include "nsIServiceManager.h"
 #include "nsMsgAccountManager.h"
 #include "prmem.h"
 #include "prcmon.h"
 #include "prthread.h"
 #include "plstr.h"
 #include "nsString.h"
-#include "nsMemory.h"
-#include "nsUnicharUtils.h"
 #include "nscore.h"
 #include "prprf.h"
 #include "nsIMsgFolderCache.h"
@@ -37,7 +30,7 @@
 #include "nsNetCID.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
-#include "nsISmtpService.h"
+#include "nsIMsgOutgoingServerService.h"
 #include "nsIMsgBiffManager.h"
 #include "nsIMsgPurgeService.h"
 #include "nsIObserverService.h"
@@ -50,6 +43,7 @@
 #include "nsIMsgFolderNotificationService.h"
 #include "nsIImapIncomingServer.h"
 #include "nsIImapUrl.h"
+#include "nsIURIMutator.h"
 #include "nsICategoryManager.h"
 #include "nsISupportsPrimitives.h"
 #include "nsIMsgFilterService.h"
@@ -541,15 +535,42 @@ nsMsgAccountManager::RemoveIncomingServer(nsIMsgIncomingServer* aServer,
   return rv;
 }
 
-/*
- * create a server when you know the key and the type
+/**
+ * Create a server when you know the key and the type
  */
 nsresult nsMsgAccountManager::createKeyedServer(
     const nsACString& key, const nsACString& username,
-    const nsACString& hostname, const nsACString& type,
+    const nsACString& hostnameIn, const nsACString& type,
     nsIMsgIncomingServer** aServer) {
   nsresult rv;
   *aServer = nullptr;
+
+  nsAutoCString hostname(hostnameIn);
+  if (hostname.Equals("Local Folders") || hostname.Equals("smart mailboxes")) {
+    // Allow these special hostnames, but only for "none" servers.
+    if (type != "none") {
+      return NS_ERROR_MALFORMED_URI;
+    }
+  } else if (hostname.Equals("Local%20Folders") ||
+             hostname.Equals("smart%20mailboxes")) {
+    // Don't allow these %-encoded special hostnames.
+    return NS_ERROR_MALFORMED_URI;
+  } else {
+    // Check the hostname is valid.
+    nsAutoCString unused;
+    rv = NS_DomainToASCII(hostname, unused);
+    if (NS_SUCCEEDED(rv)) {
+      nsCOMPtr<nsIURL> url;
+      rv = NS_MutateURI(NS_STANDARDURLMUTATOR_CONTRACTID)
+               .SetSpec("imap://"_ns + hostname)
+               .Finalize(url);
+    }
+    if (NS_FAILED(rv)) {
+      // In case of failure, use a <key>.invalid hostname instead
+      // so that access to the account is not lost.
+      hostname = key + ".invalid"_ns;
+    }
+  }
 
   // construct the contractid
   nsAutoCString serverContractID("@mozilla.org/messenger/server;1?type=");
@@ -1852,7 +1873,6 @@ nsresult nsMsgAccountManager::findServerInternal(
     NS_ADDREF(*aResult = m_lastFindServerResult);
     return NS_OK;
   }
-
   nsresult rv;
   nsCString hostname;
   bool isAscii;
@@ -1860,6 +1880,8 @@ nsresult nsMsgAccountManager::findServerInternal(
       do_GetService("@mozilla.org/network/idn-service;1");
   rv = idnService->ConvertToDisplayIDN(serverHostname, &isAscii, hostname);
   NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsIIOService> ioService = mozilla::components::IO::Service();
+  NS_ENSURE_TRUE(ioService, NS_ERROR_UNEXPECTED);
 
   for (auto iter = m_incomingServers.Iter(); !iter.Done(); iter.Next()) {
     // Find matching server by user+host+type+port.
@@ -1871,18 +1893,25 @@ nsresult nsMsgAccountManager::findServerInternal(
     rv = server->GetHostName(thisHostname);
     if (NS_FAILED(rv)) continue;
 
+    // If the hostname will get normalized during URI mutation.
+    // E.g. for IP with trailing dot, or hostname that's just a number.
+    // We may well be here in findServerInternal to find a server from a folder
+    // URI. We need to use the normalized version to find the server.
+    // Create an imap url to see what it's normalized to. The normalization
+    // is the same for all protocols.
+    nsCOMPtr<nsIURL> url;
+    rv = NS_MutateURI(NS_STANDARDURLMUTATOR_CONTRACTID)
+             .SetSpec("imap://"_ns + thisHostname)
+             .Finalize(url);
+    if (NS_SUCCEEDED(rv)) {
+      // Notably, this will fail for "Local Folders" which isn't a valid
+      // hostname.
+      rv = url->GetHost(thisHostname);
+      if (NS_FAILED(rv)) continue;
+    }
+
     rv = idnService->ConvertToDisplayIDN(thisHostname, &isAscii, thisHostname);
     if (NS_FAILED(rv)) continue;
-
-    // If the hostname was a IP with trailing dot, that dot gets removed
-    // during URI mutation. We may well be here in findServerInternal to
-    // find a server from a folder URI. Remove the trailing dot so we can
-    // find the server.
-    nsCString thisHostnameNoDot(thisHostname);
-    if (!thisHostname.IsEmpty() &&
-        thisHostname.CharAt(thisHostname.Length() - 1) == '.') {
-      thisHostnameNoDot.Cut(thisHostname.Length() - 1, 1);
-    }
 
     nsCString thisUsername;
     rv = server->GetUsername(thisUsername);
@@ -1905,9 +1934,7 @@ nsresult nsMsgAccountManager::findServerInternal(
     // attribute treat it as a match
     if ((type.IsEmpty() || thisType.Equals(type)) &&
         (hostname.IsEmpty() ||
-         thisHostname.Equals(hostname, nsCaseInsensitiveCStringComparator) ||
-         thisHostnameNoDot.Equals(hostname,
-                                  nsCaseInsensitiveCStringComparator)) &&
+         thisHostname.Equals(hostname, nsCaseInsensitiveCStringComparator)) &&
         (!(port != 0) || (port == thisPort)) &&
         (username.IsEmpty() || thisUsername.Equals(username))) {
       // stop on first find; cache for next time

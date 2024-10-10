@@ -2,10 +2,9 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 #include "nsCOMPtr.h"
 #include <stdio.h>
-#include "mimecom.h"
-#include "modmimee.h"
 #include "nscore.h"
 #include "nsStreamConverter.h"
 #include "prmem.h"
@@ -15,10 +14,7 @@
 #include "mimemoz2.h"
 #include "nsMimeTypes.h"
 #include "nsString.h"
-#include "nsUnicharUtils.h"
-#include "nsMemory.h"
 #include "nsIPipe.h"
-#include "nsMimeStringResources.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsNetUtil.h"
@@ -27,7 +23,6 @@
 #include "mozITXTToHTMLConv.h"
 #include "nsIMsgMailNewsUrl.h"
 #include "nsINntpUrl.h"
-#include "nsIMsgWindow.h"
 #include "nsICategoryManager.h"
 #include "nsMsgUtils.h"
 #include "mozilla/ArrayUtils.h"
@@ -732,8 +727,7 @@ nsresult nsStreamConverter::OnDataAvailable(nsIRequest* request,
   char* endPtr = buf + readLen;
 
   // First let see if the stream contains null characters
-  for (readPtr = buf; readPtr < endPtr && *readPtr; readPtr++)
-    ;
+  for (readPtr = buf; readPtr < endPtr && *readPtr; readPtr++);
 
   // Did we find a null character? Then, we need to cleanup the stream
   if (readPtr < endPtr) {
@@ -771,14 +765,6 @@ nsresult nsStreamConverter::OnDataAvailable(nsIRequest* request,
 // called only once, at the beginning of a URL load.
 //
 nsresult nsStreamConverter::OnStartRequest(nsIRequest* request) {
-#ifdef DEBUG_rhp
-  printf("nsStreamConverter::OnStartRequest()\n");
-#endif
-
-#ifdef DEBUG_mscott
-  mConvertContentTime = PR_IntervalNow();
-#endif
-
   // here's a little bit of hackery....
   // since the mime converter is now between the channel
   // and the
@@ -941,6 +927,11 @@ NS_IMETHODIMP nsStreamConverter::FirePendingStartRequest() {
     mPendingRequest = nullptr;
   }
   return NS_OK;
+}
+
+NS_IMETHODIMP
+nsStreamConverter::MaybeRetarget(nsIRequest* request) {
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP nsStreamConverter::GetConvertedType(const nsACString& aFromType,

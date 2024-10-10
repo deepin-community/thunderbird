@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { GlodaIndexer } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaIndexer.jsm"
+const { GlodaIndexer } = ChromeUtils.importESModule(
+  "resource:///modules/gloda/GlodaIndexer.sys.mjs"
 );
 const { MessageGenerator } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
@@ -50,7 +50,7 @@ const messageMenuData = {
   markReadMenuItem: { disabled: nothingSelected },
   markUnreadMenuItem: { disabled: true },
   menu_markThreadAsRead: { disabled: nothingSelected },
-  menu_markReadByDate: { disabled: nothingSelected },
+  menu_markReadByDate: { disabled: ["rootFolder"] },
   menu_markAllRead: { disabled: ["rootFolder"] },
   markFlaggedMenuItem: { disabled: nothingSelected },
   menu_markAsJunk: { disabled: nothingSelected },
@@ -113,8 +113,7 @@ add_setup(async function () {
       .toMessageString()
   );
   testFolder.addMessage(
-    "From - Mon Jan 01 00:00:00 2001\n" +
-      "To: Mailing List <list@example.com>\n" +
+    "To: Mailing List <list@example.com>\n" +
       "Date: Mon, 01 Jan 2001 00:00:00 +0100\n" +
       "List-Help: <https://list.example.com>\n" +
       "List-Post: <mailto:list@example.com>\n" +

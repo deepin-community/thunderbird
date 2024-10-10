@@ -19,6 +19,7 @@
 #include "wasm/WasmBuiltins.h"
 
 #include "mozilla/Atomics.h"
+#include "mozilla/ScopeExit.h"
 
 #include "fdlibm.h"
 #include "jslibmath.h"
@@ -42,6 +43,7 @@
 #include "wasm/WasmDebugFrame.h"
 #include "wasm/WasmGcObject.h"
 #include "wasm/WasmInstance.h"
+#include "wasm/WasmPI.h"
 #include "wasm/WasmStubs.h"
 
 #include "debugger/DebugAPI-inl.h"
@@ -404,6 +406,15 @@ const SymbolicAddressSignature SASigArrayCopy = {
 FOR_EACH_BUILTIN_MODULE_FUNC(VISIT_BUILTIN_FUNC)
 #undef VISIT_BUILTIN_FUNC
 
+#ifdef ENABLE_WASM_JSPI
+const SymbolicAddressSignature SASigUpdateSuspenderState = {
+    SymbolicAddress::UpdateSuspenderState,
+    _VOID,
+    _Infallible,
+    3,
+    {_PTR, _PTR, _I32, _END}};
+#endif
+
 }  // namespace wasm
 }  // namespace js
 
@@ -628,28 +639,50 @@ static WasmExceptionObject* GetOrWrapWasmException(JitActivation* activation,
   return nullptr;
 }
 
-// Unwind the entire activation in response to a thrown exception. This function
-// is responsible for notifying the debugger of each unwound frame. The return
-// value is the new stack address which the calling stub will set to the sp
-// register before executing a return instruction.
-//
-// This function will also look for try-catch handlers and, if not trapping or
-// throwing an uncatchable exception, will write the handler info in the return
-// argument and return true.
-//
-// Returns false if a handler isn't found or shouldn't be used (e.g., traps).
+static const wasm::TryNote* FindNonDelegateTryNote(const wasm::Code& code,
+                                                   const uint8_t* pc,
+                                                   Tier* tier) {
+  const wasm::TryNote* tryNote = code.lookupTryNote((void*)pc, tier);
+  while (tryNote && tryNote->isDelegate()) {
+    const wasm::CodeTier& codeTier = code.codeTier(*tier);
+    pc = codeTier.segment().base() + tryNote->delegateOffset();
+    const wasm::TryNote* delegateTryNote = code.lookupTryNote((void*)pc, tier);
+    MOZ_RELEASE_ASSERT(delegateTryNote == nullptr ||
+                       delegateTryNote->tryBodyBegin() <
+                           tryNote->tryBodyBegin());
+    tryNote = delegateTryNote;
+  }
+  return tryNote;
+}
 
-bool wasm::HandleThrow(JSContext* cx, WasmFrameIter& iter,
+// Unwind the activation in response to a thrown exception. This function is
+// responsible for notifying the debugger of each unwound frame.
+//
+// This function will look for try-catch handlers and, if not trapping or
+// throwing an uncatchable exception, will write the handler info in |*rfe|.
+//
+// If no try-catch handler is found, initialize |*rfe| for a return to the entry
+// frame that called into Wasm.
+void wasm::HandleThrow(JSContext* cx, WasmFrameIter& iter,
                        jit::ResumeFromException* rfe) {
   // WasmFrameIter iterates down wasm frames in the activation starting at
   // JitActivation::wasmExitFP(). Calling WasmFrameIter::startUnwinding pops
   // JitActivation::wasmExitFP() once each time WasmFrameIter is incremented,
-  // ultimately leaving exit FP null when the WasmFrameIter is done().  This
-  // is necessary to prevent a DebugFrame from being observed again after we
-  // just called onLeaveFrame (which would lead to the frame being re-added
+  // ultimately leaving no wasm exit FP when the WasmFrameIter is done(). This
+  // is necessary to prevent a wasm::DebugFrame from being observed again after
+  // we just called onLeaveFrame (which would lead to the frame being re-added
   // to the map of live frames, right as it becomes trash).
 
   MOZ_ASSERT(CallingActivation(cx) == iter.activation());
+#ifdef DEBUG
+  auto onExit = mozilla::MakeScopeExit([cx] {
+    MOZ_ASSERT(!cx->activation()->asJit()->isWasmTrapping(),
+               "unwinding clears the trapping state");
+    MOZ_ASSERT(!cx->activation()->asJit()->hasWasmExitFP(),
+               "unwinding leaves no wasm exit fp");
+  });
+#endif
+
   MOZ_ASSERT(!iter.done());
   iter.setUnwind(WasmFrameIter::Unwind::True);
 
@@ -674,10 +707,10 @@ bool wasm::HandleThrow(JSContext* cx, WasmFrameIter& iter,
 
     // Only look for an exception handler if there's a catchable exception.
     if (wasmExn) {
+      Tier tier;
       const wasm::Code& code = iter.instance()->code();
       const uint8_t* pc = iter.resumePCinCurrentFrame();
-      Tier tier;
-      const wasm::TryNote* tryNote = code.lookupTryNote((void*)pc, &tier);
+      const wasm::TryNote* tryNote = FindNonDelegateTryNote(code, pc, &tier);
 
       if (tryNote) {
 #ifdef ENABLE_WASM_TAIL_CALLS
@@ -706,8 +739,8 @@ bool wasm::HandleThrow(JSContext* cx, WasmFrameIter& iter,
         if (activation->isWasmTrapping()) {
           activation->finishWasmTrap();
         }
-
-        return true;
+        activation->setWasmExitFP(nullptr);
+        return;
       }
     }
 
@@ -745,14 +778,11 @@ bool wasm::HandleThrow(JSContext* cx, WasmFrameIter& iter,
     frame->leave(cx);
   }
 
-  MOZ_ASSERT(!cx->activation()->asJit()->isWasmTrapping(),
-             "unwinding clears the trapping state");
-
   // Assert that any pending exception escaping to non-wasm code is not a
   // wrapper exception object
 #ifdef DEBUG
-  Rooted<Value> pendingException(cx);
-  if (cx->isExceptionPending() && cx->getPendingException(&pendingException)) {
+  if (cx->isExceptionPending()) {
+    Rooted<Value> pendingException(cx, cx->getPendingExceptionUnwrapped());
     MOZ_ASSERT_IF(pendingException.isObject() &&
                       pendingException.toObject().is<WasmExceptionObject>(),
                   !pendingException.toObject()
@@ -768,7 +798,6 @@ bool wasm::HandleThrow(JSContext* cx, WasmFrameIter& iter,
   rfe->stackPointer = (uint8_t*)iter.unwoundAddressOfReturnAddress();
   rfe->instance = (Instance*)FailInstanceReg;
   rfe->target = nullptr;
-  return false;
 }
 
 static void* WasmHandleThrow(jit::ResumeFromException* rfe) {
@@ -1488,6 +1517,13 @@ void* wasm::AddressOf(SymbolicAddress imm, ABIFunctionType* abiType) {
       MOZ_ASSERT(*abiType == ToABIType(SASigThrowException));
       return FuncCast(Instance::throwException, *abiType);
 
+#ifdef ENABLE_WASM_JSPI
+    case SymbolicAddress::UpdateSuspenderState:
+      *abiType = Args_Int32_GeneralGeneralInt32;
+      MOZ_ASSERT(*abiType == ToABIType(SASigUpdateSuspenderState));
+      return FuncCast(UpdateSuspenderState, *abiType);
+#endif
+
 #ifdef WASM_CODEGEN_DEBUG
     case SymbolicAddress::PrintI32:
       *abiType = Args_General1;
@@ -1675,6 +1711,9 @@ bool wasm::NeedsBuiltinThunk(SymbolicAddress sym) {
   case SymbolicAddress::sa_name:
       FOR_EACH_BUILTIN_MODULE_FUNC(VISIT_BUILTIN_FUNC)
 #undef VISIT_BUILTIN_FUNC
+#ifdef ENABLE_WASM_JSPI
+    case SymbolicAddress::UpdateSuspenderState:
+#endif
       return true;
 
     case SymbolicAddress::Limit:

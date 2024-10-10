@@ -3,16 +3,17 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 
-<!ENTITY windowTitle.label "Устаўка знака">
+<!-- Window title -->
+<!ENTITY windowTitle.label "Уставіць сімвал">
 <!ENTITY category.label "Катэгорыя">
 <!ENTITY letter.label "Літара:">
 <!ENTITY letter.accessKey "Л">
-<!ENTITY character.label "Знак:">
-<!ENTITY character.accessKey "З">
-<!ENTITY accentUpper.label "Вялікія з націскам">
-<!ENTITY accentLower.label "Малыя з націскам">
+<!ENTITY character.label "Сімвал:">
+<!ENTITY character.accessKey "С">
+<!ENTITY accentUpper.label "Вялікія з дыякрытычнымі знакамі">
+<!ENTITY accentLower.label "Малыя з дыякрытычнымі знакамі">
 <!ENTITY otherUpper.label "Іншыя вялікія">
 <!ENTITY otherLower.label "Іншыя малыя">
 <!ENTITY commonSymbols.label "Агульныя сімвалы">
 <!ENTITY insertButton.label "Уставіць">
-<!ENTITY closeButton.label "Зачыніць">
+<!ENTITY closeButton.label "Закрыць">

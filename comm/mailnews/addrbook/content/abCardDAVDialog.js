@@ -64,7 +64,7 @@ function fillLocationPlaceholder() {
   }
 }
 
-function handleCardDAVURLInput(event) {
+function handleCardDAVURLInput() {
   changeCardDAVURL();
 }
 
@@ -73,7 +73,7 @@ function changeCardDAVURL() {
   setStatus();
 }
 
-function handleCardDAVURLBlur(event) {
+function handleCardDAVURLBlur() {
   if (
     uiElements.location.validity.typeMismatch &&
     !uiElements.location.value.match(/^https?:\/\//)
@@ -197,7 +197,7 @@ function setStatus(status, message, args) {
   }
 
   // Grow to fit the list of books. Uses `resizeBy` because it has special
-  // handling in SubDialog.jsm that the other resize functions don't have.
+  // handling in SubDialog.sys.mjs that the other resize functions don't have.
   window.resizeBy(0, Math.min(250, uiElements.availableBooks.scrollHeight));
   window.dispatchEvent(new CustomEvent("status-changed"));
 }

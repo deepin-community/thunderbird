@@ -24,7 +24,7 @@
 
 #include <vector>
 
-#include "cairo-win32.h"
+#include "cairo-dwrite.h"
 
 #include "HelpersWinFonts.h"
 
@@ -468,7 +468,7 @@ bool ScaledFontDWrite::GetWRFontInstanceOptions(
     Maybe<wr::FontInstanceOptions>* aOutOptions,
     Maybe<wr::FontInstancePlatformOptions>* aOutPlatformOptions,
     std::vector<FontVariation>* aOutVariations) {
-  wr::FontInstanceOptions options;
+  wr::FontInstanceOptions options = {};
   options.render_mode = wr::ToFontRenderMode(GetDefaultAAMode());
   options.flags = wr::FontInstanceFlags{0};
   if (HasBoldSimulation()) {
@@ -696,13 +696,15 @@ cairo_font_face_t* ScaledFontDWrite::CreateCairoFontFace(
     return nullptr;
   }
 
-  return cairo_dwrite_font_face_create_for_dwrite_fontface(nullptr, mFontFace);
+  return cairo_dwrite_font_face_create_for_dwrite_fontface(mFontFace);
 }
 
 void ScaledFontDWrite::PrepareCairoScaledFont(cairo_scaled_font_t* aFont) {
+#if 0
   if (mGDIForced) {
     cairo_dwrite_scaled_font_set_force_GDI_classic(aFont, true);
   }
+#endif
 }
 
 already_AddRefed<UnscaledFont> UnscaledFontDWrite::CreateFromFontDescriptor(

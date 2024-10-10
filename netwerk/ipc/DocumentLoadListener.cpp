@@ -10,6 +10,7 @@
 #include "NeckoCommon.h"
 #include "mozilla/AntiTrackingUtils.h"
 #include "mozilla/DebugOnly.h"
+#include "mozilla/Components.h"
 #include "mozilla/LoadInfo.h"
 #include "mozilla/NullPrincipal.h"
 #include "mozilla/RefPtr.h"
@@ -262,9 +263,9 @@ class ParentProcessDocumentOpenInfo final : public nsDocumentOpenInfo,
     }
 
     nsresult rv;
-    nsCOMPtr<nsIStreamConverterService> streamConvService =
-        do_GetService(NS_STREAMCONVERTERSERVICE_CONTRACTID, &rv);
+    nsCOMPtr<nsIStreamConverterService> streamConvService;
     nsAutoCString str;
+    streamConvService = mozilla::components::StreamConverter::Service(&rv);
     rv = streamConvService->ConvertedType(mContentType, aChannel, str);
     NS_ENSURE_SUCCESS(rv, rv);
 
@@ -640,10 +641,14 @@ auto DocumentLoadListener::Open(nsDocShellLoadState* aLoadState,
   OriginAttributes attrs;
   loadingContext->GetOriginAttributes(attrs);
 
+  aLoadInfo->SetContinerFeaturePolicy(
+      loadingContext->GetContainerFeaturePolicy());
+
   mLoadIdentifier = aLoadState->GetLoadIdentifier();
   // See description of  mFileName in nsDocShellLoadState.h
   mIsDownload = !aLoadState->FileName().IsVoid();
   mIsLoadingJSURI = net::SchemeIsJavascript(aLoadState->URI());
+  mHTTPSFirstDowngradeData = aLoadState->GetHttpsFirstDowngradeData().forget();
 
   // Check for infinite recursive object or iframe loads
   if (aLoadState->OriginalFrameSrc() || !mIsDocumentLoad) {
@@ -810,6 +815,24 @@ auto DocumentLoadListener::Open(nsDocShellLoadState* aLoadState,
     if (cos && aUrgentStart) {
       cos->AddClassFlags(nsIClassOfService::UrgentStart);
     }
+
+    // ClientChannelHelper below needs us to have finalized the principal for
+    // the channel because it will request that StoragePrincipalHelper mint us a
+    // principal that needs to match the same principal that a later call to
+    // StoragePrincipalHelper will mint when determining the right origin to
+    // look up the ServiceWorker.
+    //
+    // Because nsHttpChannel::AsyncOpen calls UpdateAntiTrackingInfoForChannel
+    // which potentially flips the third party bit/flag on the partition key on
+    // the cookie jar which impacts the principal that will be minted, it is
+    // essential that UpdateAntiTrackingInfoForChannel is called before
+    // AddClientChannelHelperInParent below.
+    //
+    // Because the call to UpdateAntiTrackingInfoForChannel is largely
+    // idempotent, we currently just make the call ourselves right now.  The one
+    // caveat is that the RFPRandomKey may be spuriously regenerated for
+    // top-level documents.
+    AntiTrackingUtils::UpdateAntiTrackingInfoForChannel(httpChannel);
   }
 
   // Setup a ClientChannelHelper to watch for redirects, and copy
@@ -1625,13 +1648,8 @@ void DocumentLoadListener::SerializeRedirectData(
 }
 
 static bool IsFirstLoadInWindow(nsIChannel* aChannel) {
-  if (nsCOMPtr<nsIPropertyBag2> props = do_QueryInterface(aChannel)) {
-    bool tmp = false;
-    nsresult rv =
-        props->GetPropertyAsBool(u"docshell.newWindowTarget"_ns, &tmp);
-    return NS_SUCCEEDED(rv) && tmp;
-  }
-  return false;
+  nsCOMPtr<nsILoadInfo> loadInfo = aChannel->LoadInfo();
+  return loadInfo->GetIsNewWindowTarget();
 }
 
 // Get where the document loaded by this nsIChannel should be rendered. This
@@ -1997,12 +2015,6 @@ bool DocumentLoadListener::MaybeTriggerProcessSwitch(
     return false;
   }
 
-  if (!StaticPrefs::fission_remoteObjectEmbed()) {
-    MOZ_LOG(gProcessIsolationLog, LogLevel::Verbose,
-            ("Process Switch Abort: remote <object>/<embed> disabled"));
-    return false;
-  }
-
   mObjectUpgradeHandler->UpgradeObjectLoad()->Then(
       GetMainThreadSerialEventTarget(), __func__,
       [self = RefPtr{this}, options, parentWindow](
@@ -2342,15 +2354,9 @@ bool DocumentLoadListener::DocShellWillDisplayContent(nsresult aStatus) {
 
   auto* loadingContext = GetLoadingBrowsingContext();
 
-  bool isInitialDocument = true;
-  if (WindowGlobalParent* currentWindow =
-          loadingContext->GetCurrentWindowGlobal()) {
-    isInitialDocument = currentWindow->IsInitialDocument();
-  }
-
   nsresult rv = nsDocShell::FilterStatusForErrorPage(
       aStatus, mChannel, mLoadStateLoadType, loadingContext->IsTop(),
-      loadingContext->GetUseErrorPages(), isInitialDocument, nullptr);
+      loadingContext->GetUseErrorPages(), nullptr);
 
   if (NS_SUCCEEDED(rv)) {
     MOZ_LOG(gProcessIsolationLog, LogLevel::Verbose,
@@ -2415,9 +2421,7 @@ bool DocumentLoadListener::MaybeHandleLoadErrorWithURIFixup(nsresult aStatus) {
   loadState->SetWasSchemelessInput(wasSchemelessInput);
 
   if (isHTTPSFirstFixup) {
-    // We have to exempt the load from HTTPS-First to prevent a
-    // upgrade-downgrade loop.
-    loadState->SetIsExemptFromHTTPSFirstMode(true);
+    nsHTTPSOnlyUtils::UpdateLoadStateAfterHTTPSFirstDowngrade(this, loadState);
   }
 
   // Ensure to set referrer information in the fallback channel equally to the
@@ -2557,6 +2561,17 @@ DocumentLoadListener::OnStartRequest(nsIRequest* aRequest) {
   // need to do anything else.
   if (MaybeHandleLoadErrorWithURIFixup(status)) {
     return NS_OK;
+  }
+
+  // If this is a successful load with a successful status code, we can possibly
+  // submit HTTPS-First telemetry.
+  if (NS_SUCCEEDED(status) && httpChannel) {
+    uint32_t responseStatus = 0;
+    if (NS_SUCCEEDED(httpChannel->GetResponseStatus(&responseStatus)) &&
+        responseStatus < 400) {
+      nsHTTPSOnlyUtils::SubmitHTTPSFirstTelemetry(
+          mChannel->LoadInfo(), mHTTPSFirstDowngradeData.forget());
+    }
   }
 
   mStreamListenerFunctions.AppendElement(StreamListenerFunction{

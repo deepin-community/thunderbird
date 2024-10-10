@@ -196,7 +196,7 @@ export class CalItipEmailTransport {
         if (aItipItem.autoResponse == Ci.calIItipItem.AUTO) {
           cal.LOG("sendXpcomMail: Found AUTO autoResponse type.");
         }
-        const cbEmail = function (aVal, aInd, aArr) {
+        const cbEmail = function (aVal) {
           const email = cal.email.getAttendeeEmail(aVal, true);
           if (!email.length) {
             cal.LOG("sendXpcomMail: Invalid recipient for email transport: " + aVal.toString());
@@ -273,7 +273,7 @@ export class CalItipEmailTransport {
       }
       case Ci.calIItipItem.NONE: {
         // we shouldn't get here, as we stopped processing in this case
-        // earlier in checkAndSend in calItipUtils.jsm
+        // earlier in checkAndSend in calItipUtils.sys.mjs
         cal.LOG("sendXpcomMail: Found NONE autoResponse type.");
         break;
       }
@@ -422,7 +422,7 @@ class CalItipNoEmailTransport extends CalItipEmailTransport {
   wrappedJSObject = this;
   QueryInterface = ChromeUtils.generateQI(["calIItipTransport"]);
 
-  sendItems(aRecipients, aItipItem, aFromAttendee) {
+  sendItems() {
     return false;
   }
 }

@@ -12,6 +12,8 @@ search-bar-button =
     .alt = Arama
 search-bar-item =
     .label = Ara:
+search-bar-item2 =
+    .label = Arama
 search-bar-placeholder = Ara…
 # Search bar placeholder with formatted key shortcut hint (platform dependent).
 # The key after the control modifier should match the key from quickSearchCmd.key
@@ -60,6 +62,9 @@ customize-save = Kaydet
 customize-unsaved-changes = Diğer sekmelerde kaydedilmemiş değişiklikler var
 customize-search-bar =
     .label = Arama araç çubuğu düğmeleri…
+customize-search-bar2 =
+    .label = Arama araç çubuğu düğmeleri
+    .placeholder = Arama araç çubuğu düğmeleri…
 customize-spaces-tabs =
     .aria-label = Sekmeler
 customize-main-toolbar-target =

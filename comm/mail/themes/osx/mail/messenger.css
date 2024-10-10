@@ -8,6 +8,27 @@
 
 @import url("chrome://messenger/skin/shared/messenger.css");
 
+/* stylelint-disable-next-line media-query-no-invalid */
+@media (-moz-bool-pref: "mail.theme.macos.native-theme") {
+  :root[tabsintitlebar]:not([lwtheme]) {
+    #navigation-toolbox {
+      background: transparent;
+
+      /* This is conceptually a background, but putting this on a
+       * pseudo-element avoids it from suppressing the chrome-content separator
+       * border, etc */
+      &::after {
+        -moz-default-appearance: -moz-window-titlebar;
+        appearance: auto;
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+      }
+    }
+  }
+}
+
 #mail-menubar,
 #mailContext {
   -moz-context-properties: fill, stroke;
@@ -42,7 +63,7 @@
   /* Centrally align content items vertically */
   justify-content: center;
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     appearance: none;
   }
 }
@@ -147,11 +168,6 @@ toolbarbutton > menupopup menuitem {
   }
 }
 
-menupopup menu[disabled="true"][_moz-menuactive="true"],
-menupopup menuitem[disabled="true"][_moz-menuactive="true"] {
-  background-color: transparent !important;
-}
-
 menulist > menupopup menu .menu-right,
 toolbarbutton > menupopup menu .menu-right {
   appearance: none;
@@ -221,7 +237,7 @@ treechildren::-moz-tree-line(selected, focus) {
 
 /* message column icons */
 
-:root:not(:-moz-lwtheme) {
+:root:not([lwtheme]) {
   & treecol:not([hideheader="true"]),
   & .tree-columnpicker-button:not([hideheader="true"]) {
     appearance: none;
@@ -267,7 +283,7 @@ treechildren::-moz-tree-line(selected, focus) {
 
 /* ::::: Tabs in Titlebar :::::: */
 
-#messengerWindow[tabsintitlebar="true"]:not(:-moz-lwtheme) #titlebar {
+:root:not([lwtheme]) #messengerWindow[tabsintitlebar="true"] #titlebar {
   appearance: auto;
   -moz-default-appearance: -moz-window-titlebar;
 }
@@ -327,7 +343,7 @@ toolbarbutton.notification-button[is="toolbarbutton-menu-button"] > .button-box 
 
 /* Status bar */
 
-#status-bar:-moz-lwtheme  {
+:root[lwtheme] #status-bar  {
   padding-top: 1px;
 }
 
@@ -340,7 +356,7 @@ toolbarbutton.notification-button[is="toolbarbutton-menu-button"] > .button-box 
   padding: 0 16px 1px 1px;
   text-shadow: rgba(255, 255, 255, 0.4) 0 1px;
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     background: none;
     border-style: none;
     text-shadow: inherit;
@@ -376,7 +392,7 @@ toolbarbutton.notification-button[is="toolbarbutton-menu-button"] > .button-box 
 .contentTabInstance {
   background-color: -moz-dialog;
 
-  &:-moz-lwtheme {
+  :root[lwtheme] & {
     background-color: transparent;
     background-image: linear-gradient(transparent 40px, -moz-dialog 40px);
   }
@@ -404,24 +420,6 @@ legend {
   margin-bottom: 5px;
   margin-inline-start: -5px;
   font-weight: bold;
-}
-
-.menu-right,
-.menu-accel-container {
-  margin-inline-end: 0;
-}
-
-.menu-accel-container {
-  opacity: 0.5;
-
-  menupopup[type="arrow"] & {
-    margin-inline-end: 0;
-  }
-
-  menuitem:not([disabled="true"]):hover &,
-  menuitem:not([disabled="true"]):focus & {
-    opacity: 1;
-  }
 }
 
 /* UI Density customization */

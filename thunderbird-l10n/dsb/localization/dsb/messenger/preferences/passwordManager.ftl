@@ -4,9 +4,9 @@
 
 saved-logins =
     .title = Skłaźone pśizjawjenja
-saved-logins-title = Skłaźone pśizjawjenja
 window-close =
     .key = w
+saved-logins-title = Skłaźone pśizjawjenja
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -18,7 +18,7 @@ copy-username-cmd =
     .label = Wužywarske mě kopěrowaś
     .accesskey = u
 edit-username-cmd =
-    .label = Wužywarske mě wobźěłaś
+    .label = Wužywaŕske mě wobźěłaś
     .accesskey = b
 copy-password-cmd =
     .label = Gronidło kopěrowaś
@@ -32,7 +32,7 @@ search-filter =
 column-heading-provider =
     .label = Póbitowaŕ
 column-heading-username =
-    .label = Wužywarske mě
+    .label = Wužywaŕske mě
 column-heading-password =
     .label = Gronidło
 column-heading-time-created =
@@ -81,3 +81,10 @@ password-os-auth-dialog-message = Pśeglědajśo swóju identitu, aby skłaźone
 password-os-auth-dialog-message-macosx = skłaźone gronidła pokazaś
 # Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
+# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
+# This message can be seen when attempting to disable osauth in about:preferences.
+password-os-auth-change-dialog-message =
+    { PLATFORM() ->
+        [macos] nastajenja za gronidła změniś
+       *[other] { -brand-short-name } wopytujo, nastajenja za gronidła změniś. Wužywajśo swóje rědowe pśizjawjenje, aby to dowólił.
+    }

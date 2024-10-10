@@ -8,7 +8,7 @@
 
 :host,
 :root {
-  --account-color: AccentColor;
+  --account-color: var(--selected-item-color);
   --transition-duration: 120ms;
   --transition-timing: ease;
   --arrowpanel-background: var(--layout-background-1);
@@ -33,11 +33,11 @@
   --button-margin: 6px;
   --button-padding: 6px;
 
-  --button-primary-background-color: AccentColor;
-  --button-primary-hover-background-color: color-mix(in srgb, AccentColor 80%, black);
-  --button-primary-active-background-color: color-mix(in srgb, AccentColor 70%, black);
-  --button-primary-text-color: AccentColorText;
-  --button-primary-border-color: color-mix(in srgb, AccentColor 85%, black);
+  --button-primary-background-color: var(--selected-item-color);
+  --button-primary-hover-background-color: color-mix(in srgb, var(--selected-item-color) 80%, black);
+  --button-primary-active-background-color: color-mix(in srgb, var(--selected-item-color) 70%, black);
+  --button-primary-text-color: var(--selected-item-text-color);
+  --button-primary-border-color: color-mix(in srgb, var(--selected-item-color) 85%, black);
 
   --button-destructive-background-color: var(--color-red-60);
   --button-destructive-hover-background-color: color-mix(in srgb, var(--color-red-50) 50%, var(--color-red-60));
@@ -57,11 +57,17 @@
   --input-border-color: color-mix(in srgb, currentColor 41%, transparent);
   --new-folder-color: light-dark(var(--color-blue-60), var(--color-blue-40));
   --lwt-header-image: none;
+  --search-bar-color: inherit;
+  --search-bar-border-color: var(--color-gray-40);
+  --search-bar-background: var(--layout-background-0);
+  --search-bar-focus-background: var(--layout-background-0);
   --search-field-placeholder: color-mix(in srgb, currentColor 50%, transparent);
   --search-focus-outline-color: var(--focus-outline-color);
   --search-outline-offset: -1px;
-  --selected-item-color: light-dark(var(--color-blue-60), var(--color-blue-50));
-  --selected-item-text-color: var(--color-white);
+  --selected-item-color: var(--sidebar-highlight-background-color, AccentColor);
+  --selected-item-text-color: var(--sidebar-highlight-text-color, AccentColorText);
+  --sidebar-header-gap: 9px;
+  --sidebar-header-spacing: 9px;
   --splitter-color: var(--sidebar-border-color, var(--layout-border-0));
   --sidebar-border-color: var(--layout-border-0);
 
@@ -102,13 +108,12 @@
   --toolbarbutton-checked-background: light-dark(var(--lwt-toolbarbutton-hover-background,
                                                  rgba(200, 200, 200, .5)),
                                                  rgba(0, 0, 0, .25));
-  --toolbarbutton-icon-fill-attention: light-dark(var(--lwt-toolbarbutton-icon-fill-attention, #0a84ff),
-                                                  var(--lwt-toolbarbutton-icon-fill-attention, #45a1ff));
+  --toolbarbutton-icon-fill-attention: var(--lwt-toolbarbutton-icon-fill-attention, var(--selected-item-color));
   --toolbarseparator-color: color-mix(in srgb, currentColor 20%, transparent);
   --toolbar-field-color: var(--layout-color-1);
   --toolbar-field-background-color: var(--layout-background-1);
   --toolbar-field-border-color: var(--layout-border-1);
-  --toolbar-field-focus-border-color: AccentColor;
+  --toolbar-field-focus-border-color: var(--selected-item-color);
   --toolbar-field-highlight: var(--selected-item-color);
   --toolbar-field-highlight-color: var(--selected-item-text-color);
   --item-focus-selected-border-color: light-dark(#0060df, #bebebf);
@@ -122,29 +127,34 @@
   --button-primary-active-bgcolor: var(--button-primary-active-background-color);
   --button-primary-color: var(--button-primary-text-color);
 
-  --tabline-color: AccentColor;
+  --tabline-color: var(--selected-item-color);
 
   /* LW-themes enabled */
 
-  &:-moz-lwtheme {
+  &[lwtheme] {
     color: var(--lwt-text-color);
     --autocomplete-popup-url-color: light-dark(hsl(210, 77%, 47%), #0a84ff);
     --button-background: #d2d2d3;
     --button-background-hover: #c2c2c3;
     --button-background-active: #b2b2b3;
     --panel-separator-color: light-dark(hsla(210, 4%, 10%, 0.14), rgba(249, 249, 250, 0.1));
+    --search-bar-color: var(--toolbar-field-focus-color);
+    --search-bar-background: var(--toolbar-field-background-color);
+    --search-bar-border-color: var(--toolbar-field-border-color);
+    --search-bar-focus-background: var(--toolbar-field-focus-background-color);
     --toolbar-color: var(--lwt-text-color, inherit);
     --toolbar-bgcolor: rgba(255, 255, 255, 0.4);
     --toolbar-field-border-color: hsla(240, 5%, 5%, 0.25);
     --toolbarbutton-icon-fill-opacity: 1;
-
     --tabline-color: var(--lwt-tab-line-color, currentColor);
+
+    &:not([lwt-tree]) {
+      --search-bar-border-color: color-mix(in srgb, currentColor 50%, transparent);
+    }
   }
 
   &[lwt-tree] {
-    --select-focus-background-color: var(--sidebar-highlight-background-color, var(--selected-item-color));
-    --select-focus-text-color: var(--sidebar-highlight-text-color,
-                                   var(--sidebar-text-color));
+    --select-focus-text-color: var(--sidebar-highlight-text-color, var(--sidebar-text-color));
     --new-focused-folder-color: var(--sidebar-highlight-text-color, var(--sidebar-text-color));
     --row-grouped-header-bg-color: hsla(0, 0%, 50%, 0.15);
     --row-grouped-header-bg-color-selected: light-dark(var(--sidebar-highlight-background-color,
@@ -158,23 +168,12 @@
   :root {
     --lwt-accent-color: rgb(24, 24, 26);
   }
-
-  :root:not([lwt-tree]):-moz-lwtheme {
-    --button-background-color: var(--layout-background-3);
-    --button-hover-background-color: var(--layout-background-4);
-    --button-active-background-color: var(--layout-background-2);
-    --button-link-text-color: var(--color-blue-40);
-    --button-link-active-text-color: var(--color-blue-50);
-    --arrowpanel-border-color: #52525e;
-    --default: #dcdcdc;
-    --primary: var(--color-blue-40);
-  }
 }
 
 /* Special High contrast setting */
 
 @media (prefers-contrast) {
-  :root:not(:-moz-lwtheme) {
+  :root:not([lwtheme]) {
     --button-color: ButtonText;
     --button-background-color: ButtonFace;
     --button-border-color: ButtonText;
@@ -207,7 +206,7 @@
 }
 
 @media not (prefers-contrast) {
-  :root:not(:-moz-lwtheme) {
+  :root:not([lwtheme]) {
     --buttons-secondary-bgcolor: rgb(240, 240, 244);
     --buttons-secondary-hover-bgcolor: rgb(224, 224, 230);
     --buttons-secondary-active-bgcolor: rgb(207, 207, 216);
@@ -240,9 +239,12 @@
   --button-margin: 3px;
   --button-padding: 3px;
   --button-pressed-indicator-padding: 9px;
+  --sidebar-header-gap: 6px;
+  --sidebar-header-spacing: 4px 6px 3px;
 }
 
 :root[uidensity="touch"] {
   --tab-min-height: 39px;
   --button-pressed-indicator-padding: 3px;
+  --sidebar-header-gap: 12px;
 }

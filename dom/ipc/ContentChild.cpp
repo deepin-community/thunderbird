@@ -24,6 +24,7 @@
 #include "imgLoader.h"
 #include "ScrollingMetrics.h"
 #include "mozilla/BasePrincipal.h"
+#include "mozilla/ClipboardContentAnalysisChild.h"
 #include "mozilla/ClipboardReadRequestChild.h"
 #include "mozilla/Components.h"
 #include "mozilla/HangDetails.h"
@@ -198,7 +199,6 @@
 #include "nsServiceManagerUtils.h"
 #include "nsStyleSheetService.h"
 #include "nsThreadManager.h"
-#include "nsVariant.h"
 #include "nsXULAppAPI.h"
 #include "IHistory.h"
 #include "ReferrerInfo.h"
@@ -1034,7 +1034,8 @@ nsresult ContentChild::ProvideWindowCommon(
       MOZ_DIAGNOSTIC_ASSERT(!nsContentUtils::IsSpecialName(name));
 
       Unused << SendCreateWindowInDifferentProcess(
-          aTabOpener, parent, aChromeFlags, aCalledFromJS, aURI, features,
+          aTabOpener, parent, aChromeFlags, aCalledFromJS,
+          aOpenWindowInfo->GetIsTopLevelCreatedByWebContent(), aURI, features,
           aModifiers, name, triggeringPrincipal, csp, referrerInfo,
           aOpenWindowInfo->GetOriginAttributes());
 
@@ -1056,7 +1057,8 @@ nsresult ContentChild::ProvideWindowCommon(
 
   RefPtr<BrowsingContext> browsingContext = BrowsingContext::CreateDetached(
       nullptr, openerBC, nullptr, aName, BrowsingContext::Type::Content,
-      aIsPopupRequested);
+      {.isPopupRequested = aIsPopupRequested,
+       .topLevelCreatedByWebContent = true});
   MOZ_ALWAYS_SUCCEEDS(browsingContext->SetRemoteTabs(true));
   MOZ_ALWAYS_SUCCEEDS(browsingContext->SetRemoteSubframes(useRemoteSubframes));
   MOZ_ALWAYS_SUCCEEDS(browsingContext->SetOriginAttributes(
@@ -1181,9 +1183,11 @@ nsresult ContentChild::ProvideWindowCommon(
 
     if (aForceNoOpener || !parent) {
       MOZ_DIAGNOSTIC_ASSERT(!browsingContext->HadOriginalOpener());
+      MOZ_DIAGNOSTIC_ASSERT(browsingContext->GetTopLevelCreatedByWebContent());
       MOZ_DIAGNOSTIC_ASSERT(browsingContext->GetOpenerId() == 0);
     } else {
       MOZ_DIAGNOSTIC_ASSERT(browsingContext->HadOriginalOpener());
+      MOZ_DIAGNOSTIC_ASSERT(browsingContext->GetTopLevelCreatedByWebContent());
       MOZ_DIAGNOSTIC_ASSERT(browsingContext->GetOpenerId() == parent->Id());
     }
 
@@ -1236,8 +1240,9 @@ nsresult ContentChild::ProvideWindowCommon(
 
   SendCreateWindow(aTabOpener, parent, newChild, aChromeFlags, aCalledFromJS,
                    aOpenWindowInfo->GetIsForPrinting(),
-                   aOpenWindowInfo->GetIsForWindowDotPrint(), aURI, features,
-                   aModifiers, triggeringPrincipal, csp, referrerInfo,
+                   aOpenWindowInfo->GetIsForWindowDotPrint(),
+                   aOpenWindowInfo->GetIsTopLevelCreatedByWebContent(), aURI,
+                   features, aModifiers, triggeringPrincipal, csp, referrerInfo,
                    aOpenWindowInfo->GetOriginAttributes(), std::move(resolve),
                    std::move(reject));
 
@@ -2310,8 +2315,10 @@ mozilla::ipc::IPCResult ContentChild::RecvThemeChanged(
 mozilla::ipc::IPCResult ContentChild::RecvLoadProcessScript(
     const nsString& aURL) {
   auto* global = ContentProcessMessageManager::Get();
-  global->LoadScript(aURL);
-  return IPC_OK();
+  if (global && global->LoadScript(aURL)) {
+    return IPC_OK();
+  }
+  return IPC_FAIL(this, "ContentProcessMessageManager::LoadScript failed");
 }
 
 mozilla::ipc::IPCResult ContentChild::RecvAsyncMessage(
@@ -2661,6 +2668,7 @@ mozilla::ipc::IPCResult ContentChild::RecvRemoteType(
 
   // Turn off Spectre mitigations in isolated web content processes.
   if (StaticPrefs::javascript_options_spectre_disable_for_isolated_content() &&
+      StaticPrefs::browser_opaqueResponseBlocking() &&
       (remoteTypePrefix == FISSION_WEB_REMOTE_TYPE ||
        remoteTypePrefix == SERVICEWORKER_REMOTE_TYPE ||
        remoteTypePrefix == WITH_COOP_COEP_REMOTE_TYPE ||
@@ -2779,6 +2787,20 @@ mozilla::ipc::IPCResult ContentChild::RecvNotifyProcessPriorityChanged(
       moz_set_max_dirty_page_modifier(4);
     } else if (mProcessPriority == hal::PROCESS_PRIORITY_BACKGROUND) {
       moz_set_max_dirty_page_modifier(-2);
+
+#if defined(MOZ_MEMORY)
+      if (StaticPrefs::dom_memory_memory_pressure_on_background() == 1) {
+        jemalloc_free_dirty_pages();
+      }
+#endif
+      if (StaticPrefs::dom_memory_memory_pressure_on_background() == 2) {
+        nsCOMPtr<nsIObserverService> obsServ = services::GetObserverService();
+        obsServ->NotifyObservers(nullptr, "memory-pressure", u"heap-minimize");
+      } else if (StaticPrefs::dom_memory_memory_pressure_on_background() == 3) {
+        nsCOMPtr<nsIObserverService> obsServ = services::GetObserverService();
+        obsServ->NotifyObservers(nullptr, "memory-pressure", u"low-memory");
+      }
+
     } else {
       moz_set_max_dirty_page_modifier(0);
     }
@@ -3132,112 +3154,6 @@ mozilla::ipc::IPCResult ContentChild::RecvPWebBrowserPersistDocumentConstructor(
     aActor->SendInitFailure(NS_ERROR_NO_CONTENT);
   } else {
     static_cast<WebBrowserPersistDocumentChild*>(aActor)->Start(foundDoc);
-  }
-  return IPC_OK();
-}
-
-static already_AddRefed<DataTransfer> ConvertToDataTransfer(
-    nsTArray<IPCTransferableData>&& aTransferables, EventMessage aMessage) {
-  // Check if we are receiving any file objects. If we are we will want
-  // to hide any of the other objects coming in from content.
-  bool hasFiles = false;
-  for (uint32_t i = 0; i < aTransferables.Length() && !hasFiles; ++i) {
-    auto& items = aTransferables[i].items();
-    for (uint32_t j = 0; j < items.Length() && !hasFiles; ++j) {
-      if (items[j].data().type() ==
-          IPCTransferableDataType::TIPCTransferableDataBlob) {
-        hasFiles = true;
-      }
-    }
-  }
-  // Add the entries from the IPC to the new DataTransfer
-  RefPtr<DataTransfer> dataTransfer =
-      new DataTransfer(nullptr, aMessage, false, -1);
-  for (uint32_t i = 0; i < aTransferables.Length(); ++i) {
-    auto& items = aTransferables[i].items();
-    for (uint32_t j = 0; j < items.Length(); ++j) {
-      const IPCTransferableDataItem& item = items[j];
-      RefPtr<nsVariantCC> variant = new nsVariantCC();
-      nsresult rv =
-          nsContentUtils::IPCTransferableDataItemToVariant(item, variant);
-      if (NS_FAILED(rv)) {
-        continue;
-      }
-
-      // We should hide this data from content if we have a file, and we
-      // aren't a file.
-      bool hidden =
-          hasFiles && item.data().type() !=
-                          IPCTransferableDataType::TIPCTransferableDataBlob;
-      dataTransfer->SetDataWithPrincipalFromOtherProcess(
-          NS_ConvertUTF8toUTF16(item.flavor()), variant, i,
-          nsContentUtils::GetSystemPrincipal(), hidden);
-    }
-  }
-  return dataTransfer.forget();
-}
-
-mozilla::ipc::IPCResult ContentChild::RecvInvokeDragSession(
-    const MaybeDiscarded<WindowContext>& aSourceWindowContext,
-    const MaybeDiscarded<WindowContext>& aSourceTopWindowContext,
-    nsTArray<IPCTransferableData>&& aTransferables, const uint32_t& aAction) {
-  if (nsCOMPtr<nsIDragService> dragService =
-          do_GetService("@mozilla.org/widget/dragservice;1")) {
-    dragService->StartDragSession();
-    nsCOMPtr<nsIDragSession> session;
-    dragService->GetCurrentSession(getter_AddRefs(session));
-    if (session) {
-      session->SetSourceWindowContext(aSourceWindowContext.GetMaybeDiscarded());
-      session->SetSourceTopWindowContext(
-          aSourceTopWindowContext.GetMaybeDiscarded());
-      session->SetDragAction(aAction);
-
-      RefPtr<DataTransfer> dataTransfer =
-          ConvertToDataTransfer(std::move(aTransferables), eDragStart);
-      session->SetDataTransfer(dataTransfer);
-    }
-  }
-  return IPC_OK();
-}
-
-mozilla::ipc::IPCResult ContentChild::RecvUpdateDragSession(
-    nsTArray<IPCTransferableData>&& aTransferables,
-    EventMessage aEventMessage) {
-  if (nsCOMPtr<nsIDragService> dragService =
-          do_GetService("@mozilla.org/widget/dragservice;1")) {
-    nsCOMPtr<nsIDragSession> session;
-    dragService->GetCurrentSession(getter_AddRefs(session));
-    if (session) {
-      nsCOMPtr<DataTransfer> dataTransfer =
-          ConvertToDataTransfer(std::move(aTransferables), aEventMessage);
-      session->SetDataTransfer(dataTransfer);
-    }
-  }
-  return IPC_OK();
-}
-
-mozilla::ipc::IPCResult ContentChild::RecvEndDragSession(
-    const bool& aDoneDrag, const bool& aUserCancelled,
-    const LayoutDeviceIntPoint& aDragEndPoint, const uint32_t& aKeyModifiers,
-    const uint32_t& aDropEffect) {
-  nsCOMPtr<nsIDragService> dragService =
-      do_GetService("@mozilla.org/widget/dragservice;1");
-  if (dragService) {
-    nsCOMPtr<nsIDragSession> dragSession = nsContentUtils::GetDragSession();
-    if (dragSession) {
-      if (aUserCancelled) {
-        dragSession->UserCancelled();
-      }
-
-      RefPtr<DataTransfer> dataTransfer = dragSession->GetDataTransfer();
-      if (dataTransfer) {
-        dataTransfer->SetDropEffectInt(aDropEffect);
-      }
-    }
-
-    static_cast<nsBaseDragService*>(dragService.get())
-        ->SetDragEndPoint(aDragEndPoint);
-    dragService->EndDragSession(aDoneDrag, aKeyModifiers);
   }
   return IPC_OK();
 }
@@ -3923,7 +3839,8 @@ mozilla::ipc::IPCResult ContentChild::RecvRaiseWindow(
 
 mozilla::ipc::IPCResult ContentChild::RecvAdjustWindowFocus(
     const MaybeDiscarded<BrowsingContext>& aContext, bool aIsVisible,
-    uint64_t aActionId) {
+    uint64_t aActionId, bool aShouldClearAncestorFocus,
+    const MaybeDiscarded<BrowsingContext>& aAncestorBrowsingContextToFocus) {
   if (aContext.IsNullOrDiscarded()) {
     MOZ_LOG(BrowsingContext::GetLog(), LogLevel::Debug,
             ("ChildIPC: Trying to send a message to dead or detached context"));
@@ -3932,7 +3849,12 @@ mozilla::ipc::IPCResult ContentChild::RecvAdjustWindowFocus(
 
   if (RefPtr<nsFocusManager> fm = nsFocusManager::GetFocusManager()) {
     RefPtr<BrowsingContext> bc = aContext.get();
-    fm->AdjustInProcessWindowFocus(bc, false, aIsVisible, aActionId);
+    RefPtr<BrowsingContext> ancestor =
+        aAncestorBrowsingContextToFocus.IsNullOrDiscarded()
+            ? nullptr
+            : aAncestorBrowsingContextToFocus.get();
+    fm->AdjustInProcessWindowFocus(bc, false, aIsVisible, aActionId,
+                                   aShouldClearAncestorFocus, ancestor);
   }
   return IPC_OK();
 }
@@ -4435,14 +4357,6 @@ mozilla::ipc::IPCResult ContentChild::RecvDispatchBeforeUnloadToSubtree(
   } else {
     DispatchBeforeUnloadToSubtree(aStartingAt.get(), std::move(aResolver));
   }
-  return IPC_OK();
-}
-
-mozilla::ipc::IPCResult ContentChild::RecvDecoderSupportedMimeTypes(
-    nsTArray<nsCString>&& aSupportedTypes) {
-#ifdef MOZ_WIDGET_ANDROID
-  AndroidDecoderModule::SetSupportedMimeTypes(std::move(aSupportedTypes));
-#endif
   return IPC_OK();
 }
 

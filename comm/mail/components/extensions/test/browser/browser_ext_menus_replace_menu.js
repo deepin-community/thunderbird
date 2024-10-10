@@ -33,8 +33,8 @@ add_task(async function overrideContext_in_extension_tab() {
     set: [["security.allow_eval_with_system_principal", true]],
   });
 
-  function extensionTabScript() {
-    document.addEventListener(
+  async function extensionTabScript() {
+    document.getElementById("link1").addEventListener(
       "contextmenu",
       () => {
         browser.menus.overrideContext({});
@@ -46,7 +46,7 @@ add_task(async function overrideContext_in_extension_tab() {
     const shadowRoot = document
       .getElementById("shadowHost")
       .attachShadow({ mode: "open" });
-    shadowRoot.innerHTML = `<a href="http://example.com/">Link</a>`;
+    shadowRoot.innerHTML = `<a href="http://example.com/">Link2</a>`;
     shadowRoot.firstChild.addEventListener(
       "contextmenu",
       () => {
@@ -56,36 +56,43 @@ add_task(async function overrideContext_in_extension_tab() {
       { once: true }
     );
 
-    browser.menus.create({
-      id: "tab_1",
-      title: "tab_1",
-      documentUrlPatterns: [document.URL],
-      onclick() {
-        document.addEventListener(
-          "contextmenu",
-          () => {
-            // Verifies that last call takes precedence.
-            browser.menus.overrideContext({ showDefaults: false });
-            browser.menus.overrideContext({ showDefaults: true });
-            browser.test.sendMessage("oncontextmenu_in_dom_part_2");
+    await new Promise(resolve =>
+      browser.menus.create(
+        {
+          id: "tab_1",
+          title: "tab_1",
+          documentUrlPatterns: [document.URL],
+          onclick() {
+            document.addEventListener(
+              "contextmenu",
+              () => {
+                // Verifies that last call takes precedence.
+                browser.menus.overrideContext({ showDefaults: false });
+                browser.menus.overrideContext({ showDefaults: true });
+                browser.test.sendMessage("oncontextmenu_in_dom_part_2");
+              },
+              { once: true }
+            );
+            browser.test.sendMessage("onClicked_tab_1");
           },
-          { once: true }
-        );
-        browser.test.sendMessage("onClicked_tab_1");
-      },
-    });
-    browser.menus.create(
-      {
-        id: "tab_2",
-        title: "tab_2",
-        onclick() {
-          browser.test.sendMessage("onClicked_tab_2");
         },
-      },
-      () => {
-        browser.test.sendMessage("menu-registered");
-      }
+        resolve
+      )
     );
+    await new Promise(resolve =>
+      browser.menus.create(
+        {
+          id: "tab_2",
+          title: "tab_2",
+          onclick() {
+            browser.test.sendMessage("onClicked_tab_2");
+          },
+        },
+        resolve
+      )
+    );
+    browser.test.log("ready");
+    browser.test.sendMessage("menu-registered");
   }
 
   const extension = ExtensionTestUtils.loadExtension({
@@ -101,32 +108,49 @@ add_task(async function overrideContext_in_extension_tab() {
             <script defer="defer" src="tab.js"></script>
           </head>
           <body>
-            <a href="http://example.com/">Link</a>
+            <a id="link1" href="http://example.com/">Link1</a>
             <div id="shadowHost"></div>
           </body>
         </html>`,
       "tab.js": extensionTabScript,
     },
-    background() {
+    async background() {
       // Expected to match and thus be visible.
-      browser.menus.create({ id: "bg_1", title: "bg_1" });
-      browser.menus.create({
-        id: "bg_2",
-        title: "bg_2",
-        targetUrlPatterns: ["*://example.com/*"],
-      });
+      await new Promise(resolve =>
+        browser.menus.create({ id: "bg_1", title: "bg_1" }, resolve)
+      );
+      await new Promise(resolve =>
+        browser.menus.create(
+          {
+            id: "bg_2",
+            title: "bg_2",
+            targetUrlPatterns: ["*://example.com/*"],
+          },
+          resolve
+        )
+      );
 
       // Expected to not match and be hidden.
-      browser.menus.create({
-        id: "bg_3",
-        title: "bg_3",
-        targetUrlPatterns: ["*://nomatch/*"],
-      });
-      browser.menus.create({
-        id: "bg_4",
-        title: "bg_4",
-        documentUrlPatterns: [document.URL],
-      });
+      await new Promise(resolve =>
+        browser.menus.create(
+          {
+            id: "bg_3",
+            title: "bg_3",
+            targetUrlPatterns: ["*://nomatch/*"],
+          },
+          resolve
+        )
+      );
+      await new Promise(resolve =>
+        browser.menus.create(
+          {
+            id: "bg_4",
+            title: "bg_4",
+            documentUrlPatterns: [document.URL],
+          },
+          resolve
+        )
+      );
 
       browser.menus.onShown.addListener(info => {
         browser.test.assertEq("tab", info.viewType, "Expected viewType");
@@ -151,13 +175,15 @@ add_task(async function overrideContext_in_extension_tab() {
     manifest: {
       permissions: ["menus"],
     },
-    background() {
-      browser.menus.create(
-        { id: "other_extension_item", title: "other_extension_item" },
-        () => {
-          browser.test.sendMessage("other_extension_item_created");
-        }
+    async background() {
+      await new Promise(resolve =>
+        browser.menus.create(
+          { id: "other_extension_item", title: "other_extension_item" },
+          resolve
+        )
       );
+
+      browser.test.sendMessage("other_extension_item_created");
     },
   });
   await otherExtension.startup();
@@ -179,7 +205,7 @@ add_task(async function overrideContext_in_extension_tab() {
   {
     // Tests overrideContext({})
     info("Expecting the menu to be replaced by overrideContext.");
-    const menu = await openContextMenu("a");
+    const menu = await openBrowserContextMenuInTab("#link1");
     await extension.awaitMessage("oncontextmenu_in_dom_part_1");
     await extension.awaitMessage("onShown");
 
@@ -190,7 +216,7 @@ add_task(async function overrideContext_in_extension_tab() {
     );
 
     const menuItems = menu.getElementsByAttribute("label", "tab_1");
-    await clickItemInBrowserContextMenuPopup(menuItems[0]);
+    await clickItemInMenuPopup(menuItems[0]);
     await extension.awaitMessage("onClicked_tab_1");
   }
 
@@ -199,7 +225,7 @@ add_task(async function overrideContext_in_extension_tab() {
     info(
       "Expecting the menu to be replaced by overrideContext, including default menu items."
     );
-    const menu = await openContextMenu("a");
+    const menu = await openBrowserContextMenuInTab("#link1");
     await extension.awaitMessage("oncontextmenu_in_dom_part_2");
     await extension.awaitMessage("onShown");
 
@@ -219,7 +245,7 @@ add_task(async function overrideContext_in_extension_tab() {
     );
 
     const menuItems = menu.getElementsByAttribute("label", "tab_2");
-    await clickItemInBrowserContextMenuPopup(menuItems[0]);
+    await clickItemInMenuPopup(menuItems[0]);
     await extension.awaitMessage("onClicked_tab_2");
   }
 
@@ -229,7 +255,7 @@ add_task(async function overrideContext_in_extension_tab() {
     info(
       "Expecting the default menu to be used when overrideContext is not called."
     );
-    const menu = await openContextMenu("a");
+    const menu = await openBrowserContextMenuInTab("#link1");
     await extension.awaitMessage("onShown");
 
     checkIsDefaultMenuItemVisible(getVisibleChildrenIds(menu));
@@ -243,7 +269,7 @@ add_task(async function overrideContext_in_extension_tab() {
       "Extension menu should be the last element."
     );
 
-    const submenu = await openSubmenu(topLevelExtensionMenuItem);
+    const submenu = await openSubMenuPopup(topLevelExtensionMenuItem);
     is(submenu, topLevelExtensionMenuItem.menupopup, "Correct submenu opened");
 
     Assert.deepEqual(
@@ -260,7 +286,7 @@ add_task(async function overrideContext_in_extension_tab() {
       "Expecting the menu to be replaced by overrideContext from a listener inside shadow DOM."
     );
     // Tests that overrideContext({}) can be used from a listener inside shadow DOM.
-    const menu = await openContextMenu(
+    const menu = await openBrowserContextMenuInTab(
       () => this.document.getElementById("shadowHost").shadowRoot.firstChild
     );
     await extension.awaitMessage("oncontextmenu_in_shadow_dom");
@@ -284,8 +310,8 @@ add_task(async function overrideContext_in_extension_tab() {
 });
 
 async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
-  function extensionPopupScript() {
-    document.addEventListener(
+  async function extensionPopupScript() {
+    document.getElementById("link1").addEventListener(
       "contextmenu",
       () => {
         browser.menus.overrideContext({});
@@ -307,36 +333,43 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
       { once: true }
     );
 
-    browser.menus.create({
-      id: "popup_1",
-      title: "popup_1",
-      documentUrlPatterns: [document.URL],
-      onclick() {
-        document.addEventListener(
-          "contextmenu",
-          () => {
-            // Verifies that last call takes precedence.
-            browser.menus.overrideContext({ showDefaults: false });
-            browser.menus.overrideContext({ showDefaults: true });
-            browser.test.sendMessage("oncontextmenu_in_dom_part_2");
+    await new Promise(resolve =>
+      browser.menus.create(
+        {
+          id: "popup_1",
+          title: "popup_1",
+          documentUrlPatterns: [document.URL],
+          onclick() {
+            document.addEventListener(
+              "contextmenu",
+              () => {
+                // Verifies that last call takes precedence.
+                browser.menus.overrideContext({ showDefaults: false });
+                browser.menus.overrideContext({ showDefaults: true });
+                browser.test.sendMessage("oncontextmenu_in_dom_part_2");
+              },
+              { once: true }
+            );
+            browser.test.sendMessage("onClicked_popup_1");
           },
-          { once: true }
-        );
-        browser.test.sendMessage("onClicked_popup_1");
-      },
-    });
-    browser.menus.create(
-      {
-        id: "popup_2",
-        title: "popup_2",
-        onclick() {
-          browser.test.sendMessage("onClicked_popup_2");
         },
-      },
-      () => {
-        browser.test.sendMessage("menu-registered");
-      }
+        resolve
+      )
     );
+    await new Promise(resolve =>
+      browser.menus.create(
+        {
+          id: "popup_2",
+          title: "popup_2",
+          onclick() {
+            browser.test.sendMessage("onClicked_popup_2");
+          },
+        },
+        resolve
+      )
+    );
+    browser.test.log("ready");
+    browser.test.sendMessage("menu-registered");
   }
 
   const extension = ExtensionTestUtils.loadExtension({
@@ -376,19 +409,29 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
         </html>`,
       "popup.js": extensionPopupScript,
     },
-    background() {
+    async background() {
       // Expected to match and thus be visible.
-      browser.menus.create({
-        id: "bg_1",
-        title: "bg_1",
-        viewTypes: ["popup"],
-      });
+      await new Promise(resolve =>
+        browser.menus.create(
+          {
+            id: "bg_1",
+            title: "bg_1",
+            viewTypes: ["popup"],
+          },
+          resolve
+        )
+      );
       // Expected to not match and be hidden.
-      browser.menus.create({
-        id: "bg_2",
-        title: "bg_2",
-        viewTypes: ["tab"],
-      });
+      await new Promise(resolve =>
+        browser.menus.create(
+          {
+            id: "bg_2",
+            title: "bg_2",
+            viewTypes: ["tab"],
+          },
+          resolve
+        )
+      );
       browser.menus.onShown.addListener(info => {
         browser.test.assertEq("popup", info.viewType, "Expected viewType");
         browser.test.assertEq(
@@ -415,12 +458,22 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
   Assert.ok(button, "Button created");
   EventUtils.synthesizeMouseAtCenter(button, { clickCount: 1 }, testWindow);
   await extension.awaitMessage("menu-registered");
+  // We received the menu-registered message, so the contextmenu event listeners for
+  // the two link elements in the popup should be set up by now. But that is not always
+  // the case. We sometimes see the default context menu and the expected message from
+  // the popup script is not received.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => testWindow.setTimeout(resolve, 250));
 
   {
     // Tests overrideContext({})
     info("Expecting the menu to be replaced by overrideContext.");
 
-    const menu = await openContextMenuInPopup(extension, "#link1", testWindow);
+    const menu = await openBrowserContextMenuInActionPopup(
+      extension,
+      "#link1",
+      testWindow
+    );
     await extension.awaitMessage("oncontextmenu_in_dom_part_1");
     await extension.awaitMessage("onShown");
 
@@ -432,7 +485,7 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
 
     const menuItems = menu.getElementsByAttribute("label", "popup_1");
 
-    await clickItemInBrowserContextMenuPopup(menuItems[0], {}, testWindow);
+    await clickItemInMenuPopup(menuItems[0]);
     await extension.awaitMessage("onClicked_popup_1");
   }
 
@@ -441,7 +494,11 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
     info(
       "Expecting the menu to be replaced by overrideContext, including default menu items."
     );
-    const menu = await openContextMenuInPopup(extension, "#link1", testWindow);
+    const menu = await openBrowserContextMenuInActionPopup(
+      extension,
+      "#link1",
+      testWindow
+    );
     await extension.awaitMessage("oncontextmenu_in_dom_part_2");
     await extension.awaitMessage("onShown");
     const visibleMenuItemIds = getVisibleChildrenIds(menu);
@@ -453,7 +510,7 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
     checkIsDefaultMenuItemVisible(visibleMenuItemIds);
 
     const menuItems = menu.getElementsByAttribute("label", "popup_2");
-    await clickItemInBrowserContextMenuPopup(menuItems[0], {}, testWindow);
+    await clickItemInMenuPopup(menuItems[0]);
     await extension.awaitMessage("onClicked_popup_2");
   }
 
@@ -463,7 +520,11 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
     info(
       "Expecting the default menu to be used when overrideContext is not called."
     );
-    const menu = await openContextMenuInPopup(extension, "#link1", testWindow);
+    const menu = await openBrowserContextMenuInActionPopup(
+      extension,
+      "#link1",
+      testWindow
+    );
     await extension.awaitMessage("onShown");
 
     checkIsDefaultMenuItemVisible(getVisibleChildrenIds(menu));
@@ -477,7 +538,7 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
       "Extension menu should be the last element."
     );
 
-    const submenu = await openSubmenu(topLevelExtensionMenuItem);
+    const submenu = await openSubMenuPopup(topLevelExtensionMenuItem);
     is(submenu, topLevelExtensionMenuItem.menupopup, "Correct submenu opened");
 
     Assert.deepEqual(
@@ -492,7 +553,8 @@ async function run_overrideContext_test_in_popup(testWindow, buttonSelector) {
   {
     info("Testing overrideContext from a listener inside a shadow DOM.");
     // Tests that overrideContext({}) can be used from a listener inside shadow DOM.
-    const menu = await openContextMenuInPopup(
+
+    const menu = await openBrowserContextMenuInActionPopup(
       extension,
       () => this.document.getElementById("shadowHost").shadowRoot.firstChild,
       testWindow

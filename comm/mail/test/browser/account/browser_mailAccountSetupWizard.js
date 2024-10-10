@@ -5,18 +5,18 @@
 "use strict";
 
 var { openAccountSetup } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/AccountManagerHelpers.sys.mjs"
+  "resource://testing-common/mail/AccountManagerHelpers.sys.mjs"
 );
 var { input_value, delete_all_existing } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/KeyboardHelpers.sys.mjs"
+  "resource://testing-common/mail/KeyboardHelpers.sys.mjs"
 );
 
 var { cal } = ChromeUtils.importESModule(
   "resource:///modules/calendar/calUtils.sys.mjs"
 );
 var { DNS } = ChromeUtils.importESModule("resource:///modules/DNS.sys.mjs");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 const { TelemetryTestUtils } = ChromeUtils.importESModule(
   "resource://testing-common/TelemetryTestUtils.sys.mjs"
@@ -33,10 +33,10 @@ var outgoingShortName = "Example Två";
 
 var imapUser = {
   name: "John Doe",
-  email: "john.doe@example-imap.com",
+  email: "john.doe@imap.test",
   password: "abc12345",
-  incomingHost: "testin.example-imap.com",
-  outgoingHost: "testout.example-imap.com",
+  incomingHost: "testin.imap.test",
+  outgoingHost: "testout.imap.test",
 };
 
 var IMAPServer = {
@@ -60,7 +60,7 @@ var IMAPServer = {
       const handler = new IMAP_RFC3501_handler(daemon);
       mixinExtension(handler, IMAP_RFC2195_extension);
 
-      handler.kUsername = "john.doe@example-imap.com";
+      handler.kUsername = "john.doe@imap.test";
       handler.kPassword = "abc12345";
       handler.kAuthRequired = true;
       handler.kAuthSchemes = ["PLAIN"];
@@ -91,7 +91,7 @@ var SMTPServer = {
     this.daemon = new SmtpDaemon();
     this.server = new nsMailServer(daemon => {
       const handler = new SMTP_RFC2821_handler(daemon);
-      handler.kUsername = "john.doe@example-imap.com";
+      handler.kUsername = "john.doe@imap.test";
       handler.kPassword = "abc12345";
       handler.kAuthRequired = true;
       handler.kAuthSchemes = ["PLAIN"];
@@ -116,34 +116,37 @@ DNS.srv = function (name) {
   if (["_caldavs._tcp.localhost", "_carddavs._tcp.localhost"].includes(name)) {
     return [{ prio: 0, weight: 0, host: "example.org", port: 443 }];
   }
-  if (
-    [
-      "_caldavs._tcp.example-imap.com",
-      "_carddavs._tcp.example-imap.com",
-    ].includes(name)
-  ) {
+  if (["_caldavs._tcp.imap.test", "_carddavs._tcp.imap.test"].includes(name)) {
     return [{ prio: 0, weight: 0, host: "example.org", port: 443 }];
   }
   throw new Error(`Unexpected DNS SRV lookup: ${name}`);
 };
 DNS.txt = function (name) {
   if (name == "_caldavs._tcp.localhost") {
-    return [{ data: "path=/browser/comm/calendar/test/browser/data/dns.sjs" }];
+    return [
+      { strings: ["path=/browser/comm/calendar/test/browser/data/dns.sjs"] },
+    ];
   }
   if (name == "_carddavs._tcp.localhost") {
     return [
       {
-        data: "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+        strings: [
+          "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+        ],
       },
     ];
   }
-  if (name == "_caldavs._tcp.example-imap.com") {
-    return [{ data: "path=/browser/comm/calendar/test/browser/data/dns.sjs" }];
+  if (name == "_caldavs._tcp.imap.test") {
+    return [
+      { strings: ["path=/browser/comm/calendar/test/browser/data/dns.sjs"] },
+    ];
   }
-  if (name == "_carddavs._tcp.example-imap.com") {
+  if (name == "_carddavs._tcp.imap.test") {
     return [
       {
-        data: "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+        strings: [
+          "path=/browser/comm/mail/components/addrbook/test/browser/data/dns.sjs",
+        ],
       },
     ];
   }
@@ -168,7 +171,7 @@ function remove_account_internal(tab, account, outgoing) {
 
   // Remove the outgoing server
   const smtpKey = outgoing.key;
-  MailServices.smtp.deleteServer(outgoing);
+  MailServices.outgoingServer.deleteServer(outgoing);
   win.replaceWithDefaultSmtpServer(smtpKey);
 }
 
@@ -205,10 +208,10 @@ add_task(async function test_mail_account_setup() {
   const notificationBox =
     tab.browser.contentWindow.gAccountSetup.notificationBox;
 
-  const notificationShowed = BrowserTestUtils.waitForCondition(
+  const notificationPromise = BrowserTestUtils.waitForCondition(
     () =>
       notificationBox.getNotificationWithValue("accountSetupSuccess") != null,
-    "Timeout waiting for error notification to be showed"
+    "Timeout waiting for error notification to be shown"
   );
 
   const popOption = tabDocument.getElementById("resultsOption-pop3");
@@ -225,15 +228,25 @@ add_task(async function test_mail_account_setup() {
   );
 
   // Wait for the successful notification to show up.
-  await notificationShowed;
+  await notificationPromise;
 
   // Only the POP protocol should be available, therefore we need to confirm
   // that the UI is returning only 1 pre-selected protocol.
   await protocolPOPSelected;
 
-  // Confirm that the IMAP and EXCHANGE options are hidden.
-  Assert.ok(tabDocument.getElementById("resultsOption-imap").hidden);
-  Assert.ok(tabDocument.getElementById("resultsOption-exchange").hidden);
+  // Confirm that protocols other than the expected POP3 aren't shown.
+  Assert.ok(
+    tabDocument.getElementById("resultsOption-imap").hidden,
+    "The IMAP results section should be hidden"
+  );
+  Assert.ok(
+    tabDocument.getElementById("resultsOption-ews").hidden,
+    "The EWS results section should be hidden"
+  );
+  Assert.ok(
+    tabDocument.getElementById("resultsOption-exchange").hidden,
+    "The Exchange results section should be hidden"
+  );
 
   // Open the advanced settings (Account Manager) to create the account
   // immediately. We use an invalid email/password so the setup will fail
@@ -296,7 +309,9 @@ async function subtest_verify_account(tab, user) {
   const account = tab.browser.contentWindow.currentAccount;
   const identity = account.defaultIdentity;
   const incoming = account.incomingServer;
-  const outgoing = MailServices.smtp.getServerByKey(identity.smtpServerKey);
+  const outgoing = MailServices.outgoingServer.getServerByKey(
+    identity.smtpServerKey
+  );
 
   const config = {
     "incoming server username": {
@@ -316,7 +331,7 @@ async function subtest_verify_account(tab, user) {
     },
     "outgoing server hostname": {
       // And this is lowercase
-      actual: outgoing.hostname,
+      actual: outgoing.serverURI.host,
       expected: user.outgoingHost,
     },
     "user real name": { actual: identity.fullName, expected: user.name },

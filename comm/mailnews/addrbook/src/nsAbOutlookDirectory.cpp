@@ -2,11 +2,12 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 #include "nsAbOutlookDirectory.h"
 #include "nsAbWinHelper.h"
 
 #include "nsString.h"
-#include "nsAbDirectoryQuery.h"
+#include "nsIAbDirectoryQuery.h"
 #include "nsIAbBooleanExpression.h"
 #include "nsIAbManager.h"
 #include "nsAbQueryStringToExpression.h"
@@ -17,7 +18,6 @@
 #include "mozilla/Logging.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
-#include "nsCRTGlue.h"
 #include "nsArrayUtils.h"
 #include "nsMsgUtils.h"
 #include "nsQueryObject.h"
@@ -140,6 +140,7 @@ NS_IMETHODIMP nsAbOutlookDirectory::GetChildNodes(
 
 NS_IMETHODIMP nsAbOutlookDirectory::GetChildCardCount(uint32_t* aCount) {
   nsIMutableArray* srcCards = m_IsMailList ? m_AddressList : mCardList;
+  NS_ENSURE_STATE(srcCards);
   return srcCards->GetLength(aCount);
 }
 
@@ -149,6 +150,7 @@ NS_IMETHODIMP nsAbOutlookDirectory::GetChildCards(
 
   // Not a search, so just return the appropriate list of items.
   nsIMutableArray* srcCards = m_IsMailList ? m_AddressList : mCardList;
+  NS_ENSURE_STATE(srcCards);
   uint32_t count = 0;
   nsresult rv = srcCards->GetLength(&count);
   NS_ENSURE_SUCCESS(rv, rv);

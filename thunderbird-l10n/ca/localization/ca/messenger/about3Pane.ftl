@@ -117,8 +117,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Filtra aquests missatges <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Filtra els missatges:
+quick-filter-bar-search2 =
+    .label = Filtra els missatges
+quick-filter-bar-searching =
+    .title = S'està cercant…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -430,12 +432,26 @@ threadpane-column-header-id = Ordre de recepció
     .title = Ordena per ordre de recepció
 threadpane-column-label-id =
     .label = Ordre de recepció
+threadpane-cell-id =
+    .aria-label = Ordre de recepció
+# Variables:
+# $title (String) - Message id for tooltip.
+threadpane-cell-id-title =
+    .aria-label = Ordre de recepció
+    .title = { $title }
 threadpane-column-header-delete =
     .title = Suprimeix un missatge
 threadpane-column-label-delete =
     .label = Suprimeix
 threadpane-cell-delete =
     .aria-label = Suprimeix
+# Variables:
+# $count (Number) - Number of replies in thread.
+threadpane-replies =
+    { $count ->
+        [one] { $count } resposta
+       *[other] { $count } respostes
+    }
 
 ## Message state variations
 
@@ -487,3 +503,42 @@ apply-current-view-to-folder-message = Voleu aplicar la vista de la carpeta actu
 # Variables:
 #  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Voleu aplicar la vista de la carpeta actual a { $name } i a les seves subcarpetes?
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>1</span> per llegir d'<span>1</span> missatge
+               *[other] <span>1</span> per llegir de <span>{ $total }</span> missatges
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> per llegir d'<span>1</span> missatge
+               *[other] <span>{ $unread }</span> per llegir de <span>{ $total }</span> missatges
+            }
+    }
+# Variables:
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-count =
+    { $total ->
+        [one] <span>1</span> missatge
+       *[other] <span>{ $total }</span> missatges
+    }
+threadpane-card-menu-button =
+    .title = Menú del missatge
+message-list-placeholder-no-messages = No s'ha trobat cap missatge
+message-list-placeholder-multiple-folders = S'han seleccionat diverses carpetes
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Marca la carpeta com a llegida
+           *[other] Marca les carpetes com a llegides
+        }
+    .accesskey = r

@@ -22,6 +22,7 @@ interface nsIFile;
 interface nsIMsgIdentity;
 interface nsIMsgThread;
 interface nsIMsgPluggableStore;
+interface nsIPropertyBag2;
 
 typedef long nsMsgBiffState;
 
@@ -54,6 +55,13 @@ interface nsIMsgFolder : nsISupports {
   attribute AString prettyName;
   readonly attribute AString abbreviatedName;
   readonly attribute AString prettyPath;
+
+%{C++
+  /**
+   * C++ shortcut to folder URI, for logging and debugging.
+   */
+  nsCString URI();
+%}
 
   /**
    * Set pretty name again from original name,
@@ -683,7 +691,7 @@ interface nsIMsgFolder : nsISupports {
    */
   attribute long sortOrder;
 
-  attribute nsIDBFolderInfo dBTransferInfo;
+  attribute nsIPropertyBag2 dBTransferInfo;
 
   /**
    * Set a string property on the folder.
@@ -691,8 +699,8 @@ interface nsIMsgFolder : nsISupports {
   void setStringProperty(in string propertyName, in AUTF8String propertyValue);
 
   /**
-   * Returns the value of a string property.
-   * Throws an error if property does not exist.
+   * Returns the value of a string property, or an empty string if the property
+   * is not found.
    */
   AUTF8String getStringProperty(in string propertyName);
 

@@ -30,30 +30,27 @@
 var { AppConstants } = ChromeUtils.importESModule(
   "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 ChromeUtils.defineESModuleGetters(this, {
+  CalMetronome: "resource:///modules/CalMetronome.sys.mjs",
+  FeedUtils: "resource:///modules/FeedUtils.sys.mjs",
   FolderPaneUtils: "resource:///modules/FolderPaneUtils.sys.mjs",
   FolderTreeProperties: "resource:///modules/FolderTreeProperties.sys.mjs",
+  FolderUtils: "resource:///modules/FolderUtils.sys.mjs",
   MailE10SUtils: "resource:///modules/MailE10SUtils.sys.mjs",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
-  SmartServerUtils: "resource:///modules/SmartServerUtils.sys.mjs",
+  SmartMailboxUtils: "resource:///modules/SmartMailboxUtils.sys.mjs",
   TagUtils: "resource:///modules/TagUtils.sys.mjs",
   UIDensity: "resource:///modules/UIDensity.sys.mjs",
   UIFontSize: "resource:///modules/UIFontSize.sys.mjs",
   XULStoreUtils: "resource:///modules/XULStoreUtils.sys.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalMetronome: "resource:///modules/CalMetronome.jsm",
-  FeedUtils: "resource:///modules/FeedUtils.jsm",
-  FolderUtils: "resource:///modules/FolderUtils.jsm",
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
 });
 
 const messengerBundle = Services.strings.createBundle(
@@ -61,7 +58,7 @@ const messengerBundle = Services.strings.createBundle(
 );
 
 const { ThreadPaneColumns } = ChromeUtils.importESModule(
-  "chrome://messenger/content/thread-pane-columns.mjs"
+  "chrome://messenger/content/ThreadPaneColumns.mjs"
 );
 
 // As defined in nsMsgDBView.h.
@@ -102,6 +99,22 @@ var accountCentralBrowser;
 function refreshGroupedBySortView() {
   if (gViewWrapper?.showGroupedBySort) {
     folderTree.dispatchEvent(new CustomEvent("select"));
+  }
+}
+
+/**
+ * Update the state of zoom related key bindings, whenever the view changes.
+ */
+function updateZoomCommands() {
+  const commandsToUpdate = [
+    "cmd_fullZoomReduce",
+    "cmd_fullZoomEnlarge",
+    "cmd_fullZoomReset",
+    "cmd_fullZoomToggle",
+  ];
+
+  for (const command of commandsToUpdate) {
+    top.goUpdateCommand(command);
   }
 }
 
@@ -154,6 +167,8 @@ window.addEventListener("DOMContentLoaded", async event => {
   mailContextMenu.init();
 
   CalMetronome.on("day", refreshGroupedBySortView);
+
+  updateZoomCommands();
 });
 
 window.addEventListener("unload", () => {
@@ -214,9 +229,6 @@ var paneLayout = {
       (name, oldValue, newValue) => this.setLayout(newValue)
     );
     this.setLayout(this.layoutPreference);
-    threadPane.updateThreadView(
-      XULStoreUtils.getValue("messenger", "threadPane", "view")
-    );
   },
 
   setLayout(preference) {
@@ -286,6 +298,14 @@ var folderPaneContextMenu = {
    */
   _commandStates: null,
 
+  /**
+   * Keep track of a context clicked folder outside of the current selection
+   * range.
+   *
+   * @type {?nsIMsgFolder}
+   */
+  _overrideFolder: null,
+
   init() {
     this._menupopup = document.getElementById("folderPaneContext");
     this._menupopup.addEventListener("popupshowing", this);
@@ -313,12 +333,17 @@ var folderPaneContextMenu = {
 
   /**
    * The folder that this context menu is operating on. This will be `gFolder`
-   * unless the menu was opened by right-clicking on another folder.
+   * unless the menu was opened by right-clicking on another folder, or multiple
+   * folders are selected in which case we return the currently active folder.
    *
-   * @type {nsIMsgFolder}
+   * @type {?nsIMsgFolder}
    */
   get activeFolder() {
-    return this._overrideFolder || gFolder;
+    return (
+      this._overrideFolder ||
+      gFolder ||
+      MailServices.folderLookup.getFolderForURL(folderTree.selectedRow?.uri)
+    );
   },
 
   /**
@@ -346,55 +371,151 @@ var folderPaneContextMenu = {
    * out together to save unnecessary work.
    *
    * @param {string} command
+   * @returns {boolean}
    */
   getCommandState(command) {
     const folder = this.activeFolder;
     if (!folder || FolderUtils.isSmartTagsFolder(folder)) {
       return false;
     }
+
     if (this._commandStates === null) {
-      let {
-        canCompact,
+      let canCompact,
+        isCompactEnabled,
         canCreateSubfolders,
         canRename,
-        deletable,
-        flags,
         isServer,
+        isNNTP,
+        isJunk,
+        isVirtual,
+        isInbox,
+        isSpecialUse,
+        canRenameDeleteJunkMail,
+        isSmartTagsFolder,
+        deletable,
         server,
         URI,
-      } = folder;
-      const isJunk = flags & Ci.nsMsgFolderFlags.Junk;
-      const isVirtual = flags & Ci.nsMsgFolderFlags.Virtual;
-      const isNNTP = server.type == "nntp";
+        flags;
+
+      const multiSelection =
+        folderTree.selection.size > 1 && !this._overrideFolder;
+      if (multiSelection) {
+        canCreateSubfolders = false;
+        canRename = false;
+        isSmartTagsFolder = false;
+        isSpecialUse = true;
+        isInbox = false;
+
+        // Set some variables to TRUE to help during the folder lookup loop.
+        canCompact = true;
+        isServer = true;
+        deletable = true;
+        isNNTP = true;
+        isVirtual = true;
+        isCompactEnabled = true;
+        isJunk = true;
+        canRenameDeleteJunkMail = true;
+
+        for (const row of folderTree.selection.values()) {
+          const folder = MailServices.folderLookup.getFolderForURL(row.uri);
+
+          // We only care if a folder doesn't support a specific property, so
+          // let's update a variable only if it's still truthy.
+          canCompact &&= folder.canCompact;
+          isServer &&= folder.isServer;
+          deletable &&= folder.deletable;
+          isNNTP &&= folder.server.type == "nntp";
+          isVirtual &&= folder.flags & Ci.nsMsgFolderFlags.Virtual;
+          isJunk &&= folder.flags & Ci.nsMsgFolderFlags.Junk;
+          canRenameDeleteJunkMail &&= FolderUtils.canRenameDeleteJunkMail(
+            folder.URI
+          );
+          isCompactEnabled &&= folder.isCommandEnabled("cmd_compactFolder");
+
+          // Tiny performance failsafe in case all of the variables are already
+          // falsy we can break the loop early.
+          if (
+            !canCompact &&
+            !isServer &&
+            !deletable &&
+            !isNNTP &&
+            !isVirtual &&
+            !isJunk &&
+            !canRenameDeleteJunkMail &&
+            !isCompactEnabled
+          ) {
+            break;
+          }
+        }
+      } else {
+        ({
+          canCompact,
+          canCreateSubfolders,
+          canRename,
+          deletable,
+          flags,
+          isServer,
+          server,
+          URI,
+        } = folder);
+        isCompactEnabled = folder.isCommandEnabled("cmd_compactFolder");
+        isNNTP = server.type == "nntp";
+        isJunk = flags & Ci.nsMsgFolderFlags.Junk;
+        isVirtual = flags & Ci.nsMsgFolderFlags.Virtual;
+        isInbox = flags & Ci.nsMsgFolderFlags.Inbox;
+        isSpecialUse = flags & Ci.nsMsgFolderFlags.SpecialUse;
+        canRenameDeleteJunkMail = FolderUtils.canRenameDeleteJunkMail(URI);
+        isSmartTagsFolder = FolderUtils.isSmartTagsFolder(folder);
+      }
+
       if (isNNTP && !isServer) {
         // `folderPane.deleteFolder` has a special case for this.
         deletable = true;
       }
-      const isSmartTagsFolder = FolderUtils.isSmartTagsFolder(folder);
-      const showNewFolderItem =
-        (!isNNTP && canCreateSubfolders) || flags & Ci.nsMsgFolderFlags.Inbox;
 
       this._commandStates = {
-        cmd_newFolder: showNewFolderItem,
-        cmd_deleteFolder: isJunk
-          ? FolderUtils.canRenameDeleteJunkMail(URI)
-          : deletable,
+        cmd_newFolder: (!isNNTP && canCreateSubfolders) || isInbox,
+        cmd_deleteFolder: isJunk ? canRenameDeleteJunkMail : deletable,
         cmd_renameFolder:
-          (!isServer &&
-            canRename &&
-            !(flags & Ci.nsMsgFolderFlags.SpecialUse)) ||
+          (!isServer && canRename && !isSpecialUse) ||
           isVirtual ||
-          (isJunk && FolderUtils.canRenameDeleteJunkMail(URI)),
+          (isJunk && canRenameDeleteJunkMail),
         cmd_compactFolder:
-          !isVirtual &&
-          (isServer || canCompact) &&
-          folder.isCommandEnabled("cmd_compactFolder"),
+          !isVirtual && (isServer || canCompact) && isCompactEnabled,
         cmd_emptyTrash: !isNNTP,
-        cmd_properties: !isServer && !isSmartTagsFolder,
-        cmd_toggleFavoriteFolder: !isServer && !isSmartTagsFolder,
+        cmd_properties: !multiSelection && !isServer && !isSmartTagsFolder,
+        cmd_toggleFavoriteFolder:
+          !multiSelection && !isServer && !isSmartTagsFolder,
       };
     }
     return this._commandStates[command];
+  },
+
+  /**
+   * Update the visibility of a menuitem.
+   *
+   * @param {string} id - The id of the menuitem.
+   * @param {boolean} show - If the item should be made visible.
+   */
+  _showMenuItem(id, show) {
+    const item = document.getElementById(id);
+    if (item) {
+      item.hidden = !show;
+    }
+  },
+
+  /**
+   * Update the checked state of a menuitem.
+   *
+   * @param {string} id - The id of the menuitem.
+   * @param {boolean} checked - If the item should be checked.
+   */
+  _checkMenuItem(id, checked) {
+    const item = document.getElementById(id);
+    if (item) {
+      // Always convert truthy/falsy to boolean before string.
+      item.setAttribute("checked", !!checked);
+    }
   },
 
   onPopupShowing(event) {
@@ -402,25 +523,49 @@ var folderPaneContextMenu = {
       return;
     }
 
-    function showItem(id, show) {
-      const item = document.getElementById(id);
-      if (item) {
-        item.hidden = !show;
-      }
+    if (!this._overrideFolder && folderTree.selection.size > 1) {
+      this.updatePopupForMultiselection();
+      return;
     }
 
-    function checkItem(id, checked) {
-      const item = document.getElementById(id);
-      if (item) {
-        // Always convert truthy/falsy to boolean before string.
-        item.setAttribute("checked", !!checked);
-      }
-    }
+    this.updatePopupForSingleSelection();
+  },
 
+  /**
+   * Update the visibility of the folder pane popup menuitems based on the
+   * state of enabled commands.
+   */
+  updatePopupCommandStates() {
     // Ask commandController about the commands it controls.
     for (const [id, command] of Object.entries(this._commands)) {
-      showItem(id, commandController.isCommandEnabled(command));
+      this._showMenuItem(id, commandController.isCommandEnabled(command));
     }
+  },
+
+  /**
+   * Update the fluent strings of the context menu items that can be used for
+   * both single and multi selection. We pass a fake integer count to get the
+   * correct string because we might be showing the context menu for the an
+   * override folder that it's outside the current multiselection range, so
+   * relying on the actual selection count is not accurate.
+   *
+   * @param {integer} count - 1 or 2 depending if single or multiselection.
+   */
+  updateFluentStrings(count) {
+    document.l10n.setAttributes(
+      document.getElementById("folderPaneContext-markMailFolderAllRead"),
+      "folder-pane-context-mark-folder-read",
+      { count }
+    );
+  },
+
+  /**
+   * Update the folder pane popup to show only the available actions supported
+   * during a single folder selection state.
+   */
+  updatePopupForSingleSelection() {
+    this.updatePopupCommandStates();
+    this.updateFluentStrings(1);
 
     const folder = this.activeFolder;
     const { canCreateSubfolders, flags, isServer, isSpecialFolder, server } =
@@ -432,40 +577,52 @@ var folderPaneContextMenu = {
     const isSmartVirtualFolder = FolderUtils.isSmartVirtualFolder(folder);
     const isSmartTagsFolder = FolderUtils.isSmartTagsFolder(folder);
     const serverType = server.type;
+    const hasNoSearchTerms = () => {
+      if (!isVirtual) {
+        return true;
+      }
+      const wrapper = VirtualFolderHelper.wrapVirtualFolder(folder);
+      const noSearchTerms = ["", "ALL"].includes(wrapper.searchString);
+      wrapper.cleanUpMessageDatabase();
+      return noSearchTerms;
+    };
 
-    showItem(
+    this._showMenuItem(
       "folderPaneContext-getMessages",
       (isServer && serverType != "none") ||
         (["nntp", "rss"].includes(serverType) && !isTrash && !isVirtual)
     );
     const showPauseAll = isServer && FeedUtils.isFeedFolder(folder);
-    showItem("folderPaneContext-pauseAllUpdates", showPauseAll);
+    this._showMenuItem("folderPaneContext-pauseAllUpdates", showPauseAll);
     if (showPauseAll) {
       const optionsAcct = FeedUtils.getOptionsAcct(server);
-      checkItem("folderPaneContext-pauseAllUpdates", !optionsAcct.doBiff);
+      this._checkMenuItem(
+        "folderPaneContext-pauseAllUpdates",
+        !optionsAcct.doBiff
+      );
     }
     const showPaused = !isServer && FeedUtils.getFeedUrlsInFolder(folder);
-    showItem("folderPaneContext-pauseUpdates", showPaused);
+    this._showMenuItem("folderPaneContext-pauseUpdates", showPaused);
     if (showPaused) {
       const properties = FeedUtils.getFolderProperties(folder);
-      checkItem(
+      this._checkMenuItem(
         "folderPaneContext-pauseUpdates",
         properties.includes("isPaused")
       );
     }
 
-    showItem("folderPaneContext-searchMessages", !isVirtual);
+    this._showMenuItem("folderPaneContext-searchMessages", !isVirtual);
     if (isVirtual) {
-      showItem("folderPaneContext-subscribe", false);
+      this._showMenuItem("folderPaneContext-subscribe", false);
     } else if (serverType == "rss" && !isTrash) {
-      showItem("folderPaneContext-subscribe", true);
+      this._showMenuItem("folderPaneContext-subscribe", true);
     } else {
-      showItem(
+      this._showMenuItem(
         "folderPaneContext-subscribe",
         isServer && ["imap", "nntp"].includes(serverType)
       );
     }
-    showItem(
+    this._showMenuItem(
       "folderPaneContext-newsUnsubscribe",
       isRealFolder && serverType == "nntp"
     );
@@ -486,33 +643,36 @@ var folderPaneContextMenu = {
         );
     }
 
-    showItem(
+    this._showMenuItem(
       "folderPaneContext-markMailFolderAllRead",
-      !isServer && !isSmartTagsFolder && serverType != "nntp"
+      !isServer &&
+        !isSmartTagsFolder &&
+        hasNoSearchTerms() &&
+        serverType != "nntp"
     );
-    showItem(
+    this._showMenuItem(
       "folderPaneContext-markNewsgroupAllRead",
       isRealFolder && serverType == "nntp"
     );
-    showItem(
+    this._showMenuItem(
       "folderPaneContext-emptyTrash",
       isSpecialFolder(Ci.nsMsgFolderFlags.Trash, true)
     );
-    showItem("folderPaneContext-emptyJunk", isJunk);
-    showItem(
+    this._showMenuItem("folderPaneContext-emptyJunk", isJunk);
+    this._showMenuItem(
       "folderPaneContext-sendUnsentMessages",
       flags & Ci.nsMsgFolderFlags.Queue
     );
 
-    checkItem(
+    this._checkMenuItem(
       "folderPaneContext-favoriteFolder",
       flags & Ci.nsMsgFolderFlags.Favorite
     );
-    showItem("folderPaneContext-markAllFoldersRead", isServer);
+    this._showMenuItem("folderPaneContext-markAllFoldersRead", isServer);
 
-    showItem("folderPaneContext-settings", isServer);
+    this._showMenuItem("folderPaneContext-settings", isServer);
 
-    showItem("folderPaneContext-manageTags", isSmartTagsFolder);
+    this._showMenuItem("folderPaneContext-manageTags", isSmartTagsFolder);
 
     // If source folder is virtual, allow only "move" within its own server.
     // Don't show "copy" and "again" and don't show "recent" and "favorite".
@@ -520,12 +680,12 @@ var folderPaneContextMenu = {
     // in unified folder view or a Tags folder. If so, don't show "move".
     const movePopup = document.getElementById("folderContext-movePopup");
     if (isVirtual) {
-      showItem("folderPaneContext-copyMenu", false);
+      this._showMenuItem("folderPaneContext-copyMenu", false);
       let showMove = true;
       if (isSmartVirtualFolder || isSmartTagsFolder) {
         showMove = false;
       }
-      showItem("folderPaneContext-moveMenu", showMove);
+      this._showMenuItem("folderPaneContext-moveMenu", showMove);
       if (showMove) {
         const rootURI = MailUtils.getOrCreateFolder(
           this.activeFolder.rootFolder.URI
@@ -542,12 +702,82 @@ var folderPaneContextMenu = {
         // Set the move menu to show all accounts.
         movePopup.parentFolder = null;
       }
-      showItem("folderPaneContext-moveMenu", okToMoveCopy);
-      showItem("folderPaneContext-copyMenu", okToMoveCopy);
+      this._showMenuItem("folderPaneContext-moveMenu", okToMoveCopy);
+      this._showMenuItem("folderPaneContext-copyMenu", okToMoveCopy);
     }
 
+    this._refreshMenuSeparator();
+  },
+
+  /**
+   * Update the folder pane popup to show only the available actions supported
+   * during a multiselection state.
+   */
+  updatePopupForMultiselection() {
+    // Hide all menuitems to start from a clean state, except the separators.
+    for (const menuitem of this._menupopup.children) {
+      if (menuitem.localName == "menuseparator") {
+        continue;
+      }
+      menuitem.hidden = true;
+    }
+
+    // Update the command states after we've hidden all the menuitems so we can
+    // show only those that are active.
+    this.updatePopupCommandStates();
+    this.updateFluentStrings(folderTree.selection.size);
+
+    // Hide anything we know for sure we don't need in multiselection.
+    this._showMenuItem("folderPaneContext-getMessages", false);
+    this._showMenuItem("folderPaneContext-pauseAllUpdates", false);
+    this._showMenuItem("folderPaneContext-pauseUpdates", false);
+    this._showMenuItem("folderPaneContext-searchMessages", false);
+    this._showMenuItem("folderPaneContext-subscribe", false);
+    this._showMenuItem("folderPaneContext-newsUnsubscribe", false);
+    this._showMenuItem("folderPaneContext-markNewsgroupAllRead", false);
+    this._showMenuItem("folderPaneContext-emptyTrash", false);
+    this._showMenuItem("folderPaneContext-emptyJunk", false);
+    this._showMenuItem("folderPaneContext-sendUnsentMessages", false);
+    this._showMenuItem("folderPaneContext-markAllFoldersRead", false);
+    this._showMenuItem("folderPaneContext-settings", false);
+    this._showMenuItem("folderPaneContext-manageTags", false);
+
+    // Show only the standard commands that don't require special conditions.
+    this._showMenuItem("folderPaneContext-openNewTab", true);
+    this._showMenuItem("folderPaneContext-openNewWindow", true);
+    this._showMenuItem("folderPaneContext-markMailFolderAllRead", true);
+
+    const hasSpecial = [...folderTree.selection.values()].some(row => {
+      const folder = MailServices.folderLookup.getFolderForURL(row.uri);
+      return (
+        folder.isServer ||
+        folder.isVirtual ||
+        folder.noSelect ||
+        folder.flags & Ci.nsMsgFolderFlags.Junk ||
+        folder.flags & Ci.nsMsgFolderFlags.Virtual ||
+        folder.flags & Ci.nsMsgFolderFlags.SpecialUse ||
+        folder.isSpecialFolder(Ci.nsMsgFolderFlags.Trash, true) ||
+        FolderUtils.isSmartVirtualFolder(folder) ||
+        FolderUtils.isSmartTagsFolder(folder) ||
+        folder.server.type == "nntp"
+      );
+    });
+
+    // Show the move and copy items only if we don't have any special folder in
+    // the selection range.
+    this._showMenuItem("folderPaneContext-moveMenu", !hasSpecial);
+    this._showMenuItem("folderPaneContext-copyMenu", !hasSpecial);
+
+    this._refreshMenuSeparator();
+  },
+
+  /**
+   * Ensure that we don't leave an orphan menuseparator in the folder context
+   * menu after all the items have been updated.
+   */
+  _refreshMenuSeparator() {
     let lastItem;
-    for (const child of document.getElementById("folderPaneContext").children) {
+    for (const child of this._menupopup.children) {
       if (child.localName == "menuseparator") {
         child.hidden = !lastItem || lastItem.localName == "menuseparator";
       }
@@ -603,7 +833,33 @@ var folderPaneContextMenu = {
   },
 
   onCommand(event) {
-    const folder = this.activeFolder;
+    const activeFolder = this.activeFolder;
+    const selectedRows = [...folderTree.selection.values()];
+
+    // If the currently active folder is not part of the current selection,
+    // trigger the command only for that folder.
+    if (!selectedRows.some(s => s.uri == activeFolder.URI)) {
+      this.triggerCommand(event, activeFolder);
+      return;
+    }
+
+    // Loop through all currently selected folders and trigger the command for
+    // each one of those.
+    for (const row of selectedRows) {
+      this.triggerCommand(
+        event,
+        MailServices.folderLookup.getFolderForURL(row.uri)
+      );
+    }
+  },
+
+  /**
+   * Trigger the selected command from the context menu.
+   *
+   * @param {DOMEvent} event
+   * @param {nsIMsgFolder} folder
+   */
+  triggerCommand(event, folder) {
     // If commandController handles this command, ask it to do so.
     if (event.target.id in this._commands) {
       commandController.doCommand(this._commands[event.target.id], folder);
@@ -676,38 +932,23 @@ var folderPaneContextMenu = {
         break;
       default: {
         // Handle folder context menu items move to, copy to.
-        let isMove = false;
-        let isCopy = false;
-        let targetFolder;
-        if (
-          document
-            .getElementById("folderPaneContext-moveMenu")
-            .contains(event.target)
-        ) {
-          // A move is requested via foldermenu-popup.
-          isMove = true;
-        } else if (
-          document
-            .getElementById("folderPaneContext-copyMenu")
-            .contains(event.target)
-        ) {
-          // A copy is requested via foldermenu-popup.
-          isCopy = true;
+        let isMove = !!event.target.closest("#folderPaneContext-moveMenu");
+        const isCopy = !!event.target.closest("#folderPaneContext-copyMenu");
+
+        if (!isMove && !isCopy) {
+          return;
         }
-        if (isMove || isCopy) {
-          if (!targetFolder) {
-            targetFolder = event.target._folder;
-          }
-          isMove = this.transferFolder(isMove, folder, targetFolder);
-          // Save in prefs the target folder URI and if this was a move or
-          // copy. This is to fill in the next folder or message context
-          // menu item "Move|Copy to <TargetFolderName> Again".
-          Services.prefs.setStringPref(
-            "mail.last_msg_movecopy_target_uri",
-            targetFolder.URI
-          );
-          Services.prefs.setBoolPref("mail.last_msg_movecopy_was_move", isMove);
-        }
+
+        const targetFolder = event.target._folder;
+        isMove = this.transferFolder(isMove, folder, targetFolder);
+        // Save in prefs the target folder URI and if this was a move or copy.
+        // This is to fill in the next folder or message context menu item
+        // "Move|Copy to <TargetFolderName> Again".
+        Services.prefs.setStringPref(
+          "mail.last_msg_movecopy_target_uri",
+          targetFolder.URI
+        );
+        Services.prefs.setBoolPref("mail.last_msg_movecopy_was_move", isMove);
         break;
       }
     }
@@ -736,6 +977,11 @@ var folderPane = {
       },
 
       addFolder(parentFolder, childFolder) {
+        // Prevent "Empty Trash on Exit" for POP3 accounts from changing the
+        // collapsed state when the trash folder is replaced by an empty one.
+        if (MailServices.accounts.shutdownInProgress) {
+          return;
+        }
         FolderTreeProperties.setIsExpanded(childFolder.URI, this.name, true);
         if (
           childFolder.server.hidden ||
@@ -784,25 +1030,18 @@ var folderPane = {
       active: false,
       canBeCompact: false,
 
-      _folderTypes: SmartServerUtils.folderTypes,
+      _folderTypes: SmartMailboxUtils.getFolderTypes(),
 
       init() {
-        this._smartServer = SmartServerUtils.getSmartServer();
-        const smartRoot = this._smartServer.rootFolder.QueryInterface(
-          Ci.nsIMsgLocalMailFolder
-        );
+        this._smartMailbox = SmartMailboxUtils.getSmartMailbox();
 
         // Add folders to the UI.
         for (const folderType of this._folderTypes) {
-          const folder = smartRoot.getChildWithURI(
-            `${smartRoot.URI}/${folderType.name}`,
-            false,
-            true
-          );
+          const folder = this._smartMailbox.getSmartFolder(folderType.name);
           if (!folder) {
-            // SmartServerUtils.getSmartServer() failed to create the
-            // child folder and printed an error message to the console. No need
-            // for additional error handling here.
+            // SmartMailboxUtils.SmartMailbox() failed to create the child folder
+            // and printed an error message to the console. No need for additional
+            // error handling here.
             continue;
           }
 
@@ -828,7 +1067,7 @@ var folderPane = {
 
       regenerateMode() {
         if (this._smartServer) {
-          MailServices.accounts.removeIncomingServer(this._smartServer, true);
+          SmartMailboxUtils.removeAll(true);
         }
         this.init();
       },
@@ -1046,9 +1285,10 @@ var folderPane = {
 
       changeAccountOrder() {
         folderPane._reapplyServerOrder(this.containerList);
-
         for (const smartFolderRow of this.containerList.children) {
-          if (smartFolderRow.dataset.serverKey == this._smartServer.key) {
+          if (
+            smartFolderRow.dataset.serverKey == this._smartMailbox.server.key
+          ) {
             folderPane._reapplyServerOrder(smartFolderRow.childList);
           }
         }
@@ -1304,36 +1544,11 @@ var folderPane = {
       canBeCompact: false,
 
       init() {
-        this._smartServer = MailServices.accounts.findServer(
-          "nobody",
-          "smart mailboxes",
-          "none"
-        );
-        if (!this._smartServer) {
-          this._smartServer = MailServices.accounts.createIncomingServer(
-            "nobody",
-            "smart mailboxes",
-            "none"
-          );
-          // We don't want the "smart" server/account leaking out into the ui in
-          // other places, so set it as hidden.
-          this._smartServer.hidden = true;
-          const account = MailServices.accounts.createAccount();
-          account.incomingServer = this._smartServer;
-        }
-        this._smartServer.prettyName =
-          messengerBundle.GetStringFromName("unifiedAccountName");
-        const smartRoot = this._smartServer.rootFolder.QueryInterface(
-          Ci.nsIMsgLocalMailFolder
-        );
-        this._tagsFolder =
-          smartRoot.getChildWithURI(`${smartRoot.URI}/tags`, false, false) ??
-          smartRoot.createLocalSubfolder("tags");
-        this._tagsFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
+        this._smartMailbox = SmartMailboxUtils.getSmartMailbox();
 
         for (const tag of MailServices.tags.getAllTags()) {
           try {
-            const folder = this._getVirtualFolder(tag);
+            const folder = this._smartMailbox.getTagFolder(tag);
             this.containerList.appendChild(
               folderPane._createTagRow(this.name, folder, tag)
             );
@@ -1342,46 +1557,6 @@ var folderPane = {
           }
         }
         MailServices.accounts.saveVirtualFolders();
-      },
-
-      /**
-       * Get or create a virtual folder searching messages for `tag`.
-       *
-       * @param {nsIMsgTag} tag
-       * @returns {nsIMsgFolder}
-       */
-      _getVirtualFolder(tag) {
-        let folder = this._tagsFolder.getChildWithURI(
-          `${this._tagsFolder.URI}/${encodeURIComponent(tag.key)}`,
-          false,
-          false
-        );
-        if (folder) {
-          return folder;
-        }
-
-        folder = this._tagsFolder.createLocalSubfolder(tag.key);
-        folder.flags |= Ci.nsMsgFolderFlags.Virtual;
-        folder.prettyName = tag.tag;
-
-        const msgDatabase = folder.msgDatabase;
-        const folderInfo = msgDatabase.dBFolderInfo;
-
-        folderInfo.setCharProperty(
-          "searchStr",
-          `AND (tag,contains,${tag.key})`
-        );
-        folderInfo.setCharProperty("searchFolderUri", "*");
-        folderInfo.setUint32Property(
-          "searchFolderFlag",
-          Ci.nsMsgFolderFlags.Inbox
-        );
-        folderInfo.setBooleanProperty("searchOnline", false);
-        msgDatabase.summaryValid = true;
-        msgDatabase.close(true);
-
-        this._tagsFolder.notifyFolderAdded(folder);
-        return folder;
       },
 
       /**
@@ -1395,13 +1570,13 @@ var folderPane = {
       changeTagFromPrefChange(prefName) {
         const [, , key] = prefName.split(".");
         if (!MailServices.tags.isValidKey(key)) {
-          const uri = `${this._tagsFolder.URI}/${encodeURIComponent(key)}`;
+          const uri = this._smartMailbox.getTagFolderUriForKey(key);
           folderPane.getRowForFolder(uri)?.remove();
           return;
         }
 
         const tag = MailServices.tags.getAllTags().find(t => t.key == key);
-        const folder = this._getVirtualFolder(tag);
+        const folder = this._smartMailbox.getTagFolder(tag);
         const row = folderPane.getRowForFolder(folder);
         folder.prettyName = tag.tag;
         if (row) {
@@ -1465,6 +1640,8 @@ var folderPane = {
 
     Services.obs.addObserver(this, "folder-color-changed");
     Services.obs.addObserver(this, "folder-color-preview");
+    Services.obs.addObserver(this, "server-color-changed");
+    Services.obs.addObserver(this, "server-color-preview");
     Services.obs.addObserver(this, "search-folders-changed");
     Services.obs.addObserver(this, "folder-properties-changed");
 
@@ -1533,6 +1710,8 @@ var folderPane = {
     Services.prefs.removeObserver("mailnews.tags.", this);
     Services.obs.removeObserver(this, "folder-color-changed");
     Services.obs.removeObserver(this, "folder-color-preview");
+    Services.obs.removeObserver(this, "server-color-changed");
+    Services.obs.removeObserver(this, "server-color-preview");
     Services.obs.removeObserver(this, "search-folders-changed");
     Services.obs.removeObserver(this, "folder-properties-changed");
   },
@@ -1589,7 +1768,7 @@ var folderPane = {
       case "search-folders-changed":
         if (this._modes.smart.active) {
           subject.QueryInterface(Ci.nsIMsgFolder);
-          if (subject.server == this._modes.smart._smartServer) {
+          if (subject.server == this._modes.smart._smartMailbox.server) {
             this._modes.smart.changeSearchedFolders(subject);
           }
         }
@@ -1600,6 +1779,10 @@ var folderPane = {
       case "folder-color-changed":
       case "folder-color-preview":
         this._changeRows(subject, row => row.setIconColor(data));
+        break;
+      case "server-color-changed":
+      case "server-color-preview":
+        this._changeServerRow(subject, row => row.setIconColor(data));
         break;
     }
   },
@@ -1757,7 +1940,7 @@ var folderPane = {
    *
    * @param {Event} event - The DOMEvent.
    */
-  moveFolderModeUp(event) {
+  moveFolderModeUp() {
     const currentModes = this.activeModes;
     const mode = this.mode;
     const index = currentModes.indexOf(mode);
@@ -1775,7 +1958,7 @@ var folderPane = {
    *
    * @param {Event} event - The DOMEvent.
    */
-  moveFolderModeDown(event) {
+  moveFolderModeDown() {
     const currentModes = this.activeModes;
     const mode = this.mode;
     const index = currentModes.indexOf(mode);
@@ -2211,6 +2394,18 @@ var folderPane = {
   },
 
   /**
+   * Get the first row inside a specifc mode, even if it is hidden.
+   *
+   * @param {string} modeName
+   * @returns {FolderTreeRow}
+   */
+  getFirstRowForMode(modeName) {
+    // Look in the mode's container. The container may or may not be
+    // attached to the document at this point.
+    return this._modes[modeName].containerList.querySelector("li");
+  },
+
+  /**
    * Loop through all currently active modes and call the required function if
    * it exists.
    *
@@ -2347,6 +2542,19 @@ var folderPane = {
       }
     }
   },
+  /**
+   * Perform a function on all rows representing a server.
+   *
+   * @param {nsIMsgAccount} account - The account that changed.
+   * @param {folderRowChangeCallback} callback
+   */
+  _changeServerRow(account, callback) {
+    for (const row of folderTree.querySelectorAll(
+      `li[data-server-type][data-server-key="${account.incomingServer.key}"]`
+    )) {
+      callback(row);
+    }
+  },
 
   /**
    * Called when a folder's new messages state changes.
@@ -2406,7 +2614,7 @@ var folderPane = {
    * @param {nsIMsgFolder} folder
    * @param {integer} newValue
    */
-  changeTotalCount(folder, newValue) {
+  changeTotalCount(folder) {
     this._changeRows(folder, row => {
       // Find the nearest visible ancestor and update it.
       let collapsedAncestor = row.parentElement?.closest("li.collapsed");
@@ -2450,7 +2658,7 @@ var folderPane = {
     }
   },
 
-  _onSelect(event) {
+  _onSelect() {
     const isSynthetic = gViewWrapper?.isSynthetic;
     threadPane.saveSelection();
     threadPane.hideIgnoredMessageNotification();
@@ -2460,11 +2668,39 @@ var folderPane = {
       messagePane.clearAll();
     }
 
-    const uri = folderTree.rows[folderTree.selectedIndex]?.uri;
+    const uri = folderTree.selectedRow?.uri;
     if (!uri) {
       gFolder = null;
       return;
     }
+
+    const pageTitle = document.getElementById("about3PaneTitle");
+    // Handle multiselection by preventing any message interaction.
+    if (folderTree.selection.size > 1) {
+      // Only update the title and icon for multiselection once if the previous
+      // state was single selection.
+      if (!pageTitle.hasAttribute("data-l10n-id")) {
+        document.title = "";
+        document.l10n.setAttributes(
+          document.getElementById("about3PaneTitle"),
+          "message-list-placeholder-multiple-folders"
+        );
+        document.head.querySelector(`link[rel="icon"]`).href =
+          FolderUtils.getFolderIcon();
+      }
+
+      gViewWrapper?.close();
+      messagePane.hideCurrentFindBar();
+      gFolder = gDBView = gViewWrapper = threadTree.view = null;
+      threadPaneHeader.onFolderSelected();
+      this._updateStatusQuota();
+      window.dispatchEvent(
+        new CustomEvent("folderURIChanged", { bubbles: true })
+      );
+      return;
+    }
+
+    pageTitle.removeAttribute("data-l10n-id");
     gFolder = MailServices.folderLookup.getFolderForURL(uri);
 
     // Bail out if this is synthetic view, such as a gloda search.
@@ -2477,6 +2713,9 @@ var folderPane = {
 
     // Clean up any existing view wrapper. This will invalidate the thread tree.
     gViewWrapper?.close();
+
+    // Hide any currently visible findbar.
+    messagePane.hideCurrentFindBar();
 
     if (gFolder.isServer) {
       document.title = gFolder.server.prettyName;
@@ -2509,13 +2748,13 @@ var folderPane = {
       }
 
       gViewWrapper.open(gFolder);
-
       // At this point `dbViewWrapperListener.onCreatedView` gets called,
       // setting up gDBView and scrolling threadTree to the right end.
 
       threadPane.updateListRole(
         !gViewWrapper?.showThreaded && !gViewWrapper?.showGroupedBySort
       );
+      threadPaneHeader.onFolderSelected();
     }
 
     this._updateStatusQuota();
@@ -2538,13 +2777,17 @@ var folderPane = {
       return;
     }
 
-    const tabListener = event => {
+    const tabListener = () => {
       // Hide the pane if the new tab ain't us.
       quotaPanel.hidden =
         top.window.document.getElementById("tabmail").currentAbout3Pane ==
         this.window;
     };
-    top.window.document.removeEventListener("TabSelect", tabListener);
+    const unloadListener = () => {
+      top.window.document.removeEventListener("TabSelect", tabListener);
+      window.removeEventListener("unload", unloadListener);
+    };
+    unloadListener();
 
     // For display on main window panel only include quota names containing
     // "STORAGE" or "MESSAGE". This will exclude unusual quota names containing
@@ -2578,6 +2821,7 @@ var folderPane = {
     } else {
       quotaPanel.hidden = false;
       top.window.document.addEventListener("TabSelect", tabListener);
+      window.addEventListener("unload", unloadListener);
 
       top.window.document
         .getElementById("quotaMeter")
@@ -2658,10 +2902,11 @@ var folderPane = {
       if (!row) {
         return;
       }
-      if (row.uri != gFolder.URI) {
-        // The right-clicked-on folder is not `gFolder`. Tell the context menu
-        // to use it instead. This override lasts until the context menu fires
-        // a "popuphidden" event.
+
+      if (![...folderTree.selection.values()].some(s => s.uri == row.uri)) {
+        // The right-clicked-on folder is not part of the currently selected
+        // list of folders. Tell the context menu to use it instead. This
+        // override lasts until the context menu fires a "popuphidden" event.
         folderPaneContextMenu.setOverrideFolder(
           MailServices.folderLookup.getFolderForURL(row.uri)
         );
@@ -2670,8 +2915,7 @@ var folderPane = {
       popup.openPopupAtScreen(event.screenX, event.screenY, true);
     } else {
       // Keyboard
-      const row = folderTree.getRowAtIndex(folderTree.selectedIndex);
-      popup.openPopup(row, "after_end", 0, 0, true);
+      popup.openPopup(folderTree.selectedRow, "after_end", 0, 0, true);
     }
 
     event.preventDefault();
@@ -2726,19 +2970,49 @@ var folderPane = {
       return;
     }
 
-    const folder = MailServices.folderLookup.getFolderForURL(row.uri);
-    if (!folder || folder.isServer) {
+    // If the currently dragged row is not part of the selection map, use it
+    // instead of the current selection entries.
+    const rows = folderTree.selection.has(folderTree.rows.indexOf(row))
+      ? folderTree.selection.values()
+      : [row];
+
+    const folders = [];
+    let hasServer = false;
+    let hasNNTP = false;
+    let hasSimpleFolder = false;
+    for (const row of rows) {
+      const folder = MailServices.folderLookup.getFolderForURL(row.uri);
+      folders.push(folder);
+
+      if (folder.isServer) {
+        hasServer = true;
+        break;
+      }
+
+      if (folder.server.type == "nntp") {
+        hasNNTP = true;
+        continue;
+      }
+
+      hasSimpleFolder = true;
+    }
+
+    // We don't allow dragging server rows, or mixing folder types.
+    if (hasServer || (hasNNTP && hasSimpleFolder)) {
       event.preventDefault();
       return;
     }
-    if (folder.server.type == "nntp") {
-      event.dataTransfer.mozSetDataAt("text/x-moz-newsfolder", folder, 0);
-      event.dataTransfer.effectAllowed = "move";
-      return;
-    }
 
-    event.dataTransfer.mozSetDataAt("text/x-moz-folder", folder, 0);
-    event.dataTransfer.effectAllowed = "copyMove";
+    for (const [index, folder] of folders.entries()) {
+      event.dataTransfer.mozSetDataAt(
+        folder.server.type == "nntp"
+          ? "text/x-moz-newsfolder"
+          : "text/x-moz-folder",
+        folder,
+        index
+      );
+    }
+    event.dataTransfer.effectAllowed = hasNNTP ? "move" : "copyMove";
   },
 
   _onDragOver(event) {
@@ -2780,41 +3054,43 @@ var folderPane = {
         return;
       }
 
-      const sourceFolder = event.dataTransfer
-        .mozGetDataAt("text/x-moz-folder", 0)
-        .QueryInterface(Ci.nsIMsgFolder);
+      for (let i = 0; i < event.dataTransfer.mozItemCount; i++) {
+        const sourceFolder = event.dataTransfer
+          .mozGetDataAt("text/x-moz-folder", i)
+          .QueryInterface(Ci.nsIMsgFolder);
 
-      // Don't allow to drop on itself.
-      if (targetFolder == sourceFolder) {
-        return;
-      }
-      // Don't copy within same server.
-      if (sourceFolder.server == targetFolder.server && copyKey) {
-        return;
-      }
-      // Don't allow immediate child to be dropped onto its parent.
-      if (targetFolder == sourceFolder.parent) {
-        return;
-      }
-      // Don't allow dragging of virtual folders across accounts.
-      if (
-        sourceFolder.getFlag(Ci.nsMsgFolderFlags.Virtual) &&
-        sourceFolder.server != targetFolder.server
-      ) {
-        return;
-      }
-      // Don't allow parent to be dropped on its ancestors.
-      if (sourceFolder.isAncestorOf(targetFolder)) {
-        return;
-      }
-      // If there is a folder that can't be renamed, don't allow it to be
-      // dropped if it is not to "Local Folders" or is to the same account.
-      if (
-        !sourceFolder.canRename &&
-        (targetFolder.server.type != "none" ||
-          sourceFolder.server == targetFolder.server)
-      ) {
-        return;
+        // Don't allow to drop on itself.
+        if (targetFolder == sourceFolder) {
+          return;
+        }
+        // Don't copy within same server.
+        if (sourceFolder.server == targetFolder.server && copyKey) {
+          return;
+        }
+        // Don't allow immediate child to be dropped onto its parent.
+        if (targetFolder == sourceFolder.parent) {
+          return;
+        }
+        // Don't allow dragging of virtual folders across accounts.
+        if (
+          sourceFolder.getFlag(Ci.nsMsgFolderFlags.Virtual) &&
+          sourceFolder.server != targetFolder.server
+        ) {
+          return;
+        }
+        // Don't allow parent to be dropped on its ancestors.
+        if (sourceFolder.isAncestorOf(targetFolder)) {
+          return;
+        }
+        // If there is a folder that can't be renamed, don't allow it to be
+        // dropped if it is not to "Local Folders" or is to the same account.
+        if (
+          !sourceFolder.canRename &&
+          (targetFolder.server.type != "none" ||
+            sourceFolder.server == targetFolder.server)
+        ) {
+          return;
+        }
       }
       event.dataTransfer.dropEffect = copyKey ? "copy" : "move";
     } else if (types.includes("application/x-moz-file")) {
@@ -2831,16 +3107,18 @@ var folderPane = {
       }
       event.dataTransfer.dropEffect = "copy";
     } else if (types.includes("text/x-moz-newsfolder")) {
-      const folder = event.dataTransfer
-        .mozGetDataAt("text/x-moz-newsfolder", 0)
-        .QueryInterface(Ci.nsIMsgFolder);
-      if (
-        targetFolder.isServer ||
-        targetFolder.server.type != "nntp" ||
-        folder == targetFolder ||
-        folder.server != targetFolder.server
-      ) {
-        return;
+      for (let i = 0; i < event.dataTransfer.mozItemCount; i++) {
+        const folder = event.dataTransfer
+          .mozGetDataAt("text/x-moz-newsfolder", i)
+          .QueryInterface(Ci.nsIMsgFolder);
+        if (
+          targetFolder.isServer ||
+          targetFolder.server.type != "nntp" ||
+          folder == targetFolder ||
+          folder.server != targetFolder.server
+        ) {
+          return;
+        }
       }
       event.dataTransfer.dropEffect = "move";
     } else if (
@@ -2955,15 +3233,18 @@ var folderPane = {
         true
       );
     } else if (types.includes("text/x-moz-folder")) {
-      const sourceFolder = event.dataTransfer
-        .mozGetDataAt("text/x-moz-folder", 0)
-        .QueryInterface(Ci.nsIMsgFolder);
       let isMove = event.dataTransfer.dropEffect == "move";
-      isMove = folderPaneContextMenu.transferFolder(
-        isMove,
-        sourceFolder,
-        targetFolder
-      );
+      for (let i = 0; i < event.dataTransfer.mozItemCount; i++) {
+        const sourceFolder = event.dataTransfer
+          .mozGetDataAt("text/x-moz-folder", i)
+          .QueryInterface(Ci.nsIMsgFolder);
+
+        isMove = folderPaneContextMenu.transferFolder(
+          isMove,
+          sourceFolder,
+          targetFolder
+        );
+      }
       // Save in prefs the target folder URI and if this was a move or copy.
       // This is to fill in the next folder or message context menu item
       // "Move|Copy to <TargetFolderName> Again".
@@ -2972,6 +3253,13 @@ var folderPane = {
         targetFolder.URI
       );
       Services.prefs.setBoolPref("mail.last_msg_movecopy_was_move", isMove);
+
+      // FIXME! Bug 1896531.
+      if (event.dataTransfer.mozItemCount > 1) {
+        console.warn(
+          "Bug 1896531. Copy and move for multiselection is only partially supported and it might fail."
+        );
+      }
     } else if (types.includes("application/x-moz-file")) {
       for (let i = 0; i < event.dataTransfer.mozItemCount; i++) {
         const extFile = event.dataTransfer
@@ -2991,18 +3279,22 @@ var folderPane = {
         }
       }
     } else if (types.includes("text/x-moz-newsfolder")) {
-      const folder = event.dataTransfer
-        .mozGetDataAt("text/x-moz-newsfolder", 0)
-        .QueryInterface(Ci.nsIMsgFolder);
+      const rows = [];
+      for (let i = 0; i < event.dataTransfer.mozItemCount; i++) {
+        const folder = event.dataTransfer
+          .mozGetDataAt("text/x-moz-newsfolder", i)
+          .QueryInterface(Ci.nsIMsgFolder);
 
-      const mode = row.closest("li[data-mode]").dataset.mode;
-      const newsRoot = targetFolder.rootFolder.QueryInterface(
-        Ci.nsIMsgNewsFolder
-      );
-      newsRoot.reorderGroup(folder, targetFolder);
-      setTimeout(
-        () => (folderTree.selectedRow = this.getRowForFolder(folder, mode))
-      );
+        const newsRoot = targetFolder.rootFolder.QueryInterface(
+          Ci.nsIMsgNewsFolder
+        );
+        newsRoot.reorderGroup(folder, targetFolder);
+        const mode = row.closest("li[data-mode]").dataset.mode;
+        rows.push(this.getRowForFolder(folder, mode));
+      }
+      setTimeout(() => {
+        folderTree.swapSelection(rows);
+      });
     } else if (
       types.includes("text/x-moz-url-data") ||
       types.includes("text/x-moz-url")
@@ -3103,29 +3395,33 @@ var folderPane = {
         );
       }
 
-      // We may be rebuilding a folder that is not the displayed one.
-      // TODO: Close any open views of this folder.
-
-      // Send a notification that we are triggering a database rebuild.
+      // The following notification causes all DBViewWrappers that include
+      // this folder to rebuild their views.
       MailServices.mfn.notifyFolderReindexTriggered(folder);
 
       folder.msgDatabase.summaryValid = false;
-
-      const msgDB = folder.msgDatabase;
-      msgDB.summaryValid = false;
       try {
+        const isIMAP = folder.server.type == "imap";
+        let transferInfo = null;
+        if (isIMAP) {
+          transferInfo = folder.dBTransferInfo.QueryInterface(
+            Ci.nsIWritablePropertyBag2
+          );
+          transferInfo.setPropertyAsACString("numMsgs", "0");
+          transferInfo.setPropertyAsACString("numNewMsgs", "0");
+          // Reset UID validity so that nsImapMailFolder::UpdateImapMailboxInfo
+          // will recognize that a folder repair is in progress.
+          transferInfo.setPropertyAsACString("UIDValidity", "-1"); // == kUidUnknown
+        }
         folder.closeAndBackupFolderDB("");
+        if (isIMAP && transferInfo) {
+          folder.dBTransferInfo = transferInfo;
+        }
       } catch (e) {
         // In a failure, proceed anyway since we're dealing with problems
         folder.ForceDBClosed();
       }
-      if (gFolder == folder) {
-        gViewWrapper?.close();
-        folder.updateFolder(top.msgWindow);
-        folderTree.dispatchEvent(new CustomEvent("select"));
-      } else {
-        folder.updateFolder(top.msgWindow);
-      }
+      folder.updateFolder(top.msgWindow);
     }
 
     window.openDialog(
@@ -3179,7 +3475,7 @@ var folderPane = {
    * Deletes a folder from its parent. Also handles unsubscribe from newsgroups
    * if the selected folder/s happen to be nntp.
    *
-   * @param [folder] - The folder to delete, if not the selected one.
+   * @param {nsIMsgFolder} - The folder to delete.
    */
   deleteFolder(folder) {
     // For newsgroups, "delete" means "unsubscribe".
@@ -3231,7 +3527,14 @@ var folderPane = {
       // Ignore known errors from canceled warning dialogs.
       const NS_MSG_ERROR_COPY_FOLDER_ABORTED = 0x8055001a;
       if (ex.result != NS_MSG_ERROR_COPY_FOLDER_ABORTED) {
-        throw ex;
+        if (ex.result == Cr.NS_ERROR_FILE_NO_DEVICE_SPACE) {
+          // folder could not be deleted due to low space
+          // outOfDiskSpace message is too restricted to downloading
+          // operation so we created a new generic message, outOfDiskSpaceGeneric
+          folder.throwAlertMsg("outOfDiskSpaceGeneric", top.msgWindow);
+        } else {
+          throw ex;
+        }
       }
     }
   },
@@ -3602,6 +3905,10 @@ var folderPane = {
       menupopup.appendChild(menuitem);
     }
   },
+
+  get isMultiSelection() {
+    return folderTree.selection.size > 1;
+  },
 };
 
 /**
@@ -3685,10 +3992,11 @@ var threadPaneHeader = {
     if (event.target.id != "threadPaneDisplayContext") {
       return;
     }
-    const isTableLayout = document.body.classList.contains("layout-table");
     document
       .getElementById(
-        isTableLayout ? "threadPaneTableView" : "threadPaneCardsView"
+        threadTree.getAttribute("rows") == "thread-row"
+          ? "threadPaneTableView"
+          : "threadPaneCardsView"
       )
       .setAttribute("checked", "true");
   },
@@ -3703,22 +4011,13 @@ var threadPaneHeader = {
       return;
     }
 
-    const hiddenColumns = threadPane.columns
-      .filter(c => c.hidden)
-      .map(c => c.sortKey);
-
     // Update menuitem to reflect sort key.
     for (const menuitem of event.target.querySelectorAll(`[name="sortby"]`)) {
       const sortKey = menuitem.getAttribute("value");
       menuitem.setAttribute(
         "checked",
-        gViewWrapper.primarySortType == Ci.nsMsgViewSortType[sortKey]
+        gViewWrapper.primarySortColumnId == sortKey
       );
-      if (hiddenColumns.includes(sortKey)) {
-        menuitem.setAttribute("disabled", "true");
-      } else {
-        menuitem.removeAttribute("disabled");
-      }
     }
 
     // Update sort direction menu items.
@@ -3780,7 +4079,8 @@ var threadPaneHeader = {
   },
 
   /**
-   * Update the header data when the selected folder changes.
+   * Update the header data when the selected folder changes, or when a
+   * synthetic view is created.
    */
   onFolderSelected() {
     // Bail out if the pane is hidden as we don't need to update anything.
@@ -3796,28 +4096,23 @@ var threadPaneHeader = {
       return;
     }
 
-    const folderName = gFolder?.abbreviatedName ?? document.title;
-    this.folderName.textContent = folderName;
-    this.folderName.title = folderName;
-    document.l10n.setAttributes(
-      this.folderCount,
-      "thread-pane-folder-message-count",
-      { count: gFolder?.getTotalMessages(false) || gDBView?.rowCount || 0 }
+    this.folderName.textContent = gFolder?.abbreviatedName ?? document.title;
+    this.folderName.title = gFolder?.prettyName ?? document.title;
+    this.updateMessageCount(
+      gFolder?.getTotalMessages(false) || gDBView?.numMsgsInView || 0
     );
-
+    this.updateSelectedCount();
     this.folderName.hidden = false;
     this.folderCount.hidden = false;
   },
 
   /**
-   * Update the total message count in the header if the value changed for the
-   * currently selected folder.
+   * Update the total message count in the header.
    *
-   * @param {nsIMsgFolder} folder - The folder updating the count.
    * @param {integer} newValue
    */
-  updateFolderCount(folder, newValue) {
-    if (!gFolder || !folder || this.isHidden || folder.URI != gFolder.URI) {
+  updateMessageCount(newValue) {
+    if (this.isHidden) {
       return;
     }
 
@@ -3839,7 +4134,7 @@ var threadPaneHeader = {
     }
 
     const count = gDBView?.getSelectedMsgHdrs().length;
-    if (count < 2) {
+    if (count === undefined || count < 2) {
       this.selectedCount.hidden = true;
       return;
     }
@@ -3909,16 +4204,8 @@ var threadPane = {
       "threadPaneApplyColumnMenu",
       "threadPaneApplyViewMenu",
     ]);
-    const threadListView = XULStoreUtils.getValue(
-      "messenger",
-      "threadPane",
-      "view"
-    );
-    threadTree.setAttribute(
-      "rows",
-      !threadListView || threadListView == "cards"
-        ? "thread-card"
-        : "thread-row"
+    threadPane.updateThreadView(
+      XULStoreUtils.getValue("messenger", "threadPane", "view")
     );
 
     XPCOMUtils.defineLazyPreferenceGetter(
@@ -4010,6 +4297,7 @@ var threadPane = {
     threadTree.addEventListener("expanded", this);
     threadTree.addEventListener("collapsed", this);
     threadTree.addEventListener("scroll", this);
+    threadTree.addEventListener("showplaceholder", this);
   },
 
   uninit() {
@@ -4072,6 +4360,13 @@ var threadPane = {
           break;
         }
         this.scrollDetected = true;
+        break;
+      case "showplaceholder":
+        threadTree.updatePlaceholders([
+          folderTree.selection.size > 1
+            ? "placeholderMultipleFolders"
+            : "placeholderNoMessages",
+        ]);
         break;
     }
   },
@@ -4150,6 +4445,13 @@ var threadPane = {
       return;
     }
 
+    if ((event.key == "Backspace" || event.key == "Delete") && event.repeat) {
+      // Bail on delete event if there is a repeat event to prevent deleteing
+      // multiple messages by mistake from a longer key press.
+      event.preventDefault();
+      return;
+    }
+
     if (event.key == "Enter") {
       this._onItemActivate(event);
     }
@@ -4193,7 +4495,7 @@ var threadPane = {
   /**
    * Handle threadPane select events.
    */
-  _onSelect(event) {
+  _onSelect() {
     if (!paneLayout.messagePaneVisible.isCollapsed && gDBView) {
       messagePane.clearWebPage();
       switch (gDBView.numSelected) {
@@ -4229,16 +4531,7 @@ var threadPane = {
       }
     }
 
-    // Update the state of the zoom commands, since the view has changed.
-    const commandsToUpdate = [
-      "cmd_fullZoomReduce",
-      "cmd_fullZoomEnlarge",
-      "cmd_fullZoomReset",
-      "cmd_fullZoomToggle",
-    ];
-    for (const command of commandsToUpdate) {
-      top.goUpdateCommand(command);
-    }
+    updateZoomCommands();
   },
 
   /**
@@ -4461,7 +4754,7 @@ var threadPane = {
   _flavorDataProvider: {
     QueryInterface: ChromeUtils.generateQI(["nsIFlavorDataProvider"]),
 
-    getFlavorData(transferable, flavor, data) {
+    getFlavorData(transferable, flavor) {
       if (flavor !== "application/x-moz-file-promise") {
         return;
       }
@@ -4539,14 +4832,14 @@ var threadPane = {
    * (Strictly speaking the shim passed here isn't a tree either but it does
    * implement the required methods.)
    *
-   * @param {nsIMsgDBView} view
+   * @param {?nsIMsgDBView} view
    */
   setTreeView(view) {
     threadTree.view = gDBView = view;
     // Clear the batch flag. Don't call `endUpdateBatch` as that may change in
     // future leading to unintended consequences.
     this._jsTree._inBatch = false;
-    view.setJSTree(this._jsTree);
+    view?.setJSTree(this._jsTree);
   },
 
   setUpTagStyles() {
@@ -4582,24 +4875,36 @@ var threadPane = {
     const cardClass = customElements.get("thread-card");
     const currentFontSize = UIFontSize.size;
     const cardRows = 3;
+    const cardRowConstant = Math.round(1.43 * cardRows * currentFontSize); // subject line-height * line-height * cardRows * current font-size
+    let rowHeight = Math.ceil(currentFontSize * 1.4);
+    let lineGap;
+    let densityPaddingConstant;
     let cardRowHeight;
     switch (UIDensity.prefValue) {
       case UIDensity.MODE_COMPACT:
-        rowClass.ROW_HEIGHT = 18;
         // Calculation based on card components:
-        // currentFontSize, subject height, line height, and number of rows.
-        cardRowHeight = Math.round(currentFontSize * 1.3 * 1.1 * cardRows);
+        lineGap = 1;
+        densityPaddingConstant = 3; // card padding-block + 2 * row padding-block
+        cardRowHeight =
+          cardRowConstant + lineGap * cardRows + densityPaddingConstant;
         break;
       case UIDensity.MODE_TOUCH:
-        rowClass.ROW_HEIGHT = 32;
-        cardRowHeight = (currentFontSize + 7) * cardRows + 12;
+        rowHeight = rowHeight + 13;
+        lineGap = 6;
+        densityPaddingConstant = 12; // card padding-block + 2 * row padding-block
+        cardRowHeight =
+          cardRowConstant + lineGap * cardRows + densityPaddingConstant;
         break;
       default:
-        rowClass.ROW_HEIGHT = 26;
-        cardRowHeight = (currentFontSize + 7) * cardRows + 6;
+        rowHeight = rowHeight + 7;
+        lineGap = 3;
+        densityPaddingConstant = 7; // card padding-block + 2 * row padding-block
+        cardRowHeight =
+          cardRowConstant + lineGap * cardRows + densityPaddingConstant;
         break;
     }
     cardClass.ROW_HEIGHT = Math.max(cardRowHeight, 50);
+    rowClass.ROW_HEIGHT = Math.max(rowHeight, 18);
   },
 
   /**
@@ -4611,22 +4916,44 @@ var threadPane = {
   },
 
   /**
+   * Gets the key to use for storing the selection in `_savedSelections` or for
+   * retrieving it.
+   *
+   * @returns {string?} - A string to use as a key, or null. If null, the
+   *   selection should not be saved.
+   */
+  _getSavedSelectionKey() {
+    // Synthetic views never share an about:3pane with other views, so it's
+    // safe to use any key here.
+    if (gViewWrapper?.isSynthetic) {
+      return "synthetic";
+    }
+    // Identifying messages by key doesn't reliably work on on cross-folder
+    // views since the msgKey may not be unique.
+    if (gFolder && gDBView && !gViewWrapper?.isMultiFolder) {
+      return gFolder.URI;
+    }
+    return null;
+  },
+
+  /**
    * Store the current thread tree selection.
    */
   saveSelection() {
-    // Identifying messages by key doesn't reliably work on on cross-folder views since
-    // the msgKey may not be unique.
-    if (gFolder && gDBView && !gViewWrapper?.isMultiFolder) {
-      this._savedSelections.set(gFolder.URI, {
-        currentKey: gDBView.getKeyAt(threadTree.currentIndex),
-        // In views which are "grouped by sort", getting the key for collapsed dummy rows
-        // returns the key of the first group member, so we would restore something that
-        // wasn't selected. So filter them out.
-        selectedKeys: threadTree.selectedIndices
-          .filter(i => !gViewWrapper.isGroupedByHeaderAtIndex(i))
-          .map(gDBView.getKeyAt),
-      });
+    const selectionKey = this._getSavedSelectionKey();
+    if (!selectionKey) {
+      return;
     }
+
+    this._savedSelections.set(selectionKey, {
+      currentKey: gDBView.getKeyAt(threadTree.currentIndex),
+      // In views which are "grouped by sort", getting the key for collapsed
+      // dummy rows returns the key of the first group member, so we would
+      // restore something that wasn't selected. So filter them out.
+      selectedKeys: threadTree.selectedIndices
+        .filter(i => !gViewWrapper.isGroupedByHeaderAtIndex(i))
+        .map(gDBView.getKeyAt),
+    });
   },
 
   /**
@@ -4651,11 +4978,17 @@ var threadPane = {
    *   messages.
    */
   restoreSelection({ discard = true, notify = true, expand = true } = {}) {
-    if (!this._savedSelections.has(gFolder?.URI) || !threadTree.view) {
+    const selectionKey = this._getSavedSelectionKey();
+    if (
+      !selectionKey ||
+      !this._savedSelections.has(selectionKey) ||
+      !threadTree.view
+    ) {
       return;
     }
 
-    const { currentKey, selectedKeys } = this._savedSelections.get(gFolder.URI);
+    const { currentKey, selectedKeys } =
+      this._savedSelections.get(selectionKey);
     let currentIndex = nsMsgViewIndex_None;
     const indices = new Set();
     for (const key of selectedKeys) {
@@ -4709,7 +5042,7 @@ var threadPane = {
 
     // If all selections have already been restored, discard them as well.
     if (discard || gDBView.selection.count == selectedKeys.length) {
-      this._savedSelections.delete(gFolder.URI);
+      this._savedSelections.delete(selectionKey);
     }
   },
 
@@ -4750,21 +5083,34 @@ var threadPane = {
   },
 
   /**
-   * Restore the collapsed or expanded state of threads.
+   * Set the correct style attributes in the threadTree and, if setState
+   * is true, restore the collapsed or expanded state of threads that is being
+   * held in gViewWrapper._threadExpandAll.
+   *
+   * @param {boolean} [setState=true] - Actually set the collapsed/expanded
+   *   state.
    */
-  restoreThreadState() {
-    if (
-      gViewWrapper._threadExpandAll &&
-      !(gViewWrapper.dbView.viewFlags & Ci.nsMsgViewFlagsType.kExpandAll)
-    ) {
-      gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.expandAll);
+  restoreThreadState(setState = true) {
+    // Early return if the view is not available, eg. in multiselection.
+    if (!gViewWrapper) {
+      return;
     }
-    if (
-      !gViewWrapper._threadExpandAll &&
-      gViewWrapper.dbView.viewFlags & Ci.nsMsgViewFlagsType.kExpandAll
-    ) {
-      gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.collapseAll);
+
+    if (setState) {
+      if (
+        gViewWrapper._threadExpandAll &&
+        !(gViewWrapper.dbView.viewFlags & Ci.nsMsgViewFlagsType.kExpandAll)
+      ) {
+        gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.expandAll);
+      }
+      if (
+        !gViewWrapper._threadExpandAll &&
+        gViewWrapper.dbView.viewFlags & Ci.nsMsgViewFlagsType.kExpandAll
+      ) {
+        gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.collapseAll);
+      }
     }
+
     threadTree.dataset.showGroupedBySort = gViewWrapper.showGroupedBySort;
   },
 
@@ -4775,9 +5121,7 @@ var threadPane = {
     if (!gDBView) {
       return;
     }
-    this.updateSortIndicator(
-      sortController.convertSortTypeToColumnID(gViewWrapper.primarySortType)
-    );
+    this.updateSortIndicator(gViewWrapper.primarySortColumnId);
   },
 
   /**
@@ -4900,6 +5244,7 @@ var threadPane = {
       // The order of the columns have changed, which warrants a rebuild of the
       // full table header.
       this.treeTable.setColumns(this.columns);
+      this.restoreSortIndicator();
     }
     this.treeTable.restoreColumnsWidths("messenger");
   },
@@ -5081,9 +5426,7 @@ var threadPane = {
    * @param {object} data - The detail of the custom event.
    */
   onSortChanged(data) {
-    const curSortColumnId = sortController.convertSortTypeToColumnID(
-      gViewWrapper.primarySortType
-    );
+    const curSortColumnId = gViewWrapper.primarySortColumnId;
     const newSortColumnId = data.column;
 
     // A click happened on the column that is already used to sort the list.
@@ -5097,14 +5440,9 @@ var threadPane = {
       return;
     }
 
-    // If the new sort column is a custom column, we need to pass the id of the
-    // custom column, instead of the the general "byCustom" sortName.
-    const newSortColumnData = this.columns.find(c => c.id == newSortColumnId);
-    const sortName = newSortColumnData.custom
-      ? newSortColumnId
-      : newSortColumnData.sortKey;
-    sortController.sortThreadPane(sortName);
-    this.updateSortIndicator(newSortColumnId);
+    if (sortController.sortThreadPane(newSortColumnId)) {
+      this.updateSortIndicator(newSortColumnId);
+    }
   },
 
   /**
@@ -5328,7 +5666,7 @@ var threadPane = {
           "learnMoreAboutIgnoreThreadAccessKey"
         ),
         popup: null,
-        callback(aNotificationBar, aButton) {
+        callback() {
           const url = Services.prefs.getCharPref(
             "mail.ignore_thread.learn_more_url"
           );
@@ -5347,7 +5685,7 @@ var threadPane = {
         ),
         isDefault: true,
         popup: null,
-        callback(aNotificationBar, aButton) {
+        callback() {
           messages.forEach(function (msg) {
             const msgDb = msg.folder.msgDatabase;
             if (subthreadOnly) {
@@ -5422,13 +5760,13 @@ var threadPane = {
   updateThreadView(view) {
     switch (view) {
       case "table":
-        document.body.classList.add("layout-table");
-        threadTree?.setAttribute("rows", "thread-row");
+        threadTree.setAttribute("rows", "thread-row");
+        threadTree.headerHidden = false;
         break;
       case "cards":
       default:
-        document.body.classList.remove("layout-table");
-        threadTree?.setAttribute("rows", "thread-card");
+        threadTree.setAttribute("rows", "thread-card");
+        threadTree.headerHidden = true;
         break;
     }
   },
@@ -5545,6 +5883,12 @@ var messagePane = {
    * @param {string} messageURI
    */
   displayMessage(messageURI) {
+    // Hide the findbar of webview pane or multimessage pane if opened.
+    const switchingMessages = !messageBrowser.hidden;
+    if (!switchingMessages) {
+      this.hideCurrentFindBar();
+    }
+
     if (!paneLayout.messagePaneVisible) {
       return;
     }
@@ -5577,6 +5921,12 @@ var messagePane = {
    * @param {nsIMsgDBHdr[]} messages
    */
   displayMessages(messages = []) {
+    // Hide the findbar of webview pane or message pane if opened.
+    const switchingThreads = !multiMessageBrowser.hidden;
+    if (!switchingThreads) {
+      this.hideCurrentFindBar();
+    }
+
     if (!paneLayout.messagePaneVisible) {
       return;
     }
@@ -5615,6 +5965,33 @@ var messagePane = {
 
     multiMessageBrowser.hidden = false;
     window.dispatchEvent(new CustomEvent("MsgsLoaded", { bubbles: true }));
+
+    if (switchingThreads) {
+      const findBar = document.getElementById("multiMessageViewFindToolbar");
+      if (findBar && !findBar?.hidden) {
+        findBar.onFindAgainCommand(false);
+      }
+    }
+  },
+
+  /**
+   * Hide the findbar, in all of messageBrowser, multimessageBrowser,
+   * or webBrowser.
+   */
+  hideCurrentFindBar() {
+    // Multi message view.
+    const multiFindbar = document.getElementById("multiMessageViewFindToolbar");
+    multiFindbar?.clear();
+    multiFindbar?.close();
+
+    // Single message view.
+    messageBrowser.contentDocument.getElementById("FindToolbar").clear();
+    messageBrowser.contentDocument.getElementById("FindToolbar").close();
+
+    // Web Browser view.
+    const browserFindbar = document.getElementById("webBrowserFindToolbar");
+    browserFindbar?.clear();
+    browserFindbar?.close();
   },
 
   /**
@@ -5725,6 +6102,20 @@ function restoreState({
 }
 
 /**
+ * Ensures the given row is visible and all its parent folders are expanded.
+ * @param {FolderTreeRow} row
+ */
+function ensureFolderTreeRowIsVisible(row) {
+  let collapsedAncestor = row.parentNode.closest("#folderTree li.collapsed");
+  while (collapsedAncestor) {
+    folderTree.expandRow(collapsedAncestor);
+    collapsedAncestor = collapsedAncestor.parentNode.closest(
+      "#folderTree li.collapsed"
+    );
+  }
+}
+
+/**
  * Set up the given folder to be selected in the folder pane.
  * @param {nsIMsgFolder|string} folder - The folder to display, or its URI.
  */
@@ -5741,14 +6132,8 @@ function displayFolder(folder) {
     return;
   }
 
-  let collapsedAncestor = row.parentNode.closest("#folderTree li.collapsed");
-  while (collapsedAncestor) {
-    folderTree.expandRow(collapsedAncestor);
-    collapsedAncestor = collapsedAncestor.parentNode.closest(
-      "#folderTree li.collapsed"
-    );
-  }
-  folderTree.selectedRow = row;
+  ensureFolderTreeRowIsVisible(row);
+  folderTree.updateSelection(row);
 }
 
 /**
@@ -5784,16 +6169,33 @@ var folderListener = {
     folderPane.addFolder(parentFolder, childFolder);
     folderPane.updateFolderRowUIElements();
   },
-  onMessageAdded(parentFolder, msg) {},
+  onMessageAdded() {},
   onFolderRemoved(parentFolder, childFolder) {
+    // Check if the folder is in the selection range before we remove it.
+    const row = folderPane.getRowForFolder(childFolder.URI);
+    const notInRange = !folderTree.selection.has(folderTree.rows.indexOf(row));
+
     folderPane.removeFolder(parentFolder, childFolder);
     if (childFolder == gFolder) {
       gFolder = null;
       gViewWrapper?.close(true);
     }
+
+    // We need to rebuild the selection map if a folder was removed while we had
+    // multiple folders selected and it wasn't part of the selection range, to
+    // ensure the indices match the rows.
+    if (folderTree.selection.size > 1 && notInRange) {
+      setTimeout(() => {
+        folderTree.swapSelection([...folderTree.selection.values()]);
+      });
+    }
   },
-  onMessageRemoved(parentFolder, msg) {},
-  onFolderPropertyChanged(folder, property, oldValue, newValue) {},
+  onMessageRemoved() {
+    if (gViewWrapper?.isSynthetic) {
+      window.threadPaneHeader.updateMessageCount(gDBView.numMsgsInView);
+    }
+  },
+  onFolderPropertyChanged() {},
   onFolderIntPropertyChanged(folder, property, oldValue, newValue) {
     switch (property) {
       case "BiffState":
@@ -5819,7 +6221,9 @@ var folderListener = {
           break;
         }
         folderPane.changeTotalCount(folder, newValue);
-        threadPaneHeader.updateFolderCount(folder, newValue);
+        if (gFolder && folder?.URI == gFolder.URI) {
+          threadPaneHeader.updateMessageCount(newValue);
+        }
         break;
     }
   },
@@ -5849,7 +6253,7 @@ var folderListener = {
         break;
     }
   },
-  onFolderPropertyFlagChanged(folder, property, oldFlag, newFlag) {},
+  onFolderPropertyFlagChanged() {},
   onFolderEvent(folder, event) {
     if (event == "RenameCompleted") {
       // If a folder is renamed, we get an `onFolderAdded` notification for
@@ -5871,7 +6275,19 @@ commandController.registerCallback("cmd_newVirtualFolder", (folder = gFolder) =>
 );
 commandController.registerCallback(
   "cmd_deleteFolder",
-  (folder = gFolder) => folderPane.deleteFolder(folder),
+  (folder = gFolder) => {
+    if (folder) {
+      folderPane.deleteFolder(folder);
+      return;
+    }
+    // gFolder is not defined and the folder is null, which means a DELETE
+    // keyboard shortcut was triggered for a multiselection. Loop through
+    // all currently selected folders and delete them.
+    for (const row of folderTree.selection.values()) {
+      folder = MailServices.folderLookup.getFolderForURL(row.uri);
+      folderPane.deleteFolder(folder);
+    }
+  },
   () => folderPaneContextMenu.getCommandState("cmd_deleteFolder")
 );
 commandController.registerCallback(
@@ -5884,9 +6300,9 @@ commandController.registerCallback(
   (folder = gFolder) => {
     if (folder.isServer) {
       folderPane.compactAllFoldersForAccount(folder);
-    } else {
-      folderPane.compactFolder(folder);
+      return;
     }
+    folderPane.compactFolder(folder);
   },
   () => folderPaneContextMenu.getCommandState("cmd_compactFolder")
 );
@@ -6031,19 +6447,36 @@ var sortController = {
         this.groupBySort();
         break;
       default:
-        if (event.target.value in Ci.nsMsgViewSortType) {
-          this.sortThreadPane(event.target.value);
-          threadPane.restoreSortIndicator();
+        {
+          const column = threadPane.columns.find(
+            c => c.id == event.target.value
+          );
+          if (column && this.sortThreadPane(column.id)) {
+            threadPane.restoreSortIndicator();
+          }
         }
         break;
     }
   },
-  sortThreadPane(sortName) {
-    // The sortName is either a sortKey (see Ci.nsMsgViewSortType and
-    // DEFAULT_COLUMNS in thread-pane-columns.js), or the id of a custom column.
-    // TODO: Using the columnId as input whould be a lot more obvious, here and
-    // in gViewWrapper.sort(), because now sortType could be a string or an int.
-    const sortType = Ci.nsMsgViewSortType[sortName] ?? sortName;
+  sortByThread() {
+    threadPane.updateListRole(false);
+    gViewWrapper.showThreaded = true;
+    this.sortThreadPane("dateCol");
+  },
+  /**
+   * Sorts the thread pane by the provided columnId.
+   *
+   * @param {string} newSortColumnId
+   * @returns {boolean} if sorting was successful
+   */
+  sortThreadPane(newSortColumnId) {
+    const newSortColumn = threadPane.columns.find(
+      c => c.sortKey && c.id == newSortColumnId
+    );
+    if (!newSortColumn) {
+      return false;
+    }
+    const newSortType = Ci.nsMsgViewSortType[newSortColumn.sortKey];
 
     const grouped = gViewWrapper.showGroupedBySort;
     gViewWrapper._threadExpandAll = Boolean(
@@ -6052,11 +6485,11 @@ var sortController = {
 
     if (!grouped) {
       threadTree.style.scrollBehavior = "auto"; // Avoid smooth scroll.
-      gViewWrapper.sort(sortType, Ci.nsMsgViewSortOrder.ascending);
+      gViewWrapper.sort(newSortColumnId, Ci.nsMsgViewSortOrder.ascending);
       threadTree.style.scrollBehavior = null;
       // Respect user's last expandAll/collapseAll choice, post sort direction change.
       threadPane.restoreThreadState();
-      return;
+      return true;
     }
 
     // legacy behavior dictates we un-group-by-sort if we were.  this probably
@@ -6072,16 +6505,19 @@ var sortController = {
     // So, first set the desired sortType and sortOrder, then set viewFlags in
     // batch mode, then apply it all (open a new view) with endViewUpdate().
     gViewWrapper.beginViewUpdate();
-    gViewWrapper._sort = [[sortType, Ci.nsMsgViewSortOrder.ascending]];
+    gViewWrapper._sort = [
+      [newSortType, Ci.nsMsgViewSortOrder.ascending, newSortColumnId],
+    ];
     gViewWrapper.showGroupedBySort = false;
     gViewWrapper.endViewUpdate();
-
     // Virtual folders don't persist viewFlags well in the back end,
     // due to a virtual folder being either 'real' or synthetic, so make
     // sure it's done here.
     if (gViewWrapper.isVirtual) {
-      gViewWrapper.dbView.viewFlags = gViewWrapper.viewFlags;
+      gViewWrapper.dbView.viewFlags = gViewWrapper._viewFlags;
     }
+
+    return true;
   },
   reverseSortThreadPane() {
     const grouped = gViewWrapper.showGroupedBySort;
@@ -6138,10 +6574,25 @@ var sortController = {
   sortThreaded() {
     threadPane.updateListRole(false);
     gViewWrapper.showThreaded = true;
+    threadPane.restoreThreadState(!gViewWrapper.isSingleFolder);
   },
   groupBySort() {
     threadPane.updateListRole(false);
+    // Similar to reverting grouped-by-sort in this.sortThreadPane(), rebuild
+    // the view even for multi-folder search views. These views could
+    // technically handle this themselves by just having their view flags set,
+    // but they are currently unable to cope with sort types that are invalid
+    // in grouped-by-sort (such as bySize).
+    gViewWrapper.beginViewUpdate();
     gViewWrapper.showGroupedBySort = true;
+    gViewWrapper.endViewUpdate();
+    // Virtual folders don't persist viewFlags well in the back end,
+    // due to a virtual folder being either 'real' or synthetic, so make
+    // sure it's done here.
+    if (gViewWrapper.isVirtual) {
+      gViewWrapper.dbView.viewFlags = gViewWrapper._viewFlags;
+    }
+    threadPane.restoreThreadState(!gViewWrapper.isSingleFolder);
   },
   sortUnthreaded() {
     threadPane.updateListRole(true);
@@ -6172,95 +6623,6 @@ var sortController = {
     gViewWrapper.sortDescending();
     threadPane.ensureThreadStateForQuickSearchView();
     threadTree.style.scrollBehavior = null;
-  },
-  convertSortTypeToColumnID(sortKey) {
-    let columnID;
-
-    // Hack to turn this into an integer, if it was a string.
-    // It would be a string if it came from XULStore.json.
-    sortKey = sortKey - 0;
-
-    switch (sortKey) {
-      // In the case of None, we default to the date column. This appears to be
-      // the case in such instances as Global search, so don't complain about
-      // it.
-      case Ci.nsMsgViewSortType.byNone:
-      case Ci.nsMsgViewSortType.byDate:
-        columnID = "dateCol";
-        break;
-      case Ci.nsMsgViewSortType.byReceived:
-        columnID = "receivedCol";
-        break;
-      case Ci.nsMsgViewSortType.byAuthor:
-        columnID = "senderCol";
-        break;
-      case Ci.nsMsgViewSortType.byRecipient:
-        columnID = "recipientCol";
-        break;
-      case Ci.nsMsgViewSortType.bySubject:
-        columnID = "subjectCol";
-        break;
-      case Ci.nsMsgViewSortType.byLocation:
-        columnID = "locationCol";
-        break;
-      case Ci.nsMsgViewSortType.byAccount:
-        columnID = "accountCol";
-        break;
-      case Ci.nsMsgViewSortType.byUnread:
-        columnID = "unreadButtonColHeader";
-        break;
-      case Ci.nsMsgViewSortType.byStatus:
-        columnID = "statusCol";
-        break;
-      case Ci.nsMsgViewSortType.byTags:
-        columnID = "tagsCol";
-        break;
-      case Ci.nsMsgViewSortType.bySize:
-        columnID = "sizeCol";
-        break;
-      case Ci.nsMsgViewSortType.byPriority:
-        columnID = "priorityCol";
-        break;
-      case Ci.nsMsgViewSortType.byFlagged:
-        columnID = "flaggedCol";
-        break;
-      case Ci.nsMsgViewSortType.byThread:
-        columnID = "threadCol";
-        break;
-      case Ci.nsMsgViewSortType.byId:
-        columnID = "idCol";
-        break;
-      case Ci.nsMsgViewSortType.byJunkStatus:
-        columnID = "junkStatusCol";
-        break;
-      case Ci.nsMsgViewSortType.byAttachments:
-        columnID = "attachmentCol";
-        break;
-      case Ci.nsMsgViewSortType.byCustom:
-        // TODO: either change try() catch to if (property exists) or restore
-        // the ThreadPaneColumns.getColumnHandler() check.
-        try {
-          // ThreadPaneColumns.getColumnHandler throws an error when the ID is not handled
-          columnID = gDBView.curCustomColumn;
-        } catch (e) {
-          // error - means no handler
-          dump(
-            "ConvertSortTypeToColumnID: custom sort key but no handler for column '" +
-              columnID +
-              "'\n"
-          );
-          columnID = "dateCol";
-        }
-        break;
-      case Ci.nsMsgViewSortType.byCorrespondent:
-        columnID = "correspondentCol";
-        break;
-      default:
-        dump("unsupported sort key: " + sortKey + "\n");
-        columnID = "dateCol";
-        break;
-    }
-    return columnID;
   },
 };
 
@@ -6481,28 +6843,93 @@ commandController.registerCallback(
   () => gDBView?.numSelected >= 1 && gFolder && !gViewWrapper.isMultiFolder
 );
 
-// Forward these commands directly to about:message.
+/* Forward find commands to about:message if message view is open, otherwise
+ * create (if not already created) findbars for web and multi message view
+ * and call the attached find commands. We create the findbars inline here
+ * because adding them to the HTML initializes and additional Finder, which
+ * the findbar then uses, but doesn't attach any event listeners to. This
+ * causes the findbar to not update with a result status properly. */
 commandController.registerCallback(
   "cmd_find",
-  () =>
-    this.messageBrowser.contentWindow.commandController.doCommand("cmd_find"),
-  () => this.messageBrowser && !this.messageBrowser.hidden
+  () => {
+    if (!this.messageBrowser.hidden) {
+      this.messageBrowser.contentWindow.commandController.doCommand("cmd_find");
+      return;
+    }
+
+    if (!this.multiMessageBrowser.hidden) {
+      // Create the findbar for the multi message view if it isn't there.
+      if (!document.getElementById("multiMessageViewFindToolbar")) {
+        const findbar = document.createXULElement("findbar");
+        findbar.setAttribute("id", "multiMessageViewFindToolbar");
+        findbar.setAttribute("browserid", "multiMessageBrowser");
+        this.multiMessageBrowser.after(findbar);
+      }
+
+      document.getElementById("multiMessageViewFindToolbar").onFindCommand();
+      return;
+    }
+
+    if (!this.webBrowser.hidden) {
+      // Create the findbar for the web browser if it isn't there.
+      if (!document.getElementById("webBrowserFindToolbar")) {
+        const findbar = document.createXULElement("findbar");
+        findbar.setAttribute("id", "webBrowserFindToolbar");
+        findbar.setAttribute("browserid", "webBrowser");
+        this.webBrowser.after(findbar);
+      }
+      document.getElementById("webBrowserFindToolbar").onFindCommand();
+    }
+  },
+  () => browserPaneVisible()
 );
 commandController.registerCallback(
   "cmd_findAgain",
-  () =>
-    this.messageBrowser.contentWindow.commandController.doCommand(
-      "cmd_findAgain"
-    ),
-  () => this.messageBrowser && !this.messageBrowser.hidden
+  () => {
+    if (!this.messageBrowser.hidden) {
+      this.messageBrowser.contentWindow.commandController.doCommand(
+        "cmd_findAgain"
+      );
+      return;
+    }
+
+    if (!this.multiMessageBrowser.hidden) {
+      document
+        .getElementById("multiMessageViewFindToolbar")
+        .onFindAgainCommand(false);
+      return;
+    }
+
+    if (!this.webBrowser.hidden) {
+      document
+        .getElementById("webBrowserFindToolbar")
+        .onFindAgainCommand(false);
+    }
+  },
+  () => browserPaneVisible()
 );
 commandController.registerCallback(
   "cmd_findPrevious",
-  () =>
-    this.messageBrowser.contentWindow.commandController.doCommand(
-      "cmd_findPrevious"
-    ),
-  () => this.messageBrowser && !this.messageBrowser.hidden
+  () => {
+    if (!this.messageBrowser.hidden) {
+      this.messageBrowser.contentWindow.commandController.doCommand(
+        "cmd_findPrevious"
+      );
+      return;
+    }
+
+    if (!this.multiMessageBrowser.hidden) {
+      document
+        .getElementById("multiMessageViewFindToolbar")
+        .onFindAgainCommand(true);
+      return;
+    }
+
+    if (!this.webBrowser.hidden) {
+      document.getElementById("webBrowserFindToolbar").onFindAgainCommand(true);
+    }
+  },
+  () => browserPaneVisible()
 );
 
 /**
@@ -6528,6 +6955,20 @@ function visibleMessagePaneBrowser() {
   }
 
   return null;
+}
+
+/**
+ * Helper function that returns true if one of the three browser panes are
+ * visible, and false otherwise.
+ *
+ * @returns {boolean} - Whether a browser pane is visible or not.
+ */
+function browserPaneVisible() {
+  return (
+    (webBrowser && !webBrowser.hidden) ||
+    (messageBrowser && !messageBrowser.hidden) ||
+    (multiMessageBrowser && !multiMessageBrowser.hidden)
+  );
 }
 
 // Zoom.

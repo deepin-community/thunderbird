@@ -13,6 +13,6 @@
 <!ENTITY useSmallIcons.label      "Дробныя значкі">
 <!ENTITY restoreDefaultSet.label  "Аднавіць прадвызначаныя">
 <!ENTITY saveChanges.label        "Гатова">
-<!ENTITY undoChanges.label        "Адмяніць змяненні">
+<!ENTITY undoChanges.label        "Адрабіць змены">
 
 <!ENTITY showTitlebar2.label      "Title Bar">

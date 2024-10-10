@@ -9,28 +9,20 @@
 
 // xpcom
 #include "nsIComponentManager.h"
-#include "nsIServiceManager.h"
-#include "nsIStringStream.h"
 #include "nsLocalFile.h"
 #include "nsDirectoryServiceDefs.h"
-#include "nsQuickSort.h"
-#include "nsNativeCharsetUtils.h"
 #include "mozilla/Path.h"
 #include "mozilla/Components.h"
 #include "mozilla/dom/LoadURIOptionsBinding.h"
 
 // necko
 #include "nsMimeTypes.h"
-#include "nsIURL.h"
 #include "nsIPrompt.h"
 #include "nsIStreamListener.h"
 #include "nsIStreamConverterService.h"
 #include "nsNetUtil.h"
 #include "nsIFileURL.h"
 #include "nsIMIMEInfo.h"
-
-// gecko
-#include "nsIDocumentViewer.h"
 
 /* for access to docshell */
 #include "nsPIDOMWindow.h"
@@ -40,13 +32,11 @@
 #include "nsContentUtils.h"
 #include "nsDocShellLoadState.h"
 #include "mozilla/dom/Element.h"
-#include "mozilla/dom/XULFrameElement.h"
 #include "nsFrameLoader.h"
 #include "mozilla/dom/Document.h"
 
 // mail
 #include "nsIMsgMailNewsUrl.h"
-#include "nsIMsgAccountManager.h"
 #include "nsIMsgMailSession.h"
 #include "nsIMailboxUrl.h"
 #include "nsIMsgFolder.h"
@@ -56,8 +46,6 @@
 #include "nsIMsgMessageService.h"
 
 #include "nsIMsgHdr.h"
-// compose
-#include "nsNativeCharsetUtils.h"
 
 // draft/folders/sendlater/etc
 #include "nsIMsgCopyService.h"
@@ -68,9 +56,6 @@
 // undo
 #include "nsITransaction.h"
 #include "nsMsgTxn.h"
-
-// charset conversions
-#include "nsIMimeConverter.h"
 
 // Save As
 #include "nsIStringBundle.h"
@@ -89,17 +74,13 @@
 // Convert an nsString buffer to plain text...
 //
 #include "nsMsgUtils.h"
-#include "nsCharsetSource.h"
 #include "nsIChannel.h"
 #include "nsIOutputStream.h"
 #include "nsIPrincipal.h"
 
 #include "mozilla/dom/BrowserParent.h"
-#include "mozilla/dom/CanonicalBrowsingContext.h"
 
 #include "mozilla/NullPrincipal.h"
-#include "mozilla/dom/RemoteType.h"
-#include "nsQueryObject.h"
 #include "mozilla/JSONStringWriteFuncs.h"
 
 using namespace mozilla;
@@ -513,29 +494,26 @@ nsresult nsMessenger::SaveAttachment(nsIFile* aFile, const nsACString& aURL,
   if (NS_SUCCEEDED(rv)) {
     rv = GetMessageServiceFromURI(aMessageUri, getter_AddRefs(messageService));
     if (NS_SUCCEEDED(rv)) {
+      RefPtr<nsIStreamListener> streamListener = saveListener;
+
       fetchService = do_QueryInterface(messageService);
-      // if the message service has a fetch part service then we know we can
-      // fetch mime parts...
+      nsCOMPtr<nsIURI> dummyNull;
       if (fetchService) {
+        // If the message service has a fetch part service then we know we can
+        // fetch mime parts...
         int32_t partPos = urlString.FindChar('?');
         if (partPos == kNotFound) return NS_ERROR_FAILURE;
         fullMessageUri.Append(Substring(urlString, partPos));
-      }
-
-      nsCOMPtr<nsIStreamListener> convertedListener;
-      saveListener->QueryInterface(NS_GET_IID(nsIStreamListener),
-                                   getter_AddRefs(convertedListener));
-
-      nsCOMPtr<nsIURI> dummyNull;
-      if (fetchService)
-        rv = fetchService->FetchMimePart(URL, fullMessageUri, convertedListener,
+        rv = fetchService->FetchMimePart(URL, fullMessageUri, streamListener,
                                          mMsgWindow, saveListener,
                                          getter_AddRefs(dummyNull));
-      else
-        rv = messageService->LoadMessage(fullMessageUri, convertedListener,
-                                         mMsgWindow, nullptr, false);
+      } else {
+        rv = messageService->StreamMessage(fullMessageUri, streamListener,
+                                           mMsgWindow, nullptr, false, ""_ns,
+                                           false, getter_AddRefs(dummyNull));
+      }
     }  // if we got a message service
-  }    // if we created a url
+  }  // if we created a url
 
   if (NS_FAILED(rv)) {
     if (saveState) {
@@ -851,10 +829,8 @@ nsMessenger::SaveAs(const nsACString& aURI, bool aAsFile,
     if (NS_FAILED(rv)) goto done;
 
     if (saveAsFileType == EML_FILE_TYPE) {
-      nsCOMPtr<nsIURI> dummyNull;
-      rv = messageService->SaveMessageToDisk(
-          aURI, saveAsFile, false, urlListener, getter_AddRefs(dummyNull), true,
-          mMsgWindow);
+      rv = messageService->SaveMessageToDisk(aURI, saveAsFile, false,
+                                             urlListener, true, mMsgWindow);
     } else {
       nsAutoCString urlString(aURI);
 
@@ -905,8 +881,10 @@ nsMessenger::SaveAs(const nsACString& aURI, bool aAsFile,
       NS_ASSERTION(NS_SUCCEEDED(rv), "AsyncConvertData failed");
       if (NS_FAILED(rv)) goto done;
 
-      rv = messageService->LoadMessage(urlString, convertedListener, mMsgWindow,
-                                       nullptr, false);
+      nsCOMPtr<nsIURI> dummyNull;
+      rv = messageService->StreamMessage(urlString, convertedListener,
+                                         mMsgWindow, urlListener, false, ""_ns,
+                                         false, getter_AddRefs(dummyNull));
     }
   } else {
     // ** save as Template
@@ -938,10 +916,9 @@ nsMessenger::SaveAs(const nsACString& aURI, bool aAsFile,
                                       getter_AddRefs(urlListener));
     if (NS_FAILED(rv)) goto done;
 
-    nsCOMPtr<nsIURI> dummyNull;
-    rv = messageService->SaveMessageToDisk(
-        aURI, tmpFile, needDummyHeader, urlListener, getter_AddRefs(dummyNull),
-        canonicalLineEnding, mMsgWindow);
+    rv = messageService->SaveMessageToDisk(aURI, tmpFile, needDummyHeader,
+                                           urlListener, canonicalLineEnding,
+                                           mMsgWindow);
   }
 
 done:
@@ -1154,10 +1131,8 @@ nsMessenger::SaveMessages(const nsTArray<nsString>& aFilenameArray,
     }
 
     // Ok, now save the message.
-    nsCOMPtr<nsIURI> dummyNull;
     rv = messageService->SaveMessageToDisk(
-        aMessageUriArray[i], saveToFile, false, urlListener,
-        getter_AddRefs(dummyNull), true, mMsgWindow);
+        aMessageUriArray[i], saveToFile, false, urlListener, true, mMsgWindow);
     if (NS_FAILED(rv)) {
       Alert("saveMessageFailed");
       return rv;
@@ -2296,7 +2271,7 @@ nsresult AttachmentDeleter::InternalStartProcessing(nsMessenger* aMessenger,
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIURI> dummyNull;
-  rv = mMessageService->StreamMessage(messageUri, listenerSupports, mMsgWindow,
+  rv = mMessageService->StreamMessage(messageUri, this, mMsgWindow,
                                       listenerUrlListener, true, sHeader, false,
                                       getter_AddRefs(dummyNull));
   NS_ENSURE_SUCCESS(rv, rv);

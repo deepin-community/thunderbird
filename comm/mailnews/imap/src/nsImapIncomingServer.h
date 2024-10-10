@@ -18,6 +18,7 @@
 #include "nsCOMArray.h"
 #include "nsTArray.h"
 #include "mozilla/Mutex.h"
+#include "mozilla/Monitor.h"
 
 /* get some implementation from nsMsgIncomingServer */
 class nsImapIncomingServer : public nsMsgIncomingServer,
@@ -73,8 +74,8 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
   void GetUnverifiedSubFolders(nsIMsgFolder* parentFolder,
                                nsCOMArray<nsIMsgImapMailFolder>& aFoldersArray);
   void GetUnverifiedFolders(nsCOMArray<nsIMsgImapMailFolder>& aFolderArray);
-  bool NoDescendentsAreVerified(nsIMsgFolder* parentFolder);
-  bool AllDescendentsAreNoSelect(nsIMsgFolder* parentFolder);
+  bool NoDescendantsAreVerified(nsIMsgFolder* parentFolder);
+  bool AllDescendantsAreNoSelect(nsIMsgFolder* parentFolder);
 
   nsresult GetStringBundle();
   static nsresult AlertUser(const nsAString& aString, nsIMsgMailNewsUrl* aUrl);
@@ -125,7 +126,12 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
   bool m_shuttingDown;
   bool mUtf8AcceptEnabled;
 
+  // Protect access to Url queue.
   mozilla::Mutex mLock;
+
+  // Only one connection at a time should be a allowed to attempt logon.
+  mozilla::Monitor mLogonMonitor;
+
   // subscribe dialog stuff
   nsresult AddFolderToSubscribeDialog(const char* parentUri, const char* uri,
                                       const char* folderName);

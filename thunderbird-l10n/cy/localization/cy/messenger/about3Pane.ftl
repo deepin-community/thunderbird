@@ -129,8 +129,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Hidlo'r negeseuon hyn <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Hidlo negeseuon:
+quick-filter-bar-search2 =
+    .label = Hidlo negeseuon
+quick-filter-bar-searching =
+    .title = Wrthi'n chwilio…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -598,3 +600,21 @@ threadpane-sort-header-count =
     }
 threadpane-card-menu-button =
     .title = Dewislen negeseuon
+message-list-placeholder-no-messages = Heb ganfod neges
+message-list-placeholder-multiple-folders = Ffolderi lluosog wedi'u dewis
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [zero] Marcio Ffolder Wedi'u Darllen
+            [one] Marcio Ffolder Wedi'i Ddarllen
+            [two] Marcio Ffolder Wedi'u Darllen
+            [few] Marcio Ffolder Wedi'u Darllen
+            [many] Marcio Ffolder Wedi'u Darllen
+           *[other] Marcio Ffolder Wedi'u Darllen
+        }
+    .accesskey = M

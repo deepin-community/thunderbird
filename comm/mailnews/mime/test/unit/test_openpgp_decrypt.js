@@ -8,7 +8,7 @@
  */
 
 const { OpenPGPTestUtils } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/OpenPGPTestUtils.sys.mjs"
+  "resource://testing-common/mail/OpenPGPTestUtils.sys.mjs"
 );
 const { EnigmailSingletons } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/singletons.sys.mjs"
@@ -61,19 +61,7 @@ const openpgpSink = {
   hasUnauthenticatedParts() {
     return false;
   },
-  updateSecurityStatus(
-    exitCode,
-    statusFlags,
-    extStatusFlags,
-    keyId,
-    userId,
-    sigDetails,
-    errorMsg,
-    blockSeparation,
-    uri,
-    extraDetails,
-    mimePartNumber
-  ) {
+  updateSecurityStatus(exitCode, statusFlags, extStatusFlags, keyId) {
     if (statusFlags & EnigmailConstants.PGP_MIME_SIGNED) {
       this.results.push({
         type: "signed",
@@ -324,9 +312,7 @@ add_task(async function testMimeDecryptOpenPGPMessages() {
     // Trigger the actual mime work.
     const conversion = apply_mime_conversion(uri, null, openpgpSink);
 
-    await conversion.promise;
-
-    const msgBody = conversion._data;
+    const msgBody = await conversion.promise;
 
     if (!test.sig || test.flags.indexOf("GOOD_SIGNATURE")) {
       Assert.ok(

@@ -39,6 +39,14 @@ add_setup(function () {
     do_get_file(smimeDataDirectory + "Dave.p12"),
     "nss"
   );
+  SmimeUtils.loadCertificateAndKey(
+    do_get_file(smimeDataDirectory + "../smime-interop/Fran.p12"),
+    "nss"
+  );
+  SmimeUtils.loadCertificateAndKey(
+    do_get_file(smimeDataDirectory + "../smime-interop/Fran-ec.p12"),
+    "nss"
+  );
 });
 
 add_task(async function verifyTestCertsStillValid() {
@@ -158,6 +166,9 @@ const smimeSink = {
   QueryInterface: ChromeUtils.generateQI(["nsIMsgSMIMESink"]),
 };
 
+const gTextAliceBob = "This is a test message from Alice to Bob.";
+const gTextFran = "This is a test message to Fran.";
+
 /**
  * Note on FILENAMES taken from the NSS test suite:
  * - env: CMS enveloped (encrypted)
@@ -194,7 +205,7 @@ var gMessages = [
     enc: true,
     sig: false,
     sig_good: false,
-    check_text: true,
+    check_text: gTextAliceBob,
   },
   {
     filename: "alice.dsig.SHA1.multipart.bad.eml",
@@ -207,14 +218,14 @@ var gMessages = [
     enc: true,
     sig: true,
     sig_good: false,
-    check_text: true,
+    check_text: gTextAliceBob,
   },
   {
     filename: "alice.dsig.SHA1.multipart.eml",
     enc: false,
     sig: true,
     sig_good: false,
-    check_text: true,
+    check_text: gTextAliceBob,
   },
   {
     filename: "alice.dsig.SHA1.multipart.mismatch-econtent.eml",
@@ -305,14 +316,14 @@ var gMessages = [
     enc: false,
     sig: true,
     sig_good: false,
-    check_text: true,
+    check_text: gTextAliceBob,
   },
   {
     filename: "alice.sig.SHA1.opaque.env.eml",
     enc: true,
     sig: true,
     sig_good: false,
-    check_text: true,
+    check_text: gTextAliceBob,
   },
   {
     filename: "alice.sig.SHA256.opaque.eml",
@@ -352,6 +363,18 @@ var gMessages = [
   },
 
   // encrypt-then-sign
+  // An outer signature layer, around encryption, is considered bad practice.
+  // However, it may happen when a MTA adds a transport-level signature
+  // to a message, in addition to whatever the message author might
+  // have already done.
+  // Bug 1806161 introduced an exception, where we ignore the outer
+  // signature, if the second layer is encryption. (This could result
+  // an inner signature layer, directly inside the encryption layer,
+  // to be interpreted as the message content's signature.)
+  // The following set of files has an outer signature, around an
+  // encryption layer, but there is no additional signature inside,
+  // so while our test code technically sees a signature, we ignore
+  // them, and as a result, they are treated as invalid.
   {
     filename: "alice.env.sig.SHA1.opaque.eml",
     enc: false,
@@ -362,7 +385,7 @@ var gMessages = [
   {
     filename: "alice.env.dsig.SHA1.multipart.eml",
     enc: false,
-    sig: true,
+    sig: false,
     sig_good: false,
   },
   {
@@ -374,10 +397,9 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA256.multipart.eml",
-    enc: false,
-    sig: true,
+    enc: true,
+    sig: false,
     sig_good: false,
-    extra: 1,
   },
   {
     filename: "alice.env.sig.SHA384.opaque.eml",
@@ -388,10 +410,9 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA384.multipart.eml",
-    enc: false,
-    sig: true,
+    enc: true,
+    sig: false,
     sig_good: false,
-    extra: 1,
   },
   {
     filename: "alice.env.sig.SHA512.opaque.eml",
@@ -402,10 +423,29 @@ var gMessages = [
   },
   {
     filename: "alice.env.dsig.SHA512.multipart.eml",
+    enc: true,
+    sig: false,
+    sig_good: false,
+  },
+
+  // encrypt (innermost), wrapped inside multipart/mixed, then signed (outermost)
+  // The exception from bug 1806161 must not become active, the encryption
+  // layer must be rejected, and the signature must not be ignored.
+  {
+    filename: "../smime-manual/alice.env.mixed.dsig.SHA256.multipart.eml",
     enc: false,
     sig: true,
     sig_good: false,
-    extra: 1,
+  },
+
+  // good signature (innermost), wrapped in encryption layer,
+  // then wrapped by another signature layer.
+  // The outer signature layer should be ignored, per bug 1806161.
+  {
+    filename: "../smime-manual/alice.dsig.SHA256.multipart.env.dsig.eml",
+    enc: true,
+    sig: true,
+    sig_good: true,
   },
 
   // encrypt-then-sign, then sign again
@@ -606,6 +646,36 @@ var gMessages = [
     dave: 1,
     extra: 1,
   },
+  {
+    filename: "../smime-interop/fran-oaep_ossl.env",
+    enc: true,
+    check_text: gTextFran,
+  },
+  {
+    filename: "../smime-interop/fran-oaep-label_ossl.env",
+    enc: true,
+    check_text: gTextFran,
+  },
+  {
+    filename: "../smime-interop/fran-oaep-sha256hash_ossl.env",
+    enc: true,
+    check_text: gTextFran,
+  },
+  {
+    filename: "../smime-interop/fran-oaep-sha256hash-sha256mgf_ossl.env",
+    enc: true,
+    check_text: gTextFran,
+  },
+  {
+    filename: "../smime-interop/fran-ec_ossl-aes128-sha256.env",
+    enc: true,
+    check_text: gTextFran,
+  },
+  {
+    filename: "../smime-interop/fran-ec_ossl-aes256-sha512.env",
+    enc: true,
+    check_text: gTextFran,
+  },
 ];
 
 const gCopyWaiter = Promise.withResolvers();
@@ -654,15 +724,15 @@ add_task(async function check_smime_message() {
     const sinkPromise = smimeSink.expectResults(eventsExpected);
 
     const conversion = apply_mime_conversion(uri, smimeSink);
-    await conversion.promise;
-
-    const contents = conversion._data;
+    const contents = await conversion.promise;
     // dump("contents: " + contents + "\n");
 
     if (!msg.sig || msg.sig_good || "check_text" in msg) {
-      const expected = "This is a test message from Alice to Bob.";
-      Assert.ok(contents.includes(expected));
+      Assert.ok(
+        contents.includes("check_text" in msg ? msg.check_text : gTextAliceBob)
+      );
     }
+
     // Check that we're also using the display output.
     Assert.ok(contents.includes("<html>"));
 

@@ -17,8 +17,8 @@
    HideMessageHeaderPane OnLoadMsgHeaderPane OnTagsChange
    OnUnloadMsgHeaderPane HandleAllAttachments AttachmentMenuController */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
@@ -175,6 +175,11 @@ function displayMessage(uri, viewWrapper) {
 
   messageHistory.push(uri);
 
+  if (parent == top) {
+    // This is needed for registering transactions on stand-alone windows.
+    dbViewWrapperListener.msgWindow = parent.msgWindow;
+  }
+
   if (!gViewWrapper) {
     if (gFolder) {
       if (viewWrapper) {
@@ -203,9 +208,9 @@ function displayMessage(uri, viewWrapper) {
     endUpdateBatch() {
       this._inBatch = false;
     },
-    ensureRowIsVisible(index) {},
+    ensureRowIsVisible() {},
     invalidate() {},
-    invalidateRange(startIndex, endIndex) {},
+    invalidateRange() {},
     rowCountChanged(index, count) {
       const wasSuppressed = gDBView.selection.selectEventsSuppressed;
       gDBView.selection.selectEventsSuppressed = true;
@@ -255,8 +260,8 @@ function displayMessage(uri, viewWrapper) {
 
   // @implements {nsIUrlListener}
   const urlListener = {
-    OnStartRunningUrl(url) {},
-    OnStopRunningUrl(url, status) {
+    OnStartRunningUrl() {},
+    OnStopRunningUrl(url) {
       window.msgLoading = true;
       window.dispatchEvent(
         new CustomEvent("messageURIChanged", { bubbles: true, detail: uri })
@@ -311,7 +316,7 @@ function displayMessage(uri, viewWrapper) {
 var folderListener = {
   QueryInterface: ChromeUtils.generateQI(["nsIFolderListener"]),
 
-  onFolderRemoved(parentFolder, childFolder) {},
+  onFolderRemoved() {},
   onMessageRemoved(parentFolder, msg) {
     messageHistory.onMessageRemoved(parentFolder, msg);
   },
@@ -339,6 +344,7 @@ var preferenceObserver = {
   _topics: [
     "mail.inline_attachments",
     "mail.show_headers",
+    "mail.addressDisplayFormat",
     "mail.showCondensedAddresses",
     "mailnews.display.disallow_mime_handlers",
     "mailnews.display.html_as",

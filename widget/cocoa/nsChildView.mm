@@ -473,17 +473,20 @@ void* nsChildView::GetNativeData(uint32_t aDataType) {
 #pragma mark -
 
 void nsChildView::SuppressAnimation(bool aSuppress) {
-  GetAppWindowWidget()->SuppressAnimation(aSuppress);
+  if (nsCocoaWindow* widget = GetAppWindowWidget()) {
+    widget->SuppressAnimation(aSuppress);
+  }
 }
 
 bool nsChildView::IsVisible() const {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
   if (!mVisible) {
-    return mVisible;
+    return false;
   }
 
-  if (!GetAppWindowWidget()->IsVisible()) {
+  nsCocoaWindow* widget = GetAppWindowWidget();
+  if (NS_WARN_IF(!widget) || !widget->IsVisible()) {
     return false;
   }
 
@@ -739,11 +742,11 @@ void nsChildView::Resize(double aWidth, double aHeight, bool aRepaint) {
   mBounds.height = height;
 
   ManipulateViewWithoutNeedingDisplay(mView, ^{
-    [mView setFrame:DevPixelsToCocoaPoints(mBounds)];
+    mView.frame = DevPixelsToCocoaPoints(mBounds);
   });
 
   if (mVisible && aRepaint) {
-    [[mView pixelHostingView] setNeedsDisplay:YES];
+    mView.pixelHostingView.needsDisplay = YES;
   }
 
   ReportSizeEvent();
@@ -779,11 +782,11 @@ void nsChildView::Resize(double aX, double aY, double aWidth, double aHeight,
   }
 
   ManipulateViewWithoutNeedingDisplay(mView, ^{
-    [mView setFrame:DevPixelsToCocoaPoints(mBounds)];
+    mView.frame = DevPixelsToCocoaPoints(mBounds);
   });
 
   if (mVisible && aRepaint) {
-    [[mView pixelHostingView] setNeedsDisplay:YES];
+    mView.pixelHostingView.needsDisplay = YES;
   }
 
   if (isMoving) {
@@ -1070,10 +1073,8 @@ nsresult nsChildView::SynthesizeNativeTouchpadDoubleTap(
 
 bool nsChildView::SendEventToNativeMenuSystem(NSEvent* aEvent) {
   bool handled = false;
-  nsCocoaWindow* widget = GetAppWindowWidget();
-  if (widget) {
-    nsMenuBarX* mb = widget->GetMenuBar();
-    if (mb) {
+  if (nsCocoaWindow* widget = GetAppWindowWidget()) {
+    if (nsMenuBarX* mb = widget->GetMenuBar()) {
       // Check if main menu wants to handle the event.
       handled = mb->PerformKeyEquivalent(aEvent);
     }
@@ -1157,10 +1158,8 @@ nsresult nsChildView::ActivateNativeMenuItemAt(const nsAString& indexString) {
 nsresult nsChildView::ForceUpdateNativeMenuAt(const nsAString& indexString) {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
-  nsCocoaWindow* widget = GetAppWindowWidget();
-  if (widget) {
-    nsMenuBarX* mb = widget->GetMenuBar();
-    if (mb) {
+  if (nsCocoaWindow* widget = GetAppWindowWidget()) {
+    if (nsMenuBarX* mb = widget->GetMenuBar()) {
       if (indexString.IsEmpty())
         mb->ForceNativeMenuReload();
       else
@@ -1689,33 +1688,6 @@ RefPtr<layers::NativeLayerRoot> nsChildView::GetNativeLayerRoot() {
   return mNativeLayerRoot;
 }
 
-static int32_t FindTitlebarBottom(
-    const nsTArray<nsIWidget::ThemeGeometry>& aThemeGeometries,
-    int32_t aWindowWidth) {
-  int32_t titlebarBottom = 0;
-  for (auto& g : aThemeGeometries) {
-    if (g.mType == eThemeGeometryTypeTitlebar && g.mRect.X() <= 0 &&
-        g.mRect.XMost() >= aWindowWidth && g.mRect.Y() <= 0) {
-      titlebarBottom = std::max(titlebarBottom, g.mRect.YMost());
-    }
-  }
-  return titlebarBottom;
-}
-
-static int32_t FindUnifiedToolbarBottom(
-    const nsTArray<nsIWidget::ThemeGeometry>& aThemeGeometries,
-    int32_t aWindowWidth, int32_t aTitlebarBottom) {
-  int32_t unifiedToolbarBottom = aTitlebarBottom;
-  for (uint32_t i = 0; i < aThemeGeometries.Length(); ++i) {
-    const nsIWidget::ThemeGeometry& g = aThemeGeometries[i];
-    if ((g.mType == eThemeGeometryTypeToolbar) && g.mRect.X() <= 0 &&
-        g.mRect.XMost() >= aWindowWidth && g.mRect.Y() <= aTitlebarBottom) {
-      unifiedToolbarBottom = std::max(unifiedToolbarBottom, g.mRect.YMost());
-    }
-  }
-  return unifiedToolbarBottom;
-}
-
 static LayoutDeviceIntRect FindFirstRectOfType(
     const nsTArray<nsIWidget::ThemeGeometry>& aThemeGeometries,
     nsITheme::ThemeGeometryType aThemeGeometryType) {
@@ -1730,32 +1702,17 @@ static LayoutDeviceIntRect FindFirstRectOfType(
 
 void nsChildView::UpdateThemeGeometries(
     const nsTArray<ThemeGeometry>& aThemeGeometries) {
-  if (![mView window]) return;
+  if (!mView.window) {
+    return;
+  }
 
   UpdateVibrancy(aThemeGeometries);
 
-  if (![[mView window] isKindOfClass:[ToolbarWindow class]]) return;
-
-  // Update unified toolbar height and sheet attachment position.
-  int32_t windowWidth = mBounds.width;
-  int32_t titlebarBottom = FindTitlebarBottom(aThemeGeometries, windowWidth);
-  int32_t unifiedToolbarBottom =
-      FindUnifiedToolbarBottom(aThemeGeometries, windowWidth, titlebarBottom);
-  int32_t toolboxBottom =
-      FindFirstRectOfType(aThemeGeometries, eThemeGeometryTypeToolbox).YMost();
+  if (![mView.window isKindOfClass:[ToolbarWindow class]]) {
+    return;
+  }
 
   ToolbarWindow* win = (ToolbarWindow*)[mView window];
-  int32_t titlebarHeight = [win drawsContentsIntoWindowFrame]
-                               ? 0
-                               : CocoaPointsToDevPixels([win titlebarHeight]);
-  int32_t devUnifiedHeight = titlebarHeight + unifiedToolbarBottom;
-  [win setUnifiedToolbarHeight:DevPixelsToCocoaPoints(devUnifiedHeight)];
-
-  int32_t sheetPositionDevPx = std::max(toolboxBottom, unifiedToolbarBottom);
-  NSPoint sheetPositionView = {0, DevPixelsToCocoaPoints(sheetPositionDevPx)};
-  NSPoint sheetPositionWindow = [mView convertPoint:sheetPositionView
-                                             toView:nil];
-  [win setSheetAttachmentPosition:sheetPositionWindow.y];
 
   // Update titlebar control offsets.
   LayoutDeviceIntRect windowButtonRect =
@@ -1768,62 +1725,53 @@ void nsChildView::UpdateThemeGeometries(
 static Maybe<VibrancyType> ThemeGeometryTypeToVibrancyType(
     nsITheme::ThemeGeometryType aThemeGeometryType) {
   switch (aThemeGeometryType) {
-    case eThemeGeometryTypeTooltip:
-      return Some(VibrancyType::TOOLTIP);
-    case eThemeGeometryTypeMenu:
-      return Some(VibrancyType::MENU);
+    case eThemeGeometryTypeTitlebar:
+      return Some(VibrancyType::Titlebar);
     default:
       return Nothing();
   }
 }
 
-static LayoutDeviceIntRegion GatherVibrantRegion(
-    const nsTArray<nsIWidget::ThemeGeometry>& aThemeGeometries,
-    VibrancyType aVibrancyType) {
-  LayoutDeviceIntRegion region;
-  for (auto& geometry : aThemeGeometries) {
-    if (ThemeGeometryTypeToVibrancyType(geometry.mType) ==
-        Some(aVibrancyType)) {
-      region.OrWith(geometry.mRect);
+static EnumeratedArray<VibrancyType, LayoutDeviceIntRegion>
+GatherVibrantRegions(Span<const nsIWidget::ThemeGeometry> aThemeGeometries) {
+  EnumeratedArray<VibrancyType, LayoutDeviceIntRegion> regions;
+  for (const auto& geometry : aThemeGeometries) {
+    auto vibrancyType = ThemeGeometryTypeToVibrancyType(geometry.mType);
+    if (!vibrancyType) {
+      continue;
     }
+    regions[*vibrancyType].OrWith(geometry.mRect);
   }
-  return region;
-}
-
-template <typename Region>
-static void MakeRegionsNonOverlappingImpl(Region& aOutUnion) {}
-
-template <typename Region, typename... Regions>
-static void MakeRegionsNonOverlappingImpl(Region& aOutUnion, Region& aFirst,
-                                          Regions&... aRest) {
-  MakeRegionsNonOverlappingImpl(aOutUnion, aRest...);
-  aFirst.SubOut(aOutUnion);
-  aOutUnion.OrWith(aFirst);
+  return regions;
 }
 
 // Subtracts parts from regions in such a way that they don't have any overlap.
 // Each region in the argument list will have the union of all the regions
 // *following* it subtracted from itself. In other words, the arguments are
-// sorted low priority to high priority.
-template <typename Region, typename... Regions>
-static void MakeRegionsNonOverlapping(Region& aFirst, Regions&... aRest) {
-  Region unionOfAll;
-  MakeRegionsNonOverlappingImpl(unionOfAll, aFirst, aRest...);
+// treated as low priority to high priority.
+static void MakeRegionsNonOverlapping(Span<LayoutDeviceIntRegion> aRegions) {
+  LayoutDeviceIntRegion unionOfAll;
+  for (auto& region : aRegions) {
+    region.SubOut(unionOfAll);
+    unionOfAll.OrWith(region);
+  }
 }
 
 void nsChildView::UpdateVibrancy(
     const nsTArray<ThemeGeometry>& aThemeGeometries) {
-  LayoutDeviceIntRegion menuRegion =
-      GatherVibrantRegion(aThemeGeometries, VibrancyType::MENU);
-  LayoutDeviceIntRegion tooltipRegion =
-      GatherVibrantRegion(aThemeGeometries, VibrancyType::TOOLTIP);
-
-  MakeRegionsNonOverlapping(menuRegion, tooltipRegion);
+  auto regions = GatherVibrantRegions(aThemeGeometries);
+  MakeRegionsNonOverlapping(regions);
 
   auto& vm = EnsureVibrancyManager();
   bool changed = false;
-  changed |= vm.UpdateVibrantRegion(VibrancyType::MENU, menuRegion);
-  changed |= vm.UpdateVibrantRegion(VibrancyType::TOOLTIP, tooltipRegion);
+
+  // EnumeratedArray doesn't have an iterator that also yields the enum type,
+  // but we rely on VibrancyType being contiguous and starting at 0, so we can
+  // do that manually.
+  size_t i = 0;
+  for (const auto& region : regions) {
+    changed |= vm.UpdateVibrantRegion(VibrancyType(i++), region);
+  }
 
   if (changed) {
     SuspendAsyncCATransactions();
@@ -1834,7 +1782,7 @@ mozilla::VibrancyManager& nsChildView::EnsureVibrancyManager() {
   MOZ_ASSERT(mView, "Only call this once we have a view!");
   if (!mVibrancyManager) {
     mVibrancyManager =
-        MakeUnique<VibrancyManager>(*this, [mView vibrancyViewsContainer]);
+        MakeUnique<VibrancyManager>(*this, mView.vibrancyViewsContainer);
   }
   return *mVibrancyManager;
 }
@@ -1897,7 +1845,7 @@ void nsChildView::UpdateWindowDraggingRegion(
   // Suppress calls to setNeedsDisplay during NSView geometry changes.
   ManipulateViewWithoutNeedingDisplay(mView, ^() {
     changed = mNonDraggableRegion.UpdateRegion(
-        nonDraggable, *this, [mView nonDraggableViewsContainer], ^() {
+        nonDraggable, *this, mView.nonDraggableViewsContainer, ^() {
           return [[NonDraggableView alloc] initWithFrame:NSZeroRect];
         });
   });
@@ -2198,22 +2146,22 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
     mCancelSwipeAnimation = nil;
 #endif
 
+    auto bounds = self.bounds;
     mNonDraggableViewsContainer =
-        [[ViewRegionContainerView alloc] initWithFrame:[self bounds]];
+        [[ViewRegionContainerView alloc] initWithFrame:bounds];
     mVibrancyViewsContainer =
-        [[ViewRegionContainerView alloc] initWithFrame:[self bounds]];
+        [[ViewRegionContainerView alloc] initWithFrame:bounds];
 
-    [mNonDraggableViewsContainer
-        setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [mVibrancyViewsContainer
-        setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    mNonDraggableViewsContainer.autoresizingMask =
+        mVibrancyViewsContainer.autoresizingMask =
+            NSViewWidthSizable | NSViewHeightSizable;
 
     [self addSubview:mNonDraggableViewsContainer];
     [self addSubview:mVibrancyViewsContainer];
 
-    mPixelHostingView = [[PixelHostingView alloc] initWithFrame:[self bounds]];
-    [mPixelHostingView
-        setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    mPixelHostingView = [[PixelHostingView alloc] initWithFrame:bounds];
+    mPixelHostingView.autoresizingMask =
+        NSViewWidthSizable | NSViewHeightSizable;
 
     [self addSubview:mPixelHostingView];
 
@@ -2222,7 +2170,7 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
     mRootCALayer.bounds = NSZeroRect;
     mRootCALayer.anchorPoint = NSZeroPoint;
     mRootCALayer.contentsGravity = kCAGravityTopLeft;
-    [[mPixelHostingView layer] addSublayer:mRootCALayer];
+    [mPixelHostingView.layer addSublayer:mRootCALayer];
 
     mLastPressureStage = 0;
   }
@@ -2398,7 +2346,7 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
     // This call will cause updateRootCALayer to be called during the upcoming
     // main thread CoreAnimation transaction. It will also trigger a transaction
     // if no transaction is currently pending.
-    [[mPixelHostingView layer] setNeedsDisplay];
+    [mPixelHostingView.layer setNeedsDisplay];
   }
 }
 
@@ -4027,8 +3975,8 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
 - (BOOL)isDragInProgress {
   if (!mDragService) return NO;
 
-  nsCOMPtr<nsIDragSession> dragSession;
-  mDragService->GetCurrentSession(getter_AddRefs(dragSession));
+  nsCOMPtr<nsIDragSession> dragSession =
+      mDragService->GetCurrentSession(mGeckoChild);
   return dragSession != nullptr;
 }
 
@@ -4160,18 +4108,19 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
     if (!mDragService) return NSDragOperationNone;
   }
 
+  nsCOMPtr<nsIDragSession> dragSession;
   if (aMessage == eDragEnter) {
-    mDragService->StartDragSession();
+    nsIWidget* widget = mGeckoChild;
+    dragSession = mDragService->StartDragSession(widget);
+  } else {
+    dragSession = mDragService->GetCurrentSession(mGeckoChild);
   }
 
-  nsCOMPtr<nsIDragSession> dragSession;
-  mDragService->GetCurrentSession(getter_AddRefs(dragSession));
   if (dragSession) {
     if (aMessage == eDragOver) {
       // fire the drag event at the source. Just ignore whether it was
       // cancelled or not as there isn't actually a means to stop the drag
-      nsCOMPtr<nsIDragService> dragService = mDragService;
-      dragService->FireDragEventAtSource(
+      dragSession->FireDragEventAtSource(
           eDrag, nsCocoaUtils::ModifiersForEvent([NSApp currentEvent]));
       dragSession->SetCanDrop(false);
     } else if (aMessage == eDrop) {
@@ -4184,8 +4133,7 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
         nsCOMPtr<nsINode> sourceNode;
         dragSession->GetSourceNode(getter_AddRefs(sourceNode));
         if (!sourceNode) {
-          nsCOMPtr<nsIDragService> dragService = mDragService;
-          dragService->EndDragSession(
+          dragSession->EndDragSession(
               false, nsCocoaUtils::ModifiersForEvent([NSApp currentEvent]));
         }
         return NSDragOperationNone;
@@ -4229,8 +4177,8 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
         // DRAGDROP_ACTION_UNINITIALIZED, it means that the last event was sent
         // to the child process and this event is also being sent to the child
         // process. In this case, use the last event's action instead.
-        nsDragService* dragService = static_cast<nsDragService*>(mDragService);
-        int32_t childDragAction = dragService->TakeChildProcessDragAction();
+        nsDragSession* ds = static_cast<nsDragSession*>(dragSession.get());
+        int32_t childDragAction = ds->TakeChildProcessDragAction();
         if (childDragAction != nsIDragService::DRAGDROP_ACTION_UNINITIALIZED) {
           dragAction = childDragAction;
         }
@@ -4246,8 +4194,7 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
           // initiated in a different app. End the drag session,
           // since we're done with it for now (until the user
           // drags back into mozilla).
-          nsCOMPtr<nsIDragService> dragService = mDragService;
-          dragService->EndDragSession(
+          dragSession->EndDragSession(
               false, nsCocoaUtils::ModifiersForEvent([NSApp currentEvent]));
         }
         break;
@@ -4338,10 +4285,9 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
     NS_ASSERTION(mDragService, "Couldn't get a drag service - big problem!");
   }
 
-  if (mDragService) {
-    RefPtr<nsDragService> dragService =
-        static_cast<nsDragService*>(mDragService);
-
+  nsCOMPtr<nsIDragSession> session =
+      mDragService->GetCurrentSession(mGeckoChild);
+  if (session) {
     // Set the dragend point from the current mouse location
     // FIXME(emilio): Weird that we wouldn't use aPoint instead? Seems to work
     // locally as well...
@@ -4350,8 +4296,8 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
     NSPoint locationInWindow =
         nsCocoaUtils::ConvertPointFromScreen([self window], pnt);
     FlipCocoaScreenCoordinate(pnt);
-    dragService->SetDragEndPoint(
-        [self convertWindowCoordinates:locationInWindow]);
+    LayoutDeviceIntPoint pt = [self convertWindowCoordinates:locationInWindow];
+    session->SetDragEndPoint(pt.x, pt.y);
 
     // XXX: dropEffect should be updated per |aOperation|.
     // As things stand though, |aOperation| isn't well handled within "our"
@@ -4362,16 +4308,17 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
     // value for NSDragOperationGeneric that is passed by other applications.
     // All that said, NSDragOperationNone is still reliable.
     if (aOperation == NSDragOperationNone) {
-      RefPtr<dom::DataTransfer> dataTransfer = dragService->GetDataTransfer();
-      if (dataTransfer) {
+      if (RefPtr dataTransfer = session->GetDataTransfer()) {
         dataTransfer->SetDropEffectInt(nsIDragService::DRAGDROP_ACTION_NONE);
       }
     }
 
-    dragService->EndDragSession(true,
-                                nsCocoaUtils::ModifiersForEvent(currentEvent));
-    NS_RELEASE(mDragService);
+    session->EndDragSession(true,
+                            nsCocoaUtils::ModifiersForEvent(currentEvent));
   }
+
+  session = nullptr;
+  NS_IF_RELEASE(mDragService);
 
   [globalDragPboard release];
   globalDragPboard = nil;
@@ -4387,16 +4334,19 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
            movedToPoint:(NSPoint)aPoint {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
-  // Get the drag service if it isn't already cached. The drag service
-  // isn't cached when dragging over a different application.
   nsCOMPtr<nsIDragService> dragService = mDragService;
   if (!dragService) {
     dragService = do_GetService(kDragServiceContractID);
   }
-
   if (dragService) {
-    nsDragService* ds = static_cast<nsDragService*>(dragService.get());
-    ds->DragMovedWithView(aSession, aPoint);
+    RefPtr<nsIDragSession> dragSession;
+    nsIWidget* widget = mGeckoChild;
+    dragService->GetCurrentSession(widget, getter_AddRefs(dragSession));
+    if (dragSession) {
+      MOZ_ASSERT(aSession == static_cast<nsDragSession*>(dragSession.get())
+                                 ->GetNSDraggingSession());
+      dragSession->DragMoved(aPoint.x, aPoint.y);
+    }
   }
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
@@ -5129,18 +5079,12 @@ BOOL ChildViewMouseTracker::WindowAcceptsEvent(NSWindow* aWindow,
 
     case WindowType::TopLevel:
     case WindowType::Dialog:
-      if ([aWindow attachedSheet]) return NO;
+      if (aWindow.attachedSheet) {
+        return NO;
+      }
 
       topLevelWindow = aWindow;
       break;
-    case WindowType::Sheet: {
-      nsIWidget* parentWidget = windowWidget->GetSheetWindowParent();
-      if (!parentWidget) return YES;
-
-      topLevelWindow = (NSWindow*)parentWidget->GetNativeData(NS_NATIVE_WINDOW);
-      break;
-    }
-
     default:
       return YES;
   }

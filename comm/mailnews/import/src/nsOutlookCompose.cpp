@@ -9,26 +9,21 @@
 #include "prthread.h"
 #include "nsString.h"
 #include "nsMsgUtils.h"
-#include "nsUnicharUtils.h"
 #include "nsCOMPtr.h"
 #include "nsIFile.h"
 #include "nsIURI.h"
 #include "nsMsgI18N.h"
 #include "nsIOutputStream.h"
 #include "nsIInputStream.h"
-#include "nsMsgAttachmentData.h"
-#include "nsIMsgCompFields.h"
 #include "nsIMsgAccountManager.h"
 #include "nsIMsgSend.h"
 #include "nsImportEmbeddedImageData.h"
-#include "nsNetCID.h"
 #include "nsCRT.h"
 #include "nsOutlookCompose.h"
 #include "nsTArray.h"
 
 #include "ImportDebug.h"
 
-#include "nsMimeTypes.h"
 #include "nsMsgUtils.h"
 
 #include "nsIThread.h"
@@ -120,25 +115,19 @@ class OutlookSendListener : public nsIMsgSendListener {
   // nsISupports interface
   NS_DECL_THREADSAFE_ISUPPORTS
 
-  /* void OnStartSending (in string aMsgID, in uint32_t aMsgSize); */
   NS_IMETHOD OnStartSending(const char* aMsgID, uint32_t aMsgSize) {
     return NS_OK;
   }
 
-  /* void OnProgress (in string aMsgID, in uint32_t aProgress, in uint32_t
-   * aProgressMax); */
-  NS_IMETHOD OnProgress(const char* aMsgID, uint32_t aProgress,
-                        uint32_t aProgressMax) {
+  NS_IMETHOD OnSendProgress(const char* aMsgID, uint32_t aProgress,
+                            uint32_t aProgressMax) {
     return NS_OK;
   }
 
-  /* void OnStatus (in string aMsgID, in wstring aMsg); */
   NS_IMETHOD OnStatus(const char* aMsgID, const char16_t* aMsg) {
     return NS_OK;
   }
 
-  /* void OnStopSending (in string aMsgID, in nsresult aStatus, in wstring aMsg,
-   * in nsIFile returnFile); */
   NS_IMETHOD OnStopSending(const char* aMsgID, nsresult aStatus,
                            const char16_t* aMsg, nsIFile* returnFile) {
     m_done = true;
@@ -146,20 +135,16 @@ class OutlookSendListener : public nsIMsgSendListener {
     return NS_OK;
   }
 
-  /* void OnTransportSecurityError( in string msgID, in nsresult status, in
-   * nsITransportSecurityInfo secInfo, in ACString location); */
   NS_IMETHOD OnTransportSecurityError(const char* msgID, nsresult status,
                                       nsITransportSecurityInfo* secInfo,
                                       nsACString const& location) {
     return NS_OK;
   }
 
-  /* void OnSendNotPerformed */
   NS_IMETHOD OnSendNotPerformed(const char* aMsgID, nsresult aStatus) {
     return NS_OK;
   }
 
-  /* void OnGetDraftFolderURI (); */
   NS_IMETHOD OnGetDraftFolderURI(const char* aMsgID,
                                  const nsACString& aFolderURI) {
     return NS_OK;
@@ -171,11 +156,11 @@ class OutlookSendListener : public nsIMsgSendListener {
     m_location = nullptr;
   }
 
- public:
-  virtual ~OutlookSendListener() {}
-
   bool m_done;
   nsCOMPtr<nsIFile> m_location;
+
+ protected:
+  virtual ~OutlookSendListener() {}
 };
 
 NS_IMPL_ISUPPORTS(OutlookSendListener, nsIMsgSendListener)
@@ -643,8 +628,7 @@ class dest_nsCString {
 class dest_Stream {
  public:
   explicit dest_Stream(nsIOutputStream* dest) : m_stream(dest) {}
-  void SetCapacity(int32_t) { /*do nothing*/
-  }
+  void SetCapacity(int32_t) { /*do nothing*/ }
   // const_cast here is due to the poor design of the EscapeFromSpaceLine()
   // that requires a non-constant pointer while doesn't modify its data
   nsresult Append(const char* buf, uint32_t count) {

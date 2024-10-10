@@ -81,7 +81,7 @@ case "$1" in
     ;;
 
     configure|abort-upgrade)
-        touch ${THUNDERBID_LIBDIR}/.autoreg
+        touch ${THUNDERBIRD_LIBDIR}/.autoreg
     ;;
 
     *)

@@ -78,6 +78,11 @@ mailattachcount {
   text-decoration: underline;
 }
 
+.moz-txt-formfeed {
+  display: block;
+  height: 100vh;
+}
+
 /* Ignore named pages when printing. */
 @media print {
   * { page: auto !important; }
@@ -194,7 +199,7 @@ img[overflowing][shrinktofit] {
 .moz-mime-attachment-size {
   vertical-align: top;
   width: 10ch;
-  text-align: start;
+  text-align: end;
 }
 
 .moz-mime-attachment-file,

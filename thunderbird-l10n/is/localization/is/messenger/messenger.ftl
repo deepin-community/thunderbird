@@ -212,6 +212,21 @@ mail-context-menu-reply =
 mail-context-menu-forward-redirect =
     .label = Áframsenda og endurbeina
     .accesskey = f
+mail-context-menu-forward-forward =
+    .label = Áfram
+    .accesskey = m
+mail-context-menu-forward-inline =
+    .label = Innfellt
+    .accesskey = I
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-menu-forward-as-attachment =
+    .label =
+        { $count ->
+            [one] Sem viðhengi
+           *[other] Sem viðhengi
+        }
+    .accesskey = h
 mail-context-menu-organize =
     .label = Skipuleggja
     .accesskey = g

@@ -35,7 +35,7 @@
 <!ENTITY hdrFollowupButton1.tooltip "Даслаць водгук у навінакупу">
 <!ENTITY hdrForwardButton1.label "Пераслаць">
 <!ENTITY hdrForwardButton1.tooltip "Пераслаць гэты ліст">
-<!ENTITY hdrJunkButton1.label "Лухта">
+<!ENTITY hdrJunkButton1.label "Спам">
 <!ENTITY hdrJunkButton1.tooltip "Пазначыць гэты ліст як лухту">
 <!ENTITY hdrTrashButton1.label "Выдаліць">
 <!ENTITY hdrTrashButton1.tooltip "Выдаліць ліст">
@@ -55,7 +55,7 @@
 <!ENTITY otherActionsOpenConversation1.accesskey "г">
 <!ENTITY otherActionsOpenInNewWindow1.label "Адкрыць у новым акне">
 <!ENTITY otherActionsOpenInNewWindow1.accesskey "а">
-<!ENTITY otherActionsOpenInNewTab1.label "Адкрыць у новай устаўцы">
+<!ENTITY otherActionsOpenInNewTab1.label "Адкрыць на новай укладцы">
 <!ENTITY otherActionsOpenInNewTab1.accesskey "у">
 <!ENTITY markAsReadMenuItem1.label "Пазначыць прачытаным">
 <!ENTITY markAsReadMenuItem1.accesskey "ч">
@@ -73,7 +73,7 @@
 <!ENTITY startExpandedCmd.accesskey    "ш">
 
 <!-- Attachment context menu items -->
-<!ENTITY openAttachmentCmd.label    "Адчыніць">
+<!ENTITY openAttachmentCmd.label    "Адкрыць">
 <!ENTITY openAttachmentCmd.accesskey    "А">
 <!ENTITY saveAsAttachmentCmd.label    "Захаваць як…">
 <!ENTITY saveAsAttachmentCmd.accesskey    "я">
@@ -81,7 +81,7 @@
 <!ENTITY detachAttachmentCmd.accesskey    "ц">
 <!ENTITY deleteAttachmentCmd.label    "Выдаліць">
 <!ENTITY deleteAttachmentCmd.accesskey    "д">
-<!ENTITY openAllAttachmentsCmd.label    "Адчыніць усе…">
+<!ENTITY openAllAttachmentsCmd.label    "Адкрыць усе…">
 <!ENTITY openAllAttachmentsCmd.accesskey    "А">
 <!ENTITY saveAllAttachmentsCmd.label    "Захаваць усе…">
 <!ENTITY saveAllAttachmentsCmd.accesskey    "З">
@@ -106,10 +106,10 @@
 <!ENTITY CopyMessageId.accesskey "К">
 <!ENTITY OpenMessageForMsgId.label "Адкрыць ліст з вызначальнікам:">
 <!ENTITY OpenMessageForMsgId.accesskey "А">
-<!ENTITY OpenBrowserWithMsgId.label "Адчыніць азіральнік з вызначальнікам-ліста">
 <!ENTITY OpenBrowserWithMsgId.accesskey "з">
 
 <!ENTITY detachedAttachmentFolder.show.label        "Open Containing Folder">
 <!ENTITY detachedAttachmentFolder.show.accesskey    "F">
 <!ENTITY detachedAttachmentFolder.showMac.label     "Show In Finder">
 <!ENTITY detachedAttachmentFolder.showMac.accesskey "F">
+<!ENTITY OpenBrowserWithMsgId.label "Open Browser With Message-ID">

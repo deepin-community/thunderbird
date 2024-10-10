@@ -14,7 +14,7 @@
 #include "nsTreeColumns.h"
 #include "nsMsgMessageFlags.h"
 #include <plhash.h>
-#include "mozilla/Attributes.h"
+#include "nsIScriptError.h"
 
 // Allocate this more to avoid reallocation on new mail.
 #define MSGHDR_CACHE_LOOK_AHEAD_SIZE 25
@@ -166,7 +166,7 @@ nsresult nsMsgGroupView::HashHdr(nsIMsgDBHdr* msgHdr, nsString& aHashKey) {
       rv = nsMsgDBView::FetchAuthor(msgHdr, aHashKey);
       break;
     case nsMsgViewSortType::byRecipient:
-      (void)msgHdr->GetRecipients(getter_Copies(cStringKey));
+      msgHdr->GetRecipients(cStringKey);
       CopyASCIItoUTF16(cStringKey, aHashKey);
       break;
     case nsMsgViewSortType::byAccount:
@@ -462,7 +462,9 @@ nsMsgGroupView::CopyDBView(nsMsgDBView* aNewMsgDBView,
 
   // If grouped, we need to clone the group thread hash table.
   if (m_viewFlags & nsMsgViewFlagsType::kGroupBySort) {
-    if (mIsXFVirtual) {
+    // If this is any kind of nsMsgSearchDBView, either cross-folder or
+    // synthetic (no message database).
+    if (mIsXFVirtual || !m_db) {
       for (auto iter = m_groupsTable.Iter(); !iter.Done(); iter.Next()) {
         newMsgDBView->m_groupsTable.InsertOrUpdate(
             iter.Key(),
@@ -669,28 +671,43 @@ nsMsgGroupView::OnHdrDeleted(nsIMsgDBHdr* aHdrDeleted, nsMsgKey aParentKey,
   bool rootDeleted = IsValidIndex(viewIndexOfThread) &&
                      m_keys[viewIndexOfThread] == keyDeleted;
   rv = nsMsgDBView::OnHdrDeleted(aHdrDeleted, aParentKey, aFlags, aInstigator);
+  uint32_t numChildren;
   if (groupThread->m_dummy) {
-    if (!groupThread->NumRealChildren()) {
+    groupThread->GetNumChildren(&numChildren);
+    // At this point, at least the dummy row should be present at an index that
+    // is still accessible in the view. If not, something is wrong and we
+    // take the safe way out.
+    if (!numChildren || !IsValidIndex(viewIndexOfThread)) {
+      MsgLogToConsole4(
+          u"The view is rebuilt because an invalid group thread was detected."_ns,
+          NS_LITERAL_STRING_FROM_CSTRING(__FILE__), __LINE__,
+          nsIScriptError::warningFlag);
+      return RebuildView(m_viewFlags);
+    }
+
+    if (numChildren == 1) {
       // Get rid of dummy.
       thread->RemoveChildAt(0);
-      if (viewIndexOfThread != nsMsgKey_None) {
-        RemoveByIndex(viewIndexOfThread);
-        if (m_deletingRows)
-          mIndicesToNoteChange.AppendElement(viewIndexOfThread);
+      RemoveByIndex(viewIndexOfThread);
+      if (m_deletingRows && !mIndicesToNoteChange.Contains(viewIndexOfThread))
+        mIndicesToNoteChange.AppendElement(viewIndexOfThread);
+    } else {
+      if (rootDeleted) {
+        // Reflect new thread root into view.dummy row.
+        nsCOMPtr<nsIMsgDBHdr> hdr;
+        thread->GetChildHdrAt(0, getter_AddRefs(hdr));
+        if (hdr) {
+          nsMsgKey msgKey;
+          hdr->GetMessageKey(&msgKey);
+          SetMsgHdrAt(hdr, viewIndexOfThread, msgKey,
+                      m_flags[viewIndexOfThread], 0);
+        }
       }
-    } else if (rootDeleted) {
-      // Reflect new thread root into view.dummy row.
-      nsCOMPtr<nsIMsgDBHdr> hdr;
-      thread->GetChildHdrAt(0, getter_AddRefs(hdr));
-      if (hdr) {
-        nsMsgKey msgKey;
-        hdr->GetMessageKey(&msgKey);
-        SetMsgHdrAt(hdr, viewIndexOfThread, msgKey, m_flags[viewIndexOfThread],
-                    0);
-      }
+      NoteChange(viewIndexOfThread, 1, nsMsgViewNotificationCode::changed);
     }
   }
-  if (!groupThread->m_keys.Length()) {
+  groupThread->GetNumChildren(&numChildren);
+  if (!numChildren) {
     nsString hashKey;
     rv = HashHdr(aHdrDeleted, hashKey);
     if (NS_SUCCEEDED(rv)) m_groupsTable.Remove(hashKey);
@@ -738,6 +755,10 @@ nsMsgGroupView::GetCellProperties(int32_t aRow, nsTreeColumn* aCol,
     groupThread->GetNumUnreadChildren(&numUnrMsg);
     if (numUnrMsg > 0) aProperties.AppendLiteral(" hasUnread");
 
+    uint32_t numNewMsg = 0;
+    groupThread->GetNumNewChildren(&numNewMsg);
+    if (numNewMsg > 0) aProperties.AppendLiteral(" hasNew");
+
     return NS_OK;
   }
 
@@ -749,15 +770,22 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
                                   nsAString& aValue) {
   if (!IsValidIndex(aRow)) return NS_MSG_INVALID_DBVIEW_INDEX;
 
-  if (!(m_flags[aRow] & MSG_VIEW_FLAG_DUMMY) ||
-      aColumnName.EqualsLiteral("unreadCol") ||
-      aColumnName.EqualsLiteral("newCol"))
-    return nsMsgDBView::CellTextForColumn(aRow, aColumnName, aValue);
+  bool isTotalCol = aColumnName.EqualsLiteral("totalCol");
 
-  // We only treat "subject" and "total" here.
-  bool isSubject;
-  if (!(isSubject = aColumnName.EqualsLiteral("subjectCol")) &&
-      !aColumnName.EqualsLiteral("totalCol")) {
+  if (!((m_viewFlags & nsMsgViewFlagsType::kGroupBySort) && isTotalCol) &&
+      (!(m_flags[aRow] & MSG_VIEW_FLAG_DUMMY) ||
+       aColumnName.EqualsLiteral("unreadCol") ||
+       aColumnName.EqualsLiteral("newCol"))) {
+    return nsMsgDBView::CellTextForColumn(aRow, aColumnName, aValue);
+  }
+
+  bool isSubjectCol = aColumnName.EqualsLiteral("subjectCol");
+
+  if (!isSubjectCol && !isTotalCol) {
+    // We only treat "subject" and "total" here.
+    // The "subject" of the group row will be formed by the group-by criteria.
+    // Here we also handle totalCol - for non-dummy rows.
+    // Other rows won't be processed here.
     return NS_OK;
   }
 
@@ -771,7 +799,7 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
   m_groupsTable.Get(hashKey, getter_AddRefs(msgThread));
   nsMsgGroupThread* groupThread =
       static_cast<nsMsgGroupThread*>(msgThread.get());
-  if (isSubject) {
+  if (isSubjectCol) {
     uint32_t flags;
     bool rcvDate = false;
     msgHdr->GetFlags(&flags);
@@ -874,11 +902,13 @@ nsMsgGroupView::CellTextForColumn(int32_t aRow, const nsAString& aColumnName,
         NS_ASSERTION(false, "we don't sort by group for this type");
         break;
     }
-  } else {
+  } else if (isTotalCol) {
     nsAutoString formattedCountString;
     uint32_t numChildren = (groupThread) ? groupThread->NumRealChildren() : 0;
     formattedCountString.AppendInt(numChildren);
     aValue.Assign(formattedCountString);
+  } else {
+    MOZ_ASSERT_UNREACHABLE("only handling subjectCol and totalCol");
   }
   return NS_OK;
 }

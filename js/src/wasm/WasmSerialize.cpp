@@ -531,10 +531,8 @@ CoderResult CodeFuncType(Coder<mode>& coder, CoderArg<mode, FuncType> item) {
 }
 
 template <CoderMode mode>
-CoderResult CodeStructField(Coder<mode>& coder,
-                            CoderArg<mode, StructField> item) {
+CoderResult CodeFieldType(Coder<mode>& coder, CoderArg<mode, FieldType> item) {
   MOZ_TRY(CodeStorageType(coder, &item->type));
-  MOZ_TRY(CodePod(coder, &item->offset));
   MOZ_TRY(CodePod(coder, &item->isMutable));
   return Ok();
 }
@@ -542,9 +540,9 @@ CoderResult CodeStructField(Coder<mode>& coder,
 template <CoderMode mode>
 CoderResult CodeStructType(Coder<mode>& coder,
                            CoderArg<mode, StructType> item) {
-  WASM_VERIFY_SERIALIZATION_FOR_SIZE(wasm::StructType, 136);
-  MOZ_TRY((CodeVector<mode, StructField, &CodeStructField<mode>>(
-      coder, &item->fields_)));
+  WASM_VERIFY_SERIALIZATION_FOR_SIZE(wasm::StructType, 184);
+  MOZ_TRY((CodeVector<mode, FieldType, &CodeFieldType<mode>>(coder,
+                                                             &item->fields_)));
   if constexpr (mode == MODE_DECODE) {
     if (!item->init()) {
       return Err(OutOfMemory());
@@ -556,8 +554,7 @@ CoderResult CodeStructType(Coder<mode>& coder,
 template <CoderMode mode>
 CoderResult CodeArrayType(Coder<mode>& coder, CoderArg<mode, ArrayType> item) {
   WASM_VERIFY_SERIALIZATION_FOR_SIZE(wasm::ArrayType, 16);
-  MOZ_TRY(CodeStorageType(coder, &item->elementType_));
-  MOZ_TRY(CodePod(coder, &item->isMutable_));
+  MOZ_TRY(CodeFieldType(coder, &item->fieldType_));
   return Ok();
 }
 
@@ -957,7 +954,10 @@ CoderResult CodeSymbolicLinkArray(
 template <CoderMode mode>
 CoderResult CodeLinkData(Coder<mode>& coder,
                          CoderArg<mode, wasm::LinkData> item) {
-  WASM_VERIFY_SERIALIZATION_FOR_SIZE(wasm::LinkData, 8976);
+  // SymbolicLinkArray depends on SymbolicAddress::Limit, which is changed
+  // often. Exclude symbolicLinks field from trip wire value calculation.
+  WASM_VERIFY_SERIALIZATION_FOR_SIZE(
+      wasm::LinkData, 48 + sizeof(wasm::LinkData::SymbolicLinkArray));
   if constexpr (mode == MODE_ENCODE) {
     MOZ_ASSERT(item->tier == Tier::Serialized);
   }

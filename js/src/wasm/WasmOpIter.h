@@ -234,6 +234,7 @@ enum class OpKind {
   Try,
   TryTable,
   CallBuiltinModuleFunc,
+  StackSwitch,
 };
 
 // Return the OpKind for a given Op. This is used for sanity-checking that
@@ -431,6 +432,8 @@ class MOZ_STACK_CLASS OpIter : private Policy {
   // immutable globals are allowed.
   uint32_t maxInitializedGlobalsIndexPlus1_;
   FeatureUsage featureUsage_;
+  uint32_t lastBranchHintIndex_;
+  BranchHintVector* branchHintVector_;
 
 #ifdef DEBUG
   OpBytes op_;
@@ -548,6 +551,7 @@ class MOZ_STACK_CLASS OpIter : private Policy {
         env_(env),
         maxInitializedGlobalsIndexPlus1_(0),
         featureUsage_(FeatureUsage::None),
+        branchHintVector_(nullptr),
         op_(OpBytes(Op::Limit)),
         offsetOfLastReadOp_(0) {}
 #else
@@ -596,6 +600,32 @@ class MOZ_STACK_CLASS OpIter : private Policy {
   // Ideally this accessor would be removed; consider using something else.
   bool currentBlockHasPolymorphicBase() const {
     return !controlStack_.empty() && controlStack_.back().polymorphicBase();
+  }
+
+  // If it exists, return the BranchHint value from a function index and a
+  // branch offset.
+  // Branch hints are stored in a sorted vector. Because code in compiled in
+  // order, we keep track of the most recently accessed index.
+  // Retrieving branch hints is also done in order inside a function.
+  BranchHint getBranchHint(uint32_t funcIndex, uint32_t branchOffset) {
+    if (!env_.branchHintingEnabled()) {
+      return BranchHint::Invalid;
+    }
+
+    // Get the next hint in the collection
+    while (lastBranchHintIndex_ < branchHintVector_->length() &&
+           (*branchHintVector_)[lastBranchHintIndex_].branchOffset <
+               branchOffset) {
+      lastBranchHintIndex_++;
+    }
+
+    // No hint found for this branch.
+    if (lastBranchHintIndex_ >= branchHintVector_->length()) {
+      return BranchHint::Invalid;
+    }
+
+    // The last index is saved, now return the hint.
+    return (*branchHintVector_)[lastBranchHintIndex_].value;
   }
 
   // ------------------------------------------------------------------------
@@ -827,6 +857,11 @@ class MOZ_STACK_CLASS OpIter : private Policy {
 
   [[nodiscard]] bool readCallBuiltinModuleFunc(
       const BuiltinModuleFunc** builtinModuleFunc, ValueVector* params);
+
+#ifdef ENABLE_WASM_JSPI
+  [[nodiscard]] bool readStackSwitch(StackSwitchKind* kind, Value* suspender,
+                                     Value* fn, Value* data);
+#endif
 
   // At a location where readOp is allowed, peek at the next opcode
   // without consuming it or updating any internal state.
@@ -1270,6 +1305,12 @@ inline bool OpIter<Policy>::startFunction(uint32_t funcIndex,
   MOZ_ASSERT(maxInitializedGlobalsIndexPlus1_ == 0);
   BlockType type = BlockType::FuncResults(*env_.funcs[funcIndex].type);
 
+  // Initialize information related to branch hinting.
+  lastBranchHintIndex_ = 0;
+  if (env_.branchHintingEnabled()) {
+    branchHintVector_ = &env_.branchHints.getHintVector(funcIndex);
+  }
+
   size_t numArgs = env_.funcs[funcIndex].type->args().length();
   if (!unsetLocals_.init(locals, numArgs)) {
     return false;
@@ -1304,6 +1345,7 @@ inline bool OpIter<Policy>::startInitExpr(ValType expected) {
   MOZ_ASSERT(valueStack_.empty());
   MOZ_ASSERT(controlStack_.empty());
   MOZ_ASSERT(op_.b0 == uint16_t(Op::Limit));
+  lastBranchHintIndex_ = 0;
 
   // GC allows accessing any previously defined global, not just those that are
   // imported and immutable.
@@ -3445,7 +3487,7 @@ inline bool OpIter<Policy>::readArrayNew(uint32_t* typeIndex,
     return false;
   }
 
-  if (!popWithType(arrayType.elementType_.widenToValType(), argValue)) {
+  if (!popWithType(arrayType.elementType().widenToValType(), argValue)) {
     return false;
   }
 
@@ -3478,7 +3520,7 @@ inline bool OpIter<Policy>::readArrayNewFixed(uint32_t* typeIndex,
     return false;
   }
 
-  ValType widenedElementType = arrayType.elementType_.widenToValType();
+  ValType widenedElementType = arrayType.elementType().widenToValType();
   for (uint32_t i = 0; i < *numElements; i++) {
     Value v;
     if (!popWithType(widenedElementType, &v)) {
@@ -3506,7 +3548,7 @@ inline bool OpIter<Policy>::readArrayNewDefault(uint32_t* typeIndex,
     return false;
   }
 
-  if (!arrayType.elementType_.isDefaultable()) {
+  if (!arrayType.elementType().isDefaultable()) {
     return fail("array must be defaultable");
   }
 
@@ -3529,7 +3571,7 @@ inline bool OpIter<Policy>::readArrayNewData(uint32_t* typeIndex,
 
   const TypeDef& typeDef = env_.types->type(*typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
-  StorageType elemType = arrayType.elementType_;
+  StorageType elemType = arrayType.elementType();
   if (!elemType.isNumber() && !elemType.isPacked() && !elemType.isVector()) {
     return fail("element type must be i8/i16/i32/i64/f32/f64/v128");
   }
@@ -3566,7 +3608,7 @@ inline bool OpIter<Policy>::readArrayNewElem(uint32_t* typeIndex,
 
   const TypeDef& typeDef = env_.types->type(*typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
-  StorageType dstElemType = arrayType.elementType_;
+  StorageType dstElemType = arrayType.elementType();
   if (!dstElemType.isRefType()) {
     return fail("element type is not a reftype");
   }
@@ -3608,11 +3650,11 @@ inline bool OpIter<Policy>::readArrayInitData(uint32_t* typeIndex,
 
   const TypeDef& typeDef = env_.types->type(*typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
-  StorageType elemType = arrayType.elementType_;
+  StorageType elemType = arrayType.elementType();
   if (!elemType.isNumber() && !elemType.isPacked() && !elemType.isVector()) {
     return fail("element type must be i8/i16/i32/i64/f32/f64/v128");
   }
-  if (!arrayType.isMutable_) {
+  if (!arrayType.isMutable()) {
     return fail("destination array is not mutable");
   }
   if (env_.dataCount.isNothing()) {
@@ -3651,8 +3693,8 @@ inline bool OpIter<Policy>::readArrayInitElem(uint32_t* typeIndex,
 
   const TypeDef& typeDef = env_.types->type(*typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
-  StorageType dstElemType = arrayType.elementType_;
-  if (!arrayType.isMutable_) {
+  StorageType dstElemType = arrayType.elementType();
+  if (!arrayType.isMutable()) {
     return fail("destination array is not mutable");
   }
   if (!dstElemType.isRefType()) {
@@ -3702,7 +3744,7 @@ inline bool OpIter<Policy>::readArrayGet(uint32_t* typeIndex,
     return false;
   }
 
-  StorageType elementType = arrayType.elementType_;
+  StorageType elementType = arrayType.elementType();
 
   if (elementType.isValType() && wideningOp != FieldWideningOp::None) {
     return fail("must not specify signedness for unpacked element type");
@@ -3727,11 +3769,11 @@ inline bool OpIter<Policy>::readArraySet(uint32_t* typeIndex, Value* val,
   const TypeDef& typeDef = env_.types->type(*typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
 
-  if (!arrayType.isMutable_) {
+  if (!arrayType.isMutable()) {
     return fail("array is not mutable");
   }
 
-  if (!popWithType(arrayType.elementType_.widenToValType(), val)) {
+  if (!popWithType(arrayType.elementType().widenToValType(), val)) {
     return false;
   }
 
@@ -3779,9 +3821,9 @@ inline bool OpIter<Policy>::readArrayCopy(int32_t* elemSize,
   const ArrayType& dstArrayType = dstTypeDef.arrayType();
   const TypeDef& srcTypeDef = env_.types->type(srcTypeIndex);
   const ArrayType& srcArrayType = srcTypeDef.arrayType();
-  StorageType dstElemType = dstArrayType.elementType_;
-  StorageType srcElemType = srcArrayType.elementType_;
-  if (!dstArrayType.isMutable_) {
+  StorageType dstElemType = dstArrayType.elementType();
+  StorageType srcElemType = srcArrayType.elementType();
+  if (!dstArrayType.isMutable()) {
     return fail("destination array is not mutable");
   }
 
@@ -3824,14 +3866,14 @@ inline bool OpIter<Policy>::readArrayFill(uint32_t* typeIndex, Value* array,
 
   const TypeDef& typeDef = env_.types->type(*typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
-  if (!arrayType.isMutable_) {
+  if (!arrayType.isMutable()) {
     return fail("destination array is not mutable");
   }
 
   if (!popWithType(ValType::I32, length)) {
     return false;
   }
-  if (!popWithType(arrayType.elementType_.widenToValType(), val)) {
+  if (!popWithType(arrayType.elementType().widenToValType(), val)) {
     return false;
   }
   if (!popWithType(ValType::I32, index)) {
@@ -4218,6 +4260,46 @@ inline bool OpIter<Policy>::readStoreLane(uint32_t byteSize,
 }
 
 #endif  // ENABLE_WASM_SIMD
+
+#ifdef ENABLE_WASM_JSPI
+template <typename Policy>
+inline bool OpIter<Policy>::readStackSwitch(StackSwitchKind* kind,
+                                            Value* suspender, Value* fn,
+                                            Value* data) {
+  MOZ_ASSERT(Classify(op_) == OpKind::StackSwitch);
+  MOZ_ASSERT(env_.jsPromiseIntegrationEnabled());
+  uint32_t kind_;
+  if (!d_.readVarU32(&kind_)) {
+    return false;
+  }
+  *kind = StackSwitchKind(kind_);
+  if (!popWithType(ValType(RefType::any()), data)) {
+    return false;
+  }
+  StackType stackType;
+  if (!popWithType(ValType(RefType::func()), fn, &stackType)) {
+    return false;
+  }
+#  if DEBUG
+  // Verify that the function takes suspender and data as parameters and
+  // returns no values.
+  MOZ_ASSERT((*kind == StackSwitchKind::ContinueOnSuspendable) ==
+             stackType.isNullableAsOperand());
+  if (!stackType.isNullableAsOperand()) {
+    ValType valType = stackType.valType();
+    MOZ_ASSERT(valType.isRefType() && valType.typeDef()->isFuncType());
+    const FuncType& func = valType.typeDef()->funcType();
+    MOZ_ASSERT(func.args().length() == 2 && func.results().empty() &&
+               func.arg(0).isExternRef() &&
+               ValType::isSubTypeOf(func.arg(1), RefType::any()));
+  }
+#  endif
+  if (!popWithType(ValType(RefType::extern_()), suspender)) {
+    return false;
+  }
+  return true;
+}
+#endif
 
 template <typename Policy>
 inline bool OpIter<Policy>::readCallBuiltinModuleFunc(

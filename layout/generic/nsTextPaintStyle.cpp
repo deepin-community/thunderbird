@@ -96,14 +96,15 @@ nscolor nsTextPaintStyle::GetTextColor() {
       case StyleSVGPaintKind::Tag::None:
         return NS_RGBA(0, 0, 0, 0);
       case StyleSVGPaintKind::Tag::Color:
-        return nsLayoutUtils::GetColor(mFrame, &nsStyleSVG::mFill);
+        return nsLayoutUtils::GetTextColor(mFrame, &nsStyleSVG::mFill);
       default:
         NS_ERROR("cannot resolve SVG paint to nscolor");
         return NS_RGBA(0, 0, 0, 255);
     }
   }
 
-  return nsLayoutUtils::GetColor(mFrame, &nsStyleText::mWebkitTextFillColor);
+  return nsLayoutUtils::GetTextColor(mFrame,
+                                     &nsStyleText::mWebkitTextFillColor);
 }
 
 bool nsTextPaintStyle::GetSelectionColors(nscolor* aForeColor,
@@ -211,6 +212,25 @@ void nsTextPaintStyle::GetHighlightColors(nscolor* aForeColor,
   // There are neither mForegroundColor nor mBackgroundColor.
   *aForeColor = GetTextColor();
   *aBackColor = NS_TRANSPARENT;
+}
+
+void nsTextPaintStyle::GetTargetTextColors(nscolor* aForeColor,
+                                           nscolor* aBackColor) {
+  NS_ASSERTION(aForeColor, "aForeColor is null");
+  NS_ASSERTION(aBackColor, "aBackColor is null");
+  const RefPtr<const ComputedStyle> targetTextStyle =
+      mFrame->ComputeTargetTextStyle();
+  if (targetTextStyle) {
+    *aForeColor = targetTextStyle->GetVisitedDependentColor(
+        &nsStyleText::mWebkitTextFillColor);
+    *aBackColor = targetTextStyle->GetVisitedDependentColor(
+        &nsStyleBackground::mBackgroundColor);
+    return;
+  }
+  *aBackColor =
+      LookAndFeel::Color(LookAndFeel::ColorID::TargetTextBackground, mFrame);
+  *aForeColor =
+      LookAndFeel::Color(LookAndFeel::ColorID::TargetTextForeground, mFrame);
 }
 
 bool nsTextPaintStyle::GetCustomHighlightTextColor(nsAtom* aHighlightName,

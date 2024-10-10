@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-es-MX@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Español (MX) (Spanish, Mexico)",
   "description": "Thunderbird Language Pack for Español (MX) (es-MX) – Spanish, Mexico",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "es-MX": {
-      "version": "20240423200143",
+      "version": "20240930174346",
       "chrome_resources": {
         "alerts": "chrome/es-MX/locale/es-MX/alerts/",
         "autoconfig": "chrome/es-MX/locale/es-MX/autoconfig/",
         "branding": "chrome/es-MX/locale/branding/",
         "calendar": "chrome/es-MX/locale/es-MX/calendar/",
-        "chat": "chrome/es-MX/locale/es-MX/chat/",
         "communicator": "chrome/es-MX/locale/es-MX/communicator/",
         "devtools": "chrome/es-MX/locale/es-MX/devtools/client/",
         "devtools-shared": "chrome/es-MX/locale/es-MX/devtools/shared/",

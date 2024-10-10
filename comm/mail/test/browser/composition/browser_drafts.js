@@ -18,7 +18,7 @@ var {
   save_compose_message,
   setup_msg_contents,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/ComposeHelpers.sys.mjs"
+  "resource://testing-common/mail/ComposeHelpers.sys.mjs"
 );
 var {
   be_in_folder,
@@ -28,20 +28,20 @@ var {
   press_delete,
   select_click_row,
 } = ChromeUtils.importESModule(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.sys.mjs"
+  "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 var { get_notification, wait_for_notification_to_show } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/NotificationBoxHelpers.sys.mjs"
+    "resource://testing-common/mail/NotificationBoxHelpers.sys.mjs"
   );
 
 var { click_menus_in_sequence, close_popup_sequence, promise_new_window } =
   ChromeUtils.importESModule(
-    "resource://testing-common/mozmill/WindowHelpers.sys.mjs"
+    "resource://testing-common/mail/WindowHelpers.sys.mjs"
   );
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const aboutMessage = get_about_message();
@@ -141,7 +141,7 @@ async function internal_check_delivery_format(editDraft) {
    * @param aMenuItemId  The id of the menuitem expected to be selected.
    * @param aValue       A value of nsIMsgCompSendFormat constants of the expected selected format.
    */
-  async function assert_format_value(aMenuItemId, aValue) {
+  async function assert_format_value(aMenuItemId) {
     EventUtils.synthesizeMouseAtCenter(
       cwc.document.getElementById("optionsMenu"),
       {},
@@ -201,11 +201,11 @@ async function internal_check_delivery_format(editDraft) {
 
 add_task(async function test_save_delivery_format_with_edit_draft() {
   await internal_check_delivery_format(true);
-}).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
+}).skip(AppConstants.platform == "macosx"); // Can't click menu bar on Mac.
 
 add_task(async function test_save_delivery_format_with_edit_template() {
   await internal_check_delivery_format(false);
-}).__skipMe = AppConstants.platform == "macosx"; // Can't click menu bar on Mac.
+}).skip(AppConstants.platform == "macosx"); // Can't click menu bar on Mac.
 
 /**
  * Tests that 'Edit as New' leaves the original message in drafts folder.
@@ -259,8 +259,7 @@ add_task(async function test_edit_draft_mime_from() {
   draftsFolder
     .QueryInterface(Ci.nsIMsgLocalMailFolder)
     .addMessage(
-      "From - Sun Oct 01 01:02:03 2023\n" +
-        "X-Mozilla-Status: 0000\n" +
+      "X-Mozilla-Status: 0000\n" +
         "X-Mozilla-Status2: 00000000\n" +
         "X-Mozilla-Keys:\n" +
         `X-Account-Key: ${accounts.key}\n` +
@@ -304,7 +303,7 @@ add_task(async function test_edit_draft_mime_from() {
   // Should not be editable - which it would be if no identity matched.
   Assert.equal(
     msgIdentity.getAttribute("editable"),
-    "",
+    null,
     "msgIdentity should not be editable since a draft identity email matches"
   );
 
@@ -452,4 +451,53 @@ add_task(async function test_remove_space_stuffing_format_flowed() {
   await press_delete(window);
 
   Services.prefs.setBoolPref("mail.identity.default.compose_html", oldHtmlPref);
+});
+
+/**
+ * Test that 'news:' URIs are just sent as they are. This test will fail if
+ * the source of the URI is attempted to be attached (see Bug 1787143).
+ */
+add_task(async function test_news_uris() {
+  const newsUri = "news://news.example.org/message-id@example.org";
+  const cwc = await open_compose_new_mail();
+  await setup_msg_contents(
+    cwc,
+    "test@example.invalid",
+    "Testing 'news' URIs",
+    `The URI ${newsUri} is just part of the text, while the following URI is` +
+      ` a pasted HTML link: `
+  );
+  cwc.document.getElementById("messageEditor").focus();
+
+  const transferable = Cc["@mozilla.org/widget/transferable;1"].createInstance(
+    Ci.nsITransferable
+  );
+  transferable.init(null);
+  transferable.addDataFlavor("text/html");
+  const ssHtml = Cc["@mozilla.org/supports-string;1"].createInstance(
+    Ci.nsISupportsString
+  );
+  ssHtml.data = `<a href="${newsUri}">${newsUri}</a>`;
+  transferable.setTransferData("text/html", ssHtml);
+  // Store the data into the clipboard.
+  Services.clipboard.setData(
+    transferable,
+    null,
+    Services.clipboard.kGlobalClipboard
+  );
+  // Paste the HTML link.
+  EventUtils.synthesizeKey("v", { accelKey: true }, cwc);
+
+  await save_compose_message(cwc);
+  await close_compose_window(cwc);
+
+  await TestUtils.waitForCondition(
+    () => draftsFolder.getTotalMessages(false) == 1,
+    "message saved to drafts folder"
+  );
+
+  await be_in_folder(draftsFolder);
+  await select_click_row(0);
+  // Clean up the created draft.
+  await press_delete(window);
 });

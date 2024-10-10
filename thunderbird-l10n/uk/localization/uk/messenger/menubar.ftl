@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Ознайомитися з функціями
     .accesskey = О
+menu-help-get-release-help =
+    .label = Отримати допомогу з { -brand-short-name }
+    .accesskey = О
 menu-help-shortcuts =
     .label = Комбінації клавіш
     .accesskey = л
@@ -44,9 +47,6 @@ menu-help-enter-troubleshoot-mode =
 menu-help-exit-troubleshoot-mode =
     .label = Вимкнути режим усунення проблем
     .accesskey = В
-menu-help-more-troubleshooting-info =
-    .label = Додаткова інформація про режим усунення проблем
-    .accesskey = Д
 menu-help-troubleshooting-info =
     .label = Інформація для усунення проблем
     .accesskey = І
@@ -68,6 +68,15 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Вийти з { -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Вийти з { -brand-full-name }
+           *[other] Вийти з { -brand-full-name }
+        }
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
 quit-app-shortcut =
     .key = Q
 
@@ -121,12 +130,6 @@ mail-uidensity-label =
 mail-uidensity-compact =
     .label = Компактна
     .accesskey = К
-mail-uidensity-normal =
-    .label = Звичайна
-    .accesskey = З
-mail-uidensity-touch =
-    .label = Дотик
-    .accesskey = о
 mail-uidensity-default =
     .label = Типовий
     .accesskey = Т
@@ -139,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Обліковий запис електронної пошти…
+    .accesskey = О
 file-new-newsgroup-account =
     .label = Обліковий запис групи новин…
     .accesskey = н

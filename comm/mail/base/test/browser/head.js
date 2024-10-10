@@ -2,13 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
-  SmartServerUtils: "resource:///modules/SmartServerUtils.sys.mjs",
+  SmartMailboxUtils: "resource:///modules/SmartMailboxUtils.sys.mjs",
 });
 
 async function clickExtensionButton(win, buttonId) {
@@ -44,16 +44,13 @@ async function openExtensionPopup(win, buttonId) {
   return { actionButton, panel, browser };
 }
 function getSmartServer() {
-  return lazy.SmartServerUtils.getSmartServer();
+  const smartMailbox = lazy.SmartMailboxUtils.getSmartMailbox();
+  return smartMailbox.server;
 }
 
 function resetSmartMailboxes() {
-  const oldServer = getSmartServer();
   // Clean up any leftover server from an earlier test.
-  if (oldServer) {
-    const oldAccount = MailServices.accounts.findAccountForServer(oldServer);
-    MailServices.accounts.removeAccount(oldAccount, false);
-  }
+  lazy.SmartMailboxUtils.removeAll(false);
 }
 
 class MenuTestHelper {

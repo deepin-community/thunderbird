@@ -7,14 +7,12 @@
 #include "nsDBFolderInfo.h"
 #include "nsMsgDatabase.h"
 #include "nsMsgFolderFlags.h"
-#include "nsIPrefService.h"
-#include "nsIPrefBranch.h"
-#include "nsIPrefLocalizedString.h"
-#include "nsIObserver.h"
-#include "nsIObserverService.h"
 #include "nsIMsgDBView.h"
-#include "nsServiceManagerUtils.h"
 #include "nsImapCore.h"
+#include "nsIWritablePropertyBag2.h"
+#include "mozilla/SimpleEnumerator.h"
+#include "nsIProperty.h"
+#include "nsIVariant.h"
 
 static const char* kDBFolderInfoScope = "ns:msg:db:row:scope:dbfolderinfo:all";
 static const char* kDBFolderInfoTableKind = "ns:msg:db:table:kind:dbfolderinfo";
@@ -344,9 +342,6 @@ NS_IMETHODIMP nsDBFolderInfo::ChangeNumUnreadMessages(int32_t delta) {
   m_numUnreadMessages += delta;
   // m_numUnreadMessages can never be set to negative.
   if (m_numUnreadMessages < 0) {
-#ifdef DEBUG_bienvenu1
-    NS_ASSERTION(false, "Hardcoded assertion");
-#endif
     m_numUnreadMessages = 0;
   }
   return SetUint32PropertyWithToken(m_numUnreadMessagesColumnToken,
@@ -357,9 +352,6 @@ NS_IMETHODIMP nsDBFolderInfo::ChangeNumMessages(int32_t delta) {
   m_numMessages += delta;
   // m_numMessages can never be set to negative.
   if (m_numMessages < 0) {
-#ifdef DEBUG_bienvenu
-    NS_ASSERTION(false, "num messages can't be < 0");
-#endif
     m_numMessages = 0;
   }
   return SetUint32PropertyWithToken(m_numMessagesColumnToken, m_numMessages);
@@ -681,25 +673,12 @@ NS_IMETHODIMP nsDBFolderInfo::SetFolderName(const nsACString& folderName) {
   return SetCharProperty("folderName", folderName);
 }
 
-class nsTransferDBFolderInfo : public nsDBFolderInfo {
- public:
-  nsTransferDBFolderInfo();
-  virtual ~nsTransferDBFolderInfo();
-  // parallel arrays of properties and values
-  nsTArray<nsCString> m_properties;
-  nsTArray<nsCString> m_values;
-};
-
-nsTransferDBFolderInfo::nsTransferDBFolderInfo() : nsDBFolderInfo(nullptr) {}
-
-nsTransferDBFolderInfo::~nsTransferDBFolderInfo() {}
-
-/* void GetTransferInfo (out nsIDBFolderInfo transferInfo); */
-NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIDBFolderInfo** transferInfo) {
+NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIPropertyBag2** transferInfo) {
   NS_ENSURE_ARG_POINTER(transferInfo);
   NS_ENSURE_STATE(m_mdbRow);
 
-  RefPtr<nsTransferDBFolderInfo> newInfo = new nsTransferDBFolderInfo;
+  nsCOMPtr<nsIWritablePropertyBag2> newInfo =
+      do_CreateInstance("@mozilla.org/hash-property-bag;1");
 
   mdb_count numCells;
   mdbYarn cellYarn;
@@ -718,12 +697,13 @@ NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIDBFolderInfo** transferInfo) {
       if (NS_SUCCEEDED(err)) {
         m_mdb->GetStore()->TokenToString(m_mdb->GetEnv(), cellColumn,
                                          &cellName);
-        newInfo->m_values.AppendElement(
-            Substring((const char*)cellYarn.mYarn_Buf,
-                      (const char*)cellYarn.mYarn_Buf + cellYarn.mYarn_Fill));
-        newInfo->m_properties.AppendElement(
+        nsAutoCString name(
             Substring((const char*)cellName.mYarn_Buf,
                       (const char*)cellName.mYarn_Buf + cellName.mYarn_Fill));
+        nsAutoCString value(
+            Substring((const char*)cellYarn.mYarn_Buf,
+                      (const char*)cellYarn.mYarn_Buf + cellYarn.mYarn_Fill));
+        newInfo->SetPropertyAsACString(NS_ConvertUTF8toUTF16(name), value);
       }
     }
   }
@@ -732,17 +712,24 @@ NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIDBFolderInfo** transferInfo) {
   return NS_OK;
 }
 
-/* void InitFromTransferInfo (in nsIDBFolderInfo transferInfo); */
 NS_IMETHODIMP nsDBFolderInfo::InitFromTransferInfo(
-    nsIDBFolderInfo* aTransferInfo) {
+    nsIPropertyBag2* aTransferInfo) {
   NS_ENSURE_ARG(aTransferInfo);
 
-  nsTransferDBFolderInfo* transferInfo =
-      static_cast<nsTransferDBFolderInfo*>(aTransferInfo);
+  nsCOMPtr<nsISimpleEnumerator> enumerator;
+  aTransferInfo->GetEnumerator(getter_AddRefs(enumerator));
 
-  for (uint32_t i = 0; i < transferInfo->m_values.Length(); i++)
-    SetCharProperty(transferInfo->m_properties[i].get(),
-                    transferInfo->m_values[i]);
+  for (const auto& property :
+       mozilla::SimpleEnumerator<nsIProperty>(enumerator)) {
+    nsAutoString name;
+    property->GetName(name);
+    nsCOMPtr<nsIVariant> variant;
+    property->GetValue(getter_AddRefs(variant));
+    nsAutoCString value;
+    variant->GetAsACString(value);
+
+    SetCharProperty(NS_ConvertUTF16toUTF8(name).get(), value);
+  }
 
   LoadMemberVariables();
   return NS_OK;

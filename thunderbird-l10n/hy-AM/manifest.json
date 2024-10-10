@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hy-AM@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: հայերեն (Armenian)",
   "description": "Thunderbird Language Pack for հայերեն (hy-AM) – Armenian",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "hy-AM": {
-      "version": "20240423200111",
+      "version": "20240930174523",
       "chrome_resources": {
         "alerts": "chrome/hy-AM/locale/hy-AM/alerts/",
         "autoconfig": "chrome/hy-AM/locale/hy-AM/autoconfig/",
         "branding": "chrome/hy-AM/locale/branding/",
         "calendar": "chrome/hy-AM/locale/hy-AM/calendar/",
-        "chat": "chrome/hy-AM/locale/hy-AM/chat/",
         "communicator": "chrome/hy-AM/locale/hy-AM/communicator/",
         "devtools": "chrome/hy-AM/locale/hy-AM/devtools/client/",
         "devtools-shared": "chrome/hy-AM/locale/hy-AM/devtools/shared/",

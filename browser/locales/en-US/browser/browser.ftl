@@ -638,6 +638,12 @@ urlbar-result-action-copy-to-clipboard = Copy
 #  $result (String): the string representation for a formula result
 urlbar-result-action-calculator-result = = { $result }
 
+## Strings used for buttons in the urlbar
+
+# Label prompting user to search with a particular search engine.
+#  $engine (String): the name of a search engine that searches a specific site
+urlbar-result-search-with = Search with { $engine }
+
 ## Action text shown in urlbar results, usually appended after the search
 ## string or the url, like "result value - action text".
 ## In these actions "Search" is a verb, followed by where the search is performed.
@@ -670,6 +676,24 @@ urlbar-group-quickactions =
 #  $engine (String): the name of the search engine used to search.
 urlbar-group-recent-searches =
   .label = Recent Searches
+
+# The header shown above trending results.
+# Variables:
+#  $engine (String): the name of the search engine providing the trending suggestions
+urlbar-group-trending =
+  .label = Trending on { $engine }
+
+# The result menu labels shown next to trending results.
+urlbar-result-menu-trending-dont-show =
+    .label = Don’t show trending searches
+    .accesskey = D
+urlbar-result-menu-trending-why =
+    .label = Why am I seeing this?
+    .accesskey = W
+
+# A message that replaces a result when the user dismisses all suggestions of a
+# particular type.
+urlbar-trending-dismissal-acknowledgment = Thanks for your feedback. You won’t see trending searches anymore.
 
 ## Reader View toolbar buttons
 
@@ -969,6 +993,16 @@ data-reporting-notification-button =
 
 # Label for the indicator shown in the private browsing window titlebar.
 private-browsing-indicator-label = Private browsing
+
+# Tooltip for the indicator shown in the window titlebar when content analysis is active.
+# Variables:
+#   $agentName (String): The name of the DLP agent that is connected
+content-analysis-indicator-tooltip =
+    .tooltiptext = Data loss prevention (DLP) by { $agentName }. Click for more info.
+content-analysis-panel-title = Data protection
+# Variables:
+#   $agentName (String): The name of the DLP agent that is connected
+content-analysis-panel-text = Your organization uses { $agentName } to protect against data loss. <a data-l10n-name="info">Learn more</a>
 
 ## Unified extensions (toolbar) button
 

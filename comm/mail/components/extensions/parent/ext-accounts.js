@@ -2,15 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "MailServices",
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
-
-var { CachedAccount, convertMailIdentity } = ChromeUtils.importESModule(
-  "resource:///modules/ExtensionAccounts.sys.mjs"
-);
+var { CachedAccount, convertMailIdentity, getMailAccounts } =
+  ChromeUtils.importESModule("resource:///modules/ExtensionAccounts.sys.mjs");
 
 /**
  * @implements {nsIObserver}
@@ -23,7 +19,7 @@ var accountsTracker = new (class extends EventEmitter {
     this.monitoredAccounts = new Map();
 
     // Keep track of accounts data monitored for changes.
-    for (const nativeAccount of MailServices.accounts.accounts) {
+    for (const nativeAccount of getMailAccounts()) {
       this.monitoredAccounts.set(
         nativeAccount.key,
         this.getMonitoredProperties(nativeAccount)
@@ -160,7 +156,7 @@ this.accounts = class extends ExtensionAPIPersistent {
     // available after fire.wakeup() has fulfilled (ensuring the convert() function
     // has been called).
 
-    onCreated({ context, fire }) {
+    onCreated({ fire }) {
       const { extension } = this;
 
       async function listener(_event, cachedAccount) {
@@ -175,13 +171,12 @@ this.accounts = class extends ExtensionAPIPersistent {
         unregister: () => {
           accountsTracker.off("account-added", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onUpdated({ context, fire }) {
+    onUpdated({ fire }) {
       async function listener(_event, key, changedValues) {
         if (fire.wakeup) {
           await fire.wakeup();
@@ -193,13 +188,12 @@ this.accounts = class extends ExtensionAPIPersistent {
         unregister: () => {
           accountsTracker.off("account-updated", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
-    onDeleted({ context, fire }) {
+    onDeleted({ fire }) {
       async function listener(_event, key) {
         if (fire.wakeup) {
           await fire.wakeup();
@@ -211,9 +205,8 @@ this.accounts = class extends ExtensionAPIPersistent {
         unregister: () => {
           accountsTracker.off("account-removed", listener);
         },
-        convert(newFire, extContext) {
+        convert(newFire) {
           fire = newFire;
-          context = extContext;
         },
       };
     },
@@ -233,7 +226,7 @@ this.accounts = class extends ExtensionAPIPersistent {
       accounts: {
         async list(includeFolders) {
           const accounts = [];
-          for (let account of MailServices.accounts.accounts) {
+          for (let account of getMailAccounts()) {
             account = context.extension.accountManager.convert(
               account,
               includeFolders

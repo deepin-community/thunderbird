@@ -4,22 +4,23 @@
 
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
-
 const lazy = {};
-
 ChromeUtils.defineESModuleGetters(lazy, {
   EnigmailConstants: "chrome://openpgp/content/modules/constants.sys.mjs",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.sys.mjs",
   GPGME: "chrome://openpgp/content/modules/GPGME.sys.mjs",
+  MailStringUtils: "resource:///modules/MailStringUtils.sys.mjs",
   OpenPGPMasterpass: "chrome://openpgp/content/modules/masterpass.sys.mjs",
   PgpSqliteDb2: "chrome://openpgp/content/modules/sqliteDb.sys.mjs",
   RNPLibLoader: "chrome://openpgp/content/modules/RNPLib.sys.mjs",
   ctypes: "resource://gre/modules/ctypes.sys.mjs",
 });
-
-XPCOMUtils.defineLazyModuleGetters(lazy, {
-  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
+ChromeUtils.defineLazyGetter(lazy, "log", () => {
+  return console.createInstance({
+    prefix: "openpgp",
+    maxLogLevel: "Warn",
+    maxLogLevelPref: "openpgp.loglevel",
+  });
 });
 
 var l10n = new Localization(["messenger/openpgp/openpgp.ftl"]);
@@ -523,6 +524,7 @@ export var RNP = {
       if (await RNPLib.init()) {
         //this.initUiOps();
         RNP.libLoaded = true;
+        this.warnAboutProblematicKeys();
       }
       await lazy.OpenPGPMasterpass.ensurePasswordIsCached();
     } catch (e) {
@@ -530,13 +532,59 @@ export var RNP = {
     }
   },
 
+  /**
+   * Warn the user about existing secret keys with unsupported feature
+   * flags, which were imported in the past, when we weren't yet able
+   * to strip those flags. We haven't yet implemented a way to
+   * automatically fix them, because fixing them requires
+   * unlocking, and we shouldn't introduce code that prompts
+   * the user to unlock keys unexpectedly.
+   */
+  warnAboutProblematicKeys() {
+    const iter = new RNPLib.rnp_identifier_iterator_t();
+    const grip = new lazy.ctypes.char.ptr();
+
+    if (
+      RNPLib.rnp_identifier_iterator_create(RNPLib.ffi, iter.address(), "grip")
+    ) {
+      throw new Error("rnp_identifier_iterator_create failed");
+    }
+
+    while (
+      !RNPLib.rnp_identifier_iterator_next(iter, grip.address()) &&
+      !grip.isNull()
+    ) {
+      const handle = new RNPLib.rnp_key_handle_t();
+      if (RNPLib.rnp_locate_key(RNPLib.ffi, "grip", grip, handle.address())) {
+        throw new Error("rnp_locate_key failed");
+      }
+
+      if (this.getSecretAvailableFromHandle(handle)) {
+        const is_subkey = new lazy.ctypes.bool();
+        if (RNPLib.rnp_key_is_sub(handle, is_subkey.address())) {
+          throw new Error("rnp_key_is_sub failed");
+        }
+        if (!is_subkey.value) {
+          if (this.keyHasUnsupportedFeatures(handle)) {
+            const fp = this.getFingerprintFromHandle(handle);
+            lazy.log.warn(
+              `OpenPGP secret key with fingerprint ${fp} advertises unsupported features.`
+            );
+          }
+        }
+      }
+
+      RNPLib.rnp_key_handle_destroy(handle);
+    }
+
+    RNPLib.rnp_identifier_iterator_destroy(iter);
+  },
+
   getRNPLibStatus() {
     return RNPLib.getRNPLibStatus();
   },
 
-  async init(opts) {
-    opts = opts || {};
-
+  async init() {
     if (!this.hasRan) {
       await this.once();
     }
@@ -914,6 +962,44 @@ export var RNP = {
     return hasWeak;
   },
 
+  getSelfSigFeatures(selfId, handle) {
+    let allFeatures = 0;
+
+    const sig_count = new lazy.ctypes.size_t();
+    if (RNPLib.rnp_key_get_signature_count(handle, sig_count.address())) {
+      throw new Error("rnp_key_get_signature_count failed");
+    }
+
+    for (let i = 0; i < sig_count.value; i++) {
+      const sig_handle = new RNPLib.rnp_signature_handle_t();
+
+      if (RNPLib.rnp_key_get_signature_at(handle, i, sig_handle.address())) {
+        throw new Error("rnp_key_get_signature_at failed");
+      }
+
+      const sig_id_str = new lazy.ctypes.char.ptr();
+      if (RNPLib.rnp_signature_get_keyid(sig_handle, sig_id_str.address())) {
+        throw new Error("rnp_signature_get_keyid failed");
+      }
+
+      const sigId = sig_id_str.readString();
+      RNPLib.rnp_buffer_destroy(sig_id_str);
+
+      // Is it a self-signature?
+      if (sigId == selfId) {
+        const features = new lazy.ctypes.uint32_t();
+        if (RNPLib.rnp_signature_get_features(sig_handle, features.address())) {
+          throw new Error("rnp_signature_get_features failed");
+        }
+
+        allFeatures |= features.value;
+      }
+
+      RNPLib.rnp_signature_handle_destroy(sig_handle);
+    }
+    return allFeatures;
+  },
+
   isWeakSelfSignature(selfId, sig_handle) {
     const sig_id_str = new lazy.ctypes.char.ptr();
     if (RNPLib.rnp_signature_get_keyid(sig_handle, sig_id_str.address())) {
@@ -1083,6 +1169,8 @@ export var RNP = {
             uidObj.type = "uid";
             uidObj.keyTrust = keyObj.keyTrust;
             uidObj.uidFpr = "??fpr??";
+
+            uidObj.features = this.getUidFeatures(keyObj.keyId, uid_handle);
 
             keyObj.userIds.push(uidObj);
           }
@@ -1256,6 +1344,8 @@ export var RNP = {
       if (RNP.hasKeyWeakSelfSignature(keyObj.keyId, handle)) {
         keyObj.hasIgnoredAttributes = true;
       }
+
+      keyObj.features = this.getSelfSigFeatures(keyObj.keyId, handle);
     }
 
     return true;
@@ -1344,6 +1434,44 @@ export var RNP = {
     return is_primary.value;
   },
 
+  getUidFeatures(self_key_id, uid_handle) {
+    let allFeatures = 0;
+
+    const sig_count = new lazy.ctypes.size_t();
+    if (RNPLib.rnp_uid_get_signature_count(uid_handle, sig_count.address())) {
+      throw new Error("rnp_uid_get_signature_count failed");
+    }
+
+    for (let i = 0; i < sig_count.value; i++) {
+      const sig_handle = new RNPLib.rnp_signature_handle_t();
+
+      if (
+        RNPLib.rnp_uid_get_signature_at(uid_handle, i, sig_handle.address())
+      ) {
+        throw new Error("rnp_uid_get_signature_at failed");
+      }
+
+      const sig_id_str = new lazy.ctypes.char.ptr();
+      if (RNPLib.rnp_signature_get_keyid(sig_handle, sig_id_str.address())) {
+        throw new Error("rnp_signature_get_keyid failed");
+      }
+
+      if (sig_id_str.readString() == self_key_id) {
+        const features = new lazy.ctypes.uint32_t();
+        if (RNPLib.rnp_signature_get_features(sig_handle, features.address())) {
+          throw new Error("rnp_signature_get_features failed");
+        }
+
+        allFeatures |= features.value;
+      }
+
+      RNPLib.rnp_buffer_destroy(sig_id_str);
+      RNPLib.rnp_signature_handle_destroy(sig_handle);
+    }
+
+    return allFeatures;
+  },
+
   getUidSignatureQuality(self_key_id, uid_handle) {
     const result = {
       hasGoodSignature: false,
@@ -1412,6 +1540,7 @@ export var RNP = {
     return is_revoked.value;
   },
 
+  /* unused
   getKeySignatures(keyId, ignoreUnknownUid) {
     const handle = this.getKeyHandleByKeyIdOrFingerprint(
       RNPLib.ffi,
@@ -1435,6 +1564,7 @@ export var RNP = {
     RNPLib.rnp_key_handle_destroy(handle);
     return result;
   },
+  */
 
   getKeyObjSignatures(keyObj, ignoreUnknownUid) {
     const handle = this.getKeyHandleByKeyIdOrFingerprint(
@@ -1588,7 +1718,7 @@ export var RNP = {
     return rList;
   },
 
-  policyForbidsAlg(alg) {
+  policyForbidsAlg() {
     // TODO: implement policy
     // Currently, all algorithms are allowed
     return false;
@@ -1638,15 +1768,49 @@ export var RNP = {
     return true;
   },
 
-  removeCommentLines(str) {
-    const commentLine = /^Comment:.*(\r?\n|\r)/gm;
-    return str.replace(commentLine, "");
+  /**
+   * Decrypts/Decodes an OpenPGP message, verify signatures, and
+   * return associated meta data.
+   *
+   * @param {string} encrypted_string - A string of bytes containing
+   *   the encrypted message.
+   * @param {object} options - Various pieces of information that are
+   *   necessary for correctly processing the encrypted message.
+   * @param {boolean} alreadyDecrypted - Usually callers should set this
+   *   flag to false, to request both decryption and full decoding of
+   *   all available meta data. Value True is intended to allow
+   *   recursive calling of this function. Value True means, a previous
+   *   action has already processed the outer encryption layer, only,
+   *   (include querying of encryption strength and the list keys that
+   *   are known to be able to decrypt the message), but processing of
+   *   the inner payload has not yet been done, such as decompression
+   *   and verification of the inner signature.
+   *   If the value is set to True, then meta data related to
+   *   the encryption layer is read from the "options" parameter and
+   *   copied over to the result object.
+   * @returns {object} - Various flags that contain the decrypted data
+   *   and related meta data.
+   */
+  async decrypt(encrypted_string, options, alreadyDecrypted = false) {
+    const arr = encrypted_string.split("").map(e => e.charCodeAt());
+    const encrypted_array = lazy.ctypes.uint8_t.array()(arr);
+    return this.decryptArray(encrypted_array, options, alreadyDecrypted);
   },
 
-  async decrypt(encrypted, options, alreadyDecrypted = false) {
-    const arr = encrypted.split("").map(e => e.charCodeAt());
-    var encrypted_array = lazy.ctypes.uint8_t.array()(arr);
-
+  /**
+   * Decrypts/Decodes an OpenPGP message, verify signatures, and
+   * return associated meta data.
+   *
+   * @param {string} encrypted_array - An array of bytes that contains
+   *   the encrypted message.
+   * @param {object} options - See description of the same parameter
+   *   of function decrypt().
+   * @param {boolean} alreadyDecrypted - See description of the same
+   *   parameter of function decrypt().
+   * @returns {object} - See description of the result object of
+   *   function decrypt().
+   */
+  async decryptArray(encrypted_array, options, alreadyDecrypted = false) {
     const result = {};
     result.decryptedData = "";
     result.statusFlags = 0;
@@ -1667,21 +1831,14 @@ export var RNP = {
     // Allow compressed encrypted messages, max factor 1200, up to 100 MiB.
     const max_decrypted_message_size = 100 * 1024 * 1024;
     const max_out = Math.min(
-      encrypted.length * 1200,
+      encrypted_array.length * 1200,
       max_decrypted_message_size
     );
 
     let collected_fingerprint = null;
     let remembered_password = null;
 
-    function collect_key_info_password_cb(
-      ffi,
-      app_ctx,
-      key,
-      pgp_context,
-      buf,
-      buf_len
-    ) {
+    function collect_key_info_password_cb(ffi, app_ctx, key) {
       const fingerprint = new lazy.ctypes.char.ptr();
       if (!RNPLib.rnp_key_get_fprint(key, fingerprint.address())) {
         collected_fingerprint = fingerprint.readString();
@@ -1871,6 +2028,18 @@ export var RNP = {
           lazy.EnigmailConstants.DECRYPTION_FAILED |
           lazy.EnigmailConstants.NO_SECKEY;
         break;
+      case RNPLib.RNP_ERROR_BAD_FORMAT:
+        queryAllEncryptionRecipients = true;
+        if (Services.prefs.getBoolPref("mail.openpgp.allow_external_gnupg")) {
+          // Same handling as RNP_ERROR_DECRYPT_FAILED, to allow
+          // handling of some corrupt messages, see bug 1898832.
+          rnpCannotDecrypt = true;
+          useDecodedData = false;
+          processSignature = false;
+          result.statusFlags |= lazy.EnigmailConstants.DECRYPTION_FAILED;
+          break;
+        }
+      // else: fall through to default processing
       default:
         useDecodedData = false;
         processSignature = false;
@@ -2040,8 +2209,8 @@ export var RNP = {
       lazy.GPGME.allDependenciesLoaded()
     ) {
       // failure processing with RNP, attempt decryption with GPGME
-      const r2 = await lazy.GPGME.decrypt(
-        encrypted,
+      const r2 = await lazy.GPGME.decryptArray(
+        encrypted_array,
         this.enArmorCDataMessage.bind(this)
       );
       if (!r2.exitCode && r2.decryptedData) {
@@ -2055,7 +2224,19 @@ export var RNP = {
         // and optional signature data. Recursively call ourselves
         // to perform the remaining processing.
         options.encToDetails = result.encToDetails;
-        return RNP.decrypt(r2.decryptedData, options, true);
+
+        // Handle badly encoded messages, see bugs 1898832 and 1906903.
+        const deArmored = this.deArmorString(r2.decryptedData);
+        const isDeArmoredStillAsciiArmored = this.isASCIIArmored(deArmored);
+
+        let retval2;
+        if (isDeArmoredStillAsciiArmored) {
+          retval2 = await RNP.decryptArray(deArmored, options, true);
+        } else {
+          retval2 = await RNP.decrypt(r2.decryptedData, options, true);
+        }
+
+        return retval2;
       }
     }
 
@@ -2559,15 +2740,13 @@ export var RNP = {
     // in which we can tolerate those are comment lines, which we can
     // filter out.
 
-    let arr = this.getCharCodeArray(keyBlockStr);
+    // Remove comment lines.
+    const trimmed = keyBlockStr.replace(/^Comment:.*(\r?\n|\r)/gm, "").trim();
+    const arr = this.getCharCodeArray(trimmed);
     if (!this.is8Bit(arr)) {
-      const trimmed = this.removeCommentLines(keyBlockStr);
-      arr = this.getCharCodeArray(trimmed);
-      if (!this.is8Bit(arr)) {
-        throw new Error(`Non-ascii key block: ${keyBlockStr}`);
-      }
+      throw new Error(`Non-ascii key block: ${keyBlockStr}`);
     }
-    var key_array = lazy.ctypes.uint8_t.array()(arr);
+    const key_array = lazy.ctypes.uint8_t.array()(arr);
 
     if (
       RNPLib.rnp_input_from_memory(
@@ -2683,7 +2862,7 @@ export var RNP = {
    * a canonical representation of them.
    *
    * @param {string} fingerprint - Key fingerprint.
-   * @param {...string} - Key blocks.
+   * @param {...string} keyBlocks - Key blocks.
    * @returns {string} the resulting public key of the blocks
    */
   async mergePublicKeyBlocks(fingerprint, ...keyBlocks) {
@@ -2863,6 +3042,7 @@ export var RNP = {
     result.exitCode = -1;
     result.importedKeys = [];
     result.errorMsg = "";
+    result.fingerprintsWithUnsupportedFeatures = [];
 
     const tempFFI = RNPLib.prepare_ffi();
     if (!tempFFI) {
@@ -2925,6 +3105,15 @@ export var RNP = {
       } else {
         const primaryKey = new RnpPrivateKeyUnlockTracker(impKey);
         impKey = null;
+
+        if (this.keyObjHasUnsupportedFeatures(k)) {
+          lazy.log.warn(
+            `OpenPGP secret key with fingerprint ${k.fpr} advertises unsupported features.`
+          );
+          // This function shouldn't bring up the warning.
+          // Let the caller do it.
+          result.fingerprintsWithUnsupportedFeatures.push(k.fpr);
+        }
 
         // Don't attempt to unlock secret keys that are unavailable.
         if (primaryKey.available()) {
@@ -3432,7 +3621,7 @@ export var RNP = {
    * that exactly matches the given userId.
    *
    * @param {rnp_key_handle_t} key - RNP key handle.
-   * @param {string} uidString - The userID to include.
+   * @param {string} userId - The userID to include.
    * @returns {string} The encoded key, or the empty string on failure.
    */
   getSuitableEncryptKeyAsAutocrypt(key, userId) {
@@ -3542,6 +3731,25 @@ export var RNP = {
     return email;
   },
 
+  /**
+   * Test if the given array appears to contain an OpenPGP ASCII Armored
+   * data block. This is done by checking the initial bytes of the array
+   * contain the -----BEGIN string. This check should be sufficient to
+   * distinguish it from a data block that contains a binary encoding
+   * of OpenPGP data packets.
+   *
+   * @param {TypedArray} typedArray - It's assumed this parameter
+   *   was created by obtaining a memory buffer from js-ctypes, casting
+   *   it to ctypes.uint8_t.array, and calling readTypedArray().
+   * @returns {boolean} - Returns true if the block looks ASCII armored
+   */
+  isASCIIArmored(typedArray) {
+    const armorBegin = "-----BEGIN";
+    return lazy.MailStringUtils.uint8ArrayToByteString(
+      typedArray.slice(0, armorBegin.length)
+    ).startsWith(armorBegin);
+  },
+
   async encryptAndOrSign(plaintext, args, resultStatus) {
     let signedInner;
 
@@ -3565,6 +3773,12 @@ export var RNP = {
         const orgEncrypt = args.encrypt;
         args.encrypt = false;
         signedInner = await lazy.GPGME.sign(plaintext, args, resultStatus);
+        // Despite our request to produce binary data, GPGME.sign might
+        // have produce ASCII armored encoding, e.g. if the user has
+        // a configuration file that enables it.
+        if (this.isASCIIArmored(signedInner)) {
+          signedInner = this.deArmorTypedArray(signedInner);
+        }
         args.encrypt = orgEncrypt;
       } else {
         // We aren't asked to encrypt, but sign only. That means the
@@ -4753,6 +4967,70 @@ export var RNP = {
     return result;
   },
 
+  /**
+   * Removes ASCII armor layer from the input.
+   *
+   * @param {TypedArray} input_array - An array of bytes containing
+   *   an OpenPGP message in ASCII armored data format.
+   * @returns {object} - A typed array with the result bytes.
+   */
+  deArmorTypedArray(input_array) {
+    const input_from_memory = new RNPLib.rnp_input_t();
+    RNPLib.rnp_input_from_memory(
+      input_from_memory.address(),
+      input_array,
+      input_array.length,
+      false
+    );
+    const max_out = input_array.length * 2 + 150; // extra bytes for head/tail/hash lines
+
+    const output_to_memory = new RNPLib.rnp_output_t();
+    RNPLib.rnp_output_to_memory(output_to_memory.address(), max_out);
+
+    if (RNPLib.rnp_dearmor(input_from_memory, output_to_memory)) {
+      throw new Error("rnp_dearmor failed");
+    }
+
+    let result = null;
+
+    const result_buf = new lazy.ctypes.uint8_t.ptr();
+    const result_len = new lazy.ctypes.size_t();
+    if (
+      !RNPLib.rnp_output_memory_get_buf(
+        output_to_memory,
+        result_buf.address(),
+        result_len.address(),
+        false
+      )
+    ) {
+      // type casting the pointer type to an array type allows us to
+      // access the elements by index.
+      const uint8_array = lazy.ctypes.cast(
+        result_buf,
+        lazy.ctypes.uint8_t.array(result_len.value).ptr
+      ).contents;
+
+      result = uint8_array.readTypedArray();
+    }
+
+    RNPLib.rnp_input_destroy(input_from_memory);
+    RNPLib.rnp_output_destroy(output_to_memory);
+
+    return result;
+  },
+
+  /**
+   * Removes ASCII armor layer from the input.
+   *
+   * @param {string} str - A string of bytes that contains OpenPGP
+   *   ASCII armored data.
+   * @returns {object} - A typed array with the result bytes.
+   */
+  deArmorString(str) {
+    const array = lazy.MailStringUtils.byteStringToUint8Array(str);
+    return this.deArmorTypedArray(array);
+  },
+
   // Will change the expiration date of all given keys to newExpiry.
   // fingerprintArray is an array, containing fingerprints, both
   // primary key fingerprints and subkey fingerprints are allowed.
@@ -4787,7 +5065,7 @@ export var RNP = {
    *
    * @param {rnp_key_handle_t} primHandle - The handle of a primary key.
    * @param {?rnp_key_handle_t} subHandle - The handle of an encryption subkey or null.
-   * @param {string} uidString - The userID to include.
+   * @param {string} userId - The userID to include.
    * @returns {string} The encoded key, or the empty string on failure.
    */
   getAutocryptKeyB64ByHandle(primHandle, subHandle, userId) {
@@ -4937,5 +5215,83 @@ export var RNP = {
       date: keyObj.created,
       username_and_email: keyObj.userId,
     });
+  },
+
+  getSupportedFeatureFlags() {
+    // Update this bitmask whenever additional features are supported.
+    return RNPLib.PGP_KEY_FEATURE_MDC;
+  },
+
+  /**
+   * @param {EnigmailKeyObj} keyObj - The key to check.
+   * @returns {boolean} true if unsupported features (version, algorithms) are advertised by this key
+   */
+  keyObjHasUnsupportedFeatures(keyObj) {
+    let foundFeatures = 0;
+    if (keyObj.features) {
+      foundFeatures |= keyObj.features;
+    }
+
+    for (let i = 0; i < keyObj.userIds.length; i++) {
+      const uid = keyObj.userIds[i];
+      if (uid.type === "uid" && uid.features) {
+        foundFeatures |= uid.features;
+      }
+    }
+
+    const ourSupportedFeatures = this.getSupportedFeatureFlags();
+
+    // Remove our supported feature flags from bitmask.
+    const unsupportedFeatures = (foundFeatures &= ~ourSupportedFeatures);
+
+    return unsupportedFeatures != 0;
+  },
+
+  /**
+   * @param {?rnp_key_handle_t} handle - the handle of a RNP key
+   * @returns {boolean} true if unsupported features (version, algorithms) are advertised by this key
+   */
+  keyHasUnsupportedFeatures(handle) {
+    const selfId = this.getKeyIDFromHandle(handle);
+
+    let foundFeatures = this.getSelfSigFeatures(selfId, handle);
+
+    const uid_count = new lazy.ctypes.size_t();
+    if (RNPLib.rnp_key_get_uid_count(handle, uid_count.address())) {
+      throw new Error("rnp_key_get_uid_count failed");
+    }
+    for (let i = 0; i < uid_count.value; i++) {
+      const uid_handle = new RNPLib.rnp_uid_handle_t();
+
+      if (RNPLib.rnp_key_get_uid_handle_at(handle, i, uid_handle.address())) {
+        throw new Error("rnp_key_get_uid_handle_at failed");
+      }
+
+      if (!this.isRevokedUid(uid_handle)) {
+        const uid_str = new lazy.ctypes.char.ptr();
+        if (RNPLib.rnp_key_get_uid_at(handle, i, uid_str.address())) {
+          throw new Error("rnp_key_get_uid_at failed");
+        }
+        const userIdStr = uid_str.readStringReplaceMalformed();
+        RNPLib.rnp_buffer_destroy(uid_str);
+
+        if (userIdStr !== RNP_PHOTO_USERID_ID) {
+          foundFeatures |= this.getUidFeatures(selfId, uid_handle);
+        }
+      }
+
+      RNPLib.rnp_uid_handle_destroy(uid_handle);
+    }
+
+    const ourSupportedFeatures = this.getSupportedFeatureFlags();
+
+    // Remove our supported feature flags from bitmask.
+    const unsupportedFeatures = (foundFeatures &= ~ourSupportedFeatures);
+
+    return unsupportedFeatures != 0;
+  },
+
+  async verifyAttachment(_dataFile, _sigFile) {
+    throw new Error("verifyAttachment not implemented");
   },
 };

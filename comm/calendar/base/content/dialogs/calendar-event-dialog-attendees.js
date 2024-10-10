@@ -318,8 +318,8 @@ var eventBar = {
       if (scrollPoint < 0) {
         scrollPoint = 0;
       }
-      dayHeaderOuter.scrollTo(scrollPoint, 0);
       freebusyGrid.scrollTo(scrollPoint, freebusyGrid.scrollTop);
+      dayHeaderOuter.scrollLeft = freebusyGrid.scrollLeft;
     }
   },
   getDateFromPosition(posX, timezone) {
@@ -640,7 +640,7 @@ window.addEventListener(
     dateTimePickerUI.addListeners();
     addEventListener("resize", layout);
 
-    dateTimePickerUI.start.addEventListener("change", function (event) {
+    dateTimePickerUI.start.addEventListener("change", function () {
       if (!updateByFunction) {
         updateEndDate();
         if (dateTimePickerUI.allDay.checked) {
@@ -649,7 +649,7 @@ window.addEventListener(
         updateRange();
       }
     });
-    dateTimePickerUI.end.addEventListener("change", function (event) {
+    dateTimePickerUI.end.addEventListener("change", function () {
       if (!updateByFunction) {
         checkDate();
         dateTimePickerUI.saveOldValues();
@@ -845,10 +845,8 @@ function layout() {
 function updateVerticalScrollbars() {
   if (freebusyGrid.scrollHeight > freebusyGrid.clientHeight) {
     dayHeaderOuter.style.overflowY = "scroll";
-    dayHeaderInner.style.overflowY = "scroll";
   } else {
     dayHeaderOuter.style.overflowY = null;
-    dayHeaderInner.style.overflowY = null;
   }
 }
 

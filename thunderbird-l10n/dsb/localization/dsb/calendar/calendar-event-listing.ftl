@@ -44,13 +44,15 @@ calendar-event-listing-column-status =
     .tooltiptext = Pó statusu sortěrowaś
 calendar-event-listing-column-time-until-due =
     .label = Termin
-    .tooltiptext = Pó casu trěbnego dokóńcenja sortěrowaś
+    .tooltiptext = Pó casu trjebnego dokóńcenja sortěrowaś
 calendar-event-listing-column-title =
     .label = Titel
     .tooltiptext = Pó titelu sortěrowaś
 
 ## Interval dropdown options
 
+calendar-event-listing-interval-past =
+    .label = Tšojenja w zajźonosći
 calendar-event-listing-interval-calendar-month =
     .label = Tšojenja w toś tom kalenderowem mjasecu
 calendar-event-listing-interval-current-view =
@@ -65,6 +67,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Tšojenja pśiducych 6 mjasecow
 calendar-event-listing-interval-next-12-months =
     .label = Tšojenja pśiducych 12 mjasecow
+calendar-event-listing-interval-all =
+    .label = Wšykne tšojenja
 calendar-event-listing-interval-selected-day =
     .label = Tuchylu wubrany źeń
 calendar-event-listing-interval-today =

@@ -56,6 +56,11 @@ client-auth-window =
     .title = Zahtjev identifikacije korisnika
 client-auth-site-description = Ova stranica je zatražila da se identificirate s certifikatom:
 client-auth-choose-cert = Odaberi certifikat za identifikaciju:
+client-auth-send-no-certificate =
+    .label = Nemoj poslati certifikat
+# Variables:
+# $hostname (String) - The domain name of the site requesting the client authentication certificate
+client-auth-site-identification = „{ $hostname }” je zatražio da se identificiraš sa certifikatom:
 client-auth-cert-details = Detalji odabranog certifikata:
 # Variables:
 # $issuedTo (String) - The subject common name of the currently-selected client authentication certificate
@@ -85,13 +90,13 @@ client-auth-cert-remember-box =
 ## Set password (p12) dialog
 
 set-password-window =
-    .title = Odaberi sigurnosnu kopiju lozinke certifikata
+    .title = Odaberi lozinku sigurnosne kopije certifikata
 set-password-message = Sigurnosna kopija lozinke certifikata koju ćete ovdje postaviti štiti sigurnosnu kopiju datoteke koju ćete upravo stvoriti. Da biste nastaviti s izradom sigurnosne kopije, morate upisati lozinku.
 set-password-backup-pw =
-    .value = Sigurnosna kopija lozinke certifikata:
+    .value = Lozinka sigurnosne kopije certifikata:
 set-password-repeat-backup-pw =
-    .value = Sigurnosna kopija lozinke certifikata (opet):
-set-password-reminder = Važno: ako zaboraviš svoju lozinku sigurnosne kopije certifikata, kasnije nećeš moći vratiti ovu sigurnosnu kopiju. Spremi lozinku na sigurno mjesto.
+    .value = Lozinka sigurnosne kopije certifikata (još jednom):
+set-password-reminder = Važno: ako zaboraviš svoju lozinku sigurnosne kopije certifikata, kasnije nećeš moći obnoviti ovu sigurnosnu kopiju. Spremi lozinku na sigurno mjesto.
 
 ## Protected authentication alert
 

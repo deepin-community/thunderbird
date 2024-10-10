@@ -20,6 +20,12 @@ const l10n = new Localization(
   true
 );
 
+add_setup(async function setup() {
+  await SpecialPowers.pushPrefEnv({
+    set: [["extensions.originControls.grantByDefault", false]],
+  });
+});
+
 async function makeExtension({
   useAddonManager = "temporary",
   manifest_version = 3,
@@ -36,6 +42,7 @@ async function makeExtension({
   );
 
   let manifest = {
+    name: `Test extension ${id}`,
     manifest_version,
     browser_specific_settings: { gecko: { id } },
     permissions,
@@ -111,11 +118,12 @@ async function makeExtension({
   return ext;
 }
 
-async function testQuarantinePopup(popup) {
+async function testQuarantinePopup(popup, extensionId) {
+  const addonName = WebExtensionPolicy.getByID(extensionId).name;
   let [title, line1, line2] = await l10n.formatMessages([
     {
       id: "webext-quarantine-confirmation-title",
-      args: { addonName: "Generated extension" },
+      args: { addonName },
     },
     "webext-quarantine-confirmation-line-1",
     "webext-quarantine-confirmation-line-2",
@@ -151,12 +159,13 @@ async function testOriginControls(
   let nextMenuItemClassName;
 
   switch (contextMenuId) {
-    case "toolbar-context-menu":
+    case "toolbar-context-menu": {
       let target = `#${CSS.escape(makeWidgetId(extension.id))}-BAP`;
       buttonOrWidget = document.querySelector(target).parentElement;
       menu = await openChromeContextMenu(contextMenuId, target);
       nextMenuItemClassName = "customize-context-manageExtension";
       break;
+    }
 
     case "unified-extensions-context-menu":
       await openExtensionsPanel();
@@ -218,7 +227,7 @@ async function testOriginControls(
           : "origin-controls-toolbar-button-permission-needed"
         : "origin-controls-toolbar-button",
       args: {
-        extensionTitle: "Generated extension",
+        extensionTitle: `Test extension ${extension.id}`,
       },
     },
     "Correct l10n message."
@@ -264,7 +273,7 @@ async function testOriginControls(
 
   if (quarantinePopup) {
     let popup = await quarantinePopup;
-    await testQuarantinePopup(popup);
+    await testQuarantinePopup(popup, extension.id);
 
     if (allowQuarantine) {
       popup.button.click();
@@ -411,7 +420,7 @@ const originControlsInContextMenu = async options => {
     await testOriginControls(ext2, options, {
       items: [ACCESS_OPTIONS, WHEN_CLICKED],
       selected: 1,
-      attention: true,
+      attention: false,
     });
 
     // Could access mochi.test when clicked.
@@ -481,7 +490,7 @@ const originControlsInContextMenu = async options => {
     await testOriginControls(ext2, options, {
       items: [ACCESS_OPTIONS, WHEN_CLICKED],
       selected: 1,
-      attention: true,
+      attention: false,
       quarantined: false,
     });
 
@@ -571,11 +580,15 @@ const originControlsInContextMenu = async options => {
 
     await testOriginControls(ext1, options, { items: [NO_ACCESS] });
 
-    // Click alraedy selected options, expect no permission changes.
+    // Click already selected options, expect no permission changes.
     await testOriginControls(ext2, options, {
       items: [ACCESS_OPTIONS, WHEN_CLICKED, ALWAYS_ON],
       selected: 1,
       click: 1,
+      // This extension has the activeTab permission, but the current tab
+      // has a tab url that matches one of the extension host permission
+      // which is not granted yet and so we expect the attention badge
+      // to be shown.
       attention: true,
     });
     await testOriginControls(ext3, options, {
@@ -596,12 +609,12 @@ const originControlsInContextMenu = async options => {
     if (unifiedButton) {
       ok(
         unifiedButton.hasAttribute("attention"),
-        "ext2 is WHEN_CLICKED for example.com, show attention indicator."
+        "ext2 is WHEN_CLICKED and showing the attention indicator for example.com"
       );
       Assert.deepEqual(
         document.l10n.getAttributes(unifiedButton),
         UNIFIED_ATTENTION,
-        "UEB attention for only one extension."
+        "UEB attention due to ext2 extension showing an attention indicator."
       );
     }
 
@@ -721,8 +734,17 @@ add_task(async function originControls_in_unifiedExtensions_contextMenu() {
 });
 
 add_task(async function test_attention_dot_when_pinning_extension() {
-  const extension = await makeExtension({ permissions: ["activeTab"] });
+  const extension = await makeExtension({
+    permissions: ["activeTab"],
+    host_permissions: ["*://mochi.test/*"],
+  });
   await extension.startup();
+
+  await ExtensionPermissions.remove(
+    extension.id,
+    { origins: ["*://mochi.test/*"], permissions: [] },
+    extension.extension
+  );
 
   const unifiedButton = document.querySelector("#unified-extensions-button");
   const extensionWidgetID = AppUiTestInternals.getBrowserActionWidgetId(

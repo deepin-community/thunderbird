@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-it@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Italiano (Italian)",
   "description": "Thunderbird Language Pack for Italiano (it) – Italian",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "it": {
-      "version": "20240423200320",
+      "version": "20240930174735",
       "chrome_resources": {
         "alerts": "chrome/it/locale/it/alerts/",
         "autoconfig": "chrome/it/locale/it/autoconfig/",
         "branding": "chrome/it/locale/branding/",
         "calendar": "chrome/it/locale/it/calendar/",
-        "chat": "chrome/it/locale/it/chat/",
         "communicator": "chrome/it/locale/it/communicator/",
         "devtools": "chrome/it/locale/it/devtools/client/",
         "devtools-shared": "chrome/it/locale/it/devtools/shared/",

@@ -12,15 +12,13 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { MailServices } = ChromeUtils.import(
-    "resource:///modules/MailServices.jsm"
+  const { MailServices } = ChromeUtils.importESModule(
+    "resource:///modules/MailServices.sys.mjs"
   );
   const lazy = {};
-  ChromeUtils.defineModuleGetter(
-    lazy,
-    "MimeParser",
-    "resource:///modules/mimeParser.jsm"
-  );
+  ChromeUtils.defineESModuleGetters(lazy, {
+    MimeParser: "resource:///modules/mimeParser.sys.mjs",
+  });
 
   /**
    * A tree column header with an icon instead of a label.
@@ -133,7 +131,7 @@
         this.mSelectedInternal = null;
         this.setInitialSelection();
 
-        this._handleMutation = mutations => {
+        this._handleMutation = () => {
           this.editable = this.getAttribute("editable") == "true";
         };
         this.mAttributeObserver = new MutationObserver(this._handleMutation);
@@ -844,7 +842,7 @@
 
       // @implements {nsIObserver}
       this.inputObserver = {
-        observe: (subject, topic, data) => {
+        observe: (subject, topic) => {
           if (topic == "autocomplete-did-enter-text" && this.isEditing) {
             this.updatePill();
           }

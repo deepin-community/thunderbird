@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 export var DisplayNameUtils = {
   formatDisplayName,
@@ -38,7 +36,7 @@ function _getIdentityForAddress(aEmailAddress) {
  * @param {string} emailAddress - The email address to format.
  * @param {string} headerDisplayName - The display name from the header, if any.
  * @param {string} context - The field being formatted (e.g. "to", "from").
- * @returns The formatted display name, or null.
+ * @returns {?string} the formatted display name, or null.
  */
 function formatDisplayName(emailAddress, headerDisplayName, context) {
   let displayName = null;
@@ -75,10 +73,7 @@ function formatDisplayName(emailAddress, headerDisplayName, context) {
   // this are then responsible for falling back to something else (e.g. the
   // value from the message header).
   if (card) {
-    // getProperty may return a "1" or "0" string, we want a boolean
-    if (card.getProperty("PreferDisplayName", "1") == "1") {
-      displayName = card.displayName || null;
-    }
+    displayName = card.displayName || null;
 
     // Note: headerDisplayName is not used as a fallback as confusion could be
     // caused by a collected address using an e-mail address as display name.

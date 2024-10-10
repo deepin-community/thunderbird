@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 /**
  * Wrapper abstraction around a view's search session.  This is basically a
@@ -518,11 +516,11 @@ SearchSpecListener.prototype = {
     }
   },
 
-  onSearchHit(aMsgHdr, aFolder) {
+  onSearchHit() {
     // this method is never invoked!
   },
 
-  onSearchDone(aStatus) {
+  onSearchDone() {
     this.searchSpec.owner.searching = false;
   },
 };

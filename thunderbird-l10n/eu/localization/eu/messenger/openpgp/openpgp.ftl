@@ -4,6 +4,37 @@
 
 e2e-intro-description = Zifratutako edo digitalki sinatutako mezuak bidaltzeko, zifratze teknologia konfiguratu behar duzu, edo OpenPGP edo S/MIME.
 e2e-intro-description-more = Aukeratu zure gako pertsonala OpenPGP erabilera gaitzeko, edo ziurtagiri pertsonala S/MIME erabilera gaitzeko. Gako pertsonalaren edo ziurtagiri dagokion gako sekretua izan behar duzu.
+# Do not translate: S/MIME, CSR, CA
+e2e-csr-intro = S/MIME ziurtagiri pertsonal berria lortzeko, sortu ziurtagiria sinatzeko eskaera (CSR) eta bidali Autoritate Ziurtagiri bati (CA).
+# Do not translate: S/MIME, CSR
+e2e-csr-intro-info = Hautatu tokiko direktorio eta fitxategi-izen bat zure CSR fitxategirako, eta erantzun galdera hauei algoritmoa eta indarra ezartzeko honako.
+# A title for a dialog. Do not translate "CSR".
+e2e-csr-title = Sortu CSR
+# A label for a button that proceeds to the next step
+e2e-csr-continue = Jarraitu
+# A label for a button that goes back one step
+e2e-csr-back = Atzera
+# Do not translate: CSR
+e2e-csr-button =
+    .label = Sortu eta gorde CSR fitxategia honela…
+# Do not translate: CSR
+e2e-csr-select-title = CSR Algoritmoa
+# Do not translate: RSA, ECC, S/MIME
+e2e-csr-select-alg = Aukeratu RSA (gomendatua) edo ECC artean zure algoritmoa kriptografiatzeko S/MIME ziurtagiri berrirako.
+# Do not translate: S/MIME
+e2e-csr-select-strength = Aukeratu nahi duzun indar kriptografikoa (bizkorragoa zenbaki baxuekin edo segurtasun hobea zenbaki altuagoekin) S/MIME ziurtagiri berrirako, edo mantendu ezarpen lehenetsia.
+# $type is a cryptographic algorithm like RSA or ECC
+# $strength is a text that describes an additional property of the cryptographic parameter, such as a number for RSA, or the name of a cryptographic curve for ECC.
+# $file A filename
+# Do not translate: CSR
+e2e-csr-summary = { $type }{ $strength } gako sekretua sortuko da { -brand-short-name } ezarpenetan. Prozesu honek denbora pixka bat har dezake eta aldi baterako erantzunik eza eragin; pazientzia izan urrats honetan. Batera sortuko den CSR fitxategia honela { $file } gordeko da.
+# $email An email address
+# Do not translate: CSR
+e2e-csr-include-email = Sartu helbide elektronikoa ({ $email }) CSRn (gomendatua)
+# $file A filename
+e2e-csr-success = CSR ondo gorde da: { $file }
+# $file A filename
+e2e-csr-failure = Ezin da gorde CSR fitxategian { $file }
 e2e-signing-description =
     Sinadura digitalak hartzaileak mezuak zuk bidalitakoa dela egiaztatzea ahalbidetzen du eta bere edukia ez dela aldatu.
     Zifratutako mezuak beti daude lehenetsita sinatuak.
@@ -27,6 +58,10 @@ e2e-encrypt-subject =
 e2e-encrypt-drafts =
     .label = Gorde mezuen zirriborroak formatu zifratuan
     .accesskey = z
+# Do not translate "Autocrypt", it's the name of a standard.
+e2e-autocrypt-headers =
+    .label = Bidali OpenPGP gako publikoa(k) posta elektronikoko goiburuetan Autocrypt-ekin bateragarri izateko
+    .accesskey = g
 openpgp-key-created-label =
     .label = Sortuta
 openpgp-key-expiry-label =
@@ -45,6 +80,9 @@ openpgp-key-man-gen-revoke =
     .accesskey = U
 openpgp-key-man-ctx-gen-revoke-label =
     .label = Ukatze ziurtagiria sortu eta gorde
+openpgp-key-man-gen-revocation =
+    .label = Gorde ezeztapen ziurtagiria fitxategian
+    .accesskey = e
 openpgp-key-man-file-menu =
     .label = Fitxategia
     .accesskey = F
@@ -136,8 +174,6 @@ openpgp-key-man-copy-to-clipboard =
            *[other] Kopiatu gako publikoak arbelera
         }
     .accesskey = g
-openpgp-key-man-ctx-expor-to-file-label =
-    .label = Esportatu gakoak fitxategira
 openpgp-key-man-ctx-copy =
     .label = Kopiatu
     .accesskey = K
@@ -287,9 +323,15 @@ openpgp-personal-yes-label =
 openpgp-passphrase-protection =
     .label = Pasaesaldi babesa
 openpgp-passphrase-status-unprotected = Babes-gabea
+openpgp-passphrase-status-primary-password = Babestua { -brand-short-name }-en pasahitz nagusiarekin
 openpgp-passphrase-status-user-passphrase = Pasaesaldiaz babestua
+openpgp-passphrase-instruction-unprotected = Ezarri pasaesaldia giltza hau babesteko
+openpgp-passphrase-instruction-primary-password = Bestela, babestu gako hau pasaesaldi bereizi batekin
+openpgp-passphrase-instruction-user-passphrase = Desblokeatu gako hau babesa aldatzeko.
 openpgp-passphrase-unlock = Desblokeatu
 openpgp-passphrase-unlocked = Gakoa behar bezala desblokeatu da.
+openpgp-remove-protection = Kendu pasaesaldi babesa
+openpgp-use-primary-password = Kendu pasaesaldia eta babestu pasahitz nagusiarekin
 openpgp-passphrase-new = Pasaesaldi berria
 openpgp-passphrase-new-repeat = Berretsi pasaesaldi berria
 openpgp-passphrase-set = Ezarri pasaesaldia
@@ -336,6 +378,7 @@ openpgp-key-expires-within-6-months-icon =
     .title = Gako iraungitzea 6 hilabete baino lehenago
 openpgp-key-has-expired-icon =
     .title = Gakoa iraungita
+openpgp-suggest-publishing-key = Gako publikoa gako-zerbitzari batean argitaratzeak besteei ikusteko aukera ematen die.
 openpgp-key-expand-section =
     .tooltiptext = Informazio gehiago
 openpgp-key-revoke-title = Ukatu gakoa
@@ -381,6 +424,9 @@ window-locked = Mezu-prestatze leihoa blokeatua dago; bidalketa bertan behera ut
 
 ## Strings in keyserver.jsm
 
+
+## Strings in keyserver.sys.mjs
+
 keyserver-error-aborted = Bertan behera utzita
 keyserver-error-unknown = Errore ezezagun bat gertatu da
 keyserver-error-server-error = Gako-zerbitzariak errorearen berri eman du.
@@ -392,6 +438,9 @@ keyserver-error-unsupported = Ez dago gako-zerbitzari eskuragarrik.
 
 ## Strings in mimeWkdHandler.jsm
 
+
+## Strings in mimeWkdHandler.sys.mjs
+
 wkd-message-body-req =
     Zure posta elektroniko hornitzaileak zure OpenPGP gako publikoa Web gako direktorio batera kargatzea eskatzen dizu.
     Mesedez, berretsi zure gako publikoa argitaratzea osotzeko.
@@ -401,6 +450,9 @@ wkd-message-body-process =
 
 ## Strings in persistentCrypto.jsm
 
+
+## Strings in persistentCrypto.sys.mjs
+
 # Variables:
 # $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
@@ -409,6 +461,9 @@ converter-decrypt-body-failed =
     Beste pasa-esaldi bat erabiliz berriz saiatu nahi duzu edo mezua saltatu nahi duzu?
 
 ## Strings filters.jsm
+
+
+## Strings filters.sys.mjs
 
 filter-folder-required = Helburu-karpeta bat hautatu behar duzu.
 filter-decrypt-move-warn-experimental =
@@ -426,6 +481,9 @@ filter-warn-key-not-secret =
     Ez badaukazu { $desc }(e)n gako sekretua ez zara gai izango hemendik aurrera mezuak irakurtzeko.
 
 ## Strings filtersWrapper.jsm
+
+
+## Strings filtersWrapper.sys.mjs
 
 filter-decrypt-move-label = Deszifratu betirako (OpenPGP)
 filter-decrypt-copy-label = Sortu deszifratutako kopia (OpenPGP)
@@ -475,6 +533,7 @@ key-man-button-export-pub-key = Esportatu gako &publikoak bakarrik
 key-man-button-refresh-all = &Freskatu gako guztiak
 key-man-loading-keys = Gakoak kargatzen, mesedez itxaron…
 ascii-armor-file = ASCII egitura fitxategiak (*.asc)
+text-file = Testu fitxategiak (*.txt)
 no-key-selected = Gutxienez gako bat aukeratu beharko zenuke aukeratutako eragiketa egiteko
 export-to-file = Esportatu gako publikoa fitxategira
 export-keypair-to-file = Esportatu gako publiko eta pribatua fitxategira
@@ -502,6 +561,12 @@ openpgp-export-secret-fail = <b>Ezin da esportatu gako sekretua!</b>
 ## $userId (String) - The name and/or email address that is mentioned in the key's information.
 ## $keyId (String) - Key id for the key entry.
 
+
+## Strings in keyObj.sys.mjs
+## Variables:
+## $userId (String) - The name and/or email address that is mentioned in the key's information.
+## $keyId (String) - Key id for the key entry.
+
 key-ring-pub-key-revoked = { $userId } (key ID { $keyId }) gakoa ukatua dago.
 key-ring-pub-key-expired = { $userId } (key ID { $keyId }) gakoa iraungita dago.
 key-ring-no-secret-key = Badirudi ez daukazula gako sekreturik  { $userId } (key ID { $keyId }) gakorako zure gako-sortan; ezin duzu gakoa erabili sinatzeko.
@@ -514,10 +579,16 @@ key-ring-enc-sub-keys-expired = { $userId } (key ID { $keyId }) gakoaren zifratz
 
 ## Strings in gnupg-keylist.jsm
 
+
+## Strings in gnupg-keylist.sys.mjs
+
 keyring-photo = Argazkia
 user-att-photo = Erabiltzaile atributua (JPEG irudia)
 
 ## Strings in key.jsm
+
+
+## Strings in key.sys.mjs
 
 already-revoked = Dagoeneko ukatuta dago gako hau.
 #   $identity (String) - the id and associated user identity of the key being revoked
@@ -541,6 +612,9 @@ after-revoke-info =
 
 ## Strings in keyRing.jsm & decryption.jsm
 
+
+## Strings in keyRing.sys.mjs & decryption.sys.mjs
+
 key-man-button-import = &Inportatu
 delete-key-title = Ezabatu OpenPGP gakoa
 delete-external-key-title = Kendu kanpo GnuPG gakoa
@@ -550,6 +624,9 @@ delete-key-in-use-description = Ezin da prozesatu! Ezabatzeko aukeratu duzun gak
 revoke-key-in-use-description = Ezin da prozesatu! ukatzeko aukeratu duzun gakoa une honetan identitate honek darabil. Aukeratu beste gako bat edo bat ere ez eta saiatu berriz.
 
 ## Strings used in errorHandling.jsm
+
+
+## Strings used in errorHandling.sys.mjs
 
 # Variables:
 # $keySpec (String) - Email address.
@@ -561,18 +638,30 @@ key-error-not-accepted-as-personal = Ez duzu berretsi '{ $keySpec }' IDa duen ga
 
 ## Strings used in enigmailKeyManager.js & windows.jsm
 
+
+## Strings used in enigmailKeyManager.js & windows.sys.mjs
+
 need-online = Aukeratu duzu funtzioa ez dago erabilgarri lineaz kanpo moduan. Jar zaitez linean eta saiatu berriro.
 
 ## Strings used in keyRing.jsm & keyLookupHelper.jsm
+
+
+## Strings used in keyRing.sys.mjs & keyLookupHelper.sys.mjs
 
 no-key-found2 = Ez da aurkitu bilaketa irizpideekin bat datorren gako erabilgarririk.
 no-update-found = Badaukazu jada sarean aurkitu diren gakoak.
 
 ## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 
+
+## Strings used in keyRing.sys.mjs
+
 fail-key-extract = Errorea - gakoa ateratzeko komandoak huts egin du
 
 ## Strings used in keyRing.jsm
+
+
+## Strings used in keyRing.sys.mjs
 
 fail-cancel = Errorea - gako harrera bertan behera utzi du erabiltzaileak
 not-first-block = Errorea - Lehen OpenPGP blokea ez da gako publiko blokea
@@ -585,6 +674,13 @@ no-pgp-block = Errorea - Gaizki egituratutako OpenPGP datu blokea aurkitu da
 confirm-permissive-import = Inportazioak huts egin du. Inportatzea saiatzen ari zaren gakoa hondatua dagoela dirudi eta atributu ezezagunak darabil. Zuzenak diren zatiak inportatzen saiatzea nahi duzu? Honen emaitza gako ez osoa eta erabiltezina inportatzea izan daiteke.
 
 ## Strings used in trust.jsm
+
+# Variables:
+# $fingerprints (String) - A comma-separated list of fingerprints, either one or multiple, for example "ABCDEF7890ABCDEF7890ABCDEF7890ABCDEF7890, 0123456789012345678901234567890123456789"
+imported-secret-with-unsupported-features = Inportatutako gako sekretu batzuek onartzen ez duten funtzio bat iragartzen dute. Gako hori zure gako pertsonal gisa erabiltzen baduzu, mezu-idazleek mezu elektronikoak edo gako publikoak bidal diezazkizukete bateraezina den formatu batean. Honek hatz-marka hauek dituzten inportatutako gako sekretuei eragiten die:{ $fingerprints }.
+help-button = Laguntza
+
+## Strings used in trust.sys.mjs
 
 key-valid-unknown = ezezaguna
 key-valid-invalid = Baliogabea
@@ -603,6 +699,17 @@ import-key-file = Inportatu OpenPGP gako fitxategia
 import-rev-file = Inportatu OpenPGP ukapen fitxategia
 gnupg-file = GnuPG fitxategiak
 import-keys-failed = Huts egin du gakoak inportatzeak
+# Variables:
+# $key (String) - Key id to unlock.
+# $date (String) - The date on which the key was created
+# $username_and_email (String) - The user name, and/or the email address which the key owner has set for the key.
+passphrase-prompt2 = Sartu pasaesaldia IDarekin gako sekretua desblokeatzeko { $key }, sorrera data { $date }, { $username_and_email }
+# Variables:
+# $subkey (String) - Key id to unlock, which is a subkey.
+# $key (String) - This is the main key, to which the subkey belongs.
+# $date (String) - The date on which the key was created
+# $username_and_email (String) - The user name, and/or the email address which the key owner has set for the key.
+passphrase-prompt2-sub = Sartu pasaesaldia IDarekin gako sekretua desblokeatzeko { $subkey }, gako honen azpigakoa { $key }, sorrera data { $date }, { $username_and_email }
 file-to-big-to-import = Fitxategi hau handiegia da. Mesedez ez inportatu gako multzo handiak batera.
 
 ## Strings used in enigmailKeygen.js
@@ -695,6 +802,9 @@ cannot-send-enc-because-no-own-key = Ezinda mezu hau zifratua bidali, oraindik e
 
 ## Strings used in decryption.jsm
 
+
+## Strings used in decryption.sys.mjs
+
 # Variables:
 # $key (String) - Newline separated list of a tab character then name and/or email address mentioned in the key followed by the key id in parenthesis.
 do-import-multiple =
@@ -716,15 +826,17 @@ attachment-pgp-key =
     Sakatu 'Inportatu' dauzkan gakoak inportatzeko edo 'Erakutsi' fitxategiaren edukia ikusteko nabigatzaile leiho baten
 dlg-button-view = &Erakutsi
 
-## Strings used in enigmailMsgHdrViewOverlay.js
-
-decrypted-msg-with-format-error = Deszifratutako mezua (PGP formatudun mezu apurtua berreskuratua, litekeena da Exchange zerbitzari zahar batek apurtzea, horregatik litekeena da emaitza ez izatea perfektua irakurtzeko)
-
 ## Strings used in encryption.jsm
+
+
+## Strings used in encryption.sys.mjs
 
 not-required = Errorea - ez da zifraketarik behar
 
 ## Strings used in windows.jsm
+
+
+## Strings used in windows.sys.mjs
 
 no-photo-available = Argazkia ez dago erabilgarri
 # Variables:
@@ -743,6 +855,9 @@ repeat-suffix-singular = aldi baten.
 repeat-suffix-plural = alditan.
 no-repeat = Alerta hau ez da berriz erakutsiko.
 dlg-keep-setting = Gogoratu nire erantzuna eta ez galdetu berriz.
+
+## Strings used in dialog.sys.mjs
+
 dlg-button-ok = &ados
 dlg-button-close = It&xi
 dlg-button-cancel = &Utzi
@@ -753,6 +868,9 @@ enig-alert = OpenPGP alerta
 enig-info = OpenPGP informazioa
 
 ## Strings used in persistentCrypto.jsm
+
+
+## Strings used in persistentCrypto.sys.mjs
 
 dlg-button-retry = Saiatu be&rriro
 dlg-button-skip = &Saltatu

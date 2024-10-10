@@ -9,28 +9,23 @@
 requestLongerTimeout(2);
 SimpleTest.requestCompleteLog();
 
-const kWhitelist = new Set([
+const kAllowlist = new Set([
   /browser\/content\/browser\/places\/controller.js$/,
 ]);
 
 const kESModuleList = new Set([
-  /browser\/res\/payments\/(components|containers|mixins)\/.*\.js$/,
-  /browser\/res\/payments\/paymentRequest\.js$/,
-  /browser\/res\/payments\/PaymentsStore\.js$/,
-  /browser\/aboutlogins\/components\/.*\.js$/,
-  /browser\/aboutlogins\/.*\.js$/,
-  /browser\/protections.js$/,
   /browser\/lockwise-card.js$/,
   /browser\/monitor-card.js$/,
   /browser\/proxy-card.js$/,
   /toolkit\/content\/global\/certviewer\/components\/.*\.js$/,
   /toolkit\/content\/global\/certviewer\/.*\.js$/,
+  /toolkit\/content\/global\/ml\/transformers.*\.js$/,
   /chrome\/pdfjs\/content\/web\/.*\.js$/,
 ]);
 
-// Normally we would use reflect.jsm to get Reflect.parse. However, if
-// we do that, then all the AST data is allocated in reflect.jsm's
-// zone. That exposes a bug in our GC. The GC collects reflect.jsm's
+// Normally we would use reflect.sys.mjs to get Reflect.parse. However, if
+// we do that, then all the AST data is allocated in reflect.sys.mjs's
+// zone. That exposes a bug in our GC. The GC collects reflect.sys.mjs's
 // zone but not the zone in which our test code lives (since no new
 // data is being allocated in it). The cross-compartment wrappers in
 // our zone that point to the AST data never get collected, and so the
@@ -40,15 +35,15 @@ const init = Cc["@mozilla.org/jsreflect;1"].createInstance();
 init();
 
 /**
- * Check if an error should be ignored due to matching one of the whitelist
- * objects defined in kWhitelist
+ * Check if an error should be ignored due to matching one of the allowlist
+ * objects defined in kAllowlist
  *
- * @param uri the uri to check against the whitelist
+ * @param uri the uri to check against the allowlist
  * @returns true if the uri should be skipped, false otherwise.
  */
-function uriIsWhiteListed(uri) {
-  for (const whitelistItem of kWhitelist) {
-    if (whitelistItem.test(uri.spec)) {
+function uriIsAllowed(uri) {
+  for (const allowlistItem of kAllowlist) {
+    if (allowlistItem.test(uri.spec)) {
       return true;
     }
   }
@@ -58,20 +53,20 @@ function uriIsWhiteListed(uri) {
 /**
  * Check if a URI should be parsed as an ES module.
  *
- * @param uri the uri to check against the ES module list
- * @returns true if the uri should be parsed as a module, otherwise parse it as a script.
+ * @param {nsIURI} uri - The uri to check against the ES module list
+ * @returns {boolean} true if the uri should be parsed as a module, otherwise parse it as a script.
  */
 function uriIsESModule(uri) {
-  for (const whitelistItem of kESModuleList) {
-    if (whitelistItem.test(uri.spec)) {
+  for (const allowlistItem of kESModuleList) {
+    if (allowlistItem.test(uri.spec)) {
       return true;
     }
   }
-  return false;
+  return uri.spec.endsWith(".mjs");
 }
 
 function parsePromise(uri, parseTarget) {
-  const promise = new Promise((resolve, reject) => {
+  const promise = new Promise(resolve => {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", uri, true);
     xhr.onreadystatechange = function () {
@@ -137,7 +132,7 @@ add_task(async function checkAllTheJS() {
     // our zipreader APIs are all sync)
     const startTimeMs = Date.now();
     info("Collecting URIs");
-    uris = await generateURIsFromDirTree(appDir, [".js", ".jsm"]);
+    uris = await generateURIsFromDirTree(appDir, [".js", ".mjs"]);
     info("Collected URIs in " + (Date.now() - startTimeMs) + "ms");
 
     // Apply the filter specified on the command line, if any.
@@ -155,8 +150,8 @@ add_task(async function checkAllTheJS() {
   // We create an array of promises so we can parallelize all our parsing
   // and file loading activity:
   await throttledMapPromises(uris, uri => {
-    if (uriIsWhiteListed(uri)) {
-      info("Not checking whitelisted " + uri.spec);
+    if (uriIsAllowed(uri)) {
+      info("Not checking allowlisted " + uri.spec);
       return undefined;
     }
     let target = "script";

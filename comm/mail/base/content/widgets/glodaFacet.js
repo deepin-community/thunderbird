@@ -6,19 +6,21 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { MailServices } = ChromeUtils.import(
-    "resource:///modules/MailServices.jsm"
+  const { MailServices } = ChromeUtils.importESModule(
+    "resource:///modules/MailServices.sys.mjs"
   );
   const { TagUtils } = ChromeUtils.importESModule(
     "resource:///modules/TagUtils.sys.mjs"
   );
-  const { FacetUtils } = ChromeUtils.import(
-    "resource:///modules/gloda/Facet.jsm"
+  const { FacetUtils } = ChromeUtils.importESModule(
+    "resource:///modules/gloda/Facet.sys.mjs"
   );
   const { PluralForm } = ChromeUtils.importESModule(
     "resource:///modules/PluralForm.sys.mjs"
   );
-  const { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
+  const { Gloda } = ChromeUtils.importESModule(
+    "resource:///modules/gloda/Gloda.sys.mjs"
+  );
 
   var glodaFacetStrings = Services.strings.createBundle(
     "chrome://messenger/locale/glodaFacetView.properties"
@@ -223,7 +225,7 @@
     constructor() {
       super();
 
-      this.addEventListener("mouseover", event => {
+      this.addEventListener("mouseover", () => {
         FacetContext.hoverFacet(
           this.faceter,
           this.faceter.attrDef,
@@ -232,7 +234,7 @@
         );
       });
 
-      this.addEventListener("mouseout", event => {
+      this.addEventListener("mouseout", () => {
         FacetContext.unhoverFacet(
           this.faceter,
           this.faceter.attrDef,
@@ -532,7 +534,7 @@
       }
     }
 
-    filterChanged(event) {
+    filterChanged() {
       if (!this.checked) {
         return;
       }
@@ -655,7 +657,7 @@
       }
     }
 
-    build(firstTime) {
+    build() {
       // -- Header Building
       this.nameNode.textContent = this.facetDef.strings.facetNameLabel;
 
@@ -867,7 +869,7 @@
      * - lists, mark the remainder header as "needed" if either of include /
      * - exclude exist so we need that label.
      */
-    updateHeaderStates(items) {
+    updateHeaderStates() {
       this.includeLabel.setAttribute(
         "state",
         this.includeList.childElementCount ? "some" : "empty"
@@ -891,7 +893,7 @@
       this.remainderLabel.removeAttribute("style");
     }
 
-    brushItems(items) {}
+    brushItems() {}
 
     clearBrushedItems() {}
 
@@ -1060,7 +1062,7 @@
       }
     }
 
-    barHovered(barNode, aInclude) {
+    barHovered(barNode) {
       const groupValue = barNode.groupValue;
       const groupItems = barNode.groupItems;
 
@@ -1076,7 +1078,7 @@
      * HoverGone! HoverGone!
      * We know it's gone, but where has it gone?
      */
-    barHoverGone(barNode, include) {
+    barHoverGone(barNode) {
       const groupValue = barNode.groupValue;
       const groupItems = barNode.groupItems;
 
@@ -1325,7 +1327,7 @@
       }
     }
 
-    moveFocus(event, delta) {
+    moveFocus(event) {
       try {
         // We probably want something quite generic in the long term, but that
         // is way too much for now (needs to skip over invisible items, etc)
@@ -1342,7 +1344,7 @@
       }
     }
 
-    selectItem(event) {
+    selectItem() {
       try {
         const focused = document.activeElement;
         if (focused == this.includeNode) {
@@ -1451,7 +1453,7 @@
     constructor() {
       super();
 
-      this.addEventListener("mouseover", event => {
+      this.addEventListener("mouseover", () => {
         FacetContext.hoverFacet(
           FacetContext.fakeResultFaceter,
           FacetContext.fakeResultAttr,
@@ -1460,7 +1462,7 @@
         );
       });
 
-      this.addEventListener("mouseout", event => {
+      this.addEventListener("mouseout", () => {
         FacetContext.unhoverFacet(
           FacetContext.fakeResultFaceter,
           FacetContext.fakeResultAttr,
@@ -1574,8 +1576,8 @@
       );
 
       // this.author.textContent = ;
-      const { makeFriendlyDateAgo } = ChromeUtils.import(
-        "resource:///modules/TemplateUtils.jsm"
+      const { makeFriendlyDateAgo } = ChromeUtils.importESModule(
+        "resource:///modules/TemplateUtils.sys.mjs"
       );
       this.date.textContent = makeFriendlyDateAgo(message.date);
 

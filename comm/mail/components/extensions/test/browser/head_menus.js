@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals synthesizeMouseAtCenterAndRetry, awaitBrowserLoaded, closeMenuPopup, clickItemInMenuPopup */
+/* globals synthesizeMouseAtCenterAndRetry, awaitBrowserLoaded, closeMenuPopup, clickItemInMenuPopup, openSubMenuPopup */
 
 "use strict";
 
@@ -16,39 +16,8 @@ const { mailTestUtils } = ChromeUtils.importESModule(
 
 const treeClick = mailTestUtils.treeClick.bind(null, EventUtils, window);
 
-var URL_BASE =
+const URL_BASE =
   "http://mochi.test:8888/browser/comm/mail/components/extensions/test/browser/data";
-
-/**
- * Left-click on something and wait for the context menu to appear.
- * For elements in the parent process only.
- *
- * @param {Element} menu - The <menu> that should appear.
- * @param {Element} element - The element to be clicked on.
- * @returns {Promise} A promise that resolves when the menu appears.
- */
-function leftClick(menu, element) {
-  const shownPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
-  EventUtils.synthesizeMouseAtCenter(element, {}, element.ownerGlobal);
-  return shownPromise;
-}
-/**
- * Right-click on something and wait for the context menu to appear.
- * For elements in the parent process only.
- *
- * @param {Element} menu - The <menu> that should appear.
- * @param {Element} element - The element to be clicked on.
- * @returns {Promise} A promise that resolves when the menu appears.
- */
-function rightClick(menu, element) {
-  const shownPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
-  EventUtils.synthesizeMouseAtCenter(
-    element,
-    { type: "contextmenu" },
-    element.ownerGlobal
-  );
-  return shownPromise;
-}
 
 /**
  * Right-click on something in a content document and wait for the context
@@ -76,18 +45,19 @@ async function rightClickOnContent(menu, selector, browser) {
  *
  * @param extension
  * @param {object} expectedInfo
- * @param {Array?} expectedInfo.menuIds
- * @param {Array?} expectedInfo.contexts
- * @param {Array?} expectedInfo.attachments
- * @param {object?} expectedInfo.displayedFolder
- * @param {object?} expectedInfo.selectedFolder
- * @param {Array?} expectedInfo.selectedMessages
- * @param {RegExp?} expectedInfo.pageUrl
- * @param {string?} expectedInfo.selectionText
+ * @param {?Array} expectedInfo.menuIds
+ * @param {?Array} expectedInfo.contexts
+ * @param {?Array} expectedInfo.attachments
+ * @param {?object} expectedInfo.displayedFolder
+ * @param {?object} expectedInfo.selectedFolder
+ * @param {?object} expectedInfo.selectedFolders
+ * @param {?Array} expectedInfo.selectedMessages
+ * @param {?RegExp} expectedInfo.pageUrl
+ * @param {?string} expectedInfo.selectionText
  * @param {object} expectedTab
  * @param {boolean} expectedTab.active
  * @param {integer} expectedTab.index
- * @param {boolean} expectedTab.mailTab
+ * @param {string} expectedTab.type
  */
 async function checkShownEvent(extension, expectedInfo, expectedTab) {
   const [info, tab] = await extension.awaitMessage("onShown");
@@ -113,10 +83,50 @@ async function checkShownEvent(extension, expectedInfo, expectedTab) {
       !!expectedInfo[infoKey],
       `${infoKey} in info`
     );
+
+    Assert.ok(
+      !!extension.manifest,
+      "The manifest needs to be manually attached to the extension object for this test."
+    );
+
     if (expectedInfo[infoKey]) {
       Assert.equal(info[infoKey].accountId, expectedInfo[infoKey].accountId);
       Assert.equal(info[infoKey].path, expectedInfo[infoKey].path);
-      Assert.ok(Array.isArray(info[infoKey].subFolders));
+      if (
+        infoKey == "displayedFolder" &&
+        extension.manifest.manifest_version > 2
+      ) {
+        Assert.ok(
+          !Array.isArray(info[infoKey].subFolders),
+          `${infoKey} should not have subFolders in Manifest V3 or later`
+        );
+      } else {
+        Assert.ok(
+          Array.isArray(info[infoKey].subFolders),
+          `${infoKey} should have subFolders in Manifest V2`
+        );
+      }
+    }
+  }
+
+  for (const infoKey of ["selectedFolders"]) {
+    Assert.equal(
+      !!info[infoKey],
+      !!expectedInfo[infoKey],
+      `${infoKey} in info`
+    );
+    if (expectedInfo[infoKey]) {
+      for (let i = 0; i < expectedInfo[infoKey].length; i++) {
+        Assert.equal(
+          info[infoKey][i].accountId,
+          expectedInfo[infoKey][i].accountId
+        );
+        Assert.equal(info[infoKey][i].path, expectedInfo[infoKey][i].path);
+        Assert.ok(
+          !info[infoKey][i].subFolders,
+          `${infoKey}[${i}] should not have subFolders`
+        );
+      }
     }
   }
 
@@ -159,7 +169,7 @@ async function checkShownEvent(extension, expectedInfo, expectedTab) {
 
   Assert.equal(tab.active, expectedTab.active, "tab is active");
   Assert.equal(tab.index, expectedTab.index, "tab index");
-  Assert.equal(tab.mailTab, expectedTab.mailTab, "tab is mailTab");
+  Assert.equal(tab.type, expectedTab.type, "tab type is correct");
 }
 
 /**
@@ -169,15 +179,15 @@ async function checkShownEvent(extension, expectedInfo, expectedTab) {
  *
  * @param extension
  * @param {object} expectedInfo
- * @param {string?} expectedInfo.selectionText
- * @param {string?} expectedInfo.linkText
- * @param {RegExp?} expectedInfo.pageUrl
- * @param {RegExp?} expectedInfo.linkUrl
- * @param {RegExp?} expectedInfo.srcUrl
+ * @param {?string} expectedInfo.selectionText
+ * @param {?string} expectedInfo.linkText
+ * @param {?RegExp} expectedInfo.pageUrl
+ * @param {?RegExp} expectedInfo.linkUrl
+ * @param {?RegExp} expectedInfo.srcUrl
  * @param {object} expectedTab
  * @param {boolean} expectedTab.active
  * @param {integer} expectedTab.index
- * @param {boolean} expectedTab.mailTab
+ * @param {string} expectedTab.type
  */
 async function checkClickedEvent(extension, expectedInfo, expectedTab) {
   const [info, tab] = await extension.awaitMessage("onClicked");
@@ -205,13 +215,34 @@ async function checkClickedEvent(extension, expectedInfo, expectedTab) {
 
   Assert.equal(tab.active, expectedTab.active, "tab is active");
   Assert.equal(tab.index, expectedTab.index, "tab index");
-  Assert.equal(tab.mailTab, expectedTab.mailTab, "tab is mailTab");
+  Assert.equal(tab.type, expectedTab.type, "tab type is correct");
 }
 
 async function getMenuExtension(manifest) {
+  // Default to Manifest V2, if none provided.
+  if (!manifest.manifest_version) {
+    manifest.manifest_version = 2;
+  }
+
   const details = {
     files: {
       "background.js": async () => {
+        // Register listeners before the first await, so they get registered as
+        // persistent listeners.
+        browser.menus.onClicked.addListener((...args) => {
+          browser.test.sendMessage("onClicked", args);
+        });
+
+        browser.menus.onShown.addListener((...args) => {
+          browser.test.sendMessage("onShown", args);
+        });
+
+        if (browser.runtime.getManifest().manifest_version > 2) {
+          browser.runtime.onSuspend.addListener(() => {
+            browser.test.sendMessage("suspended-test_menu_onclick");
+          });
+        }
+
         const contexts = [
           "audio",
           "compose_action",
@@ -238,22 +269,19 @@ async function getMenuExtension(manifest) {
         } else {
           contexts.push("browser_action", "browser_action_menu");
         }
-
         for (const context of contexts) {
-          browser.menus.create({
-            id: context,
-            title: context,
-            contexts: [context],
-          });
+          await new Promise(resolve =>
+            browser.menus.create(
+              {
+                id: context,
+                title: context,
+                contexts: [context],
+              },
+              resolve
+            )
+          );
         }
 
-        browser.menus.onShown.addListener((...args) => {
-          browser.test.sendMessage("onShown", args);
-        });
-
-        browser.menus.onClicked.addListener((...args) => {
-          browser.test.sendMessage("onClicked", args);
-        });
         browser.test.sendMessage("menus-created");
       },
     },
@@ -282,6 +310,9 @@ async function getMenuExtension(manifest) {
       origins: details.manifest.host_permissions,
     });
   }
+
+  // Manually attach the manifest to the extension object.
+  extension.manifest = details.manifest;
   return extension;
 }
 
@@ -351,7 +382,6 @@ async function subtest_content(
     tab
   );
   await clickItemInMenuPopup(
-    menu,
     menu.querySelector("#menus_mochi_test-menuitem-_selection")
   );
   await clickedPromise;
@@ -381,7 +411,6 @@ async function subtest_content(
     tab
   );
   await clickItemInMenuPopup(
-    menu,
     menu.querySelector("#menus_mochi_test-menuitem-_link")
   );
   await clickedPromise;
@@ -409,7 +438,6 @@ async function subtest_content(
     tab
   );
   await clickItemInMenuPopup(
-    menu,
     menu.querySelector("#menus_mochi_test-menuitem-_image")
   );
   await clickedPromise;
@@ -430,10 +458,7 @@ async function openExtensionSubMenu(menu) {
   Assert.ok(submenu, `Found submenu: ${submenu.id}`);
 
   // Open submenu.
-  const submenuPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
-  submenu.openMenu(true);
-  await submenuPromise;
-
+  await openSubMenuPopup(submenu);
   return submenu;
 }
 
@@ -502,7 +527,6 @@ async function subtest_compose_body(
       tab
     );
     await clickItemInMenuPopup(
-      menu,
       submenu.querySelector("#menus_mochi_test-menuitem-_selection")
     );
     await clickedPromise;
@@ -539,7 +563,6 @@ async function subtest_compose_body(
       tab
     );
     await clickItemInMenuPopup(
-      menu,
       submenu.querySelector("#menus_mochi_test-menuitem-_link")
     );
     await clickedPromise;
@@ -575,7 +598,6 @@ async function subtest_compose_body(
       tab
     );
     await clickItemInMenuPopup(
-      menu,
       submenu.querySelector("#menus_mochi_test-menuitem-_image")
     );
     await clickedPromise;
@@ -593,6 +615,32 @@ async function subtest_element(
   pageUrl,
   tab
 ) {
+  /**
+   * Function to trigger a context click on the specified element. The provided
+   * observerElement is used to wait for the popupshown event.
+   * This function cannot be replaced by BrowserTestUtils.waitForPopupEvent(),
+   * because the context menu may not exist yet. It is created on the fly here:
+   * https://searchfox.org/comm-central/rev/7e60bfd71efc4a4a3aece6a0ab87f3ffb75803a2/mozilla/toolkit/content/editMenuOverlay.js#108-126
+   *
+   * @param {Element} observerElement - An element which can observe the expected
+   *   popupshown event, which will be triggered by the click.
+   * @param {Element} element - The element to click on.
+   *
+   * @returns {Promise<event>} The captured popupshown event.
+   */
+  const rightClick = (observerElement, element) => {
+    const shownPromise = BrowserTestUtils.waitForEvent(
+      observerElement,
+      "popupshown"
+    );
+    EventUtils.synthesizeMouseAtCenter(
+      element,
+      { type: "contextmenu" },
+      element.ownerGlobal
+    );
+    return shownPromise;
+  };
+
   for (const selectedTest of [false, true]) {
     element.focus();
     if (selectedTest) {
@@ -601,7 +649,6 @@ async function subtest_element(
     } else {
       element.value = "";
     }
-
     const event = await rightClick(element.ownerGlobal, element);
     const menu = event.target;
     const trigger = menu.triggerNode;
@@ -644,13 +691,7 @@ async function subtest_element(
           submenu = foundMenu;
         }
       }
-      Assert.ok(submenu, "Submenu found.");
-      const submenuPromise = BrowserTestUtils.waitForEvent(
-        element.ownerGlobal,
-        "popupshown"
-      );
-      submenu.openMenu(true);
-      await submenuPromise;
+      await openSubMenuPopup(submenu);
     }
 
     const clickedPromise = checkClickedEvent(
@@ -662,7 +703,7 @@ async function subtest_element(
       tab
     );
 
-    await clickItemInMenuPopup(element.ownerGlobal, menuitem);
+    await clickItemInMenuPopup(menuitem);
     await clickedPromise;
   }
 }

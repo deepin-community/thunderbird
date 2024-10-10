@@ -352,15 +352,6 @@ export class PanelMultiView extends AssociatedToNode {
     }
   }
 
-  get _screenManager() {
-    if (this.__screenManager) {
-      return this.__screenManager;
-    }
-    return (this.__screenManager = Cc[
-      "@mozilla.org/gfx/screenmanager;1"
-    ].getService(Ci.nsIScreenManager));
-  }
-
   constructor(node) {
     super(node);
     this._openPopupPromise = Promise.resolve(false);
@@ -394,7 +385,6 @@ export class PanelMultiView extends AssociatedToNode {
     this.openViews = [];
 
     this._panel.addEventListener("popupshowing", this);
-    this._panel.addEventListener("popuppositioned", this);
     this._panel.addEventListener("popuphidden", this);
     this._panel.addEventListener("popupshown", this);
 
@@ -416,7 +406,6 @@ export class PanelMultiView extends AssociatedToNode {
 
     this._panel.removeEventListener("mousemove", this);
     this._panel.removeEventListener("popupshowing", this);
-    this._panel.removeEventListener("popuppositioned", this);
     this._panel.removeEventListener("popupshown", this);
     this._panel.removeEventListener("popuphidden", this);
     this.window.removeEventListener("keydown", this, true);
@@ -1000,43 +989,51 @@ export class PanelMultiView extends AssociatedToNode {
       this._viewContainer.style.removeProperty("min-height");
     }
 
-    this._viewStack.style.transform =
-      "translateX(" + (moveToLeft ? "" : "-") + deltaX + "px)";
+    // Avoid transforming element if the user has prefers-reduced-motion set
+    if (
+      this.window.matchMedia("(prefers-reduced-motion: no-preference)").matches
+    ) {
+      this._viewStack.style.transform =
+        "translateX(" + (moveToLeft ? "" : "-") + deltaX + "px)";
 
-    await new Promise(resolve => {
-      details.resolve = resolve;
-      this._viewContainer.addEventListener(
-        "transitionend",
-        (details.listener = ev => {
-          // It's quite common that `height` on the view container doesn't need
-          // to transition, so we make sure to do all the work on the transform
-          // transition-end, because that is guaranteed to happen.
-          if (ev.target != this._viewStack || ev.propertyName != "transform") {
-            return;
-          }
-          this._viewContainer.removeEventListener(
-            "transitionend",
-            details.listener
-          );
-          delete details.listener;
-          resolve();
-        })
-      );
-      this._viewContainer.addEventListener(
-        "transitioncancel",
-        (details.cancelListener = ev => {
-          if (ev.target != this._viewStack) {
-            return;
-          }
-          this._viewContainer.removeEventListener(
-            "transitioncancel",
-            details.cancelListener
-          );
-          delete details.cancelListener;
-          resolve();
-        })
-      );
-    });
+      await new Promise(resolve => {
+        details.resolve = resolve;
+        this._viewContainer.addEventListener(
+          "transitionend",
+          (details.listener = ev => {
+            // It's quite common that `height` on the view container doesn't need
+            // to transition, so we make sure to do all the work on the transform
+            // transition-end, because that is guaranteed to happen.
+            if (
+              ev.target != this._viewStack ||
+              ev.propertyName != "transform"
+            ) {
+              return;
+            }
+            this._viewContainer.removeEventListener(
+              "transitionend",
+              details.listener
+            );
+            delete details.listener;
+            resolve();
+          })
+        );
+        this._viewContainer.addEventListener(
+          "transitioncancel",
+          (details.cancelListener = ev => {
+            if (ev.target != this._viewStack) {
+              return;
+            }
+            this._viewContainer.removeEventListener(
+              "transitioncancel",
+              details.cancelListener
+            );
+            delete details.cancelListener;
+            resolve();
+          })
+        );
+      });
+    }
 
     // Bail out if the panel was closed during the transition.
     if (!nextPanelView.isOpenIn(this)) {
@@ -1048,7 +1045,9 @@ export class PanelMultiView extends AssociatedToNode {
     nextPanelView.node.style.removeProperty("width");
     deepestNode.style.removeProperty("outline");
     this._cleanupTransitionPhase();
-
+    // Ensure the newly-visible view has been through a layout flush before we
+    // attempt to focus anything in it.
+    await this.window.promiseDocumentFlushed(() => {});
     nextPanelView.focusSelectedElement();
   }
 
@@ -1094,50 +1093,6 @@ export class PanelMultiView extends AssociatedToNode {
     }
   }
 
-  _calculateMaxHeight(aEvent) {
-    // While opening the panel, we have to limit the maximum height of any
-    // view based on the space that will be available. We cannot just use
-    // window.screen.availTop and availHeight because these may return an
-    // incorrect value when the window spans multiple screens.
-    const anchor = this._panel.anchorNode;
-    const anchorRect = anchor.getBoundingClientRect();
-
-    const screen = this._screenManager.screenForRect(
-      anchor.screenX,
-      anchor.screenY,
-      anchorRect.width,
-      anchorRect.height
-    );
-    const availTop = {},
-      availHeight = {};
-    screen.GetAvailRect({}, availTop, {}, availHeight);
-    const cssAvailTop = availTop.value / screen.defaultCSSScaleFactor;
-
-    // The distance from the anchor to the available margin of the screen is
-    // based on whether the panel will open towards the top or the bottom.
-    let maxHeight;
-    if (aEvent.alignmentPosition.startsWith("before_")) {
-      maxHeight = anchor.screenY - cssAvailTop;
-    } else {
-      const anchorScreenBottom = anchor.screenY + anchorRect.height;
-      const cssAvailHeight = availHeight.value / screen.defaultCSSScaleFactor;
-      maxHeight = cssAvailTop + cssAvailHeight - anchorScreenBottom;
-    }
-
-    // To go from the maximum height of the panel to the maximum height of
-    // the view stack, we need to subtract the height of the arrow and the
-    // height of the opposite margin, but we cannot get their actual values
-    // because the panel is not visible yet. However, we know that this is
-    // currently 11px on Mac, 13px on Windows, and 13px on Linux. We also
-    // want an extra margin, both for visual reasons and to prevent glitches
-    // due to small rounding errors. So, we just use a value that makes
-    // sense for all platforms. If the arrow visuals change significantly,
-    // this value will be easy to adjust.
-    const EXTRA_MARGIN_PX = 20;
-    maxHeight -= EXTRA_MARGIN_PX;
-    return maxHeight;
-  }
-
   handleEvent(aEvent) {
     // Only process actual popup events from the panel or events we generate
     // ourselves, but not from menus being shown from within the panel.
@@ -1172,14 +1127,6 @@ export class PanelMultiView extends AssociatedToNode {
           // so we get the event first.
           this.window.addEventListener("keydown", this, true);
           this._panel.addEventListener("mousemove", this);
-        }
-        break;
-      }
-      case "popuppositioned": {
-        if (this._panel.state == "showing") {
-          const maxHeight = this._calculateMaxHeight(aEvent);
-          this._viewStack.style.maxHeight = maxHeight + "px";
-          this._offscreenViewStack.style.maxHeight = maxHeight + "px";
         }
         break;
       }

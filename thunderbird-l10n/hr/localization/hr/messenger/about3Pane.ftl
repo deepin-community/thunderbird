@@ -120,8 +120,10 @@ quick-filter-bar-textbox-shortcut =
 # box faster.
 quick-filter-bar-textbox =
     .placeholder = Filtriraj ove poruke <{ quick-filter-bar-textbox-shortcut }>
-quick-filter-bar-search =
-    .label = Filtriranje poruka:
+quick-filter-bar-search2 =
+    .label = Filtriranje poruka
+quick-filter-bar-searching =
+    .title = Pretraživanje…
 # Keyboard shortcut for the text search box.
 # This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
@@ -507,5 +509,52 @@ apply-current-view-to-folder-message = Primjeni prikaz trenutne mape na { $name 
 # Variables:
 #  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Primjeni prikaz trenutne mape na { $name } i podmape?
+# Variables:
+# $unread (Number) - Number of unread messages in thread.
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-unread-count =
+    { $unread ->
+        [one]
+            { $total ->
+                [one] <span>{ $unread }</span> poruka od <span>{ $total }</span> nepročitana
+                [few] <span>{ $unread }</span> poruke od <span>{ $total }</span> poruka nepročitane
+               *[other] <span>{ $unread }</span> poruka od <span>{ $total }</span> poruka nepročitano
+            }
+        [few]
+            { $total ->
+                [one] <span>{ $unread }</span> poruka od <span>{ $total }</span> nepročitana
+                [few] <span>{ $unread }</span> poruke od <span>{ $total }</span> poruka nepročitane
+               *[other] <span>{ $unread }</span> poruka od <span>{ $total }</span> poruka nepročitano
+            }
+       *[other]
+            { $total ->
+                [one] <span>{ $unread }</span> poruka od <span>{ $total }</span> nepročitana
+                [few] <span>{ $unread }</span> poruke od <span>{ $total }</span> poruka nepročitane
+               *[other] <span>{ $unread }</span> poruka od <span>{ $total }</span> poruka nepročitano
+            }
+    }
+# Variables:
+# $total (Number) - Number of messages in thread.
+threadpane-sort-header-count =
+    { $total ->
+        [one] <span>{ $total }</span> poruka
+        [few] <span>{ $total }</span> poruke
+       *[other] <span>{ $total }</span> poruka
+    }
 threadpane-card-menu-button =
     .title = Izbornik poruke
+message-list-placeholder-no-messages = Poruka nije pronađena
+message-list-placeholder-multiple-folders = Odabrano više mapa
+
+## Folder pane context menu
+
+# Variables:
+# $count (Number) - Number of selected folders.
+folder-pane-context-mark-folder-read =
+    .label =
+        { $count ->
+            [one] Označi $count mapu pročitanom
+            [few] Označi $count mape pročitanim
+           *[other] Označi $count mapa pročitanim
+        }
+    .accesskey = p

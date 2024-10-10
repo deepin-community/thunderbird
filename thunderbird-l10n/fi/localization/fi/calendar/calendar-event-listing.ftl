@@ -47,10 +47,12 @@ calendar-event-listing-column-time-until-due =
     .tooltiptext = Lajittele sen mukaan milloin tehtävän tulee olla valmis
 calendar-event-listing-column-title =
     .label = Otsikko
-    .tooltiptext = Lajittele otsikon mukaan
+    .tooltiptext = Järjestä otsikon mukaan
 
 ## Interval dropdown options
 
+calendar-event-listing-interval-past =
+    .label = Tapahtumat menneisyydessä
 calendar-event-listing-interval-calendar-month =
     .label = Tämän kalenterikuukauden tapahtumat
 calendar-event-listing-interval-current-view =
@@ -65,6 +67,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Seuraavien 6 kuukauden tapahtumat
 calendar-event-listing-interval-next-12-months =
     .label = Seuraavien 12 kuukauden tapahtumat
+calendar-event-listing-interval-all =
+    .label = Kaikki tapahtumat
 calendar-event-listing-interval-selected-day =
     .label = Valittuna oleva päivä
 calendar-event-listing-interval-today =

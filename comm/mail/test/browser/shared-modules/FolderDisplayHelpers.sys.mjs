@@ -2,21 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
-import * as EventUtils from "resource://testing-common/mozmill/EventUtils.sys.mjs";
+import * as EventUtils from "resource://testing-common/mail/EventUtils.sys.mjs";
 import {
   promise_new_window,
   wait_for_existing_window,
   wait_for_window_focused,
-} from "resource://testing-common/mozmill/WindowHelpers.sys.mjs";
+} from "resource://testing-common/mail/WindowHelpers.sys.mjs";
 
 import { Assert } from "resource://testing-common/Assert.sys.mjs";
 import { BrowserTestUtils } from "resource://testing-common/BrowserTestUtils.sys.mjs";
-import { SmartServerUtils } from "resource:///modules/SmartServerUtils.sys.mjs";
+import { SmartMailboxUtils } from "resource:///modules/SmartMailboxUtils.sys.mjs";
 import { TestUtils } from "resource://testing-common/TestUtils.sys.mjs";
 
 import { MailConsts } from "resource:///modules/MailConsts.sys.mjs";
@@ -28,7 +26,7 @@ import {
 } from "resource://testing-common/mailnews/MessageGenerator.sys.mjs";
 import { MessageInjection } from "resource://testing-common/mailnews/MessageInjection.sys.mjs";
 import { SmimeUtils } from "resource://testing-common/mailnews/SmimeUtils.sys.mjs";
-import { dump_view_state } from "resource://testing-common/mozmill/ViewHelpers.sys.mjs";
+import { dump_view_state } from "resource://testing-common/mail/ViewHelpers.sys.mjs";
 
 var nsMsgViewIndex_None = 0xffffffff;
 
@@ -717,9 +715,8 @@ export async function click_tree_row(aTree, aRowIndex) {
 async function _get_row_at_index(aViewIndex) {
   const win = get_about_3pane();
   const tree = win.document.getElementById("threadTree");
-  Assert.greater(
-    tree.view.rowCount,
-    aViewIndex,
+  await TestUtils.waitForCondition(
+    () => aViewIndex < tree.view.rowCount,
     `index ${aViewIndex} must exist to be clicked on`
   );
   tree.scrollToIndex(aViewIndex, true);
@@ -846,11 +843,7 @@ export async function select_control_click_row(aViewIndex) {
  *   the first window.
  * @returns The message headers for all messages that are now selected.
  */
-export async function select_shift_click_row(
-  aViewIndex,
-  aWin,
-  aDoNotRequireLoad
-) {
+export async function select_shift_click_row(aViewIndex, aWin) {
   aViewIndex = _normalize_view_index(aViewIndex, aWin);
 
   const win = get_about_3pane();
@@ -976,15 +969,12 @@ export async function right_click_on_row(aViewIndex) {
   aViewIndex = _normalize_view_index(aViewIndex);
 
   const win = get_about_3pane();
-  const shownPromise = BrowserTestUtils.waitForEvent(
-    win.document.getElementById("mailContext"),
-    "popupshown"
-  );
-  const row = win.document
-    .getElementById("threadTree")
-    .getRowAtIndex(aViewIndex);
+  const row = await _get_row_at_index(aViewIndex);
   EventUtils.synthesizeMouseAtCenter(row, { type: "contextmenu" }, win);
-  await shownPromise;
+  await BrowserTestUtils.waitForPopupEvent(
+    win.document.getElementById("mailContext"),
+    "shown"
+  );
 
   return get_db_view().getMsgHdrAt(aViewIndex);
 }
@@ -993,14 +983,20 @@ export async function right_click_on_row(aViewIndex) {
  * Middle-click on the tree-view in question, presumably opening a new message
  *  tab.
  *
+ * @param {integer} aViewIndex - The index of a selected row.
+ * @param {boolean} shiftPressed - Whether the shift key has been pressed.
  * @returns [The new tab, the message that you clicked on.]
  */
-export async function middle_click_on_row(aViewIndex) {
+export async function middle_click_on_row(aViewIndex, shiftPressed) {
   aViewIndex = _normalize_view_index(aViewIndex);
 
   const win = get_about_3pane();
   const row = await _get_row_at_index(aViewIndex);
-  EventUtils.synthesizeMouseAtCenter(row, { button: 1 }, win);
+  EventUtils.synthesizeMouseAtCenter(
+    row,
+    { button: 1, shiftKey: shiftPressed },
+    win
+  );
 
   return [
     mc.document.getElementById("tabmail").tabInfo[
@@ -1234,8 +1230,8 @@ export function middle_click_on_folder(aFolder, shiftPressed) {
  * @returns An nsIMsgFolder representing the smart folder with the given name.
  */
 export function get_smart_folder_named(aFolderName) {
-  const smartServer = SmartServerUtils.getSmartServer();
-  return smartServer.rootFolder.getChildNamed(aFolderName);
+  const smartMailbox = SmartMailboxUtils.getSmartMailbox();
+  return smartMailbox.getSmartFolder(aFolderName);
 }
 
 /**
@@ -1248,7 +1244,7 @@ export async function delete_via_popup() {
     "DeleteOrMoveMsgFailed"
   );
   const win = get_about_3pane();
-  const ctxDelete = win.document.getElementById("mailContext-delete");
+  const ctxDelete = win.document.getElementById("navContext-delete");
   if (AppConstants.platform == "macosx") {
     // We need to use click() since the synthesizeMouseAtCenter doesn't work for
     // context menu items on macos.
@@ -1262,14 +1258,19 @@ export async function delete_via_popup() {
   await wait_for_folder_events();
 }
 
+/**
+ * @deprecated Use BrowserTestUtils.waitForPopupEvent directly.
+ * @param {XULPopupElement} popupElem
+ */
 export async function wait_for_popup_to_open(popupElem) {
-  if (popupElem.state != "open") {
-    await BrowserTestUtils.waitForEvent(popupElem, "popupshown");
-  }
+  await BrowserTestUtils.waitForPopupEvent(popupElem, "shown");
 }
 
 /**
  * Close the open pop-up.
+ *
+ * @param {DOMWindow} aWin
+ * @param {XULPopupElement} elem
  */
 export async function close_popup(aWin, elem) {
   // if it was already closing, just leave
@@ -1279,9 +1280,8 @@ export async function close_popup(aWin, elem) {
 
   if (elem.state != "hiding") {
     // Actually close the popup because it's not closing/closed.
-    const hiddenPromise = BrowserTestUtils.waitForEvent(elem, "popuphidden");
     elem.hidePopup();
-    await hiddenPromise;
+    await BrowserTestUtils.waitForPopupEvent(elem, "hidden");
     await new Promise(resolve => aWin.requestAnimationFrame(resolve));
   }
 }
@@ -1378,10 +1378,18 @@ export async function archive_selected_messages(win = mc) {
  *   the first window.
  */
 export async function wait_for_all_messages_to_load(win = mc) {
-  // await TestUtils.waitForCondition(
-  //   () => win.gFolderDisplay.allMessagesLoaded,
-  //   "Messages never finished loading.  Timed Out."
-  // );
+  if (win.gFolderDisplay) {
+    await TestUtils.waitForCondition(
+      () => win.gFolderDisplay.allMessagesLoaded,
+      "waiting for message list to finish loading"
+    );
+  } else {
+    const about3Pane = get_about_3pane(win);
+    await TestUtils.waitForCondition(
+      () => about3Pane.dbViewWrapperListener.allMessagesLoaded,
+      "waiting for message list to finish loading"
+    );
+  }
   // the above may return immediately, meaning the event queue might not get a
   //  chance.  give it a chance now.
   await TestUtils.waitForTick();
@@ -1398,7 +1406,7 @@ export async function wait_for_all_messages_to_load(win = mc) {
  *   the first window. If the message display is going to be caused by a tab
  *   switch, a reference to the tab to switch to should be passed in.
  */
-export function plan_for_message_display(winOrTab) {}
+export function plan_for_message_display() {}
 
 /**
  * If a message or summary is in the process of loading, let it finish;

@@ -11,8 +11,8 @@
 // about3pane.js
 /* globals ThreadPaneColumns */
 
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailServices } = ChromeUtils.importESModule(
+  "resource:///modules/MailServices.sys.mjs"
 );
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
@@ -28,11 +28,8 @@ ChromeUtils.defineESModuleGetters(this, {
   EnigmailURIs: "chrome://openpgp/content/modules/uris.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
   MessageArchiver: "resource:///modules/MessageArchiver.sys.mjs",
-  TreeSelection: "chrome://messenger/content/tree-selection.mjs",
-});
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  VirtualFolderHelper: "resource:///modules/VirtualFolderWrapper.jsm",
+  TreeSelection: "chrome://messenger/content/TreeSelection.mjs",
+  VirtualFolderHelper: "resource:///modules/VirtualFolderWrapper.sys.mjs",
 });
 
 XPCOMUtils.defineLazyServiceGetter(
@@ -78,6 +75,7 @@ var commandController = {
     cmd_markAsRead: Ci.nsMsgViewCommandType.markMessagesRead,
     cmd_markAsUnread: Ci.nsMsgViewCommandType.markMessagesUnread,
     cmd_markThreadAsRead: Ci.nsMsgViewCommandType.markThreadRead,
+    cmd_markAllRead: Ci.nsMsgViewCommandType.markAllRead,
     cmd_markAsNotJunk: Ci.nsMsgViewCommandType.unjunk,
     cmd_watchThread: Ci.nsMsgViewCommandType.toggleThreadWatched,
   },
@@ -169,15 +167,6 @@ var commandController = {
       }
       gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.junk);
     },
-    cmd_markAllRead() {
-      if (gFolder.flags & Ci.nsMsgFolderFlags.Virtual) {
-        top.MsgMarkAllRead(
-          VirtualFolderHelper.wrapVirtualFolder(gFolder).searchFolders
-        );
-      } else {
-        top.MsgMarkAllRead([gFolder]);
-      }
-    },
     /**
      * Moves the selected messages to the destination folder.
      *
@@ -215,7 +204,7 @@ var commandController = {
           destFolder.URI,
           false, // not moving
           false
-        ).catch(err => {
+        ).catch(() => {
           failures++;
         });
       }
@@ -296,6 +285,9 @@ var commandController = {
       }
     },
     cmd_deleteMessage() {
+      if (!MailUtils.confirmDelete(false, gDBView, gFolder)) {
+        return;
+      }
       if (parent.location.href == "about:3pane") {
         // If we're in about:message inside about:3pane, it's the parent
         // window that needs to advance to the next message.
@@ -306,6 +298,9 @@ var commandController = {
       gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.deleteMsg);
     },
     cmd_shiftDeleteMessage() {
+      if (!MailUtils.confirmDelete(true, gDBView, gFolder)) {
+        return;
+      }
       if (parent.location.href == "about:3pane") {
         // If we're in about:message inside about:3pane, it's the parent
         // window that needs to advance to the next message.
@@ -336,7 +331,7 @@ var commandController = {
 
         // Strip out the message-display parameter to ensure that attached emails
         // display the message source, not the processed HTML.
-        url = url.replace(/type=application\/x-message-display&/, "");
+        url = url.replace(/type=application\/x-message-display&?/, "");
         window.openDialog(
           "chrome://messenger/content/viewSource.xhtml",
           "_blank",
@@ -489,14 +484,16 @@ var commandController = {
       return !isDummyMessage;
     }
 
-    const numSelectedMessages = isDummyMessage ? 1 : gDBView.numSelected;
+    const numSelectedMessages = isDummyMessage
+      ? 1
+      : Number(gDBView?.numSelected);
 
     // Evaluate these properties only if needed, not once for each command.
     const folder = () => {
       if (gFolder) {
         return gFolder;
       }
-      if (gDBView.numSelected >= 1) {
+      if (gDBView?.numSelected >= 1) {
         return gDBView.hdrForFirstSelectedMessage?.folder;
       }
       return null;
@@ -505,7 +502,10 @@ var commandController = {
       folder()?.isSpecialFolder(Ci.nsMsgFolderFlags.Newsgroup, true);
     const canMove = () =>
       numSelectedMessages >= 1 &&
-      (folder()?.canDeleteMessages || gViewWrapper.isSynthetic);
+      (folder()?.canDeleteMessages || gViewWrapper.isSynthetic) &&
+      !gViewWrapper.isExpandedGroupedByHeaderAtIndex(
+        gDBView.viewIndexForFirstSelectedMsg
+      );
 
     switch (command) {
       case "cmd_cancel":
@@ -578,7 +578,6 @@ var commandController = {
       case "cmd_removeTags":
       case "cmd_toggleTag":
       case "cmd_toggleRead":
-      case "cmd_markReadByDate":
       case "cmd_markAsFlagged":
       case "cmd_applyFiltersToSelection":
         return numSelectedMessages >= 1 && !isDummyMessage;
@@ -639,6 +638,7 @@ var commandController = {
         }
         return false;
       }
+      case "cmd_markReadByDate":
       case "cmd_markAllRead":
         return gDBView?.msgFolder?.getNumUnread(false) > 0;
       case "cmd_markAsJunk":
@@ -847,6 +847,7 @@ var commandController = {
     const currentIndex = window.threadTree
       ? window.threadTree.currentIndex
       : -1;
+    let addedRowsByViewNavigate = 0;
 
     // If we're doing next unread, and a collapsed thread is selected, and
     // the top level message is unread, just set the result manually to
@@ -863,6 +864,7 @@ var commandController = {
       resultIndex.value = currentIndex;
       resultKey.value = gViewWrapper.dbView.getKeyAt(currentIndex);
     } else {
+      const countBefore = gViewWrapper.dbView.rowCount;
       gViewWrapper.dbView.viewNavigate(
         navigationType,
         resultKey,
@@ -870,6 +872,7 @@ var commandController = {
         threadIndex,
         true
       );
+      addedRowsByViewNavigate = gViewWrapper.dbView.rowCount - countBefore;
       if (resultIndex.value == nsMsgViewIndex_None) {
         if (CrossFolderNavigation(navigationType)) {
           this._navigate(navigationType);
@@ -889,11 +892,24 @@ var commandController = {
       ) {
         return;
       }
-
-      window.threadTree.expandRowAtIndex(resultIndex.value);
+      const addedRows = Math.max(
+        addedRowsByViewNavigate,
+        window.threadTree.expandRowAtIndex(resultIndex.value)
+      );
       // Do an instant scroll before setting the index to avoid animation.
       window.threadTree.scrollToIndex(resultIndex.value, true);
       window.threadTree.selectedIndex = resultIndex.value;
+      // If the thread index has not been determined by viewNavigate(), its
+      // return value will be 0.
+      const firstIndex =
+        threadIndex.value > 0 ? threadIndex.value : resultIndex.value;
+      // Scroll the thread to the most reasonable position.
+      window.threadTree.scrollExpandedRowIntoView(
+        resultIndex.value,
+        addedRows,
+        false,
+        firstIndex
+      );
       // Focus the thread tree, unless the message pane has focus.
       if (
         Services.focus.focusedWindow !=
@@ -924,6 +940,7 @@ var commandController = {
 window.controllers.insertControllerAt(0, commandController);
 
 var dbViewWrapperListener = {
+  _allMessagesLoaded: false,
   _nextViewIndexAfterDelete: null,
 
   messenger: null,
@@ -934,7 +951,7 @@ var dbViewWrapperListener = {
       "nsISupportsWeakReference",
     ]),
     updateCommandStatus() {},
-    displayMessageChanged(folder, subject, keywords) {},
+    displayMessageChanged() {},
     updateNextMessageAfterDelete() {
       dbViewWrapperListener._nextViewIndexAfterDelete = gDBView
         ? gDBView.msgToSelectAfterDelete
@@ -958,6 +975,9 @@ var dbViewWrapperListener = {
     },
   },
 
+  get allMessagesLoaded() {
+    return this._allMessagesLoaded;
+  },
   get shouldUseMailViews() {
     return !!top.ViewPickerBinding?.isVisible;
   },
@@ -972,8 +992,9 @@ var dbViewWrapperListener = {
    * TODO: Consider retiring this in favor of an folders.onLeavingFolder API
    * event (or something similar) that add-ons could hook into.
    *
+   * @param {nsIMsgFolder} msgFolder
    * @returns {boolean} true if we should mark this folder as read when leaving
-   * it.
+   *   it.
    */
   shouldMarkMessagesReadOnLeavingFolder(msgFolder) {
     return Services.prefs.getBoolPref(
@@ -981,22 +1002,28 @@ var dbViewWrapperListener = {
       false
     );
   },
-  onFolderLoading(isFolderLoading) {},
-  onSearching(isSearching) {},
+  onFolderLoading() {},
+  onSearching() {},
   onCreatedView() {
-    if (window.threadTree) {
-      for (const col of ThreadPaneColumns.getCustomColumns()) {
-        gViewWrapper.dbView.addColumnHandler(col.id, col.handler);
-      }
-      window.threadPane.setTreeView(gViewWrapper.dbView);
-      window.threadPane.restoreSortIndicator();
-      window.threadPaneHeader.onFolderSelected();
-      window.threadPane.isFirstScroll = true;
-      window.threadPane.scrollDetected = false;
-      window.threadPane.scrollToLatestRowIfNoSelection();
+    this._allMessagesLoaded = false;
+
+    if (!window.threadTree || !gViewWrapper) {
+      return;
     }
+
+    for (const col of ThreadPaneColumns.getCustomColumns()) {
+      gViewWrapper.dbView.addColumnHandler(col.id, col.handler);
+    }
+    window.threadPane.setTreeView(gViewWrapper.dbView);
+    window.threadPane.restoreSortIndicator();
+    window.threadPane.restoreThreadState(gViewWrapper.isSingleFolder);
+    window.threadPane.isFirstScroll = true;
+    window.threadPane.scrollDetected = false;
+    window.threadPane.scrollToLatestRowIfNoSelection();
   },
   onDestroyingView(folderIsComingBack) {
+    this._allMessagesLoaded = false;
+
     if (!window.threadTree) {
       return;
     }
@@ -1005,26 +1032,35 @@ var dbViewWrapperListener = {
       // We'll get a new view of the same folder (e.g. with a quick filter) -
       // try to preserve the selection.
       window.threadPane.saveSelection();
-    } else {
-      if (gDBView) {
-        gDBView.setJSTree(null);
-      }
-      window.threadTree.view = gDBView = null;
+      return;
     }
+    gDBView?.setJSTree(null);
+    window.threadPane.setTreeView(null);
   },
-  onLoadingFolder(dbFolderInfo) {
+  onLoadingFolder() {
     window.quickFilterBar?.onFolderChanged();
   },
   onDisplayingFolder() {},
   onLeavingFolder() {},
+  /**
+   * @param {boolean} all - Whether all messages have now been loaded.
+   *   When false, expect that updateFolder or a search will soon come along
+   *   with another load. The all==false case is needed for good perceived
+   *   performance. Updating the folder can take seconds during which you
+   *   would otherwise not be able to see the message list for the folder, which
+   *   may or may not really change once we get the update from the server.
+   */
   onMessagesLoaded(all) {
+    this._allMessagesLoaded = all;
+
     if (!window.threadPane) {
       return;
     }
 
-    // There is no persisted thread last expanded state for synthetic views.
-    if (all && !gViewWrapper.isSynthetic) {
-      window.threadPane.restoreThreadState();
+    if (all) {
+      window.threadPane.restoreThreadState(
+        gViewWrapper?.search.hasSearchTerms || gViewWrapper?.isSynthetic
+      );
     }
 
     // Try to restore what was selected. Keep the saved selection (if there is
@@ -1053,6 +1089,13 @@ var dbViewWrapperListener = {
       if (!newMessageFound && !window.threadPane.scrollDetected) {
         window.threadPane.scrollToLatestRowIfNoSelection();
       }
+    }
+    // To be consistent with the behavior in saved searches, update the message
+    // count in synthetic views when a quick filter term is entered or cleared.
+    if (gViewWrapper?.isSynthetic) {
+      window.threadPaneHeader.updateMessageCount(
+        gViewWrapper.dbView.numMsgsInView
+      );
     }
     window.quickFilterBar?.onMessagesChanged();
   },

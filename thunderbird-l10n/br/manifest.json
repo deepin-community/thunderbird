@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-br@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Brezhoneg (Breton)",
   "description": "Thunderbird Language Pack for Brezhoneg (br) – Breton",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "br": {
-      "version": "20240423195610",
+      "version": "20240930174119",
       "chrome_resources": {
         "alerts": "chrome/br/locale/br/alerts/",
         "autoconfig": "chrome/br/locale/br/autoconfig/",
         "branding": "chrome/br/locale/branding/",
         "calendar": "chrome/br/locale/br/calendar/",
-        "chat": "chrome/br/locale/br/chat/",
         "communicator": "chrome/br/locale/br/communicator/",
         "devtools": "chrome/br/locale/br/devtools/client/",
         "devtools-shared": "chrome/br/locale/br/devtools/shared/",

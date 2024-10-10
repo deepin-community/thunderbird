@@ -19,7 +19,7 @@
 <!ENTITY feedFolder.accesskey        "d">
 
 <!-- Account Settings and Subscription Dialog -->
-<!ENTITY biffStart.label             "Yeni yazıları kontrol etme sıklığı: ">
+<!ENTITY biffStart.label             "Yeni haberleri denetleme sıklığı: ">
 <!ENTITY biffStart.accesskey         "k">
 <!ENTITY biffMinutes.label           "dakika">
 <!ENTITY biffMinutes.accesskey       "d">
@@ -49,7 +49,7 @@
 <!ENTITY button.importOPML.accesskey "k">
 <!ENTITY button.exportOPML.label     "Dışa aktar">
 <!ENTITY button.exportOPML.accesskey "t">
-<!ENTITY button.exportOPML.tooltip   "Export Feeds with folder structure; ctrl click or ctrl enter to export Feeds as a list">
+<!ENTITY button.exportOPML.tooltip   "Beslemeleri klasör yapısıyla dışa aktar; Beslemeleri liste olarak dışa aktarmak için ctrl+tıklayın veya ctrl+enter'a basın">
 
 <!ENTITY cmd.close.commandKey        "w">
 <!ENTITY button.close.label          "Kapat">

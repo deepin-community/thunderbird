@@ -17,6 +17,8 @@ process-type-privilegedmozilla = ਰਿਆਇਤੀ ਮੌਜ਼ੀਲਾ ਸਮੱ
 process-type-extension = ਇਕਸਟੈਨਸ਼ਨ
 # process used to open file:// URLs
 process-type-file = ਲੋਕਲ ਫਾਈਲ
+# process used to instantiate new child processes
+process-type-forkserver = ਸਰਵਰ ਨੂੰ ਵੰਡੋ
 # process used to isolate a webpage from other web pages
 # to improve security
 process-type-webisolated = ਨਿਖੇੜੀ ਵੈੱਬ ਸਮੱਗਰੀ
@@ -39,6 +41,8 @@ process-type-gpu = GPU
 process-type-socket = ਸਾਕਟ
 # process used to decode media
 process-type-rdd = ਰੈਡ
+# process used to run inference
+process-type-inference = ਸਿੱਟਾ
 # process used to run some IPC actor in their own sandbox
 process-type-utility = ਸੈਂਡਬਾਕਸ ਕੀਤਾ IPC ਐਕਟਰ
 process-type-utility-actor-audio-decoder-generic = ਸਹੂਲਤ ਸਧਾਰਨ ਆਡੀਓ ਡੀਕੋਡਰ

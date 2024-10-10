@@ -2,7 +2,7 @@
 
 module.exports = {
   globals: {
-    // These are defined in the WebExtension script scopes by ExtensionCommon.jsm.
+    // These are defined in the WebExtension script scopes by ExtensionCommon.sys.mjs.
     // From toolkit/components/extensions/.eslintrc.js.
     ExtensionAPI: true,
     ExtensionAPIPersistent: true,
@@ -43,6 +43,7 @@ module.exports = {
     MESSAGE_PROTOCOLS: true,
     NOTIFICATION_COLLAPSE_TIME: true,
     ExtensionError: true,
+    FolderManager: true,
     Tab: true,
     TabmailTab: true,
     Window: true,

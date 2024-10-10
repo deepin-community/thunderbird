@@ -3,6 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "MailNewsTypes.h"
 #include "msgCore.h"
 #include "nsUnicharUtils.h"
 #include "nsMsgDBFolder.h"
@@ -16,22 +17,18 @@
 #include "nsMsgDatabase.h"
 #include "nsIMsgAccountManager.h"
 #include "nsISeekableStream.h"
-#include "nsNativeCharsetUtils.h"
 #include "nsIChannel.h"
 #include "nsITransport.h"
 #include "nsIWindowWatcher.h"
-#include "nsIMsgFolderCompactor.h"
+#include "FolderCompactor.h"
 #include "nsIDocShell.h"
 #include "nsIMsgWindow.h"
 #include "nsIPrompt.h"
-#include "nsIInterfaceRequestor.h"
 #include "nsIInterfaceRequestorUtils.h"
 #include "nsIAbCard.h"
-#include "nsIAbDirectory.h"
 #include "nsISpamSettings.h"
 #include "nsIMsgFilterPlugin.h"
 #include "nsIMsgMailSession.h"
-#include "nsTextFormatter.h"
 #include "nsReadLine.h"
 #include "nsIParserUtils.h"
 #include "nsIDocumentEncoder.h"
@@ -50,8 +47,6 @@
 #include "prmem.h"
 #include "nsIPK11TokenDB.h"
 #include "nsIPK11Token.h"
-#include "nsMsgLocalFolderHdrs.h"
-#define oneHour 3600000000U
 #include "nsMsgUtils.h"
 #include "nsIMsgFilterService.h"
 #include "nsDirectoryServiceUtils.h"
@@ -64,10 +59,14 @@
 #include "mozilla/Components.h"
 #include "mozilla/intl/LocaleService.h"
 #include "mozilla/Logging.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Utf8.h"
 #include "nsIPromptService.h"
 #include "nsEmbedCID.h"
+#include "nsIPropertyBag2.h"
+
+#define oneHour 3600000000U
 
 using namespace mozilla;
 
@@ -298,10 +297,10 @@ NS_IMETHODIMP nsMsgDBFolder::Shutdown(bool shutdownChildren) {
     mDatabase->RemoveListener(this);
     mDatabase->ForceClosed();
     mDatabase = nullptr;
-    if (mBackupDatabase) {
-      mBackupDatabase->ForceClosed();
-      mBackupDatabase = nullptr;
-    }
+  }
+  if (mBackupDatabase) {
+    mBackupDatabase->ForceClosed();
+    mBackupDatabase = nullptr;
   }
 
   if (shutdownChildren) {
@@ -594,11 +593,6 @@ nsresult nsMsgDBFolder::GetFolderCacheElemFromFile(
   NS_ENSURE_ARG_POINTER(file);
   NS_ENSURE_ARG_POINTER(cacheElement);
   nsCOMPtr<nsIMsgFolderCache> folderCache;
-#ifdef DEBUG_bienvenu1
-  bool exists;
-  NS_ASSERTION(NS_SUCCEEDED(fileSpec->Exists(&exists)) && exists,
-               "whoops, file doesn't exist, mac will break");
-#endif
   nsCOMPtr<nsIMsgAccountManager> accountMgr =
       do_GetService("@mozilla.org/messenger/account-manager;1", &result);
   if (NS_SUCCEEDED(result)) {
@@ -646,13 +640,6 @@ nsresult nsMsgDBFolder::ReadDBFolderInfo(bool force) {
       if (folderInfo) {
         if (!mInitializedFromCache) {
           folderInfo->GetFlags((int32_t*)&mFlags);
-#ifdef DEBUG_bienvenu1
-          nsString name;
-          GetName(name);
-          NS_ASSERTION(Compare(name, kLocalizedTrashName) ||
-                           (mFlags & nsMsgFolderFlags::Trash),
-                       "lost trash flag");
-#endif
           mInitializedFromCache = true;
         }
 
@@ -1146,11 +1133,6 @@ NS_IMETHODIMP nsMsgDBFolder::ReadFromFolderCacheElem(
   element->GetCachedInt64("expungedBytes", &mExpungedBytes);
   element->GetCachedInt64("folderSize", &mFolderSize);
 
-#ifdef DEBUG_bienvenu1
-  nsCString uri;
-  GetURI(uri);
-  printf("read total %ld for %s\n", mNumTotalMessages, uri.get());
-#endif
   return rv;
 }
 
@@ -1192,11 +1174,6 @@ NS_IMETHODIMP nsMsgDBFolder::WriteToFolderCache(nsIMsgFolderCache* folderCache,
     nsCOMPtr<nsIMsgFolderCacheElement> cacheElement;
     nsCOMPtr<nsIFile> dbPath;
     rv = GetFolderCacheKey(getter_AddRefs(dbPath));
-#ifdef DEBUG_bienvenu1
-    bool exists;
-    NS_ASSERTION(NS_SUCCEEDED(dbPath->Exists(&exists)) && exists,
-                 "file spec we're adding to cache should exist");
-#endif
     if (NS_SUCCEEDED(rv) && dbPath) {
       nsCString persistentPath;
       rv = dbPath->GetPersistentDescriptor(persistentPath);
@@ -1229,11 +1206,6 @@ NS_IMETHODIMP nsMsgDBFolder::WriteToFolderCacheElem(
   element->SetCachedInt64("expungedBytes", mExpungedBytes);
   element->SetCachedInt64("folderSize", mFolderSize);
 
-#ifdef DEBUG_bienvenu1
-  nsCString uri;
-  GetURI(uri);
-  printf("writing total %ld for %s\n", mNumTotalMessages, uri.get());
-#endif
   return rv;
 }
 
@@ -1260,17 +1232,19 @@ nsMsgDBFolder::AddMessageDispositionState(
 nsresult nsMsgDBFolder::AddMarkAllReadUndoAction(nsIMsgWindow* msgWindow,
                                                  nsMsgKey* thoseMarked,
                                                  uint32_t numMarked) {
-  RefPtr<nsMsgReadStateTxn> readStateTxn = new nsMsgReadStateTxn();
-  if (!readStateTxn) return NS_ERROR_OUT_OF_MEMORY;
+  NS_ENSURE_ARG_POINTER(msgWindow);
 
+  nsCOMPtr<nsITransactionManager> txnMgr;
+  msgWindow->GetTransactionManager(getter_AddRefs(txnMgr));
+  if (!txnMgr) {
+    return NS_ERROR_NOT_INITIALIZED;
+  }
+
+  RefPtr<nsMsgReadStateTxn> readStateTxn = new nsMsgReadStateTxn();
   nsresult rv = readStateTxn->Init(this, numMarked, thoseMarked);
   NS_ENSURE_SUCCESS(rv, rv);
 
   rv = readStateTxn->SetTransactionType(nsIMessenger::eMarkAllMsg);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  nsCOMPtr<nsITransactionManager> txnMgr;
-  rv = msgWindow->GetTransactionManager(getter_AddRefs(txnMgr));
   NS_ENSURE_SUCCESS(rv, rv);
 
   rv = txnMgr->DoTransaction(readStateTxn);
@@ -1481,6 +1455,10 @@ nsresult nsMsgDBFolder::StartNewOfflineMessage() {
 }
 
 nsresult nsMsgDBFolder::EndNewOfflineMessage(nsresult status) {
+  // Whatever happens, we want to unlock the folder.
+  auto guard = mozilla::MakeScopeExit(
+      [&] { ReleaseSemaphore(static_cast<nsIMsgFolder*>(this)); });
+
   nsMsgKey messageKey;
 
   nsresult rv1, rv2;
@@ -1537,11 +1515,9 @@ nsresult nsMsgDBFolder::EndNewOfflineMessage(nsresult status) {
         (messageSize - (uint32_t)curStorePos) >
             (uint32_t)m_numOfflineMsgLines) {
       mDatabase->MarkOffline(messageKey, false, nullptr);
-      // we should truncate the offline store at messageOffset
-      ReleaseSemaphore(static_cast<nsIMsgFolder*>(this));
       rv1 = rv2 = NS_OK;
       if (msgStore) {
-        // DiscardNewMessage now closes the stream all the time.
+        // DiscardNewMessage closes the stream.
         rv1 = msgStore->DiscardNewMessage(m_tempMessageStream, m_offlineHeader);
         m_tempMessageStream = nullptr;  // avoid accessing closed stream
       } else {
@@ -1731,13 +1707,10 @@ nsresult nsMsgDBFolder::HandleAutoCompactEvent(nsIMsgWindow* aWindow) {
           NotifyFolderEvent(kAboutToCompact);
 
           if (localExpungedBytes > 0 || offlineExpungedBytes > 0) {
-            nsCOMPtr<nsIMsgFolderCompactor> folderCompactor = do_CreateInstance(
-                "@mozilla.org/messenger/foldercompactor;1", &rv);
-            NS_ENSURE_SUCCESS(rv, rv);
             for (nsIMsgFolder* f : offlineFolderArray) {
               folderArray.AppendElement(f);
             }
-            rv = folderCompactor->CompactFolders(folderArray, nullptr, aWindow);
+            rv = AsyncCompactFolders(folderArray, nullptr, aWindow);
           }
         }
       }
@@ -1865,7 +1838,7 @@ nsMsgDBFolder::MatchOrChangeFilterDestination(nsIMsgFolder* newFolder,
 }
 
 NS_IMETHODIMP
-nsMsgDBFolder::GetDBTransferInfo(nsIDBFolderInfo** aTransferInfo) {
+nsMsgDBFolder::GetDBTransferInfo(nsIPropertyBag2** aTransferInfo) {
   nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
   nsCOMPtr<nsIMsgDatabase> db;
   GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo), getter_AddRefs(db));
@@ -1874,7 +1847,7 @@ nsMsgDBFolder::GetDBTransferInfo(nsIDBFolderInfo** aTransferInfo) {
 }
 
 NS_IMETHODIMP
-nsMsgDBFolder::SetDBTransferInfo(nsIDBFolderInfo* aTransferInfo) {
+nsMsgDBFolder::SetDBTransferInfo(nsIPropertyBag2* aTransferInfo) {
   NS_ENSURE_ARG(aTransferInfo);
   nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
   nsCOMPtr<nsIMsgDatabase> db;
@@ -2629,6 +2602,14 @@ NS_IMETHODIMP
 nsMsgDBFolder::GetURI(nsACString& name) {
   name = mURI;
   return NS_OK;
+}
+
+// Generic nsIMsgFolder implementation.
+nsCString nsIMsgFolder::URI() {
+  nsCString uri;
+  DebugOnly<nsresult> rv = GetURI(uri);
+  MOZ_ASSERT(NS_SUCCEEDED(rv));
+  return uri;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3914,13 +3895,6 @@ NS_IMETHODIMP nsMsgDBFolder::OnFlagChange(uint32_t flag) {
   nsCOMPtr<nsIDBFolderInfo> folderInfo;
   rv = GetDBFolderInfoAndDB(getter_AddRefs(folderInfo), getter_AddRefs(db));
   if (NS_SUCCEEDED(rv) && folderInfo) {
-#ifdef DEBUG_bienvenu1
-    nsString name;
-    rv = GetName(name);
-    NS_ASSERTION(Compare(name, kLocalizedTrashName) ||
-                     (mFlags & nsMsgFolderFlags::Trash),
-                 "lost trash flag");
-#endif
     folderInfo->SetFlags((int32_t)mFlags);
     if (db) db->Commit(nsMsgDBCommitType::kLargeCommit);
 

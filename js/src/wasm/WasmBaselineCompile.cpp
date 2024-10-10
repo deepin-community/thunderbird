@@ -3780,12 +3780,6 @@ bool BaseCompiler::emitEnd() {
         return false;
       }
       doReturn(ContinuationKind::Fallthrough);
-      // This is emitted here after `doReturn` to avoid being executed in the
-      // normal return path of a function, and instead only when a `delegate`
-      // jumps to it.
-      if (!emitBodyDelegateThrowPad()) {
-        return false;
-      }
       iter_.popEnd();
       MOZ_ASSERT(iter_.controlStackEmpty());
       return iter_.endFunction(iter_.end());
@@ -4107,9 +4101,6 @@ bool BaseCompiler::emitTryTable() {
   // Emit a landing pad that exceptions will jump into. Jump over it for now.
   Label skipLandingPad;
   masm.jump(&skipLandingPad);
-
-  // Bind the otherLabel so that delegate can target this
-  masm.bind(&controlItem().otherLabel);
 
   StackHeight prePadHeight = fr.stackHeight();
   uint32_t padOffset = masm.currentOffset();
@@ -4496,30 +4487,6 @@ bool BaseCompiler::emitCatchAll() {
   return pushBlockResults(exnResult);
 }
 
-bool BaseCompiler::emitBodyDelegateThrowPad() {
-  Control& block = controlItem();
-
-  // Only emit a landing pad if a `delegate` has generated a jump to here.
-  if (block.otherLabel.used()) {
-    StackHeight savedHeight = fr.stackHeight();
-    fr.setStackHeight(block.stackHeight);
-    masm.bind(&block.otherLabel);
-
-    // A try-delegate jumps immediately to its delegated try block, so we are
-    // responsible to unpack the exception and rethrow it.
-    RegRef exn;
-    RegRef tag;
-    consumePendingException(RegPtr(InstanceReg), &exn, &tag);
-    freeRef(tag);
-    if (!throwFrom(exn)) {
-      return false;
-    }
-    fr.setStackHeight(savedHeight);
-  }
-
-  return true;
-}
-
 bool BaseCompiler::emitDelegate() {
   uint32_t relativeDepth;
   ResultType resultType;
@@ -4529,46 +4496,16 @@ bool BaseCompiler::emitDelegate() {
     return false;
   }
 
-  Control& tryDelegate = controlItem();
-
-  // End the try branch like a plain catch block without exception ref handling.
-  if (deadCode_) {
-    fr.resetStackHeight(tryDelegate.stackHeight, resultType);
-    popValueStackTo(tryDelegate.stackSize);
-  } else {
-    MOZ_ASSERT(stk_.length() == tryDelegate.stackSize + resultType.length());
-    popBlockResults(resultType, tryDelegate.stackHeight,
-                    ContinuationKind::Jump);
-    freeResultRegisters(resultType);
-    masm.jump(&tryDelegate.label);
-    MOZ_ASSERT(!tryDelegate.deadOnArrival);
+  if (!endBlock(resultType)) {
+    return false;
   }
 
-  deadCode_ = tryDelegate.deadOnArrival;
-
-  if (deadCode_) {
+  if (controlItem().deadOnArrival) {
     return true;
   }
 
-  // Create an exception landing pad that immediately branches to the landing
-  // pad of the delegated try block.
-  masm.bind(&tryDelegate.otherLabel);
-
-  StackHeight savedHeight = fr.stackHeight();
-  fr.setStackHeight(tryDelegate.stackHeight);
-
   // Mark the end of the try body. This may insert a nop.
   finishTryNote(controlItem().tryNoteIndex);
-
-  // The landing pad begins at this point
-  TryNoteVector& tryNotes = masm.tryNotes();
-  TryNote& tryNote = tryNotes[controlItem().tryNoteIndex];
-  tryNote.setLandingPad(masm.currentOffset(), masm.framePushed());
-
-  // Store the Instance that was left in InstanceReg by the exception
-  // handling mechanism, that is this frame's Instance but with the exception
-  // filled in Instance::pendingException.
-  fr.storeInstancePtr(InstanceReg);
 
   // If the target block is a non-try block, skip over it and find the next
   // try block or the very last block (to re-throw out of the function).
@@ -4579,22 +4516,24 @@ bool BaseCompiler::emitDelegate() {
     relativeDepth++;
   }
   Control& target = controlItem(relativeDepth);
+  TryNoteVector& tryNotes = masm.tryNotes();
+  TryNote& delegateTryNote = tryNotes[controlItem().tryNoteIndex];
 
-  popBlockResults(ResultType::Empty(), target.stackHeight,
-                  ContinuationKind::Jump);
-  masm.jump(&target.otherLabel);
-
-  fr.setStackHeight(savedHeight);
-
-  // Where the try branch jumps to, if it's not dead.
-  if (tryDelegate.label.used()) {
-    masm.bind(&tryDelegate.label);
+  if (&target == &lastBlock) {
+    // A delegate targeting the function body block means that any exception
+    // in this try needs to be propagated to the caller function. We use the
+    // delegate code offset of `0` as that will be in the prologue and cannot
+    // have a try note.
+    delegateTryNote.setDelegate(0);
+  } else {
+    // Delegate to one byte inside the beginning of the target try note, as
+    // that's when matches hit. Try notes are guaranteed to not be empty either
+    // and so this will not miss either.
+    const TryNote& targetTryNote = tryNotes[target.tryNoteIndex];
+    delegateTryNote.setDelegate(targetTryNote.tryBodyBegin() + 1);
   }
 
-  captureResultRegisters(resultType);
-  bceSafe_ = tryDelegate.bceSafeOnExit;
-
-  return pushBlockResults(resultType);
+  return true;
 }
 
 bool BaseCompiler::endTryCatch(ResultType type) {
@@ -4634,7 +4573,6 @@ bool BaseCompiler::endTryCatch(ResultType type) {
   // Create landing pad for all catch handlers in this block.
   // When used for a catchless try block, this will generate a landing pad
   // with no handlers and only the fall-back rethrow.
-  masm.bind(&tryCatch.otherLabel);
 
   // The stack height also needs to be set not for a block result, but for the
   // entry to the exception handlers. This is reset again below for the join.
@@ -5375,23 +5313,17 @@ bool BaseCompiler::emitReturnCallRef() {
 
   uint32_t numArgs = funcType->args().length() + 1;
 
-  ResultType resultType(ResultType::Vector(funcType->results()));
-  StackResultsLoc results;
-  if (!pushStackResultsForCall(resultType, RegPtr(ABINonArgReg0), &results)) {
-    return false;
-  }
-
   FunctionCall baselineCall{};
   // State and realm are restored as needed by by callRef (really by
   // MacroAssembler::wasmCallRef).
   beginCall(baselineCall, UseABI::Wasm, RestoreRegisterStateAndRealm::False);
 
-  if (!emitCallArgs(funcType->args(), NormalCallResults(results), &baselineCall,
+  if (!emitCallArgs(funcType->args(), TailCallResults(*funcType), &baselineCall,
                     CalleeOnStack::True)) {
     return false;
   }
 
-  const Stk& callee = peek(results.count());
+  const Stk& callee = peek(0);
   returnCallRef(callee, baselineCall, funcType);
 
   MOZ_ASSERT(stackMapGenerator_.framePushedExcludingOutboundCallArgs.isSome());
@@ -7218,7 +7150,7 @@ bool BaseCompiler::emitGcArraySet(RegRef object, RegPtr data, RegI32 index,
   // shift immediate. If not we shift the index manually and then unshift
   // it after the store. We don't use an extra register for this because we
   // don't have any to spare on x86.
-  uint32_t shift = arrayType.elementType_.indexingShift();
+  uint32_t shift = arrayType.elementType().indexingShift();
   Scale scale;
   bool shiftedIndex = false;
   if (IsShiftInScaleRange(shift)) {
@@ -7235,9 +7167,9 @@ bool BaseCompiler::emitGcArraySet(RegRef object, RegPtr data, RegI32 index,
   });
 
   // Easy path if the field is a scalar
-  if (!arrayType.elementType_.isRefRepr()) {
+  if (!arrayType.elementType().isRefRepr()) {
     emitGcSetScalar<BaseIndex, NoNullCheck>(BaseIndex(data, index, scale, 0),
-                                            arrayType.elementType_, value);
+                                            arrayType.elementType(), value);
     return true;
   }
 
@@ -7379,9 +7311,9 @@ bool BaseCompiler::emitStructNew() {
 
   uint32_t fieldIndex = structType.fields_.length();
   while (fieldIndex-- > 0) {
-    const StructField& field = structType.fields_[fieldIndex];
+    const FieldType& field = structType.fields_[fieldIndex];
     StorageType type = field.type;
-    uint32_t fieldOffset = field.offset;
+    uint32_t fieldOffset = structType.fieldOffset(fieldIndex);
 
     bool areaIsOutline;
     uint32_t areaOffset;
@@ -7468,7 +7400,7 @@ bool BaseCompiler::emitStructGet(FieldWideningOp wideningOp) {
 
   // Decide whether we're accessing inline or outline, and at what offset
   StorageType fieldType = structType.fields_[fieldIndex].type;
-  uint32_t fieldOffset = structType.fields_[fieldIndex].offset;
+  uint32_t fieldOffset = structType.fieldOffset(fieldIndex);
 
   bool areaIsOutline;
   uint32_t areaOffset;
@@ -7509,11 +7441,11 @@ bool BaseCompiler::emitStructSet() {
   }
 
   const StructType& structType = (*moduleEnv_.types)[typeIndex].structType();
-  const StructField& structField = structType.fields_[fieldIndex];
+  const FieldType& structField = structType.fields_[fieldIndex];
 
   // Decide whether we're accessing inline or outline, and at what offset
   StorageType fieldType = structType.fields_[fieldIndex].type;
-  uint32_t fieldOffset = structType.fields_[fieldIndex].offset;
+  uint32_t fieldOffset = structType.fieldOffset(fieldIndex);
 
   bool areaIsOutline;
   uint32_t areaOffset;
@@ -7688,14 +7620,14 @@ bool BaseCompiler::emitArrayNew() {
 
   // Reserve this register early if we will need it so that it is not taken by
   // any register used in this function.
-  if (arrayType.elementType_.isRefRepr()) {
+  if (arrayType.elementType().isRefRepr()) {
     needPtr(RegPtr(PreBarrierReg));
   }
 
   RegRef object = needRef();
   RegI32 numElements = popI32();
   if (!emitArrayAlloc<false>(typeIndex, object, numElements,
-                             arrayType.elementType_.size())) {
+                             arrayType.elementType().size())) {
     return false;
   }
 
@@ -7708,7 +7640,7 @@ bool BaseCompiler::emitArrayNew() {
   numElements = emitGcArrayGetNumElements<NoNullCheck>(object);
 
   // Free the barrier reg after we've allocated all registers
-  if (arrayType.elementType_.isRefRepr()) {
+  if (arrayType.elementType().isRefRepr()) {
     freePtr(RegPtr(PreBarrierReg));
   }
 
@@ -7756,14 +7688,14 @@ bool BaseCompiler::emitArrayNewFixed() {
 
   // Reserve this register early if we will need it so that it is not taken by
   // any register used in this function.
-  bool avoidPreBarrierReg = arrayType.elementType_.isRefRepr();
+  bool avoidPreBarrierReg = arrayType.elementType().isRefRepr();
   if (avoidPreBarrierReg) {
     needPtr(RegPtr(PreBarrierReg));
   }
 
   RegRef object = needRef();
   if (!emitArrayAllocFixed<false>(typeIndex, object, numElements,
-                                  arrayType.elementType_.size())) {
+                                  arrayType.elementType().size())) {
     return false;
   }
 
@@ -7826,7 +7758,7 @@ bool BaseCompiler::emitArrayNewDefault() {
   RegRef object = needRef();
   RegI32 numElements = popI32();
   if (!emitArrayAlloc<true>(typeIndex, object, numElements,
-                            arrayType.elementType_.size())) {
+                            arrayType.elementType().size())) {
     return false;
   }
 
@@ -7943,14 +7875,14 @@ bool BaseCompiler::emitArrayGet(FieldWideningOp wideningOp) {
   RegPtr rdata = emitGcArrayGetData<NoNullCheck>(rp);
 
   // Load the value
-  uint32_t shift = arrayType.elementType_.indexingShift();
+  uint32_t shift = arrayType.elementType().indexingShift();
   if (IsShiftInScaleRange(shift)) {
     emitGcGet<BaseIndex, NoNullCheck>(
-        arrayType.elementType_, wideningOp,
+        arrayType.elementType(), wideningOp,
         BaseIndex(rdata, index, ShiftToScale(shift), 0));
   } else {
     masm.lshiftPtr(Imm32(shift), index);
-    emitGcGet<BaseIndex, NoNullCheck>(arrayType.elementType_, wideningOp,
+    emitGcGet<BaseIndex, NoNullCheck>(arrayType.elementType(), wideningOp,
                                       BaseIndex(rdata, index, TimesOne, 0));
   }
 
@@ -7976,7 +7908,7 @@ bool BaseCompiler::emitArraySet() {
 
   // Reserve this register early if we will need it so that it is not taken by
   // any register used in this function.
-  if (arrayType.elementType_.isRefRepr()) {
+  if (arrayType.elementType().isRefRepr()) {
     needPtr(RegPtr(PreBarrierReg));
   }
 
@@ -7995,7 +7927,7 @@ bool BaseCompiler::emitArraySet() {
   RegPtr rdata = emitGcArrayGetData<NoNullCheck>(rp);
 
   // Free the barrier reg after we've allocated all registers
-  if (arrayType.elementType_.isRefRepr()) {
+  if (arrayType.elementType().isRefRepr()) {
     freePtr(RegPtr(PreBarrierReg));
   }
 
@@ -8072,7 +8004,7 @@ bool BaseCompiler::emitArrayFill() {
 
   const TypeDef& typeDef = moduleEnv_.types->type(typeIndex);
   const ArrayType& arrayType = typeDef.arrayType();
-  StorageType elementType = arrayType.elementType_;
+  StorageType elementType = arrayType.elementType();
 
   // On x86 (32-bit), we are very short of registers, hence the code
   // generation scheme is less straightforward than it might otherwise be.
@@ -8231,7 +8163,7 @@ bool BaseCompiler::emitArrayFill() {
   // Currently `rdata` points at the start of the array data area.  Move it
   // forwards by `index` units so as to make it point at the start of the area
   // to be filled.
-  uint32_t shift = arrayType.elementType_.indexingShift();
+  uint32_t shift = arrayType.elementType().indexingShift();
   if (shift > 0) {
     masm.lshift32(Imm32(shift), index);
     // `index` is a 32 bit value, so we must zero-extend it to 64 bits before

@@ -3,6 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "nsIDBFolderInfo.h"
 #include "nsIPrefBranch.h"
 #include "nsIPrefService.h"
 #include "prlog.h"
@@ -38,15 +39,12 @@
 #include "nsNewsDownloader.h"
 #include "nsIStringBundle.h"
 #include "nsMsgI18N.h"
-#include "nsNativeCharsetUtils.h"
 
 #include "nsIMsgFolderNotificationService.h"
 #include "nsILoginInfo.h"
 #include "nsILoginManager.h"
-#include "nsEmbedCID.h"
 #include "mozilla/Components.h"
 #include "nsIInputStream.h"
-#include "nsMemory.h"
 #include "nsIURIMutator.h"
 
 #define kNewsSortOffset 9000
@@ -714,7 +712,7 @@ NS_IMETHODIMP nsMsgNewsFolder::CancelMessage(nsIMsgDBHdr* msgHdr,
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCString messageID;
-  rv = msgHdr->GetMessageId(getter_Copies(messageID));
+  rv = msgHdr->GetMessageId(messageID);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // we need to escape the message ID,
@@ -1420,31 +1418,22 @@ NS_IMETHODIMP nsMsgNewsFolder::GetLocalMsgStream(nsIMsgDBHdr* hdr,
   return GetMsgInputStream(hdr, stream);
 }
 
-NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadBegin(nsMsgKey key) {
+NS_IMETHODIMP nsMsgNewsFolder::NotifyArticleDownloaded(uint32_t articleNumber,
+                                                       nsACString const& data) {
   if (!m_downloadMessageForOfflineUse) {
     return NS_OK;
   }
-  nsresult rv = GetMessageHeader(key, getter_AddRefs(m_offlineHeader));
+  nsresult rv =
+      GetMessageHeader(articleNumber, getter_AddRefs(m_offlineHeader));
   NS_ENSURE_SUCCESS(rv, rv);
-  return StartNewOfflineMessage();  // Sets up m_tempMessageStream et al.
-}
-
-NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadedLine(nsACString const& line) {
-  nsresult rv = NS_OK;
+  StartNewOfflineMessage();  // Sets up m_tempMessageStream et al.
   if (m_tempMessageStream) {
-    m_numOfflineMsgLines++;
+    m_numOfflineMsgLines += data.CountChar('\n');
+
     uint32_t count = 0;
-    rv = m_tempMessageStream->Write(line.BeginReading(), line.Length(), &count);
-    NS_ENSURE_SUCCESS(rv, rv);
+    rv = m_tempMessageStream->Write(data.BeginReading(), data.Length(), &count);
     m_tempMessageStreamBytesWritten += count;
-  }
-
-  return rv;
-}
-
-NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadEnd(nsresult status) {
-  if (m_tempMessageStream) {
-    return EndNewOfflineMessage(status);
+    return EndNewOfflineMessage(rv);
   }
   return NS_OK;
 }
@@ -1492,10 +1481,7 @@ NS_IMETHODIMP nsMsgNewsFolder::GetMessageIdForKey(nsMsgKey key,
   nsCOMPtr<nsIMsgDBHdr> hdr;
   rv = mDatabase->GetMsgHdrForKey(key, getter_AddRefs(hdr));
   NS_ENSURE_SUCCESS(rv, rv);
-  nsCString id;
-  rv = hdr->GetMessageId(getter_Copies(id));
-  result.Assign(id);
-  return rv;
+  return hdr->GetMessageId(result);
 }
 
 NS_IMETHODIMP nsMsgNewsFolder::SetSortOrder(int32_t order) {

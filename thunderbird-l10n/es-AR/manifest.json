@@ -4,22 +4,21 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-es-AR@thunderbird.mozilla.org",
-      "strict_min_version": "125.0",
-      "strict_max_version": "125.*"
+      "strict_min_version": "128.0",
+      "strict_max_version": "128.*"
     }
   },
   "name": "Language: Español (AR) (Spanish, Argentina)",
   "description": "Thunderbird Language Pack for Español (AR) (es-AR) – Spanish, Argentina",
-  "version": "125.0.20240423.190814",
+  "version": "128.3.20240930.164946",
   "languages": {
     "es-AR": {
-      "version": "20240423200019",
+      "version": "20240930174217",
       "chrome_resources": {
         "alerts": "chrome/es-AR/locale/es-AR/alerts/",
         "autoconfig": "chrome/es-AR/locale/es-AR/autoconfig/",
         "branding": "chrome/es-AR/locale/branding/",
         "calendar": "chrome/es-AR/locale/es-AR/calendar/",
-        "chat": "chrome/es-AR/locale/es-AR/chat/",
         "communicator": "chrome/es-AR/locale/es-AR/communicator/",
         "devtools": "chrome/es-AR/locale/es-AR/devtools/client/",
         "devtools-shared": "chrome/es-AR/locale/es-AR/devtools/shared/",

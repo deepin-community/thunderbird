@@ -89,8 +89,8 @@ class WasmGcObject : public JSObject {
   // single contiguous area of memory:
   //
   // * If the object in question is a WasmStructObject, it is the value of
-  //   `wasm::StructField::offset` for the relevant field, without regard to
-  //   the inline/outline split.
+  //   `wasm::StructType::fieldOffset()` for the relevant field, without regard
+  //   to the inline/outline split.
   //
   // * If the object in question is a WasmArrayObject, then
   //   - u32 == UINT32_MAX (0xFFFF'FFFF) means the "length" property
@@ -407,6 +407,9 @@ class WasmStructObject : public WasmGcObject,
   // for assertional purposes only.
   inline uint8_t* fieldOffsetToAddress(StorageType fieldType,
                                        uint32_t fieldOffset);
+
+  // Gets JS Value of the structure field.
+  bool getField(JSContext* cx, uint32_t index, MutableHandle<Value> val);
 
   // JIT accessors
   static const uint32_t inlineDataAlignment = 8;

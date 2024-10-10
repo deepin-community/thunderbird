@@ -26,6 +26,9 @@ menu-help-get-help =
 menu-help-explore-features =
     .label = Tutustu ominaisuuksiin
     .accesskey = F
+menu-help-get-release-help =
+    .label = Apua { -brand-short-name }in käyttöön
+    .accesskey = ä
 menu-help-shortcuts =
     .label = Pikanäppäimet
     .accesskey = k
@@ -65,6 +68,12 @@ menu-quit =
 # This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Lopeta { -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Lopeta { -brand-full-name }
+           *[other] Lopeta { -brand-full-name }
+        }
 # Localization note: Do not translate unless your locale's keyboard layout
 # does not include this key, as it determines the keyboard shortcut for
 # shutting down the application.
@@ -133,6 +142,9 @@ menu-spaces-toolbar-button =
 
 ## File
 
+file-new-email-account =
+    .label = Sähköpostitili…
+    .accesskey = S
 file-new-newsgroup-account =
     .label = Keskusteluryhmätili…
     .accesskey = r

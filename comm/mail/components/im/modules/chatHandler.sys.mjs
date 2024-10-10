@@ -4,9 +4,7 @@
 
 import { IMServices } from "resource:///modules/IMServices.sys.mjs";
 
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
+import { MailServices } from "resource:///modules/MailServices.sys.mjs";
 
 export var allContacts = {};
 export var onlineContacts = {};
@@ -72,7 +70,7 @@ export var ChatCore = {
     Services.obs.notifyObservers(null, "chat-core-initialized");
     ChatCore._initializing = false;
   },
-  observe(aSubject, aTopic, aData) {
+  observe(aSubject, aTopic) {
     if (aTopic == "browser-request") {
       Services.ww.openWindow(
         null,

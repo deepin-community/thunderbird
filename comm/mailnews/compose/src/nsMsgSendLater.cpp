@@ -2,8 +2,10 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 #include "nsMsgSendLater.h"
 #include "nsIMsgMailNewsUrl.h"
+#include "nsMsgCompFields.h"
 #include "nsMsgCopy.h"
 #include "nsIMsgSend.h"
 #include "nsIPrefService.h"
@@ -19,7 +21,6 @@
 #include "nsNetUtil.h"
 #include "prlog.h"
 #include "prmem.h"
-#include "nsIMimeConverter.h"
 #include "nsComposeStrings.h"
 #include "nsIObserverService.h"
 #include "nsIMsgLocalMailFolder.h"
@@ -391,10 +392,10 @@ SendOperationListener::OnStartSending(const char* aMsgID, uint32_t aMsgSize) {
 }
 
 NS_IMETHODIMP
-SendOperationListener::OnProgress(const char* aMsgID, uint32_t aProgress,
-                                  uint32_t aProgressMax) {
+SendOperationListener::OnSendProgress(const char* aMsgID, uint32_t aProgress,
+                                      uint32_t aProgressMax) {
 #ifdef NS_DEBUG
-  printf("SendOperationListener::OnProgress()\n");
+  printf("SendOperationListener::OnSendProgress()\n");
 #endif
   return NS_OK;
 }
@@ -488,7 +489,7 @@ nsresult nsMsgSendLater::CompleteMailFileSend() {
   // Since we have already parsed all of the headers, we are simply going to
   // set the composition fields and move on.
   nsCString author;
-  mMessage->GetAuthor(getter_Copies(author));
+  mMessage->GetAuthor(author);
 
   nsMsgCompFields* fields = (nsMsgCompFields*)compFields.get();
 
@@ -610,12 +611,9 @@ nsresult nsMsgSendLater::StartNextMailFileSend(nsresult prevStatus) {
   m_headersSize = 0;
   PR_FREEIF(mLeftoverBuffer);
 
-  // Now, get our stream listener interface and plug it into the LoadMessage
-  // operation
-  rv = messageService->LoadMessage(messageURI,
-                                   static_cast<nsIStreamListener*>(this),
-                                   nullptr, nullptr, false);
-
+  nsCOMPtr<nsIURI> dummyNull;
+  rv = messageService->StreamMessage(messageURI, this, nullptr, nullptr, false,
+                                     ""_ns, false, getter_AddRefs(dummyNull));
   return rv;
 }
 

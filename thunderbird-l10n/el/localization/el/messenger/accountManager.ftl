@@ -3,16 +3,28 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 open-preferences-sidebar-button2 = Ρυθμίσεις { -brand-short-name }
-
 open-addons-sidebar-button = Πρόσθετα και θέματα
-
 account-action-add-newsgroup-account =
     .label = Προσθήκη λογαριασμού ομάδας συζητήσεων…
     .accesskey = θ
-
+account-tree-create-account-button = Νέος λογαριασμός
+account-tree-add-mail-account =
+    .label = Λογαριασμός email…
+    .accesskey = Λ
+account-tree-add-chat-account =
+    .label = Λογαριασμός συνομιλίας…
+    .accesskey = σ
+account-tree-add-feed-account =
+    .label = Λογαριασμός ροής…
+    .accesskey = ρ
+account-tree-add-newsgroup-account =
+    .label = Λογαριασμός ομάδας συζητήσεων…
+    .accesskey = δ
 server-change-restart-required = Η επανεκκίνηση είναι απαιτούμενη για την εφαρμογή του ονόματος διακομιστή ή αλλαγή ονόματος χρήστη.
-
 edit-vcard-dialog-accept-button = Αποθήκευση
     .accesskey = Α
 edit-vcard-dialog-cancel-button = Ακύρωση
     .accesskey = κ
+account-manager-server-default-icon =
+    .title = Προεπιλεγμένος λογαριασμός
+    .alt = Εικονίδιο-αστέρι
