@@ -1,0 +1,43 @@
+From 3138e9dad1c4f4b927059b604a851adfda1cd190 Mon Sep 17 00:00:00 2001
+From: Mingcong Bai <jeffbai@aosc.io>
+Date: Thu, 10 Oct 2024 21:02:20 +0800
+Subject: [PATCH 3/3] AOSCOS: Build Loongson SIMD EXtension (LSX) and Loongson
+ Advanced SIMD EXtension (LASX) optimized functions in libyuv.
+
+Signed-off-by: Kexy Biscuit <kexybiscuit@aosc.io>
+---
+ media/libyuv/libyuv/libyuv.gypi | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/media/libyuv/libyuv/libyuv.gypi b/media/libyuv/libyuv/libyuv.gypi
+index 48936aa7b0..de43d4a74a 100644
+--- a/media/libyuv/libyuv/libyuv.gypi
++++ b/media/libyuv/libyuv/libyuv.gypi
+@@ -37,6 +37,7 @@
+       'source/compare.cc',
+       'source/compare_common.cc',
+       'source/compare_gcc.cc',
++      'source/rotate_lsx.cc',
+       'source/compare_msa.cc',
+       'source/compare_neon.cc',
+       'source/compare_neon64.cc',
+@@ -64,6 +65,8 @@
+       'source/row_any.cc',
+       'source/row_common.cc',
+       'source/row_gcc.cc',
++      'source/row_lasx.cc',
++      'source/row_lsx.cc',
+       'source/row_msa.cc',
+       'source/row_neon.cc',
+       'source/row_neon64.cc',
+@@ -73,6 +76,7 @@
+       'source/scale_argb.cc',
+       'source/scale_common.cc',
+       'source/scale_gcc.cc',
++      'source/scale_lsx.cc',
+       'source/scale_msa.cc',
+       'source/scale_neon.cc',
+       'source/scale_neon64.cc',
+-- 
+2.47.0
+
