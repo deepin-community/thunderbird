@@ -121,9 +121,6 @@ ifeq (32,$(DEB_BUILD_ARCH_BITS))
 endif
 	echo 'mk_add_options MOZ_OBJDIR=$(CURDIR)/obj-thunderbird' >> mozconfig.thunderbird
 	echo 'ac_add_options --prefix=$(CURDIR)/debian/tmp/usr' >> mozconfig.default
-	# Rename the folder third_party/python/typing_extensions so it is not
-	# visible to the internal tool chain.
-	mv third_party/python/typing_extensions third_party/python/typing_extensions-old
 	# configure the various build settings for thunderbird
 	DIST= python3 ./mach -v configure
 
@@ -165,9 +162,6 @@ endif
 		install -D -m 644 ../$(THUNDERBIRD_L10N_BUILDDIR)/langpack-$${locale}@$${MOZ_LANGPACK_ID}.xpi $(CURDIR)/debian/thunderbird-l10n-$${lowercase_locale}/usr/lib/thunderbird/extensions/langpack-$${locale}@$${MOZ_LANGPACK_ID}.xpi ;\
 	done
 	dh_bash-completion
-	# And rename the folder back to the original name, needed if multiple
-	# builds in a row are done, dpkg would complain about unknown modifications.
-	mv third_party/python/typing_extensions-old third_party/python/typing_extensions
 
 override_dh_install-arch:
 	dh_install
