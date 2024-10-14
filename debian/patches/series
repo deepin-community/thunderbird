@@ -21,3 +21,4 @@ fixes/Install-vaapitest-v4l2test-only-when-build.patch
 porting-loong64/0001-AOSCOS-Add-missing-loongarch-lsx-code-for-libpng.patch
 porting-loong64/0002-AOSCOS-comm-botan-add-loongarch64-to-archinfo.patch
 porting-loong64/0003-AOSCOS-Build-Loongson-SIMD-EXtension-LSX-and-Loongso.patch
+porting-loong64/0004-UPSTREAM-Bug-1905842-update-libyuv-to-616bee5420b-r-.patch
