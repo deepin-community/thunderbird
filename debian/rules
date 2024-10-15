@@ -93,8 +93,18 @@ export CARGO_HOME=$(CURDIR)/debian/.cargo
 export MOZBUILD_STATE_PATH = $(CURDIR)/debian/.mozbuild
 export MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE=system
 
+ifeq (loong64, $(DEB_HOST_ARCH))
+	TARGET_PATCH = patch_loong64
+endif
+
+patch_loong64:
+	patch -p1 < debian/patches/porting-loong64/0004-UPSTREAM-Bug-1905842-update-libyuv-to-616bee5420b-r-.patch
+
 %:
 	dh $@
+
+override_dh_autoreconf: $(TARGET_PATCH)
+	dh_autoreconf
 
 build:
 	dh $@
