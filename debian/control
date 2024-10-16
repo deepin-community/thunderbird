@@ -65,6 +65,7 @@ Architecture: amd64 arm64 i386 mips64el ppc64el s390x ppc64 riscv64
 Depends:
  debianutils (>= 1.16),
  fontconfig,
+ libotr5t64,
  librnp0 (>= 0.17.0),
  psmisc,
  x11-utils | kdialog | zenity,
