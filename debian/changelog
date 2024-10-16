@@ -1,6 +1,7 @@
 thunderbird (1:128.3.0esr-1deepin1) unstable; urgency=medium
 
   * Sync LoongArch (loong64) patches.
+  * Drop unused libotr dependency.
 
  -- Mingcong Bai <baimingcong@uniontech.com>  Thu, 10 Oct 2024 11:18:35 +0800
 
