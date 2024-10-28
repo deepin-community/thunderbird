@@ -1,3 +1,9 @@
+thunderbird (1:128.3.0esr-1deepin2) unstable; urgency=medium
+
+  * Enable build for loong64.
+
+ -- Mingcong Bai <baimingcong@uniontech.com>  Mon, 28 Oct 2024 16:28:21 +0800
+
 thunderbird (1:128.3.0esr-1deepin1) unstable; urgency=medium
 
   * Sync LoongArch (loong64) patches.
