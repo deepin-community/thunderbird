@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Omhoog verplaatsen
     .accesskey = m
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Toevoegen
     .accesskey = T
-messenger-languages-window2 =
-    .title = { -brand-short-name }-taalinstellingen
 messenger-languages-dialog-title = { -brand-short-name }-taalinstellingen
 messenger-languages-description = { -brand-short-name } zal de eerste taal als uw standaardtaal weergeven en zo nodig alternatieve talen weergeven in de volgorde waarin ze verschijnen.
 messenger-languages-search = Meer talen zoeken…

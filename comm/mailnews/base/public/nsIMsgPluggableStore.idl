@@ -195,26 +195,13 @@ interface nsIMsgPluggableStore : nsISupports {
    *                  and must be set as a string property "storeToken" on the
    *                  message hdr by the store when the message is added
    *                  to the store.
+   * @param aMaxAllowedSize An optional maximum number of bytes that
+   *                        will be returned by the stream.
+   *                        If parameter is zero, stream all available data.
    */
   nsIInputStream getMsgInputStream(in nsIMsgFolder aFolder,
-                                   in ACString aMsgToken);
-
-  /**
-   * This is a hack to expose to allow JsAccount folders to implement a
-   * working getLocalMsgStream().
-   * It just provides a way to construct a SlicedInputStream from JS.
-   * It'll be removed once Bug 1733849 is complete.
-   *
-   * @param inStream The stream providing the data to be sliced.
-   *                 Should not be read after calling this function.
-   * @param start Where slice begins, from current position of inStream.
-   * @param length The size of the slice.
-   *
-   * @return A new input stream which produces the data slice when read from.
-   */
-  nsIInputStream sliceStream(in nsIInputStream inStream,
-                             in unsigned long long start,
-                             in unsigned long length);
+                                   in ACString aMsgToken,
+                                   in unsigned long aMaxAllowedSize);
 
   /**
    * Delete the passed in messages. These message should all be in the
@@ -441,12 +428,23 @@ interface nsIStoreScanListener : nsIStreamListener
   void onStartScan();
 
   /**
-   * Called just before onStartRequest, to communicate the store token of
+   * Called just before onStartRequest, to communicate details of
    * the message within the msgStore.
    * After this, the standard nsIStreamListener callbacks are called to
    * transfer this single message.
+   *
+   * The values passed out via this callback are:
+   * storeToken - The token used to refer to the message in the store.
+   * envAddr - The envelope sender, if known (else empty string).
+   * envDate - The envelope timestamp, if known (else 0).
+   *
+   * Traditionally, envAddr and envDate are stored in the "From " line of
+   * mbox files. Other store types may not supply this data.
+   * It's not critical but can be useful filler data in edge cases.
+   * For example, if a malformed message has no "Date:" header, using the
+   * date it was received/written into the mbox is better than nothing.
    */
-  void onStartMessage(in AUTF8String storeToken);
+  void onStartMessage(in AUTF8String storeToken, in AUTF8String envAddr, in PRTime envDate);
 
   /**
    * Called when the scan operation as a whole is complete.

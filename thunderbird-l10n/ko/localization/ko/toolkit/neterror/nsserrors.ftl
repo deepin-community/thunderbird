@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = SSL 프로토콜을 사용할 수 없어서 보안 연결을 할 수 없습니다.
 psmerr-ssl2-disabled = 보안에 취약한 오래된 SSL 프로토콜을 사용하고 있어서 보안 연결을 할 수 없습니다.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     유효하지 않은 인증서를 받았습니다. 서버 관리자등에게 연락해서 다음 정보를 제공하세요:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = 서버가 유효하지 않은 정�
 mozilla-pkix-error-empty-issuer-name = 서버가 구별 이름으로 발급자가 비어있는 인증서를 사용했습니다.
 mozilla-pkix-error-additional-policy-constraint-failed = 이 인증서 검증이 추가적인 제한 정책에서 실패했습니다.
 mozilla-pkix-error-self-signed-cert = 자기 스스로 서명하였으므로 인증서를 신뢰할 수 없습니다.
+mozilla-pkix-error-issuer-no-longer-trusted = 인증서를 발급한 인증 기관은 인증서를 발급하기 전에 불신임되었습니다.
 xp-java-remove-principal-error = 대표를 제거할 수 없음
 xp-java-delete-privilege-error = 특별 권한을 삭제할 수 없음
 xp-java-cert-not-exists-error = 이 대표는 인증서를 가지고 있지 않음

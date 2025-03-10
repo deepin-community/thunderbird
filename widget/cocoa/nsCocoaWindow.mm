@@ -120,9 +120,8 @@ static void RollUpPopups(nsIRollupListener::AllowAnimations aAllowAnimations =
 }
 
 nsCocoaWindow::nsCocoaWindow()
-    : mParent(nullptr),
-      mAncestorLink(nullptr),
-      mWindow(nil),
+    : mWindow(nil),
+      mClosedRetainedWindow(nil),
       mDelegate(nil),
       mPopupContentView(nil),
       mFullscreenTransitionAnimation(nil),
@@ -164,11 +163,22 @@ void nsCocoaWindow::DestroyNativeWindow() {
   // window will definitely no longer be shown.
   Show(false);
 
+  [mWindow removeTrackingArea];
+
   [mWindow releaseJSObjects];
   // We want to unhook the delegate here because we don't want events
   // sent to it after this object has been destroyed.
   mWindow.delegate = nil;
+
+  // Closing the window will also release it. Our second reference will
+  // keep it alive through our destructor. Release any reference we might
+  // have from an earlier call to DestroyNativeWindow, then create a new
+  // one.
+  [mClosedRetainedWindow autorelease];
+  mClosedRetainedWindow = [mWindow retain];
+  MOZ_ASSERT(mWindow.releasedWhenClosed);
   [mWindow close];
+
   mWindow = nil;
   [mDelegate autorelease];
 
@@ -178,29 +188,13 @@ void nsCocoaWindow::DestroyNativeWindow() {
 nsCocoaWindow::~nsCocoaWindow() {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
-  // Notify the children that we're gone.  Popup windows (e.g. tooltips) can
-  // have nsChildView children.  'kid' is an nsChildView object if and only if
-  // its 'type' is 'WindowType::Child'.
-  // childView->ResetParent() can change our list of children while it's
-  // being iterated, so the way we iterate the list must allow for this.
-  for (nsIWidget* kid = mLastChild; kid;) {
-    WindowType kidType = kid->GetWindowType();
-    if (kidType == WindowType::Child) {
-      nsChildView* childView = static_cast<nsChildView*>(kid);
-      kid = kid->GetPrevSibling();
-      childView->ResetParent();
-    } else {
-      nsCocoaWindow* childWindow = static_cast<nsCocoaWindow*>(kid);
-      childWindow->mParent = nullptr;
-      childWindow->mAncestorLink = mAncestorLink;
-      kid = kid->GetPrevSibling();
-    }
-  }
-
+  RemoveAllChildren();
   if (mWindow && mWindowMadeHere) {
     CancelAllTransitions();
     DestroyNativeWindow();
   }
+
+  [mClosedRetainedWindow release];
 
   NS_IF_RELEASE(mPopupContentView);
   NS_OBJC_END_TRY_IGNORE_BLOCK;
@@ -225,14 +219,9 @@ static NSScreen* FindTargetScreenForRect(const DesktopIntRect& aRect) {
   return targetScreen;
 }
 
-DesktopToLayoutDeviceScale ParentBackingScaleFactor(nsIWidget* aParent,
-                                                    NSView* aParentView) {
+DesktopToLayoutDeviceScale ParentBackingScaleFactor(nsIWidget* aParent) {
   if (aParent) {
     return aParent->GetDesktopToDeviceScale();
-  }
-  NSWindow* parentWindow = [aParentView window];
-  if (parentWindow) {
-    return DesktopToLayoutDeviceScale(parentWindow.backingScaleFactor);
   }
   return DesktopToLayoutDeviceScale(1.0);
 }
@@ -240,41 +229,20 @@ DesktopToLayoutDeviceScale ParentBackingScaleFactor(nsIWidget* aParent,
 // Returns the screen rectangle for the given widget.
 // Child widgets are positioned relative to this rectangle.
 // Exactly one of the arguments must be non-null.
-static DesktopRect GetWidgetScreenRectForChildren(nsIWidget* aWidget,
-                                                  NSView* aView) {
-  if (aWidget) {
-    mozilla::DesktopToLayoutDeviceScale scale =
-        aWidget->GetDesktopToDeviceScale();
-    if (aWidget->GetWindowType() == WindowType::Child) {
-      return aWidget->GetScreenBounds() / scale;
-    }
-    return aWidget->GetClientBounds() / scale;
+static DesktopRect GetWidgetScreenRectForChildren(nsIWidget* aWidget) {
+  mozilla::DesktopToLayoutDeviceScale scale =
+      aWidget->GetDesktopToDeviceScale();
+  if (aWidget->GetWindowType() == WindowType::Child) {
+    return aWidget->GetScreenBounds() / scale;
   }
-
-  MOZ_RELEASE_ASSERT(aView);
-
-  // 1. Transform the view rect into window coords.
-  // The returned rect is in "origin bottom-left" coordinates.
-  NSRect rectInWindowCoordinatesOBL = [aView convertRect:[aView bounds]
-                                                  toView:nil];
-
-  // 2. Turn the window-coord rect into screen coords, still origin bottom-left.
-  NSRect rectInScreenCoordinatesOBL =
-      [[aView window] convertRectToScreen:rectInWindowCoordinatesOBL];
-
-  // 3. Convert the NSRect to a DesktopRect. This will convert to coordinates
-  // with the origin in the top left corner of the primary screen.
-  return DesktopRect(
-      nsCocoaUtils::CocoaRectToGeckoRect(rectInScreenCoordinatesOBL));
+  return aWidget->GetClientBounds() / scale;
 }
 
 // aRect here is specified in desktop pixels
 //
-// For child windows (where either aParent or aNativeParent is non-null),
-// aRect.{x,y} are offsets from the origin of the parent window and not an
-// absolute position.
-nsresult nsCocoaWindow::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
-                               const DesktopIntRect& aRect,
+// For child windows aRect.{x,y} are offsets from the origin of the parent
+// window and not an absolute position.
+nsresult nsCocoaWindow::Create(nsIWidget* aParent, const DesktopIntRect& aRect,
                                widget::InitData* aInitData) {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
@@ -291,8 +259,6 @@ nsresult nsCocoaWindow::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
 
   Inherited::BaseCreate(aParent, aInitData);
 
-  mParent = aParent;
-  mAncestorLink = aParent;
   mAlwaysOnTop = aInitData->mAlwaysOnTop;
   mIsAlert = aInitData->mIsAlert;
 
@@ -302,9 +268,8 @@ nsresult nsCocoaWindow::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
   DesktopIntPoint parentOrigin;
 
   // Do we have a parent widget?
-  if (aParent || aNativeParent) {
-    DesktopRect parentDesktopRect =
-        GetWidgetScreenRectForChildren(aParent, (NSView*)aNativeParent);
+  if (aParent) {
+    DesktopRect parentDesktopRect = GetWidgetScreenRectForChildren(aParent);
     parentOrigin = gfx::RoundedToInt(parentDesktopRect.TopLeft());
   }
 
@@ -330,12 +295,12 @@ nsresult nsCocoaWindow::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
   NS_OBJC_END_TRY_BLOCK_RETURN(NS_ERROR_FAILURE);
 }
 
-nsresult nsCocoaWindow::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
+nsresult nsCocoaWindow::Create(nsIWidget* aParent,
                                const LayoutDeviceIntRect& aRect,
                                widget::InitData* aInitData) {
-  DesktopIntRect desktopRect = RoundedToInt(
-      aRect / ParentBackingScaleFactor(aParent, (NSView*)aNativeParent));
-  return Create(aParent, aNativeParent, desktopRect, aInitData);
+  DesktopIntRect desktopRect =
+      RoundedToInt(aRect / ParentBackingScaleFactor(aParent));
+  return Create(aParent, desktopRect, aInitData);
 }
 
 static unsigned int WindowMaskForBorderStyle(BorderStyle aBorderStyle) {
@@ -524,6 +489,8 @@ nsresult nsCocoaWindow::CreateNativeWindow(const NSRect& aRect,
   // switch from a non-CA window to a CA-window in the middle.
   mWindow.contentView.wantsLayer = YES;
 
+  [mWindow createTrackingArea];
+
   // Make sure the window starts out not draggable by the background.
   // We will turn it on as necessary.
   mWindow.movableByWindowBackground = NO;
@@ -547,8 +514,7 @@ nsresult nsCocoaWindow::CreatePopupContentView(const LayoutDeviceIntRect& aRect,
   NS_ADDREF(mPopupContentView);
 
   nsIWidget* thisAsWidget = static_cast<nsIWidget*>(this);
-  nsresult rv =
-      mPopupContentView->Create(thisAsWidget, nullptr, aRect, aInitData);
+  nsresult rv = mPopupContentView->Create(thisAsWidget, aRect, aInitData);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;
   }
@@ -580,20 +546,14 @@ void nsCocoaWindow::Destroy() {
   // (Bug 891424)
   Show(false);
 
-  if (mPopupContentView) mPopupContentView->Destroy();
+  if (mPopupContentView) {
+    mPopupContentView->Destroy();
+  }
 
   if (mFullscreenTransitionAnimation) {
     [mFullscreenTransitionAnimation stopAnimation];
     ReleaseFullscreenTransitionAnimation();
   }
-
-  nsBaseWidget::Destroy();
-  // nsBaseWidget::Destroy() calls GetParent()->RemoveChild(this). But we
-  // don't implement GetParent(), so we need to do the equivalent here.
-  if (mParent) {
-    mParent->RemoveChild(this);
-  }
-  nsBaseWidget::OnDestroy();
 
   if (mInFullScreenMode && !mInNativeFullScreenMode) {
     // Keep these calls balanced for emulated fullscreen.
@@ -608,6 +568,11 @@ void nsCocoaWindow::Destroy() {
     CancelAllTransitions();
     DestroyNativeWindow();
   }
+
+  nsCOMPtr<nsIWidget> kungFuDeathGrip(this);
+
+  nsBaseWidget::OnDestroy();
+  nsBaseWidget::Destroy();
 }
 
 void* nsCocoaWindow::GetNativeData(uint32_t aDataType) {
@@ -703,8 +668,12 @@ void nsCocoaWindow::SetModal(bool aModal) {
   // incompatible with the modal event loop in AppWindow::ShowModal() (each of
   // these event loops is "exclusive", and can't run at the same time as other
   // (similar) event loops).
-  for (auto* ancestor = static_cast<nsCocoaWindow*>(mAncestorLink); ancestor;
-       ancestor = static_cast<nsCocoaWindow*>(ancestor->mParent)) {
+  for (auto* ancestorWidget = mParent; ancestorWidget;
+       ancestorWidget = ancestorWidget->GetParent()) {
+    if (ancestorWidget->GetWindowType() == WindowType::Child) {
+      continue;
+    }
+    auto* ancestor = static_cast<nsCocoaWindow*>(ancestorWidget);
     const bool changed = aModal ? ancestor->mNumModalDescendants++ == 0
                                 : --ancestor->mNumModalDescendants == 0;
     NS_ASSERTION(ancestor->mNumModalDescendants >= 0,
@@ -799,7 +768,6 @@ void nsCocoaWindow::Show(bool aState) {
         [mWindow orderFront:nil];
       }
       NS_OBJC_END_TRY_IGNORE_BLOCK;
-      SendSetZLevelEvent();
       // If our popup window is a non-native context menu, tell the OS (and
       // other programs) that a menu has opened.  This is how the OS knows to
       // close other programs' context menus when ours open.
@@ -848,7 +816,6 @@ void nsCocoaWindow::Show(bool aState) {
         [mWindow makeKeyAndOrderFront:nil];
       }
       NS_OBJC_END_TRY_IGNORE_BLOCK;
-      SendSetZLevelEvent();
     }
     SetSupportsNativeFullscreen(savedValueForSupportsNativeFullscreen);
   } else {
@@ -904,8 +871,8 @@ WindowRenderer* nsCocoaWindow::GetWindowRenderer() {
 TransparencyMode nsCocoaWindow::GetTransparencyMode() {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
-  return !mWindow || mWindow.isOpaque ? TransparencyMode::Opaque
-                                      : TransparencyMode::Transparent;
+  return mWindow.isOpaque ? TransparencyMode::Opaque
+                          : TransparencyMode::Transparent;
 
   NS_OBJC_END_TRY_BLOCK_RETURN(TransparencyMode::Opaque);
 }
@@ -941,7 +908,7 @@ void nsCocoaWindow::ConstrainPosition(DesktopIntPoint& aPoint) {
     return;
   }
 
-  nsIntRect screenBounds;
+  DesktopIntRect screenRect;
 
   int32_t width, height;
 
@@ -959,22 +926,11 @@ void nsCocoaWindow::ConstrainPosition(DesktopIntPoint& aPoint) {
                              getter_AddRefs(screen));
 
     if (screen) {
-      screen->GetRectDisplayPix(&(screenBounds.x), &(screenBounds.y),
-                                &(screenBounds.width), &(screenBounds.height));
+      screenRect = screen->GetRectDisplayPix();
     }
   }
 
-  if (aPoint.x < screenBounds.x) {
-    aPoint.x = screenBounds.x;
-  } else if (aPoint.x >= screenBounds.x + screenBounds.width - width) {
-    aPoint.x = screenBounds.x + screenBounds.width - width;
-  }
-
-  if (aPoint.y < screenBounds.y) {
-    aPoint.y = screenBounds.y;
-  } else if (aPoint.y >= screenBounds.y + screenBounds.height - height) {
-    aPoint.y = screenBounds.y + screenBounds.height - height;
-  }
+  aPoint = ConstrainPositionToBounds(aPoint, {width, height}, screenRect);
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
 }
@@ -1288,10 +1244,11 @@ void nsCocoaWindow::HideWindowChrome(bool aShouldHide) {
 
   // Recreate the window with the right border style.
   NSRect frameRect = mWindow.frame;
+  BOOL restorable = mWindow.restorable;
   DestroyNativeWindow();
   nsresult rv = CreateNativeWindow(
       frameRect, aShouldHide ? BorderStyle::None : mBorderStyle, true,
-      mWindow.restorable);
+      restorable);
   NS_ENSURE_SUCCESS_VOID(rv);
 
   // Re-import state.
@@ -1547,6 +1504,11 @@ void nsCocoaWindow::ProcessTransitions() {
 
   mInProcessTransitions = true;
 
+  if (mProcessTransitionsPending) {
+    mProcessTransitionsPending->Cancel();
+    mProcessTransitionsPending = nullptr;
+  }
+
   // Start a loop that will continue as long as we have transitions to process
   // and we aren't waiting on an asynchronous transition to complete. Any
   // transition that starts something async will `continue` this loop to exit.
@@ -1726,6 +1688,10 @@ void nsCocoaWindow::CancelAllTransitions() {
   // ProcessTransitions().
   mTransitionCurrent.reset();
   mIsTransitionCurrentAdded = false;
+  if (mProcessTransitionsPending) {
+    mProcessTransitionsPending->Cancel();
+    mProcessTransitionsPending = nullptr;
+  }
   std::queue<TransitionType>().swap(mTransitionsPending);
 }
 
@@ -1751,9 +1717,11 @@ void nsCocoaWindow::FinishCurrentTransitionIfMatching(
     // ProcessTransitions on the next event loop. Doing this will ensure that
     // any async native transition methods we call (like toggleFullScreen) will
     // succeed.
-    if (!mTransitionsPending.empty()) {
-      NS_DispatchToCurrentThread(NewRunnableMethod(
-          "FinishCurrentTransition", this, &nsCocoaWindow::ProcessTransitions));
+    if (!mTransitionsPending.empty() && !mProcessTransitionsPending) {
+      mProcessTransitionsPending = NS_NewCancelableRunnableFunction(
+          "ProcessTransitionsPending",
+          [self = RefPtr{this}] { self->ProcessTransitions(); });
+      NS_DispatchToCurrentThread(mProcessTransitionsPending);
     }
   }
 }
@@ -1970,9 +1938,8 @@ CGFloat nsCocoaWindow::BackingScaleFactor() {
 void nsCocoaWindow::BackingScaleFactorChanged() {
   CGFloat newScale = GetBackingScaleFactor(mWindow);
 
-  // ignore notification if it hasn't really changed (or maybe we have
-  // disabled HiDPI mode via prefs)
-  if (mBackingScaleFactor == newScale) {
+  // Ignore notification if it hasn't really changed
+  if (BackingScaleFactor() == newScale) {
     return;
   }
 
@@ -2043,15 +2010,6 @@ bool nsCocoaWindow::DragEvent(unsigned int aMessage,
                               mozilla::gfx::Point aMouseGlobal,
                               UInt16 aKeyModifiers) {
   return false;
-}
-
-void nsCocoaWindow::SendSetZLevelEvent() {
-  if (mWidgetListener) {
-    nsWindowZ placement = nsWindowZTop;
-    nsCOMPtr<nsIWidget> actualBelow;
-    mWidgetListener->ZLevelChanged(true, &placement, nullptr,
-                                   getter_AddRefs(actualBelow));
-  }
 }
 
 // Invokes callback and ProcessEvent methods on Event Listener object
@@ -2187,7 +2145,9 @@ void nsCocoaWindow::SetMenuBar(RefPtr<nsMenuBarX>&& aMenuBar) {
   if (mMenuBar && ((!gSomeMenuBarPainted &&
                     nsMenuUtilsX::GetHiddenWindowMenuBar() == mMenuBar) ||
                    mWindow.isMainWindow)) {
-    mMenuBar->Paint();
+    // We do an async paint in order to prevent crashes when macOS is actively
+    // enumerating the menu items in `NSApp.mainMenu`.
+    mMenuBar->PaintAsync();
   }
 }
 
@@ -2204,7 +2164,6 @@ void nsCocoaWindow::SetFocus(Raise aRaise,
       [mWindow deminiaturize:nil];
     }
     [mWindow makeKeyAndOrderFront:nil];
-    SendSetZLevelEvent();
   }
 }
 
@@ -2493,18 +2452,7 @@ void nsCocoaWindow::SetDrawsTitle(bool aDrawTitle) {
   NS_OBJC_END_TRY_IGNORE_BLOCK;
 }
 
-nsresult nsCocoaWindow::SetNonClientMargins(
-    const LayoutDeviceIntMargin& margins) {
-  NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
-
-  SetDrawsInTitlebar(margins.top == 0);
-
-  return NS_OK;
-
-  NS_OBJC_END_TRY_BLOCK_RETURN(NS_ERROR_FAILURE);
-}
-
-void nsCocoaWindow::SetDrawsInTitlebar(bool aState) {
+void nsCocoaWindow::SetCustomTitlebar(bool aState) {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
   if (mWindow) {
@@ -2675,7 +2623,9 @@ already_AddRefed<nsIWidget> nsIWidget::CreateChildWindow() {
   NS_ASSERTION(geckoWidget, "Window delegate not returning a gecko widget!");
 
   if (nsMenuBarX* geckoMenuBar = geckoWidget->GetMenuBar()) {
-    geckoMenuBar->Paint();
+    // We do an async paint in order to prevent crashes when macOS is actively
+    // enumerating the menu items in `NSApp.mainMenu`.
+    geckoMenuBar->PaintAsync();
   } else {
     // sometimes we don't have a native application menu early in launching
     if (!sApplicationMenu) {
@@ -2766,9 +2716,6 @@ void nsCocoaWindow::CocoaWindowDidResize() {
 }
 
 - (void)windowDidResize:(NSNotification*)aNotification {
-  BaseWindow* window = [aNotification object];
-  [window updateTrackingArea];
-
   if (!mGeckoWindow) return;
 
   mGeckoWindow->CocoaWindowDidResize();
@@ -2793,14 +2740,9 @@ void nsCocoaWindow::CocoaWindowDidResize() {
   // To work around this, we check for a backing scale mismatch when we
   // receive a windowDidChangeScreen notification, as we will receive this
   // even if Cocoa was already treating the zero-size window as having
-  // Retina backing scale.
-  NSWindow* window = (NSWindow*)[aNotification object];
-  if ([window respondsToSelector:@selector(backingScaleFactor)]) {
-    if (GetBackingScaleFactor(window) != mGeckoWindow->BackingScaleFactor()) {
-      mGeckoWindow->BackingScaleFactorChanged();
-    }
-  }
-
+  // Retina backing scale. Note that BackingScaleFactorChanged() bails early
+  // if the scale factor did in fact not change.
+  mGeckoWindow->BackingScaleFactorChanged();
   mGeckoWindow->ReportMoveEvent();
 }
 
@@ -2868,6 +2810,37 @@ void nsCocoaWindow::CocoaWindowDidResize() {
   mGeckoWindow->CocoaWindowDidEnterFullscreen(false);
 }
 
+- (void)windowDidFailToEnterFullScreen:(NSNotification*)notification {
+  if (!mGeckoWindow) {
+    return;
+  }
+
+  MOZ_ASSERT((mGeckoWindow->GetCocoaWindow().styleMask &
+              NSWindowStyleMaskFullScreen) == 0);
+  MOZ_ASSERT(mGeckoWindow->SizeMode() == nsSizeMode_Fullscreen);
+
+  // We're in a strange situation. We've told DOM that we are going to
+  // fullscreen by changing our size mode, and therefore the window
+  // content is what we would show if we were properly in fullscreen.
+  // But the window is actually in a windowed style. We have to do
+  // several things:
+  // 1) Clear sWindowInNativeTransition and mTransitionCurrent, both set
+  //    when we started the fullscreen transition.
+  // 2) Change our size mode to windowed.
+  // Conveniently, we can do these things by pretending we just arrived
+  // at windowed mode, and all will be sorted out.
+  mGeckoWindow->CocoaWindowDidEnterFullscreen(false);
+}
+
+- (void)windowDidFailToExitFullScreen:(NSNotification*)notification {
+  if (!mGeckoWindow) {
+    return;
+  }
+  // Similarly to windowDidFailToEnterFullScreen, we can get the right
+  // result by pretending we just entered fullscreen.
+  mGeckoWindow->CocoaWindowDidEnterFullscreen(true);
+}
+
 - (void)windowDidBecomeMain:(NSNotification*)aNotification {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
@@ -2901,9 +2874,9 @@ void nsCocoaWindow::CocoaWindowDidResize() {
   RefPtr<nsMenuBarX> hiddenWindowMenuBar =
       nsMenuUtilsX::GetHiddenWindowMenuBar();
   if (hiddenWindowMenuBar) {
-    // printf("painting hidden window menu bar due to window losing main
-    // status\n");
-    hiddenWindowMenuBar->Paint();
+    // We do an async paint in order to prevent crashes when macOS is actively
+    // enumerating the menu items in `NSApp.mainMenu`.
+    hiddenWindowMenuBar->PaintAsync();
   }
 
   NSWindow* window = [aNotification object];
@@ -2993,15 +2966,7 @@ void nsCocoaWindow::CocoaWindowDidResize() {
 - (void)windowDidChangeBackingProperties:(NSNotification*)aNotification {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
-  NSWindow* window = (NSWindow*)[aNotification object];
-
-  if ([window respondsToSelector:@selector(backingScaleFactor)]) {
-    CGFloat oldFactor = [[[aNotification userInfo]
-        objectForKey:@"NSBackingPropertyOldScaleFactorKey"] doubleValue];
-    if (window.backingScaleFactor != oldFactor) {
-      mGeckoWindow->BackingScaleFactorChanged();
-    }
-  }
+  mGeckoWindow->BackingScaleFactorChanged();
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
 }
@@ -3105,7 +3070,6 @@ static NSMutableSet* gSwizzledFrameViewClasses = nil;
 @end
 
 @interface BaseWindow (Private)
-- (void)removeTrackingArea;
 - (void)cursorUpdated:(NSEvent*)aEvent;
 - (void)reflowTitlebarElements;
 @end
@@ -3128,9 +3092,9 @@ static NSMutableSet* gSwizzledFrameViewClasses = nil;
     }
   }
 
-  static IMP our_closeButtonOrigin = class_getMethodImplementation(
+  MOZ_RUNINIT static IMP our_closeButtonOrigin = class_getMethodImplementation(
       [NSView class], @selector(FrameView__closeButtonOrigin));
-  static IMP our_titlebarHeight = class_getMethodImplementation(
+  MOZ_RUNINIT static IMP our_titlebarHeight = class_getMethodImplementation(
       [NSView class], @selector(FrameView__titlebarHeight));
 
   if (![gSwizzledFrameViewClasses containsObject:frameViewClass]) {
@@ -3174,12 +3138,12 @@ static NSMutableSet* gSwizzledFrameViewClasses = nil;
   mState = nil;
   mDisabledNeedsDisplay = NO;
   mTrackingArea = nil;
+  mViewWithTrackingArea = nil;
   mDirtyRect = NSZeroRect;
   mBeingShown = NO;
   mDrawTitle = NO;
   mTouchBar = nil;
   mIsAnimationSuppressed = NO;
-  [self updateTrackingArea];
 
   return self;
 }
@@ -3275,7 +3239,6 @@ static NSImage* GetMenuMaskImage() {
 
 - (void)dealloc {
   [mTouchBar release];
-  [self removeTrackingArea];
   ChildViewMouseTracker::OnDestroyWindow(self);
   [super dealloc];
 }
@@ -3386,25 +3349,26 @@ static const NSString* kStateWantsTitleDrawn = @"wantsTitleDrawn";
 }
 
 - (void)removeTrackingArea {
-  if (mTrackingArea) {
-    [self.trackingAreaView removeTrackingArea:mTrackingArea];
-    [mTrackingArea release];
-    mTrackingArea = nil;
-  }
+  [mViewWithTrackingArea removeTrackingArea:mTrackingArea];
+
+  [mTrackingArea release];
+  mTrackingArea = nil;
+
+  [mViewWithTrackingArea release];
+  mViewWithTrackingArea = nil;
 }
 
-- (void)updateTrackingArea {
-  [self removeTrackingArea];
-
-  NSView* view = self.trackingAreaView;
-  const NSTrackingAreaOptions options = NSTrackingMouseEnteredAndExited |
-                                        NSTrackingMouseMoved |
-                                        NSTrackingActiveAlways;
-  mTrackingArea = [[NSTrackingArea alloc] initWithRect:[view bounds]
-                                               options:options
-                                                 owner:self
-                                              userInfo:nil];
-  [view addTrackingArea:mTrackingArea];
+- (void)createTrackingArea {
+  mViewWithTrackingArea = [self.trackingAreaView retain];
+  const NSTrackingAreaOptions options =
+      NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved |
+      NSTrackingActiveAlways | NSTrackingInVisibleRect;
+  mTrackingArea =
+      [[NSTrackingArea alloc] initWithRect:[mViewWithTrackingArea bounds]
+                                   options:options
+                                     owner:self
+                                  userInfo:nil];
+  [mViewWithTrackingArea addTrackingArea:mTrackingArea];
 }
 
 - (void)mouseEntered:(NSEvent*)aEvent {
@@ -3685,14 +3649,9 @@ static bool ShouldShiftByMenubarHeightInFullscreen(nsCocoaWindow* aWindow) {
     default:
       break;
   }
-  // TODO: On notch-less macbooks, this creates extra space when the
-  // "automatically show and hide the menubar on fullscreen" option is unchecked
-  // (default checked). We tried to detect that in bug 1737831 but it wasn't
-  // reliable enough, see the regressions from that bug. For now, stick to the
-  // good behavior for default configurations (that is, shift by menubar height
-  // on notch-less macbooks, and don't for devices that have a notch). This will
-  // need refinement in the future.
-  return !ScreenHasNotch(aWindow);
+  return !ScreenHasNotch(aWindow) &&
+         ![NSUserDefaults.standardUserDefaults
+             integerForKey:@"AppleMenuBarVisibleInFullscreen"];
 }
 
 - (void)updateTitlebarShownAmount:(CGFloat)aShownAmount {

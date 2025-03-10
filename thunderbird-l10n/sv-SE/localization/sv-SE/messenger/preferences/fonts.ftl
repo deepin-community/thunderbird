@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Teckensnitt
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Standard ({ $name })
 fonts-label-default-unnamed =
     .label = Standard
-fonts-encoding-dialog-title =
-    .title = Teckensnitt & teckenuppsättningar
 fonts-language-legend =
     .value = Teckensnitt för:
     .accesskey = c
 fonts-proportional-label =
     .value = Variabel bredd:
     .accesskey = V
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latin
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Singalesiska
 font-language-group-tibetan =
     .label = Tibetanska
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = M
 min-size-none =
     .label = Ingen
-
-## Fonts in message
-
 font-control-legend = Teckensnittsval
 use-document-fonts-checkbox =
     .label = Låt meddelanden använda andra teckensnitt
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Använd teckensnitt med fast bredd för meddelanden med vanlig text
     .accesskey = A
-
-## Language settings
-
 text-encoding-legend = Textkodning
 text-encoding-description = Ange standardtextkodning för att skicka och ta emot e-post
 font-outgoing-email-label =

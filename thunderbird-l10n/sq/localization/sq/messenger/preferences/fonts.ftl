@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Shkronja
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Parazgjedhje ({ $name })
 fonts-label-default-unnamed =
     .label = Parazgjedhje
-fonts-encoding-dialog-title =
-    .title = Shkronja & Kodime
 fonts-language-legend =
     .value = Shkronja për:
     .accesskey = S
 fonts-proportional-label =
     .value = Proportional:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latine
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Sinhaleze
 font-language-group-tibetan =
     .label = Tibetane
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = v
 min-size-none =
     .label = Asnjë
-
-## Fonts in message
-
 font-control-legend = Kontroll Lloji Shkronjash
 use-document-fonts-checkbox =
     .label = Lejoji mesazhet të përdorin shkronja të tjera
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Për mesazhe teksti të thjeshtë përdor shkronja me gjerësi të fiksuar
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Kodim Teksti
 text-encoding-description = Caktoni kodim parazgjedhje teskti për dërgim dhe marrje poste
 font-outgoing-email-label =

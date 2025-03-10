@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-receipts-dialog-window =
-    .title = Mottagningskvitton
 receipts-dialog-title = Mottagningskvitton
 return-receipt-checkbox-control =
     .label = När du skickar meddelanden, begär alltid ett returkvitto

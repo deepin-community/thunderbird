@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Obojstranné šifrovanie
 account-otr-label = Šifrované konverzácie (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     sa nebudú zobrazovať ako súčasť bežnej konverzácie a ani nebudú ani zaznamenané.
 otr-verify-nudge =
     .label = Vždy ma upozorniť, aby som overil zatiaľ neoverený kontakt
-
 otr-not-yet-available = zatiaľ nedostupné
-

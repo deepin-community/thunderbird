@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = 阿法語 (衣索比亞)
 language-name-ab = 阿布哈茲語 (高加索地區)
 language-name-ach = 阿喬利語

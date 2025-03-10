@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Titz'apïx
 pane-general-title = Chijun
@@ -45,10 +41,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Titikirisäx chik { -brand-short-name } richin ye'okisäx ri taq k'exoj
 confirm-messenger-language-change-button = Tisamajïx chuqa' Titikirisäx chik
 update-setting-write-failure-title = Xsach toq xyak ri Ruk'exoj taq ajowab'äl
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } xrïl jun sachoj ruma ri' toq man xuyäk ta re jaloj re'. Tatz'eta' chi re runuk'ulem re rajowab'al jaloj re' nrajo' chi niya' q'ij richin nitz'ib'äx pa ri yakb'äl. Rik'in jub'a' rat o jun runuk'samajel q'inoj yixtikïr nisöl re sachoj, rik'in ruchajixik chijun ri yakb'äl ruma ri molaj okisanela'.
     
@@ -56,15 +48,7 @@ update-setting-write-failure-message =
 update-in-progress-title = Tajin Nik'ex
 update-in-progress-message = ¿La nawajo' chi ri { -brand-short-name } nuk'isib'ej ri k'exoj?
 update-in-progress-ok-button = &Tich'aqïx
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Titikïr chik el
-
-## OS Authentication dialog
-
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -143,8 +127,6 @@ always-check-default =
 check-default-button =
     .label = Tinik'öx Wakami…
     .accesskey = W
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -162,8 +144,6 @@ return-receipts-button =
     .label = Tzolin taq Wujil…
     .accesskey = T
 update-app-legend = { -brand-short-name } Taq Ruk'exoj
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Ruwäch { $version }
 allow-description = Tiya' q'ij { -brand-short-name } chi re
 automatic-updates-label =
@@ -194,18 +174,10 @@ offline-compact-folder =
     .accesskey = a
 compact-folder-size =
     .value = MB chi ronojel
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Tokisäx k'a
     .accesskey = T
 use-cache-after = MB rupam richin ri jumejyak
-
-##
-
 smart-cache-label =
     .label = Tiyuj runuk'samajixïk ruyonil jumejyak
     .accesskey = y
@@ -226,7 +198,6 @@ color-options-button =
     .label = Taq b'onil…
     .accesskey = b
 display-width-legend = Kitzijol Li'an Cholan Tzij
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Kek'ut pe taq emotikon achi'el taq wachib'äl
     .accesskey = e
@@ -287,17 +258,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Anin pa ruwäch
     .accesskey = p
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Chi rij nik'ut chi
     .accesskey = n
 seconds-label = taq xil ramaj
-
-##
-
 open-msg-label =
     .value = Kejaq taq tzijol pa:
 open-msg-tab =
@@ -312,14 +276,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Titz'apïx rutzuwäch/tab rutzijol toq nisilöx o niyuj
     .accesskey = T
-display-name-label =
-    .value = Tik'ut b'i'aj:
 condensed-addresses-label =
     .label = Titz'et xa xe ri b'i'aj xtik'ut chi kiwäch ri winaqi' pa kitz'ib'awuj wochochib'al
     .accesskey = T
-
-## Compose Tab
-
 forward-label =
     .value = Ketaq chik kitzijol:
     .accesskey = T
@@ -330,17 +289,10 @@ as-attachment-label =
 extension-label =
     .label = titz'aqatisäx k'amal pa ri rub'i' yakb'äl
     .accesskey = k
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Jutaqil Ruyon Tiyak
     .accesskey = R
 auto-save-end = taq ch'utiramaj
-
-##
-
 warn-on-send-accel-key =
     .label = Tijikib'äx toq ye'okisäx ruq'a' rokem pitz'b'äl richin nitaq rutzijol
     .accesskey = T
@@ -415,9 +367,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Kekanöx ch'aqa' chik taq ajya'öl…
 cloud-account-description = Titz'aqatisäx jun k'ak'a' Filelink richin kiyakik samaj
-
-## Privacy Tab
-
 mail-content = Rupam Taqotz'ib'
 remote-content-label =
     .label = Tiya' q'ij näj rupam pa rutzijol
@@ -443,42 +392,20 @@ third-party-never =
     .label = Majub'ey
 third-party-visited =
     .label = Etz'eton
-keep-label =
-    .value = Tik'oje' k'a:
-    .accesskey = k
-keep-expire =
-    .label = tik'o kiq'ij
-keep-close =
-    .label = Tintz'apij { -brand-short-name }
-keep-ask =
-    .label = junelïk tik'utüx pe chwe
 cookies-button =
     .label = Kek'ut taq Kaxlanwey…
     .accesskey = k
-do-not-track-label =
-    .label = Ketaq ri taq ruxaq ajk'amaya'l jun “Mani Tojqäx” raqän kumal chi man nojowäx ta chi tikanöx
-    .accesskey = t
-learn-button =
-    .label = Tetamäx ch'aqa' chik
-dnt-learn-more-button =
-    .value = Tetamäx ch'aqa' chik
 passwords-description = { -brand-short-name } nitikïr yerunataj ri ewan taq atzij kichin konojel ri taq rub'i' ataqoya'l.
 passwords-button =
     .label = Xeyak taq Ewan Tzij…
     .accesskey = X
 junk-description = Runuk'ulem k'o wi pa seq' taqoya'l. Ri taq runuk'ulem chi kijujunal ri taq taqoya'l k'o chi yeb'an pa Kinuk'ulem Rub'i' Taqoya'l.
-junk-label =
-    .label = Toq ninya' ketal taq rutzijol achi'el seq':
-    .accesskey = T
 junk-move-label =
     .label = Kesilöx pa kiyakwuj "Seq'" rub'i' taqoya'l
     .accesskey = o
 junk-delete-label =
     .label = Keyuj
     .accesskey = K
-junk-read-label =
-    .label = Tiya' ketal ri taq rutzijol yetz'et chi e Seq' achi'el esik'in chik
-    .accesskey = T
 junk-log-label =
     .label = Titzij ri kitz'ib'axik ruchayub'al k'amonel seq'
     .accesskey = T
@@ -512,9 +439,6 @@ certificate-button =
 security-devices-button =
     .label = Taq Rokisab'al Jikomal…
     .accesskey = R
-
-## Chat Tab
-
 startup-label =
     .value = Toq { -brand-short-name } xtitikirisäx:
     .accesskey = x
@@ -522,20 +446,10 @@ offline-label =
     .label = Tichup kokem ri Chat Rub'i' Nutaqoya'l
 auto-connect-label =
     .label = Pa ruyonil tokisäx ri chat rub'i' nutaqoya'l
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Tib'an chi ri kib'i' wachib'il tiqetamaj chi man in k'o ta chi rij ri
     .accesskey = I
 idle-time-label = ch'utiramaj man k'o ta
-
-##
-
 away-message-label =
     .label = chuqa' tijikib'äx ri nub'anikil achi'el Mek'o rik'in re rutzijol b'anikil re':
     .accesskey = A
@@ -595,9 +509,3 @@ no-preview-description = Man okel ta re wachinïk re' o man wachel ta wakami (ch
 chat-variant-label =
     .value = Rujalik:
     .accesskey = R
-
-## Settings UI Search Results
-
-
-## Sync Tab
-

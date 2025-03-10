@@ -1,12 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 open-preferences-sidebar-button2 = { -brand-short-name } 選項
 open-addons-sidebar-button = 附加元件與佈景主題
-account-action-add-newsgroup-account =
-    .label = 新增新聞群組帳號…
-    .accesskey = N
 account-tree-create-account-button = 新增帳號
 account-tree-add-mail-account =
     .label = 郵件帳號…

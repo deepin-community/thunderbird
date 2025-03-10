@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Začiarkavacie políčko na prepnutie výberu aktuálneho riadka
     .title = Zvoliť aktuálny riadok
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Obnoviť aktuálny riadok
 tree-list-view-column-picker =
     .title = Zvoliť stĺpce, ktoré chcete zobraziť
-tree-list-view-column-picker-restore =
-    .label = Obnoviť poradie stĺpcov
 tree-list-view-column-picker-restore-default-columns =
     .label = Obnoviť predvolené stĺpce
 tree-list-view-row-thread-button =

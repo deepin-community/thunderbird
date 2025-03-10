@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP-kaaibehearder
     .accesskey = P
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Hantekening ferifiearje
     .accesskey = f
 openpgp-has-sender-key = Dit berjocht beweart de iepenbiere OpenPGP-kaai fan de ôfstjoerder te befetten.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Warskôging: de nije iepenbiere OpenPGP-kaai yn dit berjocht ferskilt fan de iepenbiere kaaien dy’t jo earder foar { $email } akseptearre hawwe.
 openpgp-import-sender-key =
     .label = Ymportearje…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Dit berjocht is ûndertekene mei in kaai dy’t jo noch net hawwe.
 openpgp-search-signature-key =
     .label = Untdekke…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Dit is in OpenPGP-berjocht dat blykber troch MS-Exchange skansearre is en, omdat it iepene is fan in lokaal bestân út, kin it net reparearre wurde. Kopiearje it berjocht nei in e-mailmap om automatysk werstel te probearjen.
 openpgp-broken-exchange-info = Dit is in OpenPGP-berjocht dat blykber skansearre is troch MS-Exchange. As de berjochtynhâld net werjûn wurdt as ferwachte, dan kinne jo in automatyske reparaasje probearje.
 openpgp-broken-exchange-repair =

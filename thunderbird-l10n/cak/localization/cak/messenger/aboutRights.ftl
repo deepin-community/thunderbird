@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Chi rij Ach'ojib'al
 rights-intro = { -brand-full-name } jun jamäl chuqa' jaqäl b'itz'ib' kema', ri nuk'un kuma ach'ala'il chijun ri ruwach'ulew. Ja re' ri jujun taq na'oj k'atzinel nawetamaj:
 rights-intro-point-1 = { -brand-short-name } wachel rik'in re taq rojqanem ri <a data-l10n-name="mozilla-public-license-link">Ruwinaqilal ya'öl q'ij Mozilla</a>. Rere' nrajo' nub'ij chi ütz nawokisaj, nawachib'ej chuqa' nataluj ri { -brand-short-name } chi ke ch'aqa' chik.  Chuqa' ütz najalwachij ri ruxe' nimatz'ib' ri { -brand-short-name } achike na rub'eyal rajowaxik chawe. Ri ya'öl ruq'ij winaqilal ri Mozilla chuqa' nuya' pan ach'ojib'al chi ye'ataluj ri taq ruwäch ye'ak'ëx.

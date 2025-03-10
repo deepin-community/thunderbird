@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Kutizë për të aktivizuar/çaktivizuar “Përzgjidhni rreshtin e tanishëm”
     .title = Përzgjidhni rreshtin e tanishëm
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Rikthe rreshtin e tanishëm
 tree-list-view-column-picker =
     .title = Përzgjidhni shtylla që të shfaqen
-tree-list-view-column-picker-restore =
-    .label = Rikthe renditje shtyllash
 tree-list-view-column-picker-restore-default-columns =
     .label = Rikthe shtylla parazgjedhje
 tree-list-view-row-thread-button =

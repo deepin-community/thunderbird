@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Ανάγνωση και τροποποίηση σελιδοδεικτών
 webext-perms-description-browserSettings = Ανάγνωση και τροποποίηση των ρυθμίσεων του φυλλομετρητή
 webext-perms-description-browsingData = Απαλοιφή πρόσφατου ιστορικού περιήγησης, cookie και σχετικών δεδομένων
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Πρόσβαση στις πρόσφατα �
 webext-perms-description-tabs = Πρόσβαση στις καρτέλες του φυλλομετρητή
 webext-perms-description-tabHide = Απόκρυψη και εμφάνιση καρτελών του φυλλομετρητή
 webext-perms-description-topSites = Πρόσβαση στο ιστορικό περιήγησης
+webext-perms-description-trialML = Λήψη και εκτέλεση μοντέλων ΤΝ στη συσκευή
+webext-perms-description-userScripts = Να επιτρέπεται σε μη επαληθευμένα σενάρια τρίτων η πρόσβαση στα δεδομένα σας
 webext-perms-description-webNavigation = Πρόσβαση στη δραστηριότητα του φυλλομετρητή κατά την πλοήγηση
+webext-perms-extra-warning-userScripts-long = Τα μη επαληθευμένα σενάρια μπορούν να θέσουν σε κίνδυνο την ασφάλεια και το απόρρητό σας, με ενέργειες όπως η εκτέλεση επιβλαβή κώδικα ή η καταγραφή της δραστηριότητάς σας σε ιστοτόπους. Να εκτελείτε σενάρια μόνο από επεκτάσεις ή πηγές που εμπιστεύεστε.
+webext-perms-extra-warning-userScripts-short = Τα μη επαληθευμένα σενάρια μπορούν να θέσουν σε κίνδυνο την ασφάλεια και το απόρρητό σας. Να εκτελείτε σενάρια μόνο από επεκτάσεις ή πηγές που εμπιστεύεστε.

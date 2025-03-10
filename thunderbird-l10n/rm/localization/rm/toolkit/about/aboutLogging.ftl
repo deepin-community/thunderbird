@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Davart la protocollaziun
 about-logging-page-title = Administraziun da protocollaziun
 about-logging-current-log-file = Datoteca da protocol actuala:
 about-logging-new-log-file = Nova datoteca da protocollaziun:
 about-logging-currently-enabled-log-modules = Moduls da protocollaziun actualmain activads:
 about-logging-log-tutorial = Legia l'artitgel <a data-l10n-name="logging">HTTP Logging</a> per instrucziuns davart l'utilisaziun da quest utensil.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Avrir l'ordinatur
 about-logging-set-log-file = Definir la datoteca da protocol
 about-logging-set-log-modules = Definir ils moduls da protocol
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Nagin
 about-logging-no-log-file = Nagin
 about-logging-logging-preset-selector-text = Preselecziun da la protocollaziun:
 about-logging-with-profiler-stacks-checkbox = Activar analisas dal stack per messadis da protocol
-
-## Logging presets
-
 about-logging-preset-networking-label = Rait
 about-logging-preset-networking-description = Moduls da protocollaziun per diagnostitgar problems da la rait
 about-logging-preset-networking-cookie-label = Cookies
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Moduls da protocollaziun per diagnostitgar problems cun WebGPU
 about-logging-preset-gfx-label = Grafica
 about-logging-preset-gfx-description = Moduls da protocollaziun per diagnostitgar problems da grafica
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Moduls da protocollaziun per diagnostitgar problems specifics cun Microsoft Windows
 about-logging-preset-custom-label = Persunalisà
 about-logging-preset-custom-description = Moduls da protocollaziun tschernids manualmain
-# Error handling
 about-logging-error = Errur:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Valur nunvalida «{ $v }» per la clav «{ $k }»
 about-logging-unknown-logging-preset = Preselecziun da protocollaziun «{ $v }» nunenconuschenta
 about-logging-unknown-profiler-preset = Preselecziun da profiler «{ $v }» nunenconuschenta

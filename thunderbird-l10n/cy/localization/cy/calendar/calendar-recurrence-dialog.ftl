@@ -1,8 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-recurrence-preview-label = Rhagolwg
 calendar-recurrence-next = Mis Nesaf
 calendar-recurrence-previous = Mis Blaenorol
 calendar-recurrence-today = Heddiw
+monthly-order = { $ordinal } { $day }
+yearly-order-day = { $day } { $article } { $month }
+yearly-order-ordinal = { $ordinal } { $day } { $article } { $month }
+event-recurrence-monthly-last-day-label =
+    .label = Y diwrnod olaf

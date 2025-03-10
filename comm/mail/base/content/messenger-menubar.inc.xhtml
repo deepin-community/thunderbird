@@ -42,7 +42,7 @@
           <menuseparator id="newAccountPopupMenuSeparator"/>
           <menuitem id="newMailAccountMenuItem"
                     data-l10n-id="file-new-email-account"
-                    oncommand="openAccountSetupTab();"/>
+                    oncommand="openAccountSetup();"/>
           <menuitem id="newIMAccountMenuItem"
                     label="&newIMAccountCmd.label;"
                     accesskey="&newIMAccountCmd.accesskey;"
@@ -706,19 +706,19 @@
                     name="viewFeedBodyHTMLGroup"
                     label="&bodyAllowHTML.label;"
                     accesskey="&bodyAllowHTML.accesskey;"
-                    oncommand="MsgFeedBodyRenderPrefs(false, 0, 0)"/>
+                    oncommand="MsgBodyAllowHTML()"/>
           <menuitem id="bodyFeedSummarySanitized"
                     type="radio"
                     name="viewFeedBodyHTMLGroup"
                     label="&bodySanitized.label;"
                     accesskey="&bodySanitized.accesskey;"
-                    oncommand="MsgFeedBodyRenderPrefs(false, 3, gDisallow_classes_no_html)"/>
+                    oncommand="MsgBodySanitized()"/>
           <menuitem id="bodyFeedSummaryAsPlaintext"
                     type="radio"
                     name="viewFeedBodyHTMLGroup"
                     label="&bodyAsPlaintext.label;"
                     accesskey="&bodyAsPlaintext.accesskey;"
-                    oncommand="MsgFeedBodyRenderPrefs(true, 1, gDisallow_classes_no_html)"/>
+                    oncommand="MsgBodyAsPlaintext()"/>
         </menupopup>
       </menu>
       <menuitem id="viewAttachmentsInlineMenuitem" label="&viewAttachmentsInlineCmd.label;" accesskey="&viewAttachmentsInlineCmd.accesskey;"
@@ -846,8 +846,8 @@
         <menupopup is="folder-menupopup" id="menu_GoFolderPopup"
                     showFileHereLabel="true"
                     showRecent="true"
-                    recentLabel="&contextMoveCopyMsgRecentMenu.label;"
-                    recentAccessKey="&contextMoveCopyMsgRecentMenu.accesskey;"
+                    recentLabel="&contextMoveCopyMsgRecentDestinationMenu.label;"
+                    recentAccessKey="&contextMoveCopyMsgRecentDestinationMenu.accesskey;"
                     showFavorites="true"
                     favoritesLabel="&contextMoveCopyMsgFavoritesMenu.label;"
                     favoritesAccessKey="&contextMoveCopyMsgFavoritesMenu.accesskey;"/>
@@ -1131,9 +1131,9 @@
 <!-- Tools -->
 <menu id="tasksMenu" label="&tasksMenu.label;" accesskey="&tasksMenu.accesskey;">
   <menupopup id="taskPopup" onpopupshowing="document.commandDispatcher.updateCommands('create-menu-tasks')">
-#ifndef XP_MACOSX
     <menuitem hidden="true" accesskey="&messengerCmd.accesskey;" label="&messengerCmd.label;"
               key="key_mail" oncommand="toMessengerWindow();" id="tasksMenuMail"/>
+#ifndef XP_MACOSX
     <menuitem id="addressBook"
               label="&addressBookCmd.label;"
               accesskey="&addressBookCmd.accesskey;"
@@ -1196,6 +1196,9 @@
     <menuitem id="menu_export" label="&exportCmd.label;"
               accesskey="&exportCmd.accesskey;"
               oncommand="toExport();"/>
+    <menuitem id="menu_exportmobile"
+              data-l10n-id="menu-export-for-mobile"
+              oncommand="openOptionsDialog('paneQrExport');"/>
     <menuitem id="manageKeysOpenPGP"
               data-l10n-id="openpgp-manage-keys-openpgp-cmd"
               oncommand="openKeyManager()"/>

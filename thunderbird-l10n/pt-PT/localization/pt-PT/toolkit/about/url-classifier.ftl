@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Informação do classificador de URL
 url-classifier-search-title = Pesquisa
 url-classifier-search-result-title = Resultados
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Módulos de registo do Safe Browsing
 url-classifier-debug-modules = Módulos de registo atual
 url-classifier-debug-sbjs-modules = Registo JS do Safe Browsing
 url-classifier-debug-file = Ficheiro de registo atual
-
 url-classifier-trigger-update = Acionar atualização
 url-classifier-not-available = N/D
 url-classifier-disable-sbjs-log = Desativar registo JS do Safe Browsing
@@ -50,9 +45,5 @@ url-classifier-disabled = Desativado
 url-classifier-updating = a atualizar
 url-classifier-cannot-update = não é possível atualizar
 url-classifier-success = sucesso
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = erro a atualizar ({ $error })
 url-classifier-download-error = erro de transferência ({ $error })

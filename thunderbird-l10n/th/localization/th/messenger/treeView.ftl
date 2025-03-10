@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = ช่องทำเครื่องหมายเพื่อสลับการเลือกแถวปัจจุบัน
     .title = เลือกแถวปัจจุบัน
@@ -17,8 +10,8 @@ tree-list-view-row-restore =
     .title = เรียกคืนแถวปัจจุบัน
 tree-list-view-column-picker =
     .title = เลือกคอลัมน์ที่จะแสดง
-tree-list-view-column-picker-restore =
-    .label = เรียกคืนลำดับคอลัมน์
+tree-list-view-column-picker-restore-default-columns =
+    .label = เรียกคืนคอลัมน์เริ่มต้น
 tree-list-view-row-thread-button =
     .title = นี่เป็นข้อความที่มีหัวข้อ
 tree-list-view-row-ignored-thread = เพิกเฉยหัวข้อแล้ว

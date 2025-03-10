@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 crash-reports-title = รายงานข้อขัดข้อง
 submit-all-button-label = ส่งทั้งหมด
 delete-button-label = ล้างทั้งหมด
@@ -12,8 +8,6 @@ crashes-unsubmitted-label = รายงานข้อขัดข้องท�
 id-heading = ID รายงาน
 date-crashed-heading = วันที่ขัดข้อง
 submit-crash-button-label = ส่ง
-# This text is used to replace the label of the crash submit button
-# if the crash submission fails.
 submit-crash-button-failure-label = ล้มเหลว
 crashes-submitted-label = รายงานข้อขัดข้องที่ส่งแล้ว
 date-submitted-heading = วันที่ส่ง

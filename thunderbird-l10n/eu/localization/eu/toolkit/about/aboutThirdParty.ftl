@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Hirugarrenen moduluaren informazioa
 third-party-section-title = { -brand-short-name }(e)n hirugarren moduluen zerrenda
 third-party-intro = Orri honek zure { -brand-short-name } instalazioan txertatu diren hirugarrenen moduluak zerrendatzen ditu. Hirugarren gisa jotzen dira Microsoftek edo { -vendor-short-name }(e)k sinatu ez dituen edozein modulu.
@@ -43,19 +39,6 @@ third-party-button-reload = Berritu sistemaren informazioarekin
     .title = Berritu sistemaren informazioarekin
 third-party-button-open =
     .title = Ireki fitxategi-kokalekua…
-third-party-button-to-block =
-    .title = Blokeatu modulu hau
-    .aria-label = Blokeatu modulu hau
-third-party-button-to-unblock =
-    .title = Une honetan blokeatuta. Egin klik desblokeatzeko.
-    .aria-label = Une honetan blokeatuta. Egin klik desblokeatzeko.
-third-party-button-to-unblock-disabled =
-    .title =
-        Une honetan blokeatutako gisa markatuta, nahiz eta blokeo-zerrenda desgaituta dagoen
-        { -brand-short-name }(r)en exekuzio honetarako. Egin klik desblokeatzeko.
-    .aria-label =
-        Une honetan blokeatutako gisa markatuta, nahiz eta blokeo-zerrenda desgaituta dagoen
-        { -brand-short-name }(r)en exekuzio honetarako. Egin klik desblokeatzeko.
 third-party-button-to-block-module = Blokeatu modulu hau
     .title = Blokeatu modulu hau
     .aria-label = Blokeatu modulu hau

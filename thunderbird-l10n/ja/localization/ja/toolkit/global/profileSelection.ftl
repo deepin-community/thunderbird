@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 profile-selection-window =
     .title = { -brand-short-name } - ユーザープロファイルの選択
 profile-selection-button-accept =
@@ -18,9 +14,6 @@ profile-selection-delete-button =
     .label = プロファイルを削除...
     .accesskey = D
 profile-selection-conflict-message = { -brand-product-name } の別のコピーがプロファイルに変更を加えています。さらに変更する前に { -brand-short-name } を再起動しなければなりません。
-
-## Messages used in the profile manager
-
 profile-manager-description = ユーザーの設定やデータなどは { -brand-short-name } のユーザープロファイルに保存されます。
 profile-manager-work-offline =
     .label = オフライン作業

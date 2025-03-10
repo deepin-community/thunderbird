@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Інфармацыя аб класіфікатары URL
 url-classifier-search-title = Пошук
 url-classifier-search-result-title = Вынікі
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Модулі журнала Safe Browsing
 url-classifier-debug-modules = Бягучыя модулі журнала
 url-classifier-debug-sbjs-modules = Журнал Safe Browsing JS
 url-classifier-debug-file = Бягучы файл журнала
-
 url-classifier-trigger-update = Абнаўленне трыгера
 url-classifier-not-available = N/A
 url-classifier-disable-sbjs-log = Адключыць журнал Safe Browsing JS
@@ -50,9 +45,5 @@ url-classifier-disabled = Выключана
 url-classifier-updating = абнаўленне
 url-classifier-cannot-update = не атрымалася абнавіць
 url-classifier-success = паспяхова
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = памылка абнаўлення ({ $error })
 url-classifier-download-error = памылка сцягвання ({ $error })

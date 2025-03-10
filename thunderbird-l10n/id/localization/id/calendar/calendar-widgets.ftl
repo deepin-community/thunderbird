@@ -1,32 +1,20 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Seluruh kalender tengah dinonaktifkan. Aktifkan kalender yang ada atau tambahkan kalender baru untuk membuat dan menyunting acara.
 calendar-deactivated-notification-tasks = Seluruh kalender tengah dinonaktifkan. Aktifkan kalender yang ada atau tambahkan kalender baru untuk membuat dan menyunting acara.
 calendar-notifications-label = Tampilkan notifikasi acara mendatang
 calendar-add-notification-button =
     .label = Tambahkan notifikasi
-
-## Side panel
-
 calendar-list-header = Kalender
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = { $calendarName } kalender telah disenyapkan
 calendar-enable-button = Aktifkan
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = { $calendarName } pilihan kalender
 calendar-import-new-calendar = Kalender Baru…
     .title = Buat atau langganan kalender baru
+calendar-refresh-calendars =
+    .title = Muat ulang semua kalender dan sinkronkan perubahan
 calendar-new-event-primary-button = Acara Baru
 calendar-new-task-primary-button = Tugas Baru
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Hari Sebelumnya
     .accesskey = s
@@ -67,12 +55,16 @@ calendar-view-toggle-multiweek = Multiminggu
     .title = Pindah ke tampilan multiminggu
 calendar-view-toggle-month = Bulan
     .title = Pindah ke tampilan bulan
-
-## Menu on calendar control bar
-
-
-## Calendar Context Menu
-
+calendar-control-bar-menu-button =
+    .title = Opsi tata letak kalender
+calendar-find-events-menu-option =
+    .label = Temukan Panel Acara
+calendar-hide-weekends-option =
+    .label = Hanya hari kerja
+calendar-define-workweek-option =
+    .label = Tentukan hari kerja
+calendar-show-tasks-calendar-option =
+    .label = Tampilkan tugas di kalender
 calendar-context-menu-previous-day =
     .label = Hari Sebelumnya
     .accesskey = m

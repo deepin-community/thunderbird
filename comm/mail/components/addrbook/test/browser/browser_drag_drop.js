@@ -20,7 +20,7 @@ function doDrag(sourceIndex, destIndex, modifiers, expectedEffect) {
     cardsList.getRowAtIndex(sourceIndex),
     destElement,
     null,
-    null,
+    expectedEffect,
     abWindow,
     abWindow,
     modifiers
@@ -84,6 +84,7 @@ async function doDragToComposeWindow(sourceIndices, expectedPills) {
   );
 
   cardsList.selectedIndices = sourceIndices;
+  const transitionPromise = BrowserTestUtils.waitForTransition(composeDocument);
   const [result, dataTransfer] = EventUtils.synthesizeDragOver(
     cardsList.getRowAtIndex(sourceIndices[0]),
     toAddrInput,
@@ -91,6 +92,13 @@ async function doDragToComposeWindow(sourceIndices, expectedPills) {
     null,
     abWindow,
     composeWindow
+  );
+  await transitionPromise;
+  // Test that dragged contacts are not incorrectly recognized as attachments.
+  Assert.ok(
+    !composeDocument
+      .getElementById("dropAttachmentOverlay")
+      .classList.contains("show")
   );
   EventUtils.synthesizeDropAfterDragOver(
     result,
@@ -131,6 +139,22 @@ function checkCardsInDirectory(directory, expectedCards = [], copiedCard) {
     Assert.equal(actualCards.length, 0);
   }
 }
+
+add_setup(async () => {
+  const account = MailServices.accounts.createAccount();
+  const identity = MailServices.accounts.createIdentity();
+  identity.email = "mochitest@localhost";
+  account.addIdentity(identity);
+  account.incomingServer = MailServices.accounts.createIncomingServer(
+    "user",
+    "test",
+    "pop3"
+  );
+  MailServices.accounts.defaultAccount = account;
+  registerCleanupFunction(() => {
+    MailServices.accounts.removeAccount(account, true);
+  });
+});
 
 add_task(async function test_drag() {
   const sourceBook = createAddressBook("Source Book");

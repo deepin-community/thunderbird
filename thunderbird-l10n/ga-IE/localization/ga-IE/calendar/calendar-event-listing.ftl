@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Dún cuardach na n-imeachtaí agus liosta na n-imeachtaí
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Ainm an Fhéilire
     .tooltiptext = Sórtáil de réir ainm an fhéilire
 calendar-event-listing-column-category =
     .label = Catagóir
     .tooltiptext = Sórtáil de réir catagóire
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Déanta
     .tooltiptext = Sórtáil de réir comhlánaithe
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Teideal
     .tooltiptext = Sórtáil de réir teidil
-
-## Interval dropdown options
-
 calendar-event-listing-interval-calendar-month =
     .label = Imeachtaí i rith na míosa seo
 calendar-event-listing-interval-current-view =

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Lukk
 preferences-doc-title2 = Innstillinger
@@ -50,8 +46,6 @@ collection-health-report =
     .label = Tillat { -brand-short-name } å sende tekniske data og data for bruk til { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Les mer
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Datarapportering er deaktivert for denne byggekonfigurasjonen
 collection-backlogged-crash-reports =
     .label = Tillat { -brand-short-name } å sende etterslepne krasjrapporter på dine vegne
@@ -72,10 +66,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Start om { -brand-short-name } for å bruke disse endringene
 confirm-messenger-language-change-button = Bruk og start om
 update-setting-write-failure-title = Kunne ikke lagre oppdateringsinnstillinger
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } oppdaget en feil og lagret ikke denne endringen. Merk, for å kunne lagre endringen av denne oppdateringsinnstillingen, kreves det tillatelse til å skrive til filen nedenfor. Du eller en systemadministrator kan muligens løse feilen ved å gi gruppen Brukere full tilgang til denne filen.
     
@@ -83,26 +73,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Oppdatering pågår
 update-in-progress-message = Vil du at { -brand-short-name } skal fortsette med denne oppdateringen?
 update-in-progress-ok-button = &Avvis
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Fortsett
 account-button = Kontoinnstillinger
 open-addons-sidebar-button = Tillegg og temaer
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Skriv inn innloggingsinformasjonen for Windows for å opprette et hovedpassord. Dette vil gjøre kontoene dine tryggere.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = opprett et hovedpassord
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +103,6 @@ remove-search-engine =
 add-opensearch-provider-title = Legg til OpenSearch-tilbyder
 add-opensearch-provider-text = Skriv inn adressen til OpenSearch-tilbyderen du vil legge til. Bruk enten den direkte adressen til OpenSearch-beskrivelsesfilen, eller en adresse der den kan oppdages automatisk.
 adding-opensearch-provider-failed-title = Kunne ikke legge til OpenSearch-tilbyder
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Kunne ikke legge til OpenSearch-tilbyder for { $url }.
 minimize-to-tray-label =
     .label = Når { -brand-short-name } er minimert, flytt den til systemstatusfeltet
@@ -214,8 +188,6 @@ always-check-default =
 check-default-button =
     .label = Sjekk nå
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +205,6 @@ return-receipts-button =
     .label = Kvitteringer …
     .accesskey = K
 update-app-legend = { -brand-short-name }-oppdateringer
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versjon { $version }
 allow-description = Tillat { -brand-short-name } å
 automatic-updates-label =
@@ -269,18 +239,10 @@ offline-compact-folder-automatically =
     .accesskey = h
 compact-folder-size =
     .value = MB totalt
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Bruk opptil
     .accesskey = B
 use-cache-after = MB diskplass for hurtiglager
-
-##
-
 smart-cache-label =
     .label = Overstyr automatisk hurtigbufferadministrasjon
     .accesskey = v
@@ -304,7 +266,6 @@ color-options-button =
     .label = Farger …
     .accesskey = F
 display-width-legend = Meldinger i normal tekst
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Vis smileansikter som bilder
     .accesskey = m
@@ -372,17 +333,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Vis vedlegg som en del av meldingen
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Etter de er vist i
     .accesskey = E
 seconds-label = sekunder
-
-##
-
 open-msg-label =
     .value = Åpne meldinger i:
 open-msg-tab =
@@ -397,14 +351,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Lukk meldingsvindu/fane ved flytting eller sletting
     .accesskey = L
-display-name-label =
-    .value = Visningsnavn:
 condensed-addresses-label =
     .label = Vis bare visningsnavnet for personer i adresseboken
     .accesskey = V
-
-## Compose Tab
-
 forward-label =
     .value = Videresend meldinger:
     .accesskey = V
@@ -415,17 +364,10 @@ as-attachment-label =
 extension-label =
     .label = Legg til etternavn på filnavnet
     .accesskey = L
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Lagre meldinger automatisk hvert
     .accesskey = a
 auto-save-end = minutt
-
-##
-
 warn-on-send-accel-key =
     .label = Bekreft når tastatursnarvei brukes for å sende meldinger
     .accesskey = e
@@ -510,9 +452,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Finn flere leverandører…
 cloud-account-description = Legg til en Filelink lagringstjeneste
-
-## Privacy Tab
-
 mail-content = E-postinnhold
 remote-content-label =
     .label = Tillat eksternt innhold i meldinger
@@ -541,11 +480,6 @@ third-party-visited =
 cookies-button =
     .label = Vis infokapsler …
     .accesskey = V
-do-not-track-label =
-    .label = Send nettsider et «Ikke spor»-signal om at du ikke vil bli sporet
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Les mer
 passwords-description = { -brand-short-name } kan huske passordene for alle kontoene dine.
 passwords-button =
     .label = Lagrede passord …
@@ -560,18 +494,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Du er for tiden i FIPS-modus. FIPS krever at du bruker et hovedpassord.
 forms-master-pw-fips-desc = Passordendring mislyktes
 junk-description = Angi standard oppførsel for uønsket e-post. Konto-spesifikke innstillinger for uønsket e-post kan angis i Kontoinnstillinger.
-junk-label =
-    .label = Når jeg markerer meldinger som uønskede:
-    .accesskey = N
 junk-move-label =
     .label = Flytt dem til kontoens «Uønsket»-mappe
     .accesskey = F
 junk-delete-label =
     .label = Slett dem
     .accesskey = S
-junk-read-label =
-    .label = Marker uønskede meldinger som lest
-    .accesskey = M
 junk-log-label =
     .label = Slå på logging for adaptiv filter for uønsket e-post
     .accesskey = l
@@ -607,9 +535,6 @@ security-devices-button =
     .accesskey = e
 account-settings = Kontoinnstillinger
 email-e2ee-automatism = Automatisk bruk av kryptering
-
-## Chat Tab
-
 startup-label =
     .value = Når { -brand-short-name } starter:
     .accesskey = N
@@ -617,20 +542,10 @@ offline-label =
     .label = Behold nettprat-kontoene frakoblet
 auto-connect-label =
     .label = Koble til nettprat-kontoene automatisk
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = La kontaktene mine vite at jeg er inaktiv etter
     .accesskey = L
 idle-time-label = minutter med inaktivitet
-
-##
-
 away-message-label =
     .label = og sett status til borte med denne statusmeldingen:
     .accesskey = o
@@ -692,31 +607,16 @@ no-preview-description = Dette temaet er ikke gyldig eller er for øyeblikket ut
 chat-variant-label =
     .value = Variant:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Finn i Innstillinger
-
-## Settings UI Search Results
-
 search-results-header = Søkeresultat
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Beklager! Det er ingen resultat i innstillinger for «<span data-l10n-name="query"></span>».
        *[other] Beklager! Det er ingen resultat i innstillinger for «<span data-l10n-name="query"></span>».
     }
 search-results-help-link = Trenger du hjelp? Gå til <a data-l10n-name="url">{ -brand-short-name } brukerstøtte</a>
-
-## Sync Tab
-
 sync-pane-header = Synkroniser
 sync-pane-sign-in = Logg inn
 sync-pane-remove-account = Fjern konto

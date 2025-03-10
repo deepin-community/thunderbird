@@ -614,6 +614,7 @@ export class TreeView extends HTMLElement {
 
   /**
    * Using a keyboard, navigate cells in a row left or right.
+   *
    * @param {KeyboardEvent} event
    */
   navigateRowCells(event) {
@@ -657,6 +658,7 @@ export class TreeView extends HTMLElement {
 
   /**
    * Select sibling cell.
+   *
    * @param {KeyboardEvent} event
    * @param {HTMLTableCellElement} currentCell - Cell HTML element.
    * @param {string} nextKey - Key used for moving to next cell.
@@ -670,6 +672,7 @@ export class TreeView extends HTMLElement {
 
   /**
    * Select next or previous visible adjacent cell.
+   *
    * @param {KeyboardEvent} event
    * @param {HTMLTableCellElement} currentCell - Cell HTML element.
    * @param {string} nextKey - Key used for moving to next cell.
@@ -740,16 +743,9 @@ export class TreeView extends HTMLElement {
    * Updates all existing rows in place, without removing all the rows and
    * starting again. This can be used if the row element class hasn't changed
    * and its `index` setter is capable of handling any modifications required.
-   *
-   * @param {string} [columnId] - Optional column id, to limit invalidation to a
-   *   single column.
    */
-  invalidate(columnId) {
-    this.invalidateRange(
-      this.#firstBufferRowIndex,
-      this.#lastBufferRowIndex,
-      columnId
-    );
+  invalidate() {
+    this.invalidateRange(this.#firstBufferRowIndex, this.#lastBufferRowIndex);
   }
 
   /**
@@ -758,20 +754,16 @@ export class TreeView extends HTMLElement {
    * on its own.
    *
    * @param {integer} index
-   * @param {string} [columnId] - Optional column id, to limit invalidation to a
-   *   single column.
    */
-  #doInvalidateRow(index, columnId) {
+  #doInvalidateRow(index) {
     const rowCount = this._view?.rowCount ?? 0;
     const row = this.getRowAtIndex(index);
     if (row) {
       if (index >= rowCount) {
         this._removeRowAtIndex(index);
       } else {
-        row.invalidateSingleColumn = columnId;
         row.index = index;
         row.selected = this._selection.isSelected(index);
-        row.invalidateSingleColumn = null;
       }
     } else if (
       index >= this.#firstBufferRowIndex &&
@@ -786,17 +778,15 @@ export class TreeView extends HTMLElement {
    *
    * @param {integer} startIndex
    * @param {integer} endIndex
-   * @param {string} [columnId] - Optional column id, to limit invalidation to a
-   *   single column.
    */
-  invalidateRange(startIndex, endIndex, columnId) {
+  invalidateRange(startIndex, endIndex) {
     for (
       let index = Math.max(startIndex, this.#firstBufferRowIndex),
         last = Math.min(endIndex, this.#lastBufferRowIndex);
       index <= last;
       index++
     ) {
-      this.#doInvalidateRow(index, columnId);
+      this.#doInvalidateRow(index);
     }
     this._ensureVisibleRowsAreDisplayed();
   }
@@ -1521,7 +1511,7 @@ export class TreeView extends HTMLElement {
    *
    * @param {number} start - Start index of selection. -1 for current index.
    * @param {number} end - End index of selection.
-   * @param {boolean} extend[false] - If the new selection range should extend
+   * @param {boolean} [extend=false] - If the new selection range should extend
    *   the current selection.
    */
   _selectRange(start, end, extend = false) {
@@ -1660,7 +1650,8 @@ export class TreeView extends HTMLElement {
   /**
    * Loop through all available child elements of the placeholder slot and
    * show those that are needed.
-   * @param {array} idsToShow - Array of ids to show.
+   *
+   * @param {Array} idsToShow - Array of ids to show.
    */
   updatePlaceholders(idsToShow) {
     for (const element of this.placeholder.children) {
@@ -1736,6 +1727,7 @@ class TreeViewTable extends HTMLTableElement {
   /**
    * The array of objects containing the data to generate the needed columns.
    * Keep this public so child elements can access it if needed.
+   *
    * @type {ColumnDef[]}
    */
   columns;
@@ -1750,9 +1742,17 @@ class TreeViewTable extends HTMLTableElement {
   /**
    * Array containing the IDs of templates holding menu items to dynamically add
    * to the menupopup of the column picker.
+   *
    * @type {Array}
    */
   popupMenuTemplates = [];
+
+  /**
+   * If the widget implementing the tree view table requires horizontal scroll.
+   *
+   * @type {boolean}
+   */
+  isHorizontalScroll = false;
 
   connectedCallback() {
     if (this.hasConnected) {
@@ -1924,7 +1924,8 @@ class TreeViewTable extends HTMLTableElement {
         continue;
       }
 
-      headerCell.resizable = column != lastResizableColumn;
+      headerCell.resizable =
+        this.isHorizontalScroll || column != lastResizableColumn;
       if (column.width) {
         headerCell.style.setProperty(
           `--${column.id}Splitter-width`,
@@ -2322,24 +2323,28 @@ customElements.define("tree-view-table-header", TreeViewTableHeader, {
 class TreeViewTableHeaderCell extends HTMLTableCellElement {
   /**
    * The div needed to handle the header button in an absolute position.
+   *
    * @type {HTMLElement}
    */
   #container;
 
   /**
    * The clickable button to change the sorting of the table.
+   *
    * @type {HTMLButtonElement}
    */
   #button;
 
   /**
    * If this cell is resizable.
+   *
    * @type {boolean}
    */
   #resizable = true;
 
   /**
    * If this cell can be clicked to affect the sorting order of the tree.
+   *
    * @type {boolean}
    */
   #sortable = true;
@@ -2451,8 +2456,7 @@ class TreeViewTableHeaderCell extends HTMLTableCellElement {
   /**
    * Set this table header as responsible for the sorting of rows.
    *
-   * @param {string["ascending"|"descending"]} direction - The new sorting
-   *   direction.
+   * @param {"ascending"|"descending"} direction - The new sorting direction.
    */
   setSorting(direction) {
     this.#button.classList.add("sorting", direction);
@@ -2529,12 +2533,14 @@ customElements.define("tree-view-table-header-cell", TreeViewTableHeaderCell, {
 class TreeViewTableColumnPicker extends HTMLTableCellElement {
   /**
    * The clickable button triggering the picker context menu.
+   *
    * @type {HTMLButtonElement}
    */
   #button;
 
   /**
    * The menupopup allowing users to show and hide columns.
+   *
    * @type {XULElement}
    */
   #context;
@@ -2717,19 +2723,16 @@ export class TreeViewTableRow extends HTMLTableRowElement {
   }
 
   /**
-   * Id of a column. If set, the index setter will only update the specified
-   * column.
-   *
-   * @type {?string}
-   */
-  invalidateSingleColumn = null;
-
-  /**
    * The 0-based position of this row in the list. Override this setter to
    * fill layout based on values from the list's view. Always call back to
    * this class's getter/setter when inheriting.
    *
-   * @note Don't short-circuit the setter if the given index is equal to the
+   * Setting the index doesn't instantly fill the row. That happens at the
+   * next animation frame using the most recently set index. Tests that set
+   * the index will also need to wait for an animation frame before checking
+   * the row's content.
+   *
+   * NOTE: Don't short-circuit the setter if the given index is equal to the
    * existing index. Rows can be reused to display new data at the same index.
    *
    * @type {integer}
@@ -2738,27 +2741,50 @@ export class TreeViewTableRow extends HTMLTableRowElement {
     return this._index;
   }
 
+  #animationFrame = null;
+
   set index(index) {
+    this._index = index;
+
+    // Wait before filling the row. This setter could be called many times
+    // before it even appears on the screen, and calling (potentially very
+    // expensive) code each time would be a waste.
+    if (!this.#animationFrame) {
+      this.#animationFrame = requestAnimationFrame(() => {
+        this.#animationFrame = null;
+        // The row may no longer be attached to the tree. Don't waste time
+        // filling it in that case.
+        if (this.parentNode) {
+          this._fillRow();
+        }
+      });
+    }
+  }
+
+  /**
+   * Fill out the row with content based on the current value of `this._index`.
+   * Subclasses should override this setter and call back to it.
+   */
+  _fillRow() {
     this.setAttribute(
       "role",
       this.list.table.body.getAttribute("role") === "treegrid"
         ? "row"
         : "option"
     );
-    this.setAttribute("aria-posinset", index + 1);
-    this.id = `${this.list.id}-row${index}`;
+    this.setAttribute("aria-posinset", this._index + 1);
+    this.id = `${this.list.id}-row${this._index}`;
 
-    const isGroup = this.view.isContainer(index);
+    const isGroup = this.view.isContainer(this._index);
     this.classList.toggle("children", isGroup);
 
-    const isGroupOpen = this.view.isContainerOpen(index);
+    const isGroupOpen = this.view.isContainerOpen(this._index);
     if (isGroup) {
       this.setAttribute("aria-expanded", isGroupOpen);
     } else {
       this.removeAttribute("aria-expanded");
     }
     this.classList.toggle("collapsed", !isGroupOpen);
-    this._index = index;
 
     const table = this.closest("table");
     for (const column of table.columns) {
@@ -2795,7 +2821,7 @@ export class TreeViewTableRow extends HTMLTableRowElement {
         }
         document.l10n.setAttributes(
           img,
-          this.list._selection.isSelected(index)
+          this.list._selection.isSelected(this._index)
             ? "tree-list-view-row-deselect"
             : "tree-list-view-row-select"
         );

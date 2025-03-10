@@ -1,13 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Ρυθμίσεις ταυτοποίησης
 account-channel-title = Προεπιλεγμένα κανάλια
-
 chat-autologin =
     .label = Σύνδεση κατά την εκκίνηση
-
 chat-encryption-generic = Γενικά
 chat-encryption-log =
     .label = Συμπερίληψη διατερματικά κρυπτογραφημένων μηνυμάτων σε αρχεία συνομιλιών

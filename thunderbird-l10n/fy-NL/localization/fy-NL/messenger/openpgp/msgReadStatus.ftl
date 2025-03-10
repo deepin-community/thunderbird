@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = t
-#   $type (String) - the shortcut key defined in the message-header-show-security-info-key
 message-security-button =
     .title =
         { PLATFORM() ->
@@ -21,20 +13,12 @@ openpgp-openpgp = OpenPGP
 openpgp-no-sig = Gjin digitale hantekening
 openpgp-no-sig-info = Dit berjocht befettet gjin digitale ûndertekening fan de ôfstjoerder. De ôfwêzichheid fan in digitale ûndertekening betsjut dat dit berjocht ferstjoerd wêze kin troch immen dy’t dit e-mailadres yn werklikheid net hat. It kin ek wêze dat it berjocht skeind is by it ferstjoeren oer it netwurk.
 openpgp-uncertain-sig = Unwisse digitale hantekening
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-uncertain-sig-with-date = Unwisse digitale hantekening – Undertekene op { $date }
 openpgp-invalid-sig = Unjildige digitale hantekening
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Unjildige digitale hantekening – Undertekene op { $date }
 openpgp-bad-date-sig = Datum fan hantekening komt net oerien
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-bad-date-sig-with-date = Undertekeningsdatum komt net oerien – Undertekene op { $date }
 openpgp-good-sig = Goede digitale hantekening
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-good-sig-with-date = Goede digitale hantekening – Undertekene op { $date }
 openpgp-sig-uncertain-no-key = Dit berjocht befettet in digitale hantekening, mar it is ûnwis oft dizze korrekt is. Om de hantekening te ferifiearjen, moatte jo in kopy fan de iepenbiere kaai fan de ôfstjoerder krije.
 openpgp-sig-uncertain-uid-mismatch = Dit berjocht befettet in digitale hantekening, mar der is in ferkearde kombinaasje detektearre. It berjocht is ferstjoerd fan in e-mailadres ôf dat net oerienkomt mei de iepenbiere kaai fan de ûndertekener.
@@ -45,19 +29,9 @@ openpgp-sig-invalid-date-mismatch = Dit berjocht befettet in digitale ûnderteke
 openpgp-sig-valid-unverified = Dit berjocht befettet in jildige digitale hantekening fan in kaai dy’t jo al akseptearre hawwe. Jo hawwe allinnich noch net ferifiearre dat de kaai echt fan de ôfstjoerder is.
 openpgp-sig-valid-verified = Dit berjocht befettet in jildige digitale hantekening fan in ferifiearre kaai.
 openpgp-sig-valid-own-key = Dit berjocht befettet in jildige digitale hantekening fan jo persoanlike kaai.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = Kaai-ID ûndertekener: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = Kaai-ID ûndertekener: { $key } (subkaai-ID: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = Jo ûntsiferingskaai-ID: { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = Jo ûntsiferingskaai-ID: { $key } (subkaai-ID: { $subkey })
 openpgp-enc-none = Berjocht is net fersifere
 openpgp-enc-none-label = Dit berjocht is net fersifere foardat it ferstjoerd waard. Net-fersifere ynformaasje dy’t oer it ynternet ferstjoerd is,  kin troch oaren by it ferstjoeren besjoen wurde.
@@ -75,7 +49,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Untsifering mislearre
 openpgp-message-header-signed-ok-icon =
     .alt = Goede ûndertekening
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Minne ûndertekening
 openpgp-message-header-signed-unknown-icon =

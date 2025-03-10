@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Administraziun da clavs OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Verifitgar la signatura
     .accesskey = V
 openpgp-has-sender-key = Quest messadi pretenda da cuntegnair la clav publica OpenPGP dal speditur.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Attenziun: La nova clav publica OpenPGP en quest messadi sa differenziescha da las clavs publicas che ti has acceptà pli baud per { $email }.
 openpgp-import-sender-key =
     .label = Importar…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Quest messadi è vegni signà cun ina clav che ti n'has anc betg.
 openpgp-search-signature-key =
     .label = Tschertgar…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Quai è in messadi OpenPGP ch'è apparentamain vegnì donnegià da MS-Exchange e na po betg vegnir reparà perquai ch'el è vegni avert ord ina datoteca locala. Copiescha il messadi en in ordinatur dad e-mail per empruvar d'al reparar automaticamain.
 openpgp-broken-exchange-info = Quai è in messadi OpenPGP ch'è apparentamain vegnì donnegià da MS-Exchange. Sch'ils cuntegns dal messadi na vegnan betg mussads sco spetgà, pos ti empruvar da laschar reparar automaticamain il messadi.
 openpgp-broken-exchange-repair =

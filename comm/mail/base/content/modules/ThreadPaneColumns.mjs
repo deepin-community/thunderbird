@@ -398,7 +398,14 @@ function getProperSenderForCardsView(folder) {
  */
 function getDefaultColumnsForCardsView(folder) {
   const sender = getProperSenderForCardsView(folder);
-  return ["subjectCol", sender, "dateCol", "tagsCol", "totalCol", "unreadCol"];
+  return [
+    "subjectCol",
+    sender,
+    "dateCol",
+    "tagKeysCol",
+    "totalCol",
+    "unreadCol",
+  ];
 }
 
 /**
@@ -435,6 +442,7 @@ function getDefaultColumnsForCardsView(folder) {
 
 /**
  * Callback function to retrieve the icon to be used for the given msgHdr.
+ *
  * @callback IconCallback
  * @param {nsIMsgDBHdr} msgHdr
  *
@@ -444,6 +452,7 @@ function getDefaultColumnsForCardsView(folder) {
 
 /**
  * Callback function to retrieve a numeric sort key for the given msgHdr.
+ *
  * @callback SortCallback
  * @param {nsIMsgDBHdr} msgHdr
  *
@@ -452,6 +461,7 @@ function getDefaultColumnsForCardsView(folder) {
 
 /**
  * Callback function to retrieve the text to be used for the given msgHdr.
+ *
  * @callback TextCallback
  * @param {nsIMsgDBHdr} msgHdr
  *

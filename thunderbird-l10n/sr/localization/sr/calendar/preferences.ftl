@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Календар
 calendar-title-reminder = Подсетници
 calendar-title-notification = Обавештења
@@ -9,10 +5,8 @@ calendar-title-category = Категорије
 dateformat-label =
     .value = Формат текста датума:
     .accesskey = д
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Дуго: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Кратко: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Питај пре брисања догађаја и задатака.
     .accesskey = V
-accessibility-legend = Приступачност
-accessibility-colors-label =
-    .label = Побољшај боје за већу приступачност
-    .accesskey = б
 reminder-legend = Када се пробије крајњи рок подсетника:
 reminder-play-checkbox =
     .label = Пусти звук

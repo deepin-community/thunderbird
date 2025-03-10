@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = 저장된 로그인
 saved-logins-title = 저장된 로그인
-window-close =
-    .key = w
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -69,15 +61,11 @@ remove-all-shown =
 remove-all-passwords-prompt = 비밀번호를 모두 삭제하시겠습니까?
 remove-all-passwords-title = 모든 비밀번호 삭제
 no-master-password-prompt = 정말 비밀번호를 보이게 하시겠습니까?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = 저장된 비밀번호를 보려면 자격 증명을 검증하세요.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = 저장된 비밀번호 표시
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
+password-os-auth-change-dialog-message =
+    { PLATFORM() ->
+        [macos] 비밀번호 설정 변경
+       *[other] { -brand-short-name }에서 암호 설정을 변경하려고 합니다. 장치 로그인을 사용하여 이를 허용하세요.
+    }

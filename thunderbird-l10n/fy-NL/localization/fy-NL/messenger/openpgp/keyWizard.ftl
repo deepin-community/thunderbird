@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = In persoanlike OpenPGP-kaai foar { $identity } tafoegje
-key-wizard-button =
-    .buttonlabelaccept = Trochgean
-    .buttonlabelhelp = Tebek
 key-wizard-dialog =
     .buttonlabelaccept = Trochgean
     .buttonlabelextra1 = Tebekgean
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Jo eksterne kaai fia GnuPG (byg. fan in smartcard ôf) brûke
     .accesskey = J
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP-kaai oanmeitsje
 openpgp-keygen-secret-protection = Geheime kaaibefeiliging
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Jo kaai moat op syn minst ien dei jildich wêze.
 openpgp-keygen-ongoing = Der wurdt al in kaai oanmakke!
 openpgp-keygen-error-core = Kin OpenPGP Core Service net inisjalisearje
 openpgp-keygen-error-failed = It oanmeitsjen fan de OpenPGP-kaai is ûnferwachts mislearre
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = De OpenPGP-kaai is mei sukses oanmakke, mar de ynlûking foar kaai { $key } koe net ferkrigen wurde
 openpgp-keygen-abort-title = Oanmeitsjen kaai ôfbrekke?
 openpgp-keygen-abort = Der wurdt op dit stuit in OpenPGP-kaai oanmakke, binne jo wis dat jo dit annulearje wolle?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Iepenbiere en geheime kaai foar { $identity } oanmeitsje?
-
-## Import Key section
-
 openpgp-import-key-title = In besteande persoanlike OpenPGP-kaai ymportearje
 openpgp-import-key-legend = Selektearje in earder reservekopybestân.
 openpgp-import-key-description = Jo kinne persoanlike kaaien dy’t oanmakke binne mei oare OpenPGP-software ymportearje.
 openpgp-import-key-info = Oare software beskriuwt in persoanlike kaai mooglik mei alternative termen, lykas jo eigen kaai, geheime kaai, priveekaai of kaaipear.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } hat in kaai fûn dy’t ymportearre wurde kin.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Kaaien dy’t markearre wurde om as persoanlik
 openpgp-import-keep-passphrases =
     .label = Wachtwurdsinbefeiliging foar ymportearre geheime kaaien behâlde
 openpgp-passphrase-prompt-title = Wachtwurdsin fereaske
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Fier de wachtwurdsin yn om de folgjende kaai te ûntskoatteljen: { $key }
 openpgp-import-key-button =
     .label = Selektearje te ymportearjen bestân…
     .accesskey = S
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Dizze kaai as in persoanlike kaai behannelje
 gnupg-file = GnuPG-bestannen
 import-error-file-size = <b>Flater!</b> Bestannen grutter nas 5 MB wurde net stipe.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Flater!</b> Koe bestân net ymportearje. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Flater!</b> Koe kaaien net ymportearje. { $error }
 openpgp-import-identity-label = Identiteit
 openpgp-import-fingerprint-label = Fingerôfdruk
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bits
 openpgp-import-key-props =
     .label = Kaaieigenskippen
     .accesskey = S
-
-## External Key section
-
 openpgp-external-key-title = Eksterne GnuPG-kaai
 openpgp-external-key-description = Konfigurearje in eksterne GnuPG-kaai troch de kaai-ID yn te fieren
 openpgp-external-key-info = Dêrneist moatte jo Kaaibehearder brûke om de byhearrende iepenbiere kaai te ymportearjen en te akseptearjen.

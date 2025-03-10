@@ -1,21 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = SSL プロトコルが無効になっているため、安全な接続ができませんでした。
 psmerr-ssl2-disabled = サイトが古くて安全でないバージョンの SSL プロトコルを使用しているため、安全な接続ができませんでした。
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     無効な証明書を受信しました。サーバー管理者またはメール送信者に次の情報を知らせてください:
     
     あなたのサーバー証明書は認証局によって発行された他の証明書と同じシリアル番号を持っています。一意なシリアル番号を持つ新しい証明書を取得してください。
-# (^^; 後回し /security/manager/chrome/pipnss/nsserrors.properties
 ssl-error-export-only-server = Unable to communicate securely. Peer does not support high-grade encryption.
 ssl-error-us-only-server = Unable to communicate securely. Peer requires high-grade encryption which is not supported.
 ssl-error-no-cypher-overlap = Cannot communicate securely with peer: no common encryption algorithm(s).
@@ -332,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = The server presented a certificate
 mozilla-pkix-error-empty-issuer-name = The server presented a certificate with an empty issuer distinguished name.
 mozilla-pkix-error-additional-policy-constraint-failed = An additional policy constraint failed when validating this certificate.
 mozilla-pkix-error-self-signed-cert = The certificate is not trusted because it is self-signed.
+mozilla-pkix-error-issuer-no-longer-trusted = The certificate authority that issued the certificate was distrusted before the certificate was issued.
 xp-java-remove-principal-error = Couldn’t remove the principal
 xp-java-delete-privilege-error = Couldn’t delete the privilege
 xp-java-cert-not-exists-error = This principal doesn’t have a certificate

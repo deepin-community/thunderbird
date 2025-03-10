@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Pśidajśo wósobinski OpenPGP-kluc za { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Dalej
-    .buttonlabelhelp = Slědk
 key-wizard-dialog =
     .buttonlabelaccept = Dalej
     .buttonlabelextra1 = Slědk
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Wužywajśo swój eksterny kluc pśez GnuPG (na pś. ze smartkórty)
     .accesskey = G
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP-kluc napóraś
 openpgp-keygen-secret-protection = Šćit pótajmnego kluca
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Waš kluc musy nanejmjenjej jaden źeń płaśiwy 
 openpgp-keygen-ongoing = Napóranje kluca južo běžy!
 openpgp-keygen-error-core = OpenPGP Core Service njedajo se inicializěrowaś
 openpgp-keygen-error-failed = Napóranje OpenPGP-kluca njejo se njewócakano raźiło
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP-kluc jo se wuspěšnje napórał, ale njejo se raźiło, wótwołanje za kluc { $key } dostaś.
 openpgp-keygen-abort-title = Napóranje kluca pśetergnuś?
 openpgp-keygen-abort = Napóranje OpenPGP-kluca tuchylu běžy, cośo jo napšawdu pśetergnuś?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Zjawny a pótajmny kluc za { $identity } napóraś?
-
-## Import Key section
-
 openpgp-import-key-title = Eksistěrujucy wósobinski OpenPGP-kluc importěrowaś
 openpgp-import-key-legend = Wubjeŕśo do togo zawěsćonu dataju.
 openpgp-import-key-description = Móžośo wósobinske kluce importěrowaś, kótarež su se napórali z drugeju OpenPGP-softwaru.
 openpgp-import-key-info = Druga softwara mógła wósobinski kluc z alternatiwnymi zapśimjeśami wopisaś, na pśikład swójski kluc, pótajmny kluc abo klucowy por.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } jo namakał { $count } kluc, kótaryž dajo se importěrowaś.
@@ -108,8 +91,6 @@ openpgp-import-key-list-caption = Kluce, kótarež su ako wósobinske kluce wobk
 openpgp-import-keep-passphrases =
     .label = Pśi šćiśe pśez gronidłowy wuraz za importěrowane pótajmne kluce wóstaś
 openpgp-passphrase-prompt-title = Gronidłowa fraza trjebna
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Pšosym zapódajśo gronidłowu frazu, aby slědujucy kluc pśewóstajił: { $key }
 openpgp-import-key-button =
     .label = Wubjeŕśo dataju, kótaraž ma se importěrowaś…
     .accesskey = u
@@ -118,9 +99,7 @@ import-key-personal-checkbox =
     .label = Z toś tym klucom ako z wósobinskim klucom wobchadaś
 gnupg-file = GnuPG-dataje
 import-error-file-size = <b>Zmólka!</b> Dataje, kótarež su wětše ako 5 MB, se njepódpěraju.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Zmólka!</b> Dataja njedajo se importěrowaś. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Zmólka!</b>Kluce njedaju se importěrowaś. { $error }
 openpgp-import-identity-label = Identita
 openpgp-import-fingerprint-label = Palcowy wótśišć
@@ -129,9 +108,6 @@ openpgp-import-bits-label = Bity
 openpgp-import-key-props =
     .label = Klucowe kakosći
     .accesskey = K
-
-## External Key section
-
 openpgp-external-key-title = Eksterny GnuPG-kluc
 openpgp-external-key-description = Zapódajśo klucowy ID, aby eksterny GnuPG-kluc konfigurěrował
 openpgp-external-key-info = Mimo togo musyśo zastojnik klucow wužywaś, aby wótpowědny zjawny kluc importěrował a akceptěrował.

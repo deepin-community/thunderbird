@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Alle agenda’s zijn momenteel uitgeschakeld. Schakel een bestaande agenda in of voeg een nieuwe toe om afspraken te maken en te bewerken.
 calendar-deactivated-notification-tasks = Alle agenda’s zijn momenteel uitgeschakeld. Schakel een bestaande agenda in of voeg een nieuwe toe om taken te maken en te bewerken.
 calendar-notifications-label = Meldingen tonen voor aankomende afspraken
 calendar-add-notification-button =
     .label = Melding toevoegen
-
-## Side panel
-
 calendar-list-header = Agenda’s
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = { $calendarName }-agenda is gedempt
 calendar-enable-button = Inschakelen
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = { $calendarName }-agendaopties
 calendar-import-new-calendar = Nieuwe agenda…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Alle agenda’s opnieuw laden en wijzigingen synchroniseren
 calendar-new-event-primary-button = Nieuwe gebeurtenis
 calendar-new-task-primary-button = Nieuwe taak
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Vorige dag
     .accesskey = r
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Meerdere weken
     .title = Wisselen naar overzicht van meerdere weken
 calendar-view-toggle-month = Maand
     .title = Wisselen naar maandoverzicht
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Kalenderopmaakopties
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Werkdagen definiëren
 calendar-show-tasks-calendar-option =
     .label = Taken in agenda tonen
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Vorige dag
     .accesskey = o

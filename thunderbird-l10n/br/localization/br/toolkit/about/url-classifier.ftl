@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Titouroù ar rummader URL
 url-classifier-search-title = Klask
 url-classifier-search-result-title = Disoc'hoù
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = Roll an taolioù: { $list }
 url-classifier-search-input = URL
 url-classifier-search-error-invalid-url = URL didalvoudek
@@ -53,9 +45,5 @@ url-classifier-disabled = Diweredekaet
 url-classifier-updating = oc'h hizivaat
 url-classifier-cannot-update = n'haller ket hizivaat
 url-classifier-success = taol berzh
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = fazi hizivaat ({ $error })
 url-classifier-download-error = fazi pellgargañ ({ $error })

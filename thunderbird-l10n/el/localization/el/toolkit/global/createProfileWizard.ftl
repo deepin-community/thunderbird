@@ -1,13 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 create-profile-window2 =
     .title = Βοηθός δημιουργίας προφίλ
     .style = min-width: 52em; min-height: 35em;
-
-## First wizard page
-
 create-profile-first-page-header2 =
     { PLATFORM() ->
         [macos] Εισαγωγή
@@ -21,9 +14,6 @@ profile-creation-explanation-4 =
         [macos] Για να ξεκινήσετε τη δημιουργία του προφίλ σας, κάντε κλικ στο "Συνέχεια".
        *[other] Για να ξεκινήσετε τη δημιουργία του προφίλ σας, κάντε κλικ στο "Επόμενο".
     }
-
-## Second wizard page
-
 create-profile-last-page-header2 =
     { PLATFORM() ->
         [macos] Επίλογος

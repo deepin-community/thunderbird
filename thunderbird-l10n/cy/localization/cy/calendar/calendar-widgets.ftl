@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Mae pob calendr wedi'i analluogi ar hyn o bryd. Galluogwch galendr sy'n bodoli eisoes neu ychwanegu un newydd i greu a golygu digwyddiadau.
 calendar-deactivated-notification-tasks = Mae pob calendr wedi'i analluogi ar hyn o bryd. Galluogwch galendr sy'n bodoli eisoes neu ychwanegu un newydd i greu a golygu tasgau.
 calendar-notifications-label = Dangos hysbysiadau ar gyfer digwyddiadau sydd i ddod
 calendar-add-notification-button =
     .label = Ychwanegu hysbysiad
-
-## Side panel
-
 calendar-list-header = Calendrau
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Mae calendr { $calendarName } wedi'i dewi
 calendar-enable-button = Galluogi
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Dewisiadau calendr { $calendarName }
 calendar-import-new-calendar = Calendr Newydd…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Ail-lwytho pob calendr a chydweddu newidiadau
 calendar-new-event-primary-button = Digwyddiad Newydd
 calendar-new-task-primary-button = Tasg Newydd
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Diwrnod Blaenorol
     .accesskey = B
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Wythnosau
     .title = Newid i golwg wythnosol
 calendar-view-toggle-month = Mis
     .title = Newid i golwg mis
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Dewisiadau cynllun calendr
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Diffinio diwrnodau gwaith yr wythnos
 calendar-show-tasks-calendar-option =
     .label = Dangos tasgau yn y calendr
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Diwrnod Blaenorol
     .accesskey = B

@@ -1,15 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## The Enterprise Policies feature is aimed at system administrators
-## who want to deploy these settings across several Thunderbird installations
-## all at once. This is traditionally done through the Windows Group Policy
-## feature, but the system also supports other forms of deployment.
-## These are short descriptions for individual policies, to be displayed
-## in the documentation section in about:policies.
-
 policy-3rdparty = WebExtensions chrome.storage.managed арқылы қатынай алатын саясаттарды орнатыңыз.
 policy-AppAutoUpdate = Қолданбаны автожаңартуды іске қосу немесе сөндіру.
 policy-AppUpdatePin = { -brand-short-name } көрсетілген нұсқадан әрі қарай жаңартылуға тыйым салу.
@@ -43,13 +31,8 @@ policy-DisplayMenuBar = Мәзір жолағын үнсіз келісім бо
 policy-DNSOverHTTPS = HTTPS арқылы DNS баптау.
 policy-DontCheckDefaultClient = Іске қосылғанда негізгі клиент екеніне тексеруді сөндіру.
 policy-DownloadDirectory = Жүктеп алулар бумасын орнату және бұғаттау.
-# “lock” means that the user won’t be able to change this setting
 policy-EnableTrackingProtection = Құраманы бұғаттауды іске қосу немесе сөндіру, және қосымша түрде оны бекіту.
-# “lock” means that the user won’t be able to change this setting
 policy-EncryptedMediaExtensions = Шифрленген медиа кеңейтулерін іске қосу немесе сөндіру, және қосымша түрде оны бекіту.
-# A “locked” extension can’t be disabled or removed by the user. This policy
-# takes 3 keys (“Install”, ”Uninstall”, ”Locked”), you can either keep them in
-# English or translate them as verbs.
 policy-Extensions = Кеңейтулерді орнату, өшіру немесе бекіту. Орнату опциясы параметрлер ретінде URL-дер немесе орналасуларды қабылдайды. Өшіру және Бекіту опциялары кеңейтулер ID-ін қабылдайды.
 policy-ExtensionSettings = Кеңейту орнатылуының барлық жақтарын басқару.
 policy-ExtensionUpdate = Кеңейтулерді автожаңартуды іске қосу немесе сөндіру.
@@ -57,14 +40,8 @@ policy-Handlers = Үнсіз келісім бойынша қолданба өң
 policy-HardwareAcceleration = Мәні false болса, құрылғылық үдетуді сөндіру.
 policy-InstallAddonsPermission = Кейбір веб-сайттарға қосымшаларды орнатуды рұқсат ету.
 policy-LegacyProfiles = Әр орнату үшін бөлек профильді талап ететін мүмкіндікті сөндіру.
-
-## Do not translate "SameSite", it's the name of a cookie attribute.
-
 policy-LegacySameSiteCookieBehaviorEnabled = SameSite cookie үшін ескі әрекет баптауын іске қосу.
 policy-LegacySameSiteCookieBehaviorEnabledForDomainList = Көрсетілген сайттарда SameSite cookie үшін ескі әрекет баптауына ауысу.
-
-##
-
 policy-LocalFileLinks = Арнайы веб-сайттарға жергілікті файлдарға сілтеуді рұқсат ету.
 policy-ManualAppUpdateOnly = Тек қолмен жаңартуды рұқсат ету және пайдаланушыға жаңартулар туралы хабарламау.
 policy-NetworkPrediction = Желі болжамын іске қосу немесе сөндіру (DNS алдын-ала таңдау).
@@ -73,7 +50,6 @@ policy-OfferToSaveLoginsDefault = { -brand-short-name } үшін сақталғ�
 policy-OverrideFirstRunPage = Бірінші жөнелту парағын алмастыру. Бірінші жөнелту парағын сөндіру үшін, бұл саясатты бос қалдырыңыз.
 policy-OverridePostUpdatePage = Жаңартылғаннан кейін "Не жаңалық" парағын алмастыру. Жаңартылғаннан кейінгі парақты сөндіру үшін, бұл саясатты бос қалдырыңыз.
 policy-PasswordManagerEnabled = Парольдерді парольдер басқарушысында сақтауды іске қосу.
-# PDF.js and PDF should not be translated
 policy-PDFjs = PDF.js, { -brand-short-name } құрамындағы PDF шолушысын сөндіру немесе баптау.
 policy-Permissions2 = Камера, микрофон, орналасулар, хабарламалар және автоойнату рұқсаттарын баптау.
 policy-Preferences = Баптаулардың бір жиыны үшін мәндерін орнату және бұғаттау.
@@ -84,11 +60,9 @@ policy-RequestedLocales = Таңдау ретімен қолданба үшін 
 policy-SanitizeOnShutdown2 = Сөндірілген кезде навигация деректерін тазарту.
 policy-SearchEngines = Іздеу жүйесі параметрлерін баптау. Бұл саясат тек ұзақ мерзімді қолдауы бар (ESR) нұсқасында қолжетімді.
 policy-SearchSuggestEnabled = Іздеу ұсыныстарын іске қосу немесе сөндіру.
-# For more information, see https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/PKCS11/Module_Installation
 policy-SecurityDevices = PKCS #11 модульдерін орнату.
 policy-SSLVersionMax = Максималды SSL нұсқасын орнату.
 policy-SSLVersionMin = Минималды SSL нұсқасын орнату.
 policy-SupportMenu = Көмек мәзіріне таңдауыңызша қолдау көрсету мәзір элементін қосу.
 policy-UserMessaging = Пайдаланушыға кейбір хабарламаларды көрсетпеу.
-# “format” refers to the format used for the value of this policy.
 policy-WebsiteFilter = Веб-сайттарды шолуға тыйым салу. Пішімі туралы көбірек білу үшін, құжаттаманы қараңыз.

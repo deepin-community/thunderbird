@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = 同步
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = 退出…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = 添加账户
 appmenu-new-account-panel =
     .label = 添加账户
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = 注册新邮箱
-    .accesskey = G
-appmenu-new-mail-account =
-    .label = 现有邮箱
-    .accesskey = E
 appmenu-new-email-account =
     .label = 邮箱
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = 新闻组
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = 新建通讯录
 appmenu-newab-panel =
@@ -73,16 +54,13 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP 通讯录
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = 创建
 appmenu-create-panel =
     .label = 创建
     .accesskey = C
 appmenu-create-message =
-    .label = 消息
+    .label = 邮件
     .accesskey = M
 appmenu-create-event =
     .label = 事件
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = 联系人
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = 打开文件
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = 日历…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = 查看
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = 增大字号
 appmenuitem-font-size-reduce =
     .tooltiptext = 减小字号
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = 重置字号
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = 工具
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = 导出
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = 导出到移动设备
+    .accesskey = P
 appmenu-tools-message-search =
     .label = 搜索消息
     .accesskey = S
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = 开发者工具
     .accesskey = T
-
-## Help
-
 appmenu-help-panel-title =
     .title = 帮助
 appmenu-help-get-help =
     .label = 获取帮助
     .accesskey = H
-appmenu-help-explore-features =
-    .label = 探索功能
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = 获取 { -brand-short-name } 帮助
     .accesskey = R
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = 关于 { -brand-short-name }
     .accesskey = A
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = 正在下载 { -brand-shorter-name } 更新
 appmenuitem-banner-update-available =

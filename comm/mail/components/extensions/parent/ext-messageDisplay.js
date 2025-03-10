@@ -11,6 +11,10 @@ var { MailUtils } = ChromeUtils.importESModule(
 var { getMsgStreamUrl } = ChromeUtils.importESModule(
   "resource:///modules/ExtensionMessages.sys.mjs"
 );
+var { getActualSelectedMessages } = ChromeUtils.importESModule(
+  "resource:///modules/ExtensionMailTabs.sys.mjs"
+);
+
 /**
  * Returns the currently displayed messages in the given tab.
  *
@@ -21,7 +25,7 @@ function getDisplayedMessages(tab) {
   const nativeTab = tab.nativeTab;
   if (tab instanceof TabmailTab) {
     if (nativeTab.mode.name == "mail3PaneTab") {
-      return nativeTab.chromeBrowser.contentWindow.gDBView.getSelectedMsgHdrs();
+      return getActualSelectedMessages(nativeTab.chromeBrowser.contentWindow);
     } else if (nativeTab.mode.name == "mailMessageTab") {
       return [nativeTab.chromeBrowser.contentWindow.gMessage];
     }
@@ -34,7 +38,7 @@ function getDisplayedMessages(tab) {
 /**
  * Wrapper to convert multiple nsIMsgDBHdr to MessageHeader objects.
  *
- * @param {nsIMsgDBHdr[]} Array of nsIMsgDBHdr
+ * @param {nsIMsgDBHdr[]} messages - Array of nsIMsgDBHdr
  * @param {ExtensionData} extension
  * @returns {MessageHeader[]} Array of MessageHeader objects
  *
@@ -54,7 +58,7 @@ function convertMessages(messages, extension) {
 /**
  * Check the users preference on opening new messages in tabs or windows.
  *
- * @returns {string} - either "tab" or "window"
+ * @returns {"tab"|"window"} - Either "tab" or "window".
  */
 function getDefaultMessageOpenLocation() {
   const pref = Services.prefs.getIntPref("mail.openMessageBehavior");
@@ -131,8 +135,9 @@ this.messageDisplay = class extends ExtensionAPIPersistent {
           if (fire.wakeup) {
             await fire.wakeup();
           }
-          // `event.target` is an about:message or about:3pane window.
-          const nativeTab = event.target.tabOrWindow;
+          // `event.target` is an about:message window or a MessagePane.
+          const nativeTab =
+            event.target.tabOrWindow || event.target.ownerGlobal.tabOrWindow;
           const tab = tabManager.wrapTab(nativeTab);
           const msgs = getDisplayedMessages(tab);
           if (extension.manifestVersion < 3) {
@@ -170,26 +175,30 @@ this.messageDisplay = class extends ExtensionAPIPersistent {
         ? tabManager.get(tabId)
         : tabManager.wrapTab(tabTracker.activeTab);
       if (tab?.type == "mail") {
+        const contentWindow = tab.nativeTab.chromeBrowser.contentWindow;
+        if (!contentWindow) {
+          return null;
+        }
+        await contentWindow.hasDOMContentLoaded.promise;
+
         // In about:3pane only the messageBrowser needs to be checked for its
         // load state. The webBrowser is invalid, the multiMessageBrowser can
         // bypass.
-        if (!tab.nativeTab.chromeBrowser.contentWindow.webBrowser.hidden) {
+        if (!contentWindow.webBrowser.hidden) {
           return null;
         }
-        if (
-          !tab.nativeTab.chromeBrowser.contentWindow.multiMessageBrowser.hidden
-        ) {
+        if (contentWindow.messagePane.isMultiMessageBrowserVisible()) {
           return tab;
         }
-        msgContentWindow =
-          tab.nativeTab.chromeBrowser.contentWindow.messageBrowser
-            .contentWindow;
+        msgContentWindow = contentWindow.messageBrowser.contentWindow;
       } else if (tab?.type == "messageDisplay") {
         msgContentWindow =
           tab instanceof TabmailTab
             ? tab.nativeTab.chromeBrowser.contentWindow
             : tab.nativeTab.messageBrowser.contentWindow;
-      } else {
+      }
+
+      if (!msgContentWindow) {
         return null;
       }
 

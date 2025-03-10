@@ -1,11 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY windowTitle.label "Insertar expresión matemática">
-
 <!ENTITY sourceEditField.label "Introduzca código LaTeX:">
-
 <!ENTITY options.label "Opciones">
 <!ENTITY optionInline.label "Modo incrustado">
 <!ENTITY optionInline.accesskey "M">
@@ -15,6 +9,5 @@
 <!ENTITY optionLTR.accesskey "z">
 <!ENTITY optionRTL.label "Dirección de derecha a izquierda">
 <!ENTITY optionRTL.accesskey "d">
-
 <!ENTITY insertButton.label "Insertar">
 <!ENTITY insertButton.accesskey "I">

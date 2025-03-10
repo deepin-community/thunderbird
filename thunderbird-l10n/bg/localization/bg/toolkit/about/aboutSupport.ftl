@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Отстраняване на неизправности
 page-subtitle = Тази страница съдържа техническа информация, която може да ви е от полза, когато се опитвате да решите проблем. Ако търсите отговори на често задавани въпроси за { -brand-short-name }, проверете в нашата <a data-l10n-name="support-link">страница за поддръжка</a>.
 crashes-title = Доклади за сривове
@@ -30,8 +26,6 @@ app-basics-name = Наименование
 app-basics-version = Версия
 app-basics-build-id = Идентификатор на компилиране
 app-basics-update-channel = Канал за обновяване
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Папка за обновявания
@@ -39,19 +33,15 @@ app-basics-update-dir =
     }
 app-basics-update-history = История на обновяванията
 app-basics-show-update-history = История на обновяванията
-# Represents the path to the binary used to start the application.
 app-basics-binary = Двоичен файл на приловението
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Директория на профила
        *[other] Папка на профила
     }
-app-basics-enabled-plugins = Включени приставки
 app-basics-build-config = Настройки на компилацията
 app-basics-user-agent = Потребителски агент
 app-basics-os = ОС
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Използване на паметта
 app-basics-performance = Производителност
@@ -62,6 +52,7 @@ app-basics-remote-processes-count = Отдалечени процеси
 app-basics-enterprise-policies = Ведомствени ограничения
 app-basics-key-mozilla = Mozilla Location Service Key
 app-basics-safe-mode = Надежден режим
+app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
         [macos] Показване във Finder
@@ -106,9 +97,6 @@ sandbox-sys-call-proc-type = Вид процес
 sandbox-sys-call-number = Syscall
 sandbox-sys-call-args = Аргументи
 clear-startup-cache-title = Опитайте да изчистите междинната памет за стартиране
-
-## Media titles
-
 audio-backend = Аудио хардуер
 max-audio-channels = Максимален брой канали
 sample-rate = Предпочитана честота на дискретизацията
@@ -124,17 +112,6 @@ media-device-format = Формат
 media-device-channels = Канали
 media-device-rate = Честота
 media-device-latency = Закъснение
-
-## Codec support table
-
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
-
-##
-
 intl-title = Интернационализиране и локализация
 intl-app-title = Настройки на приложението
 intl-locales-requested = Искани локали
@@ -144,52 +121,29 @@ intl-locales-default = Локал по подразбиране
 intl-os-title = Настройки на операционната система
 intl-os-prefs-system-locales = Системен локал
 intl-regional-prefs = Местни настройки
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Отдалечено отстраняване на грешки (Chromium Protocol)
 remote-debugging-accepting-connections = Приемане на връзки
 remote-debugging-url = Адрес
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Доклади за сривовете през последния { $days } ден
        *[other] Доклади за сривовете през последните { $days } дена
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] преди { $minutes } минута
        *[other] преди { $minutes } минути
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] преди { $hours } час
        *[other] преди { $hours } часа
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] преди { $days } ден
        *[other] преди { $days } дена
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Всички доклади за сривове (включително { $reports } изчакващ срив в дадения времеви диапазон)
@@ -197,18 +151,11 @@ pending-reports =
     }
 raw-data-copied = Суровите данни са копирани в системния буфер
 text-copied = Текстът е копиран в системния буфер
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Блокирано за конкретната версия на вашия графичен драйвер.
 blocked-gfx-card = Вашата графична карта е блокирана поради неразрешени проблеми с драйвера.
 blocked-os-version = Блокирано за конкретната версия на вашата операционна система.
 blocked-mismatched-version = Блокирано поради несъответствие във версията на графичен драйвер между системния регистър и DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Вашият графичен драйвер е блокиран. Опитайте да обновите драйвера си до версия { $driverVersion } или по-нова.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Параметри на ClearType
 compositing = Сглобяване
 hardware-h264 = Хардуерно декодиране на H264
@@ -216,11 +163,6 @@ main-thread-no-omtc = главна нишка, без OMTC
 yes = Да
 no = Не
 virtual-monitor-disp = Виртуален монитор
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Наличен
 missing = Липсващ
 gpu-process-pid = GPUProcessPid
@@ -247,8 +189,6 @@ webgl2-driver-extensions = Разширения на драйвера за WebGL
 webgl2-extensions = Разширения на WebGL 2
 webgpu-default-adapter = Адаптер по подразбиране за WebGPU
 webgpu-fallback-adapter = Резервен адаптер за WebGPU
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = В списъка на блокираните: код на грешка { $failureCode }
 d3d11layers-crash-guard = Сглобяване с D3D11
 glcontext-crash-guard = OpenGL
@@ -267,6 +207,7 @@ has-seccomp-bpf = Seccomp-BPF (филтриране на системни изв
 has-seccomp-tsync = Синхронизиране на нишката на Seccomp
 has-user-namespaces = Потребителски пространства от имена
 has-privileged-user-namespaces = Потребителски пространства от имена за привилегировани процеси
+support-user-namespaces-unavailable = { $status } — Тази възможност не е разрешена от вашата система. Това може да ограничи функциите за сигурност на { -brand-short-name }.
 can-sandbox-content = Изолиране на процес за съдържанието във виртуална среда
 can-sandbox-media = Отделяне на медийна приставка във виртуална среда
 content-sandbox-level = Степен на изолация на процес за съдържание
@@ -274,10 +215,8 @@ effective-content-sandbox-level = Ефективна степен на изол�
 sandbox-proc-type-content = съдържание
 sandbox-proc-type-file = съдържание на файл
 sandbox-proc-type-media-plugin = приставка за медия
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
+fission-windows = { $fissionWindows }/{ $totalWindows }
 async-pan-zoom = Асинхронно преместване / мащабиране
 apz-none = няма
 wheel-enabled = използване на колелцето на мишката
@@ -285,32 +224,12 @@ touch-enabled = използване на интерфейса с докосва
 drag-enabled = използване на лентата за плъзгане
 keyboard-enabled = клавиатура влкючена
 autoscroll-enabled = автоматично прелистване включено
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = асинхронното използване на колелцето на мишката е изключено заради неподдържана настройка: { $preferenceKey }
 touch-warning = асинхронното използване на интерфейс с докосвания е изключено заради неподдържана настройка: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Изключени
 policies-active = Включено
 policies-error = Грешка
-
-## Printing section
-
-
-## Remote Settings sections
-
-# Status when synchronization is not working.
+support-remote-settings-title = Отдалечени настройки
 support-remote-settings-status-broken = Не работи
-
-## Normandy sections
-
-
-## Pointing devices
-
-
-## Content Analysis (DLP)
-
+support-remote-experiments-title = Отдалечени експерименти
+support-remote-features-title = Отдалечени функции

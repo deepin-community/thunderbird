@@ -1,26 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Main toolbar buttons (tooltips and alt text for images)
-
 pdfjs-previous-button =
     .title = Edellinen sivu
 pdfjs-previous-button-label = Edellinen
 pdfjs-next-button =
     .title = Seuraava sivu
 pdfjs-next-button-label = Seuraava
-# .title: Tooltip for the pageNumber input.
 pdfjs-page-input =
     .title = Sivu
-# Variables:
-#   $pagesCount (Number) - the total number of pages in the document
-# This string follows an input field with the number of the page currently displayed.
 pdfjs-of-pages = / { $pagesCount }
-# Variables:
-#   $pageNumber (Number) - the currently visible page
-#   $pagesCount (Number) - the total number of pages in the document
 pdfjs-page-of-pages = ({ $pageNumber } / { $pagesCount })
 pdfjs-zoom-out-button =
     .title = Loitonna
@@ -42,18 +28,12 @@ pdfjs-print-button-label = Tulosta
 pdfjs-save-button =
     .title = Tallenna
 pdfjs-save-button-label = Tallenna
-# Used in Firefox for Android as a tooltip for the download button (“download” is a verb).
 pdfjs-download-button =
     .title = Lataa
-# Used in Firefox for Android as a label for the download button (“download” is a verb).
-# Length of the translation matters since we are in a mobile context, with limited screen estate.
 pdfjs-download-button-label = Lataa
 pdfjs-bookmark-button =
     .title = Nykyinen sivu (Näytä URL-osoite nykyiseltä sivulta)
 pdfjs-bookmark-button-label = Nykyinen sivu
-
-##  Secondary toolbar and context menu
-
 pdfjs-tools-button =
     .title = Tools
 pdfjs-tools-button-label = Tools
@@ -96,32 +76,20 @@ pdfjs-spread-odd-button-label = Parittomalta alkavat aukeamat
 pdfjs-spread-even-button =
     .title = Yhdistä sivut aukeamiksi alkaen parilliselta sivulta
 pdfjs-spread-even-button-label = Parilliselta alkavat aukeamat
-
-## Document properties dialog
-
 pdfjs-document-properties-button =
     .title = Dokumentin ominaisuudet…
 pdfjs-document-properties-button-label = Dokumentin ominaisuudet…
 pdfjs-document-properties-file-name = Tiedoston nimi:
 pdfjs-document-properties-file-size = Tiedoston koko:
-# Variables:
-#   $size_kb (Number) - the PDF file size in kilobytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-kb = { $size_kb } kt ({ $size_b } tavua)
-# Variables:
-#   $size_mb (Number) - the PDF file size in megabytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-mb = { $size_mb } Mt ({ $size_b } tavua)
+pdfjs-document-properties-size-kb = { NUMBER($kb, maximumSignificantDigits: 3) } kt ({ $b } tavua)
+pdfjs-document-properties-size-mb = { NUMBER($mb, maximumSignificantDigits: 3) } Mt ({ $b } tavua)
 pdfjs-document-properties-title = Otsikko:
 pdfjs-document-properties-author = Tekijä:
 pdfjs-document-properties-subject = Aihe:
 pdfjs-document-properties-keywords = Avainsanat:
 pdfjs-document-properties-creation-date = Luomispäivämäärä:
 pdfjs-document-properties-modification-date = Muokkauspäivämäärä:
-# Variables:
-#   $date (Date) - the creation/modification date of the PDF file
-#   $time (Time) - the creation/modification time of the PDF file
-pdfjs-document-properties-date-string = { $date }, { $time }
+pdfjs-document-properties-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
 pdfjs-document-properties-creator = Luoja:
 pdfjs-document-properties-producer = PDF-tuottaja:
 pdfjs-document-properties-version = PDF-versio:
@@ -135,38 +103,17 @@ pdfjs-document-properties-page-size-name-a-three = A3
 pdfjs-document-properties-page-size-name-a-four = A4
 pdfjs-document-properties-page-size-name-letter = Letter
 pdfjs-document-properties-page-size-name-legal = Legal
-
-## Variables:
-##   $width (Number) - the width of the (current) page
-##   $height (Number) - the height of the (current) page
-##   $unit (String) - the unit of measurement of the (current) page
-##   $name (String) - the name of the (current) page
-##   $orientation (String) - the orientation of the (current) page
-
 pdfjs-document-properties-page-size-dimension-string = { $width } × { $height } { $unit } ({ $orientation })
 pdfjs-document-properties-page-size-dimension-name-string = { $width } × { $height } { $unit } ({ $name }, { $orientation })
-
-##
-
-# The linearization status of the document; usually called "Fast Web View" in
-# English locales of Adobe software.
 pdfjs-document-properties-linearized = Nopea web-katselu:
 pdfjs-document-properties-linearized-yes = Kyllä
 pdfjs-document-properties-linearized-no = Ei
 pdfjs-document-properties-close-button = Sulje
-
-## Print
-
 pdfjs-print-progress-message = Valmistellaan dokumenttia tulostamista varten…
-# Variables:
-#   $progress (Number) - percent value
 pdfjs-print-progress-percent = { $progress } %
 pdfjs-print-progress-close-button = Peruuta
 pdfjs-printing-not-supported = Varoitus: Selain ei tue kaikkia tulostustapoja.
 pdfjs-printing-not-ready = Varoitus: PDF-tiedosto ei ole vielä latautunut kokonaan, eikä sitä voi vielä tulostaa.
-
-## Tooltips and alt text for side panel toolbar buttons
-
 pdfjs-toggle-sidebar-button =
     .title = Näytä/piilota sivupaneeli
 pdfjs-toggle-sidebar-notification-button =
@@ -191,20 +138,10 @@ pdfjs-findbar-button =
     .title = Etsi dokumentista
 pdfjs-findbar-button-label = Etsi
 pdfjs-additional-layers = Lisätasot
-
-## Thumbnails panel item (tooltip and alt text for images)
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-title =
     .title = Sivu { $page }
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-canvas =
     .aria-label = Pienoiskuva sivusta { $page }
-
-## Find panel button title and messages
-
 pdfjs-find-input =
     .title = Etsi
     .placeholder = Etsi dokumentista…
@@ -220,72 +157,37 @@ pdfjs-find-match-diacritics-checkbox-label = Erota tarkkeet
 pdfjs-find-entire-word-checkbox-label = Kokonaiset sanat
 pdfjs-find-reached-top = Päästiin dokumentin alkuun, jatketaan lopusta
 pdfjs-find-reached-bottom = Päästiin dokumentin loppuun, jatketaan alusta
-# Variables:
-#   $current (Number) - the index of the currently active find result
-#   $total (Number) - the total number of matches in the document
 pdfjs-find-match-count =
     { $total ->
         [one] { $current } / { $total } osuma
        *[other] { $current } / { $total } osumaa
     }
-# Variables:
-#   $limit (Number) - the maximum number of matches
 pdfjs-find-match-count-limit =
     { $limit ->
         [one] Yli { $limit } osuma
        *[other] Yli { $limit } osumaa
     }
 pdfjs-find-not-found = Hakusanaa ei löytynyt
-
-## Predefined zoom values
-
 pdfjs-page-scale-width = Sivun leveys
 pdfjs-page-scale-fit = Koko sivu
 pdfjs-page-scale-auto = Automaattinen suurennus
 pdfjs-page-scale-actual = Todellinen koko
-# Variables:
-#   $scale (Number) - percent value for page scale
 pdfjs-page-scale-percent = { $scale } %
-
-## PDF page
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-page-landmark =
     .aria-label = Sivu { $page }
-
-## Loading indicator messages
-
 pdfjs-loading-error = Tapahtui virhe ladattaessa PDF-tiedostoa.
 pdfjs-invalid-file-error = Virheellinen tai vioittunut PDF-tiedosto.
 pdfjs-missing-file-error = Puuttuva PDF-tiedosto.
 pdfjs-unexpected-response-error = Odottamaton vastaus palvelimelta.
 pdfjs-rendering-error = Tapahtui virhe piirrettäessä sivua.
-
-## Annotations
-
-# Variables:
-#   $date (Date) - the modification date of the annotation
-#   $time (Time) - the modification time of the annotation
-pdfjs-annotation-date-string = { $date }, { $time }
-# .alt: This is used as a tooltip.
-# Variables:
-#   $type (String) - an annotation type from a list defined in the PDF spec
-# (32000-1:2008 Table 169 – Annotation types).
-# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+pdfjs-annotation-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
 pdfjs-text-annotation-type =
     .alt = [{ $type }-merkintä]
-
-## Password
-
 pdfjs-password-label = Kirjoita PDF-tiedoston salasana.
 pdfjs-password-invalid = Virheellinen salasana. Yritä uudestaan.
 pdfjs-password-ok-button = OK
 pdfjs-password-cancel-button = Peruuta
 pdfjs-web-fonts-disabled = Verkkosivujen omat kirjasinlajit on estetty: ei voida käyttää upotettuja PDF-kirjasinlajeja.
-
-## Editing
-
 pdfjs-editor-free-text-button =
     .title = Teksti
 pdfjs-editor-free-text-button-label = Teksti
@@ -302,9 +204,6 @@ pdfjs-highlight-floating-button1 =
     .title = Korostus
     .aria-label = Korostus
 pdfjs-highlight-floating-button-label = Korostus
-
-## Remove button for the various kind of editor.
-
 pdfjs-editor-remove-ink-button =
     .title = Poista piirros
 pdfjs-editor-remove-freetext-button =
@@ -313,10 +212,6 @@ pdfjs-editor-remove-stamp-button =
     .title = Poista kuva
 pdfjs-editor-remove-highlight-button =
     .title = Poista korostus
-
-##
-
-# Editor Parameters
 pdfjs-editor-free-text-color-input = Väri
 pdfjs-editor-free-text-size-input = Koko
 pdfjs-editor-ink-color-input = Väri
@@ -325,23 +220,21 @@ pdfjs-editor-ink-opacity-input = Peittävyys
 pdfjs-editor-stamp-add-image-button =
     .title = Lisää kuva
 pdfjs-editor-stamp-add-image-button-label = Lisää kuva
-# This refers to the thickness of the line used for free highlighting (not bound to text)
 pdfjs-editor-free-highlight-thickness-input = Paksuus
 pdfjs-editor-free-highlight-thickness-title =
     .title = Muuta paksuutta korostaessasi muita kohteita kuin tekstiä
-pdfjs-free-text =
+pdfjs-free-text2 =
     .aria-label = Tekstimuokkain
-pdfjs-free-text-default-content = Aloita kirjoittaminen…
+    .default-content = Aloita kirjoittaminen…
 pdfjs-ink =
     .aria-label = Piirrustusmuokkain
 pdfjs-ink-canvas =
     .aria-label = Käyttäjän luoma kuva
-
-## Alt-text dialog
-
-# Alternative text (alt text) helps when people can't see the image.
+pdfjs-editor-alt-text-button =
+    .aria-label = Vaihtoehtoinen teksti
 pdfjs-editor-alt-text-button-label = Vaihtoehtoinen teksti
-pdfjs-editor-alt-text-edit-button-label = Muokkaa vaihtoehtoista tekstiä
+pdfjs-editor-alt-text-edit-button =
+    .aria-label = Muokkaa vaihtoehtoista tekstiä
 pdfjs-editor-alt-text-dialog-label = Valitse vaihtoehto
 pdfjs-editor-alt-text-dialog-description = Vaihtoehtoinen teksti ("alt-teksti") auttaa ihmisiä, jotka eivät näe kuvaa tai kun kuva ei lataudu.
 pdfjs-editor-alt-text-add-description-label = Lisää kuvaus
@@ -351,25 +244,24 @@ pdfjs-editor-alt-text-mark-decorative-description = Tätä käytetään koristek
 pdfjs-editor-alt-text-cancel-button = Peruuta
 pdfjs-editor-alt-text-save-button = Tallenna
 pdfjs-editor-alt-text-decorative-tooltip = Merkitty koristeelliseksi
-# .placeholder: This is a placeholder for the alt text input area
 pdfjs-editor-alt-text-textarea =
     .placeholder = Esimerkiksi "Nuori mies istuu pöytään syömään aterian"
-
-## Editor resizers
-## This is used in an aria label to help to understand the role of the resizer.
-
-pdfjs-editor-resizer-label-top-left = Vasen yläkulma - muuta kokoa
-pdfjs-editor-resizer-label-top-middle = Ylhäällä keskellä - muuta kokoa
-pdfjs-editor-resizer-label-top-right = Oikea yläkulma - muuta kokoa
-pdfjs-editor-resizer-label-middle-right = Keskellä oikealla - muuta kokoa
-pdfjs-editor-resizer-label-bottom-right = Oikea alakulma - muuta kokoa
-pdfjs-editor-resizer-label-bottom-middle = Alhaalla keskellä - muuta kokoa
-pdfjs-editor-resizer-label-bottom-left = Vasen alakulma - muuta kokoa
-pdfjs-editor-resizer-label-middle-left = Keskellä vasemmalla - muuta kokoa
-
-## Color picker
-
-# This means "Color used to highlight text"
+pdfjs-editor-resizer-top-left =
+    .aria-label = Vasen yläkulma - muuta kokoa
+pdfjs-editor-resizer-top-middle =
+    .aria-label = Ylhäällä keskellä - muuta kokoa
+pdfjs-editor-resizer-top-right =
+    .aria-label = Oikea yläkulma - muuta kokoa
+pdfjs-editor-resizer-middle-right =
+    .aria-label = Keskellä oikealla - muuta kokoa
+pdfjs-editor-resizer-bottom-right =
+    .aria-label = Oikea alakulma - muuta kokoa
+pdfjs-editor-resizer-bottom-middle =
+    .aria-label = Alhaalla keskellä - muuta kokoa
+pdfjs-editor-resizer-bottom-left =
+    .aria-label = Vasen alakulma - muuta kokoa
+pdfjs-editor-resizer-middle-left =
+    .aria-label = Keskellä vasemmalla - muuta kokoa
 pdfjs-editor-highlight-colorpicker-label = Korostusväri
 pdfjs-editor-colorpicker-button =
     .title = Vaihda väri
@@ -385,54 +277,33 @@ pdfjs-editor-colorpicker-pink =
     .title = Pinkki
 pdfjs-editor-colorpicker-red =
     .title = Punainen
-
-## Show all highlights
-## This is a toggle button to show/hide all the highlights.
-
 pdfjs-editor-highlight-show-all-button-label = Näytä kaikki
 pdfjs-editor-highlight-show-all-button =
     .title = Näytä kaikki
-
-## New alt-text dialog
-## Group note for entire feature: Alternative text (alt text) helps when people can't see the image. This feature includes a tool to create alt text automatically using an AI model that works locally on the user's device to preserve privacy.
-
-# Modal header positioned above a text box where users can edit the alt text.
 pdfjs-editor-new-alt-text-dialog-edit-label = Muokkaa vaihtoehtoista tekstiä (kuvan kuvaus)
-# Modal header positioned above a text box where users can add the alt text.
 pdfjs-editor-new-alt-text-dialog-add-label = Lisää vaihtoehtoinen teksti (kuvan kuvaus)
 pdfjs-editor-new-alt-text-textarea =
     .placeholder = Kirjoita kuvaus tähän…
-# This text refers to the alt text box above this description. It offers a definition of alt text.
 pdfjs-editor-new-alt-text-description = Lyhyt kuvaus ihmisille, jotka eivät näe kuvaa tai kun kuva ei lataudu.
-# This is a required legal disclaimer that refers to the automatically created text inside the alt text box above this text. It disappears if the text is edited by a human.
 pdfjs-editor-new-alt-text-disclaimer1 = Tämä vaihtoehtoinen teksti luotiin automaattisesti, ja se voi olla epätarkka.
-# This is a required legal disclaimer that refers to the automatically created text inside the alt text box above this text. It disappears if the text is edited by a human.
-pdfjs-editor-new-alt-text-disclaimer = Tämä vaihtoehtoinen teksti luotiin automaattisesti.
 pdfjs-editor-new-alt-text-disclaimer-learn-more-url = Lue lisää
 pdfjs-editor-new-alt-text-create-automatically-button-label = Luo vaihtoehtoinen teksti automaattisesti
 pdfjs-editor-new-alt-text-not-now-button = Ei nyt
 pdfjs-editor-new-alt-text-error-title = Vaihtoehtotekstiä ei voitu luoda automaattisesti
 pdfjs-editor-new-alt-text-error-description = Kirjoita oma vaihtoehtoinen teksti tai yritä myöhemmin uudelleen.
 pdfjs-editor-new-alt-text-error-close-button = Sulje
-# Variables:
-#   $totalSize (Number) - the total size (in MB) of the AI model.
-#   $downloadedSize (Number) - the downloaded size (in MB) of the AI model.
-#   $percent (Number) - the percentage of the downloaded size.
 pdfjs-editor-new-alt-text-ai-model-downloading-progress = Ladataan vaihtoehtoisen tekstin tekoälymallia ({ $downloadedSize } / { $totalSize } Mt)
     .aria-valuetext = Ladataan vaihtoehtoisen tekstin tekoälymallia ({ $downloadedSize } / { $totalSize } Mt)
-# This is a button that users can click to edit the alt text they have already added.
+pdfjs-editor-new-alt-text-added-button =
+    .aria-label = Vaihtoehtoinen teksti lisätty
 pdfjs-editor-new-alt-text-added-button-label = Vaihtoehtoinen teksti lisätty
-# This is a button that users can click to open the alt text editor and add alt text when it is not present.
+pdfjs-editor-new-alt-text-missing-button =
+    .aria-label = Vaihtoehtoinen teksti puuttuu
 pdfjs-editor-new-alt-text-missing-button-label = Vaihtoehtoinen teksti puuttuu
-# This is a button that opens up the alt text modal where users should review the alt text that was automatically generated.
+pdfjs-editor-new-alt-text-to-review-button =
+    .aria-label = Tarkista vaihtoehtoinen teksti
 pdfjs-editor-new-alt-text-to-review-button-label = Tarkista vaihtoehtoinen teksti
-# "Created automatically" is a prefix that will be added to the beginning of any alt text that has been automatically generated. After the colon, the user will see/hear the actual alt text description. If the alt text has been edited by a human, this prefix will not appear.
-# Variables:
-#   $generatedAltText (String) - the generated alt-text.
 pdfjs-editor-new-alt-text-generated-alt-text-with-disclaimer = Luotu automaattisesti: { $generatedAltText }
-
-## Image alt-text settings
-
 pdfjs-image-alt-text-settings-button =
     .title = Kuvan vaihtoehtoisen tekstin asetukset
 pdfjs-image-alt-text-settings-button-label = Kuvan vaihtoehtoisen tekstin asetukset
@@ -440,8 +311,6 @@ pdfjs-editor-alt-text-settings-dialog-label = Kuvan vaihtoehtoisen tekstin asetu
 pdfjs-editor-alt-text-settings-automatic-title = Automaattinen vaihtoehtoinen teksti
 pdfjs-editor-alt-text-settings-create-model-button-label = Luo vaihtoehtoinen teksti automaattisesti
 pdfjs-editor-alt-text-settings-create-model-description = Ehdottaa kuvauksia, jotka auttavat ihmisiä, jotka eivät näe kuvaa tai kun kuva ei lataudu.
-# Variables:
-#   $totalSize (Number) - the total size (in MB) of the AI model.
 pdfjs-editor-alt-text-settings-download-model-label = Vaihtoehtoisen tekstin tekoälymalli ({ $totalSize } Mt)
 pdfjs-editor-alt-text-settings-ai-model-description = Toimii paikallisesti laitteellasi, joten tietosi pysyvät yksityisinä. Vaadittu automaattiselle vaihtoehtoiselle tekstille.
 pdfjs-editor-alt-text-settings-delete-model-button = Poista
@@ -451,3 +320,18 @@ pdfjs-editor-alt-text-settings-editor-title = Vaihtoehtoisen tekstin muokkain
 pdfjs-editor-alt-text-settings-show-dialog-button-label = Näytä vaihtoehtoisen tekstin muokkain heti, kun lisäät kuvan
 pdfjs-editor-alt-text-settings-show-dialog-description = Auttaa varmistamaan, että kaikissa kuvissasi on vaihtoehtoinen teksti.
 pdfjs-editor-alt-text-settings-close-button = Sulje
+pdfjs-editor-undo-bar-message-highlight = Korostus poistettu
+pdfjs-editor-undo-bar-message-freetext = Teksti poistettu
+pdfjs-editor-undo-bar-message-ink = Piirustus poistettu
+pdfjs-editor-undo-bar-message-stamp = Kuva poistettu
+pdfjs-editor-undo-bar-message-multiple =
+    { $count ->
+        [one] { $count } merkintä poistettu
+       *[other] { $count } merkintää poistettu
+    }
+pdfjs-editor-undo-bar-undo-button =
+    .title = Kumoa
+pdfjs-editor-undo-bar-undo-button-label = Kumoa
+pdfjs-editor-undo-bar-close-button =
+    .title = Sulje
+pdfjs-editor-undo-bar-close-button-label = Sulje

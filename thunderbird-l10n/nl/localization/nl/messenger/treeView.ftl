@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Aanvinkveld om de selectie van de huidige rij te wisselen
     .title = De huidige rij selecteren
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = De huidige rij herstellen
 tree-list-view-column-picker =
     .title = Weer te geven kolommen selecteren
-tree-list-view-column-picker-restore =
-    .label = Kolomvolgorde herstellen
 tree-list-view-column-picker-restore-default-columns =
     .label = Standaardkolommen herstellen
 tree-list-view-row-thread-button =

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL 分類器資訊
 url-classifier-search-title = 搜尋
 url-classifier-search-result-title = 結果
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Safe Browsing 記錄模組
 url-classifier-debug-modules = 目前的記錄模組
 url-classifier-debug-sbjs-modules = Safe Browsing JS 記錄
 url-classifier-debug-file = 目前記錄檔
-
 url-classifier-trigger-update = 觸發更新
 url-classifier-not-available = 不適用
 url-classifier-disable-sbjs-log = 停用 Safe Browsing JS 記錄
@@ -50,9 +45,5 @@ url-classifier-disabled = 已停用
 url-classifier-updating = 更新中
 url-classifier-cannot-update = 無法更新
 url-classifier-success = 成功
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = 更新錯誤（{ $error }）
 url-classifier-download-error = 下載錯誤（{ $error }）

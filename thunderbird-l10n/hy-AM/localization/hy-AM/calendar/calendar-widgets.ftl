@@ -1,24 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Ներկայումս բոլոր օրացույցներն անջատված են: Միացնել գոյություն ունեցող օրացույցը կամ ավելացնել նորը՝ իրադարձություններ ստեղծելու և խմբագրելու համար:
 calendar-deactivated-notification-tasks = Ներկայումս բոլոր օրացույցներն անջատված են: Միացնել գոյություն ունեցող օրացույցը կամ ավելացնել նորը՝ իրադարձություններ ստեղծելու և խմբագրելու համար:
 calendar-notifications-label = Ցույց տալ ծանուցումներ առաջիկա իրադարձությունների համար
 calendar-add-notification-button =
     .label = Ավելացնել ծանուցում
-
-## Side panel
-
 calendar-list-header = Օրացույցեր
+calendar-no-reminders-tooltip =
+    .title = { $calendarName } օրացույցն անջատված է
 calendar-enable-button = Միացնել
+calendar-list-item-context-button =
+    .title = { $calendarName } օրացույցի կարգավորումները
 calendar-import-new-calendar = Նոր օրացույց…
     .title = Ստեղծել կամ բաժանորդագրվել նոր օրացույցի
 calendar-new-event-primary-button = Նոր իրադարձություն
 calendar-new-task-primary-button = Նոր առաջադրանք
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Նախորդ օր
     .accesskey = { "" }
@@ -59,9 +53,6 @@ calendar-view-toggle-multiweek = Բազմաշաբաթ
     .title = Փոխել բազմաշաբաթ դիտմանը
 calendar-view-toggle-month = Ամիս
     .title = Փոխել ամսվա դիտմանը
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Օրացույցի դասավորության ընտրանքներ
 calendar-find-events-menu-option =
@@ -72,9 +63,6 @@ calendar-define-workweek-option =
     .label = Սահմանեք աշխատանքային շաբաթվա օրերը
 calendar-show-tasks-calendar-option =
     .label = Ցույց տալ առաջադրանքները օրացույցում
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Նախորդ օր
     .accesskey = s

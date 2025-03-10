@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Informace o modulu třetí strany
 third-party-section-title =
     { -brand-short-name.case-status ->
@@ -61,23 +57,6 @@ third-party-button-reload = Znovu načíst se systémovými informacemi
     .title = Znovu načíst se systémovými informacemi
 third-party-button-open =
     .title = Otevřít umístění souboru…
-third-party-button-to-block =
-    .title = Zablokovat tento modul
-    .aria-label = Zablokovat tento modul
-third-party-button-to-unblock =
-    .title = Blokováno. Klepněte pro odblokování.
-    .aria-label = Blokováno. Klepněte pro odblokování.
-third-party-button-to-unblock-disabled =
-    .title =
-        { -brand-short-name.case-status ->
-            [with-cases] Označeno jako blokované, nicméně seznam blokovaných modulů je pro toto spuštění { -brand-short-name(case: "gen") } vypnutý. Klepněte pro odblokování.
-           *[no-cases] Označeno jako blokované, nicméně seznam blokovaných modulů je pro toto spuštění aplikace { -brand-short-name } vypnutý. Klepněte pro odblokování.
-        }
-    .aria-label =
-        { -brand-short-name.case-status ->
-            [with-cases] Označeno jako blokované, nicméně seznam blokovaných modulů je pro toto spuštění { -brand-short-name(case: "gen") } vypnutý. Klepněte pro odblokování.
-           *[no-cases] Označeno jako blokované, nicméně seznam blokovaných modulů je pro toto spuštění aplikace { -brand-short-name } vypnutý. Klepněte pro odblokování.
-        }
 third-party-button-to-block-module = Zablokovat tento modul
     .title = Zablokovat tento modul
     .aria-label = Zablokovat tento modul

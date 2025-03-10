@@ -1,49 +1,95 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Window controls
-
+messenger-window-minimize-button =
+    .tooltiptext = Minimalkan
+messenger-window-maximize-button =
+    .tooltiptext = Maksimalkan
+messenger-window-close-button =
+    .tooltiptext = Tutup
+unread-messages-os-tooltip = { $count } pesan belum dibaca
 about-rights-notification-text = { -brand-short-name } adalah perangkat lunak bebas dengan sumber terbuka, dibangun oleh ribuan komunitas dari seluruh penjuru dunia.
-
-## Content tabs
-
-
-# Back
-
-
-# Forward
-
-
-# Reload
-
-
-# Stop
-
-
-## Toolbar
-
-
-## Folder Pane
-
-
-## Folder Toolbar Header Popup
-
+content-tab-page-loading-icon =
+    .alt = Laman sedang memuat
+content-tab-security-high-icon =
+    .alt = Sambungan aman
+content-tab-security-broken-icon =
+    .alt = Sambungan tidak aman
+content-tab-menu-back =
+    .tooltiptext = Mundur satu laman ({ $shortcut })
+    .aria-label = Mundur
+    .accesskey = M
+content-tab-menu-back-mac =
+    .label = Mundur
+    .accesskey = M
+content-tab-menu-forward =
+    .tooltiptext = Maju satu laman ({ $shortcut })
+    .aria-label = Maju
+    .accesskey = u
+content-tab-menu-forward-mac =
+    .label = Maju
+    .accesskey = u
+content-tab-menu-reload =
+    .tooltiptext = Muat ulang laman
+    .aria-label = Muat ulang
+    .accesskey = g
+content-tab-menu-reload-mac =
+    .tooltiptext = Muat ulang laman
+    .label = Muat ulang
+    .accesskey = g
+content-tab-menu-stop =
+    .tooltiptext = Hentikan pemuatan laman
+    .aria-label = Berhenti
+    .accesskey = h
+content-tab-menu-stop-mac =
+    .tooltiptext = Hentikan pemuatan laman
+    .label = Berhenti
+    .accesskey = h
+addons-and-themes-toolbarbutton =
+    .label = Pengaya dan Tema
+    .tooltiptext = Kelola pengaya Anda
+quick-filter-toolbarbutton =
+    .label = Saring Cepat
+    .tooltiptext = Saring pesan
+redirect-msg-button =
+    .label = Alihkan
+    .tooltiptext = Alihkan pesan yang dipilih
+folder-pane-toolbar =
+    .toolbarname = Bilah Alat Panel Folder
+    .accesskey = F
+folder-pane-toolbar-options-button =
+    .tooltiptext = Opsi Panel Folder
+folder-pane-header-label = Folder
+folder-toolbar-hide-toolbar-toolbarbutton =
+    .label = Sembunyikan Bilah Alat
+    .accesskey = h
+show-all-folders-label =
+    .label = Semua Folder
+    .accesskey = a
+show-unread-folders-label =
+    .label = Folder Belum Dibaca
+    .accesskey = m
+show-favorite-folders-label =
+    .label = Folder Favorit
+    .accesskey = F
+show-smart-folders-label =
+    .label = Folder Gabungan
+    .accesskey = u
+show-recent-folders-label =
+    .label = Folder Terkini
+    .accesskey = r
 show-tags-folders-label =
     .label = Tag
     .accesskey = T
-
-## File Menu
-
-
-## Edit Menu
-
+folder-toolbar-toggle-folder-compact-view =
+    .label = Tampilan Ringkas
+    .accesskey = k
+menu-file-save-as-file =
+    .label = Berkas…
+    .accesskey = B
 menu-edit-delete-folder =
     .label = Hapus Folder
     .accesskey = u
-# Variables:
-# $count (Number) - Number of selected messages.
+menu-edit-unsubscribe-newsgroup =
+    .label = Berhenti berlangganan Newsgroup
+    .accesskey = B
 menu-edit-delete-messages =
     .label =
         { $count ->
@@ -51,8 +97,6 @@ menu-edit-delete-messages =
            *[other] Hapus Pesan Terpilih
         }
     .accesskey = H
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-undelete-messages =
     .label =
         { $count ->
@@ -69,71 +113,177 @@ menu-edit-folder-properties =
 menu-edit-newsgroup-properties =
     .label = Properti Newsgroup
     .accesskey = o
-
-## Message Menu
-
-
-## AppMenu
-
-
-## Context menu
-
+redirect-msg-menuitem =
+    .label = Alihkan
+    .accesskey = A
+appmenu-save-as-file =
+    .label = Berkas…
+appmenu-settings =
+    .label = Pengaturan
+appmenu-addons-and-themes =
+    .label = Pengaya dan Tema
+context-menu-mark-read =
+    .aria-label = Tandai Sudah Dibaca
+    .tooltiptext = Tandai Sudah Dibaca
+context-menu-mark-unread =
+    .aria-label = Tandai Belum Dibaca
+    .tooltiptext = Tandai Belum Dibaca
+context-menu-mark-reply =
+    .aria-label = Balas
+    .tooltiptext = Balas
+context-menu-archive =
+    .aria-label = Arsipkan
+    .tooltiptext = Arsipkan
+context-menu-mark-junk =
+    .aria-label = Tandai sebagai Sampah
+    .tooltiptext = Tandai sebagai Sampah
+context-menu-mark-not-junk =
+    .aria-label = Tandai sebagai bukan Sampah
+    .tooltiptext = Tandai sebagai bukan Sampah
+mail-context-menu-open =
+    .label = Buka
+    .accesskey = B
+mail-context-menu-reply =
+    .label = Balas
+    .accesskey = B
+mail-context-menu-forward-redirect =
+    .label = Teruskan dan Arahkan Ulang
+    .accesskey = T
 mail-context-menu-forward-forward =
     .label = Teruskan
     .accesskey = T
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-undelete-messages =
-    .label =
-        { $count ->
-            [one] kembalikan Pesan
-           *[other] Kembalikan Pesan yang Dipilih
-        }
-
-## Message header pane
-
-
-## Message header cutomize panel
-
-
-## Message header customize panel
-
-
-## Action Button Context Menu
-
-
-## Add-on removal warning
-
-
-## no-reply handling
-
-
-## error messages
-
-
-## Spaces toolbar
-
-
-## Spaces toolbar pinned tab menupopup
-
-
-## Spaces toolbar customize panel
-
-
-## Quick Filter Bar
-
-# The label to display for the "View... Toolbars..." menu item that controls
-# whether the quick filter bar is visible.
+mail-context-menu-forward-as-attachment =
+    .label = Sebagai Lampiran
+    .accesskey = a
+mail-context-menu-organize =
+    .label = Atur
+    .accesskey = t
+mail-context-menu-threads =
+    .label = Utas
+    .accesskey = t
+context-menu-redirect-msg =
+    .label = Alihkan
+context-menu-cancel-msg =
+    .label = Batalkan Pesan
+mail-context-messages-delete =
+    .label = Hapus Pesan Terpilih
+    .tooltiptext = { mail-context-messages-delete.label }
+mail-context-messages-undelete =
+    .label = Batalkan Hapus Pesan yang Dipilih
+    .tooltiptext = { mail-context-messages-undelete.label }
+context-menu-decrypt-to-folder2 =
+    .label = Buat Salinan Terdekripsi Dalam
+    .accesskey = i
+other-action-redirect-msg =
+    .label = Alihkan
+message-header-msg-flagged =
+    .title = Dibintangi
+    .aria-label = Dibintangi
+message-header-recipient-avatar =
+    .alt = Gambar profil { $address }.
+message-header-customize-panel-title = Pengaturan Header Pesan
+message-header-customize-button-style =
+    .value = Gaya tombol
+    .accesskey = b
+message-header-button-style-default =
+    .label = Ikon dan teks
+message-header-button-style-text =
+    .label = Teks
+message-header-button-style-icons =
+    .label = Ikon
+message-header-show-sender-full-address =
+    .label = Selalu tampilkan alamat lengkap pengirim
+    .accesskey = l
+message-header-show-sender-full-address-description = Alamat surel akan ditampilkan di bawah nama tampilan.
+message-header-show-recipient-avatar =
+    .label = Tampilkan gambar profil pengirim
+    .accesskey = p
+message-header-show-big-avatar =
+    .label = Gambar profil lebih besar
+    .accesskey = G
+message-header-hide-label-column =
+    .label = Sembunyikan kolom label
+    .accesskey = l
+message-header-large-subject =
+    .label = Subjek besar
+    .accesskey = S
+message-header-all-headers =
+    .label = Tampilkan semua header
+    .accesskey = a
+toolbar-context-menu-manage-extension =
+    .label = Kelola Ekstensi
+    .accesskey = E
+toolbar-context-menu-remove-extension =
+    .label = Hapus Ekstensi
+    .accesskey = p
+addon-removal-title = Hapus { $name }?
+addon-removal-confirmation-button = Hapus
+addon-removal-confirmation-message = Hapus { $name } maupun konfigurasi dan datanya dari { -brand-short-name }?
+caret-browsing-prompt-check-text = Jangan tanya lagi.
+repair-text-encoding-button =
+    .label = Perbaiki Pengodean Teks
+    .tooltiptext = Tebak pengodean teks yang benar dari konten pesan
+no-reply-title = Balasan Tidak Didukung
+no-reply-message = Alamat balasan ({ $email }) tampaknya bukan alamat yang dipantau. Pesan ke alamat ini kemungkinan tidak akan dibaca oleh siapa pun.
+no-reply-reply-anyway-button = Tetap Balas
+decrypt-and-copy-failures-multiple = { $failures } dari { $total } pesan tidak dapat didekripsi dan tidak disalin.
+spaces-toolbar-button-mail2 =
+    .title = Surat
+spaces-toolbar-button-address-book2 =
+    .title = Buku Alamat
+spaces-toolbar-button-calendar2 =
+    .title = Kalender
+spaces-toolbar-button-tasks2 =
+    .title = Tugas
+spaces-toolbar-button-chat2 =
+    .title = Obrolan
+spaces-toolbar-button-overflow =
+    .title = Ruang lain...
+spaces-toolbar-button-settings2 =
+    .title = Pengaturan
+spaces-context-new-tab-item =
+    .label = Buka di tab baru
+spaces-context-new-window-item =
+    .label = Buka di jendela baru
+spaces-context-switch-tab-item =
+    .label = Beralih ke { $tabName }
+settings-context-open-settings-item2 =
+    .label = Pengaturan
+settings-context-open-account-settings-item2 =
+    .label = Pengaturan Akun
+settings-context-open-addons-item2 =
+    .label = Pengaya dan Tema
+spaces-pinned-button-menuitem-mail2 =
+    .label = { spaces-toolbar-button-mail2.title }
+spaces-pinned-button-menuitem-address-book2 =
+    .label = { spaces-toolbar-button-address-book2.title }
+spaces-pinned-button-menuitem-calendar2 =
+    .label = { spaces-toolbar-button-calendar2.title }
+spaces-pinned-button-menuitem-tasks2 =
+    .label = { spaces-toolbar-button-tasks2.title }
+spaces-pinned-button-menuitem-chat2 =
+    .label = { spaces-toolbar-button-chat2.title }
+spaces-pinned-button-menuitem-settings2 =
+    .label = { spaces-toolbar-button-settings2.title }
+spaces-pinned-button-menuitem-show =
+    .label = { spaces-toolbar-button-show.title }
+chat-button-unread-messages = { $count }
+    .title = { $count } pesan belum dibaca
+menuitem-customize-label =
+    .label = Sesuaikan…
+spaces-customize-background-color = Warna latar
+spaces-customize-icon-color = Warna tombol
+spaces-customize-accent-background-color = Warna latar tombol yang dipilih
+spaces-customize-accent-text-color = Warna tombol yang dipilih
+spaces-customize-button-restore = Pulihkan Bawaan
+    .accesskey = B
+customize-panel-button-save = Selesai
+    .accesskey = S
 quick-filter-bar-toggle =
     .label = Bilah Filter Cepat
     .accesskey = C
-# This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-textbox-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
-
-## OpenPGP
-
-
-## Quota panel.
-
+openpgp-forget = Lupakan frasa sandi OpenPGP
+quota-panel-percent-used = { $percent }% penuh
+    .title = Kuota IMAP: { $usage } dipakai dari { $limit } total

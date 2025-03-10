@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Sağlayıcı
     .accesskey = c
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (Varsayılan)
     .tooltiptext = HTTPS üzerinden DNS'i çözümlerken varsayılan URL'i kullan
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = Ö
     .tooltiptext = HTTPS üzerinden DNS'i çözümlemek için tercih ettiğiniz URL'i girin
 connection-dns-over-https-custom-label = Özel
-connection-dialog-window2 =
-    .title = Bağlantı ayarları
 connection-dialog-title = Bağlantı ayarları
 disable-extension-button = Uzantıyı etkisizleştir
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = { -brand-short-name } tarayıcınızın internete nasıl bağlanacağını <img data-l10n-name="extension-icon" alt="" /> { $name } adlı uzantı kontrol ediyor.
 connection-proxy-legend = İnternete Erişmek İçin Vekil Sunucuları Yapılandırın
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Vekil Sunucu Kullanma:
     .accesskey = n
 no-proxy-example = Örnek: .mozilla.org, .net.tr, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Localhost, 127.0.0.1/8, ve ::1 ile olan bağlantılar asla vekil sunucudan geçmez.
 proxy-password-prompt =
     .label = Parola kayıtlıysa kimlik doğrulama isteme

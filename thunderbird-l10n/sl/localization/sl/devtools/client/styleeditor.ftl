@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Ustvari novo slogovno predlogo in jo dodaj v dokument
     .accesskey = N
@@ -21,8 +17,6 @@ styleeditor-save-button = Shrani
 styleeditor-options-button =
     .tooltiptext = Možnosti Urejevalnika slogov
 styleeditor-at-rules = Pravila @
-styleeditor-editor-textbox =
-    .data-placeholder = Vnesite CSS.
 styleeditor-no-stylesheet = Ta stran ne vsebuje slogovnih predlog.
 styleeditor-no-stylesheet-tip = Ali želite <a data-l10n-name="append-new-stylesheet">dodati novo slogovno predlogo</a>?
 styleeditor-open-link-new-tab =
@@ -38,11 +32,7 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Skoči na vrstico …
     .accesskey = S
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Ni bilo mogoče najti ujemajoče se slogovne predloge.
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } pravilo.
@@ -50,9 +40,7 @@ styleeditor-stylesheet-rule-count =
         [few] { $ruleCount } pravila.
        *[other] { $ruleCount } pravil.
     }
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Olepšano izpiši slogovno predlogo
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = Olepšan izpis je mogoč samo za datoteke CSS

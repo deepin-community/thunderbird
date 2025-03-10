@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = S
-#   $type (String) - the shortcut key defined in the message-header-show-security-info-key
 message-security-button =
     .title =
         { PLATFORM() ->
@@ -21,16 +13,10 @@ openpgp-openpgp = OpenPGP
 openpgp-no-sig = Gun soidhneadh digiteach
 openpgp-no-sig-info = Cha do chuir an seòladair soighneadh digiteach ris an teachdaireachd seo. Mur eil soidhneadh digiteach ann, faodaidh gun deach an teachdaireachd seo a chur le cuideigin a tha a’ leigeil air gu bheil an seòladh puist-d seo aige. Cuideachd, faodaidh gun deach atharrachadh a chur air an teachdaireachd fhad ’s a chaidh a sheòladh thairis air an lìonra.
 openpgp-uncertain-sig = Soidhneadh digiteach neo-chinnteach
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-uncertain-sig-with-date = Soidhneadh digiteach neo-chinnteach – Chaidh a shoidhneadh { $date }
 openpgp-invalid-sig = Soidhneadh digiteach mì-dhligheach
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Soidhneadh digiteach mì-dhligheach – Chaidh a shoidhneadh { $date }
 openpgp-good-sig = Deagh-shoidhneadh digiteach
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-good-sig-with-date = Deagh-shoidhneadh digiteach – Chaidh a shoidhneadh { $date }
 openpgp-sig-uncertain-no-key = Tha soidhneadh digiteach aig an teachdaireachd seo ach chan eil cinnt a bheil e ceart. Feumaidh tu lethbhreac de dh’iuchair phoblach an t-seòladair fhaighinn a dhearbhadh an t-soidhnidh.
 openpgp-sig-uncertain-uid-mismatch = Tha soidhneadh digiteach aig an teachdaireachd seo ach mhothaich sinn do mhì-chòrdadh. Chaidh an teachdaireachd a chur o sheòladh puist-d nach eil co-ionnann ri iuchair phoblach an t-soidhniche.
@@ -40,19 +26,9 @@ openpgp-sig-invalid-technical-problem = Tha soidhneadh digiteach aig an teachdai
 openpgp-sig-valid-unverified = Tha soidhneadh digiteach dligheach aig an teachdaireachd seo o iuchair a ghabh thu ris mu thràth. Ge-tà, cha do dhearbh thu fhathast gur ann aig an t-seòladair a tha an iuchair.
 openpgp-sig-valid-verified = Tha soidhneadh digiteach dligheach aig an teachdaireachd seo o iuchair dhearbhte.
 openpgp-sig-valid-own-key = Tha soidhneadh digiteach dligheach aig an teachdaireachd seo on iuchair phearsanta agad.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = ID iuchair an t-soidhniche: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = ID iuchair an t-soidhniche: { $key } (ID na fo-iuchrach: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = ID na h-iuchrach dì-chrioptachaidh agad: { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = ID na h-iuchrach dì-chrioptachaidh agad: { $key } (ID na fo-iuchrach: { $subkey })
 openpgp-enc-none = Teachdaireachd gun chrioptachadh
 openpgp-enc-none-label = Cha deach an teachdaireachd a chrioptachadh mus deach a chur. 'S urrainn do dhaoine eile coimhead air fiosrachadh a thathar a' cur thairis air an eadar-lìon fhad 's a tha e 'ga sheòladh mura deach a chrioptachadh.
@@ -70,7 +46,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Dh’fhàillig an dì-chrioptachadh
 openpgp-message-header-signed-ok-icon =
     .alt = Deagh-shoidhneadh
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Droch-shoidhneadh
 openpgp-message-header-signed-unknown-icon =

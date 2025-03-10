@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 text-action-undo =
     .label = Poništi
     .accesskey = P
@@ -22,25 +18,26 @@ text-action-copy =
     .accesskey = K
 text-action-copy-shortcut =
     .key = C
-# This command copies the link, removing additional
-# query parameters used to track users across sites.
-text-action-strip-on-share =
-    .label = Kopiraj bez praćenja stranice
-    .accesskey = K
+text-action-copy-clean-link =
+    .label = Kopiraj čistu poveznicu
+    .accesskey = n
 text-action-paste =
     .label = Umetni
     .accesskey = U
 text-action-paste-no-formatting =
-    .label = Umetni bez formata
+    .label = Umetni neformatirano
     .accesskey = m
 text-action-paste-shortcut =
     .key = V
 text-action-delete =
     .label = Izbriši
     .accesskey = I
+text-action-reveal-password =
+    .label = Prikaži lozinku
+    .accesskey = k
 text-action-select-all =
-    .label = Označi sve
-    .accesskey = a
+    .label = Odaberi sve
+    .accesskey = d
 text-action-select-all-shortcut =
     .key = A
 text-action-spell-no-suggestions =
@@ -63,4 +60,4 @@ text-action-spell-dictionaries =
 text-action-search-text-box-clear =
     .title = Izbriši
 text-action-highlight-selection =
-    .label = Označi odabir
+    .label = Istakni odabir

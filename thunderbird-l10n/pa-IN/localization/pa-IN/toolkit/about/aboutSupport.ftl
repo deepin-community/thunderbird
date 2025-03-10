@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = ਸਮੱਸਿਆ ਹੱਲ਼ ਜਾਣਕਾਰੀ
 page-subtitle = ਇਹ ਸਫ਼ੇ ਉੱਤੇ ਤਕਨੀਕੀ ਜਾਣਕਾਰੀ ਹੈ, ਜੋ ਕਿ ਤੁਹਾਨੂੰ ਸਮੱਸਿਆ ਹੱਲ਼ ਕਰਨ ਲਈ ਫਾਇਦੇਮੰਦ ਹੋ ਸਕਦੀ ਹੈ। ਜੇ ਤੁਸੀਂ { -brand-short-name } ਬਾਰੇ ਆਮ ਸਵਾਲਾਂ ਦੇ ਜਵਾਬ ਲੱਭ ਰਹੇ ਹੋ ਤਾਂ ਸਾਡੀ <a data-l10n-name="support-link">ਸਪੋਰਟ ਵੈੱਬ ਸਾਈਟ</a> ਨੂੰ ਵੇਖੋ ਜੀ।
 crashes-title = ਕਰੈਸ਼ ਰਿਪੋਰਟਾਂ
@@ -38,8 +34,6 @@ app-basics-version = ਵਰਜ਼ਨ
 app-basics-build-id = ਬਿਲਡ ID
 app-basics-distribution-id = ਵੰਡ ਆਈ.ਡੀ.
 app-basics-update-channel = ਅੱਪਡੇਟ ਚੈਨਲ
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] ਅੱਪਡੇਟ ਫੋਲਡਰ
@@ -47,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = ਅੱਪਡੇਟ ਅਤੀਤ
 app-basics-show-update-history = ਅੱਪਡੇਟ ਅਤੀਤ ਨੂੰ ਵੇਖਾਓ
-# Represents the path to the binary used to start the application.
 app-basics-binary = ਐਪਲੀਕੇਸ਼ਨ ਬਾਈਨਰੀ
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] ਪਰੋਫਾਈਲ ਡਾਇਰੈਕਟਰੀ
        *[other] ਪਰੋਫਾਈਲ ਫੋਲਡਰ
     }
-app-basics-enabled-plugins = ਚਾਲੂ ਪਲੱਗਇਨ
 app-basics-build-config = ਬਿਲਡ ਸੰਰਚਨਾ
 app-basics-user-agent = ਯੂਜ਼ਰ ਏਜੰਟ
 app-basics-os = OS
 app-basics-os-theme = ਓ.ਸਿ. ਥੀਮ
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta ਉਲੱਥਾ
 app-basics-memory-use = ਮੈਮੋਰੀ ਵਰਤੋਂ
 app-basics-performance = ਕਾਰਗੁਜ਼ਾਰੀ
@@ -79,9 +69,6 @@ app-basics-safe-mode = ਸੁਰੱਖਿਅਤ ਮੋਡ
 app-basics-memory-size = ਮੈਮੋਰੀ ਆਕਾਰ (RAM)
 app-basics-disk-available = ਮੌਜੂਦ ਡਿਸਕ ਥਾਂ
 app-basics-pointing-devices = ਪੁਆਇੰਟ ਕਰਨ ਵਾਲੇ ਡਿਵਾਈਸ
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -113,9 +100,7 @@ graphics-decision-log-title = ਫ਼ੈਸਲਾ ਲਾਗ
 graphics-crash-guards-title = ਕਰੈਸ਼ ਗਾਰਡ ਆਯੋਗ ਫੀਚਰ
 graphics-workarounds-title = ਜੁਗਾੜ
 graphics-device-pixel-ratios = ਵਿੰਡੋ ਡਿਵਾਈਸ ਪਿਕਸਲ ਅਨੁਪਾਤ
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = ਵਿੰਡੋ ਪਰੋਟੋਕਾਲ
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = ਡੈਸਕਟਾਪ ਇੰਵਾਇਰਨਮੈਂਟ
 place-database-title = ਥਾਵਾਂ ਦਾ ਡਾਟਾਬੇਸ
 place-database-stats = ਅੰਕੜੇ
@@ -153,9 +138,6 @@ clear-startup-cache-label = ਸ਼ੁਰੂਆਤੀ ਕੈਸ਼ ਸਾਫ਼ ਕਰੋ�
 startup-cache-dialog-title2 = ਸ਼ੁਰੂਆਤੀ ਕੈਸ਼ ਨੂੰ ਮਿਟਾਉਣ ਲਈ { -brand-short-name } ਮੁੜ-ਚਾਲੂ ਕਰਨਾ ਹੈ?
 startup-cache-dialog-body2 = ਇਸ ਨਾਲ ਤੁਹਾਡੀਆਂ ਸੈਟਿੰਗਾਂ ਨੂੰ ਬਦਲਿਆ ਜਾਂ ਇਕਸਟੈਨਸ਼ਨਾਂ ਨੂੰ ਹਟਾਇਆ ਨਹੀਂ ਜਾਵੇਗਾ।
 restart-button-label = ਮੁੜ-ਚਾਲੂ ਕਰੋ
-
-## Media titles
-
 audio-backend = ਆਡੀਓ ਬੈਕਐਂਡ
 max-audio-channels = ਵੱਧ ਤੋਂ ਵੱਧ ਚੈਨਲ
 sample-rate = ਤਰਜੀਹੀ ਸੈਂਪਲ ਰੇਟ
@@ -174,11 +156,7 @@ media-device-rate = ਰੇਟ
 media-device-latency = ਦੇਰੀ
 media-capabilities-title = ਮੀਡਿਆ ਸਮਰੱਥਾਵਾਂ
 media-codec-support-info = Codec ਸਹਿਯੋਗ ਜਾਣਕਾਰੀ
-# List all the entries of the database.
 media-capabilities-enumerate = ਡਾਟਾਬੇਸ ਦੇ ਇੰਦਰਾਜ਼ਾਂ ਦੀ ਸੂਚੀ
-
-## Codec support table
-
 media-codec-support-sw-decoding = ਸਾਫ਼ਟਵੇਅਰ ਡਿਕੋਡਿੰਗ
 media-codec-support-hw-decoding = ਹਾਰਡਵੇਅਰ ਡਿਕੋਡਿੰਗ
 media-codec-support-codec-name = Codec ਦਾ ਨਾਂ
@@ -186,26 +164,13 @@ media-codec-support-supported = ਸਹਿਯੋਗੀ
 media-codec-support-unsupported = ਗ਼ੈਰ-ਸਹਿਯੋਗੀ
 media-codec-support-error = Codec ਸਹਿਯੋਗ ਦੀ ਜਾਣਕਾਰੀ ਮੌਜੂਦ ਨਹੀਂ ਹੈ। ਮੀਡੀਆ ਫ਼ਾਇਲ ਚਲਾਉਣ ਤੋਂ ਬਾਅਦ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।
 media-codec-support-lack-of-extension = ਇਕਸਟੈਨਸ਼ਨ ਇੰਸਟਾਲ ਕਰੋ
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = ਸਮੱਗਰੀ ਡਿਕ੍ਰਿਪਸ਼ਨ ਮੋਡੀਊਲ ਜਾਣਕਾਰੀ
 media-key-system-name = ਕੁੰਜੀ ਸਿਸਟਮ ਨਾਂ
 media-video-robustness = ਵੀਡੀਓ ਰੋਬਸਟਨੈਸ
 media-audio-robustness = ਆਡੀਓ ਰੋਬਸਟਨੈਸ
 media-cdm-capabilities = ਸਮਰੱਥਾਵਾਂ
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = ਮੁੱਢ ਨੂੰ ਸਾਫ਼ ਕਰੋ
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = HDCP 2.2 ਅਨੁਕੂਲ
-
-##
-
 intl-title = ਕੌਮਾਂਤਰੀਕਰਨ ਤੇ ਇਲਾਕਾਈਕਰਨ
 intl-app-title = ਐਪਲੀਕੇਸ਼ਨ ਸੈਟਿੰਗਾਂ
 intl-locales-requested = ਮੰਗ ਕੀਤੀ ਬੋਲੀ
@@ -215,52 +180,29 @@ intl-locales-default = ਮੂਲ ਬੋਲੀ
 intl-os-title = ਓਪਰੇਟਿੰਗ ਸਿਸਟਮ
 intl-os-prefs-system-locales = ਸਿਸਟਮ ਬੋਲੀਆਂ
 intl-regional-prefs = ਖੇਤਰੀ ਪਸੰਦਾਂ
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = ਰਿਮੋਟ ਤੋਂ ਡੀਬੱਗ ਕਰਨਾ (Chromium ਪਰੋਟੋਕਾਲ)
 remote-debugging-accepting-connections = ਮਨਜ਼ੂਰ ਕੀਤੇ ਕਨੈਕਸ਼ਨ
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] ਪਿਛਲੇ { $days } ਦਿਨ ਵਿੱਚ ਕਰੈਸ਼ ਰਿਪੋਰਟਾਂ
        *[other] ਪਿਛਲੇ { $days } ਦਿਨਾਂ ਵਿੱਚ ਕਰੈਸ਼ ਰਿਪੋਰਟਾਂ
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } ਮਿੰਟ ਪਹਿਲਾਂ
        *[other] { $minutes } ਮਿੰਟ ਪਹਿਲਾਂ
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } ਘੰਟਾ ਪਹਿਲਾਂ
        *[other] { $hours } ਘੰਟੇ ਪਹਿਲਾਂ
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } ਦਿਨ ਪਹਿਲਾਂ
        *[other] { $days } ਦਿਨ ਪਹਿਲਾਂ
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] ਸਭ ਕਰੈਸ਼ ਰਿਪੋਰਟ (ਦਿੱਤੀ ਸਮਾਂ ਹੱਦ ਵਿੱਚ { $reports } ਬਾਕੀ ਕਰੈਸ਼ ਸਮੇਤ)
@@ -268,18 +210,11 @@ pending-reports =
     }
 raw-data-copied = ਰਾਅ ਡਾਟਾ ਕਲਿੱਪਬੋਰਡ ਵਿੱਚ ਕਾਪੀ ਕੀਤਾ ਗਿਆ
 text-copied = ਟੈਕਸਟ ਕਲਿੱਪਬੋਰਡ ਵਿੱਚ ਕਾਪੀ ਕੀਤਾ
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਵਰਜਨ ਲਈ ਪਾਬੰਦੀਸ਼ੁਦਾ ਹੈ।
 blocked-gfx-card = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਕਾਰਡ ਲਈ ਪਾਬੰਦੀ ਹੈ, ਕਿਉਂਕਿ ਡਰਾਇਵਰ ਨਾਲ ਨਾ-ਸੁਝਲੀਆਂ ਸਮੱਸਿਆਵਾਂ ਹਨ।
 blocked-os-version = ਤੁਹਾਡੇ ਓਪਰੇਟਿੰਗ ਸਿਸਟਮ ਰਾਹੀਂ ਪਾਬੰਦੀਸ਼ੁਦਾ ਹੈ।
 blocked-mismatched-version = ਰਜਿਸਟਰ ਅਤੇ DLL ਵਿਚਾਲੇ ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਵਰਜ਼ਨ ਲਈ ਪਾਬੰਦੀ ਲੱਗੀ ਹੈ।
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = ਤੁਹਾਡੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਵਰਜਨ ਲਈ ਪਾਬੰਦੀਸ਼ੁਦਾ ਹੈ। ਆਪਣੇ ਗਰਾਫਿਕਸ ਡਰਾਇਵਰ ਨੂੰ { $driverVersion } ਜਾਂ ਨਵੇਂ ਵਰਜਨ ਨਾਲ ਅੱਪਡੇਟ ਕਰਨ ਦੇ ਬਾਅਦ ਕੋਸ਼ਿਸ਼ ਕਰੋ।
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType ਪੈਰਾਮੀਟਰ
 compositing = ਬਣਤਰ
 support-font-determination = ਫ਼ੌਂਟ ਦਿੱਖ ਡੀਬੱਗ ਜਾਣਕਾਰੀ
@@ -289,11 +224,6 @@ yes = ਹਾਂ
 no = ਨਹੀਂ
 unknown = ਅਣਪਛਾਤਾ
 virtual-monitor-disp = ਵਰਚੁਅਲ ਮਾਨੀਟਰ ਡਿਸਪਲੇਅ
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = ਲੱਭਾ
 missing = ਗੁੰਮ
 gpu-process-pid = GPUProcessPid
@@ -320,11 +250,7 @@ webgl2-driver-extensions = WebGL 2 ਡਰਾਇਵਰ ਇਕਸਟੈਨਸ਼ਨ
 webgl2-extensions = WebGL 2 ਇਕਸਟੈਨਸ਼ਨਾਂ
 webgpu-default-adapter = WebGPU ਮੂਲ ਅਡੈਪਟਰ
 webgpu-fallback-adapter = WebGPU ਫ਼ਾਲਬੈਕ ਅਡੈਪਟਰ
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = ਜਾਣੇ-ਪਛਾਣੇ ਮਸਲਿਆਂ ਕਰਕੇ ਪਾਬੰਦੀ ਲਾਈ: <a data-l10n-name="bug-link">ਬੱਗ { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = ਪਾਬੰਦੀਸ਼ੁਦਾ; ਅਸਫ਼ਲਤਾ ਕੋਡ { $failureCode }
 d3d11layers-crash-guard = D3D11 ਕੰਪੋਜ਼ਿਟਰ
 glcontext-crash-guard = OpenGL
@@ -344,8 +270,6 @@ has-seccomp-bpf = Seccomp-BPF (ਸਿਸਟਮ ਕਾਲ ਫਿਲਟਰ ਕਰ�
 has-seccomp-tsync = Seccomp ਥਰਿੱਡ ਸੈਕਰੋਨਾਈਜ਼ੇਸ਼ਨ
 has-user-namespaces = ਵਰਤੋਂਕਾਰ ਨੇਮ-ਸਪੇਸ
 has-privileged-user-namespaces = ਅਧਿਕਾਰ ਪ੍ਰਾਪਤ ਕਾਰਵਾਈਆਂ ਲਈ ਵਰਤੋਂਕਾਰ ਨੇਮਸਪੇਸ
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — ਇਹ ਫ਼ੀਚਰ ਨੂੰ ਤੁਹਾਡੇ ਸਿਸਟਮ ਵਲੋਂ ਮਨਜ਼ੂਰੀ ਨਹੀਂ ਮਿਲੀ ਹੈ। ਇਹ { -brand-short-name } ਦੇ ਸੁਰੱਖਿਆ ਫ਼ੀਚਰਾਂ ਨੂੰ ਸੀਮਿਤ ਕਰ ਸਕਦਾ ਹੈ।
 can-sandbox-content = ਪ੍ਰਸੰਗ ਕਾਰਵਾਈ ਸੈਂਡਬੌਕਸਿੰਗ
 can-sandbox-media = ਮੀਡੀਆ ਪਲੱਗਇਨ ਸੈਂਡਬੌਕਸਿੰਗ
@@ -366,16 +290,8 @@ launcher-process-status-0 = ਸਮਰੱਥ ਹੈ
 launcher-process-status-1 = ਅਸਫ਼ਲਤਾ ਕਰਕੇ ਅਸਮਰੱਥ ਹੈ
 launcher-process-status-2 = ਧੱਕੇ ਨਾਲ ਅਸਮਰੱਥ ਕੀਤਾ
 launcher-process-status-unknown = ਅਣਪਛਾਤੀ ਹਾਲਤ
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = ਤਰਜਬੇ ਵਲੋਂ ਅਸਮਰੱਥ ਕੀਤਾ
-fission-status-experiment-treatment = ਤਜਰਬੇ ਵਲੋਂ ਸਮਰੱਥ ਕੀਤਾ
 fission-status-disabled-by-e10s-env = ਵਾਤਾਵਰਨ ਰਾਹੀਂ ਅਸਮਰੱਥ ਕੀਤਾ
 fission-status-enabled-by-env = ਵਾਤਾਵਰਨ ਰਾਹੀਂ ਸਮਰੱਥ ਕੀਤਾ
 fission-status-disabled-by-env = ਪ੍ਰਣਾਲੀ ਵਲੋਂ ਅਸਮਰੱਥ ਕੀਤਾ ਹੈ
@@ -384,7 +300,6 @@ fission-status-disabled-by-default = ਮੂਲ ਰੂਪ 'ਚ ਅਸਮਰੱਥ
 fission-status-enabled-by-user-pref = ਵਰਤੋਂਕਾਰ ਵਲੋਂ ਸਮਰੱਥ ਕੀਤਾ
 fission-status-disabled-by-user-pref = ਵਰਤੋਂਕਾਰ ਵਲੋਂ ਅਸਮਰੱਥ ਹੈ
 fission-status-disabled-by-e10s-other = E10s ਅਸਮਰੱਥ ਹੈ
-fission-status-enabled-by-rollout = ਲੜੀਵਾਰ ਵੰਡਣ ਰਾਹੀਂ ਸਮਰੱਥ ਕੀਤਾ
 async-pan-zoom = ਅਸਮਕਾਲੀ ਪੈਨ/ਜ਼ੂਮ
 apz-none = ਕੋਈ ਨਹੀਂ
 wheel-enabled = ਵ੍ਹੀਲ ਇਨਪੁਟ ਸਮਰੱਥ ਹੈ
@@ -393,34 +308,20 @@ drag-enabled = ਸਰੋਲਬਾਰ ਡਰੈਗ ਸਮਰੱਥ ਹੈ
 keyboard-enabled = ਕੀਬੋਰਡ ਸਮਰੱਥ ਹੈ
 autoscroll-enabled = ਆਪੇ-ਸਕਰੋਲ ਸਮਰੱਥ ਹੈ
 zooming-enabled = ਸਰਲ ਢੂੰਡੀ ਭਰਨ ਵਾਲਾ ਜ਼ੂਮ ਸਮਰੱਥ ਹੈ
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = ਗ਼ੈਰ-ਸਹਾਇਕ ਪਸੰਦ ਕਰਕੇ ਅਸਿੰਕ ਵ੍ਹੀਲ ਇਨਪੁਟ ਅਸਮਰੱਥ ਕੀਤੀ: { $preferenceKey }
 touch-warning = ਗ਼ੈਰ-ਸਹਾਇਕ ਪਸੰਦ ਕਰਕੇ ਅਸਿੰਕ ਟੱਚ ਇਨਪੁਟ ਅਸਮਰੱਥ ਕੀਤੀ: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = ਨਾ-ਸਰਗਰਮ
 policies-active = ਸਰਗਰਮ
 policies-error = ਗ਼ਲਤੀ
-
-## Printing section
-
 support-printing-title = ਪਰਿੰਟ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ
 support-printing-troubleshoot = ਸਮੱਸਿਆ ਨਿਵਾਰਨ
 support-printing-clear-settings-button = ਸੰਭਾਲੀਆਂ ਪਰਿੰਟ ਸੈਟਿੰਗਾਂ ਨੂੰ ਸਾਫ਼ ਕਰੋ
 support-printing-modified-settings = ਸੋਧੀਆਂ ਪਰਿੰਟ ਸੈਟਿੰਗਾਂ
 support-printing-prefs-name = ਨਾਂ
 support-printing-prefs-value = ਮੁੱਲ
-
-## Remote Settings sections
-
 support-remote-settings-title = ਰਿਮੋਟ ਸੈਟਿੰਗਾਂ
 support-remote-settings-status = ਹਾਲਤ
 support-remote-settings-status-ok = ਠੀਕ ਹੈ
-# Status when synchronization is not working.
 support-remote-settings-status-broken = ਨਹੀਂ ਕੰਮ ਕਰਦਾ
 support-remote-settings-last-check = ਆਖਰੀ ਵਾਰ ਜਾਂਚ
 support-remote-settings-local-timestamp = ਲੋਕਲ ਸਮਾਂ
@@ -428,9 +329,6 @@ support-remote-settings-sync-history = ਅਤੀਤ
 support-remote-settings-sync-history-status = ਹਾਲਤ
 support-remote-settings-sync-history-datetime = ਤਾਰੀਖ
 support-remote-settings-sync-history-infos = ਜਾਣਕਾਰੀ
-
-## Normandy sections
-
 support-remote-experiments-title = ਰਿਮੋਟ ਤਜਰਬੇ
 support-remote-experiments-name = ਨਾਂ
 support-remote-experiments-branch = ਤਜਰਬੇ ਦੀ ਬਰਾਂਚ
@@ -438,19 +336,10 @@ support-remote-experiments-see-about-studies = ਹੋਰ ਜਾਣਕਾਰੀ �
 support-remote-features-title = ਰਿਮੋਟ ਫ਼ੀਚਰ
 support-remote-features-name = ਨਾਂ
 support-remote-features-status = ਹਾਲਤ
-
-## Pointing devices
-
 pointing-device-mouse = ਮਾਊਸ
 pointing-device-touchscreen = ਟੱਚ-ਸਕਰੀਨ
 pointing-device-pen-digitizer = ਪੈਨ ਡਿਜ਼ੀਟਾਈਜ਼ਰ
 pointing-device-none = ਕੋਈ ਪੁਆਇੰਟ ਕਰਨ ਵਾਲਾ ਡਿਵਾਈਸ ਨਹੀਂ ਹੈ
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = ਸਮੱਗਰੀ ਵਿਸ਼ਲੇਸ਼ਣ (DLP)
 content-analysis-active = ਸਰਗਰਮ
 content-analysis-connected-to-agent = ਏਜੰਟ ਨਾਲ ਕਨੈਕਟ ਕੀਤਾ

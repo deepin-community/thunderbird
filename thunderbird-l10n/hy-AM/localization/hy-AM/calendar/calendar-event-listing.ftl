@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Փակել իրադարձությունների որոնումը և իրադարձությունների ցուցակը
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Օրացույցի անուն
     .tooltiptext = Տեսակավորել ըստ օրացույցի անվան
 calendar-event-listing-column-category =
     .label = Շարակարգ
     .tooltiptext = Տեսակավորել ըստ շարակարգի
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Ավարտ
     .tooltiptext = Տեսակավորել ըստ ավարտի
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Վերնագիր
     .tooltiptext = Տեակավորել ըստ վերնագրի
-
-## Interval dropdown options
-
 calendar-event-listing-interval-calendar-month =
     .label = Իրադարձություններ այս օրացույցի ամսում
 calendar-event-listing-interval-current-view =
@@ -61,6 +49,8 @@ calendar-event-listing-interval-next-14-days =
     .label = Իրադարձություններ հաջորդ 14 օրում
 calendar-event-listing-interval-next-31-days =
     .label = Իրադարձություններ հաջորդ 31 օրում
+calendar-event-listing-interval-all =
+    .label = Բոլոր իրադարձությունները
 calendar-event-listing-interval-selected-day =
     .label = Ներկայումս ընտրված օր
 calendar-event-listing-interval-today =

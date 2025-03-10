@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Màu và nền trang">
 <!ENTITY pageColors.label "Màu Trang">
 <!ENTITY defaultColorsRadio.label "Màu mặc định của người đọc (Không thiết lập màu trong trang)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Dùng màu tùy chọn:">
 <!ENTITY customColorsRadio.accessKey "D">
 <!ENTITY customColorsRadio.tooltip "Những thiết lập màu này sẽ hiển thị đè lên các thiết lập trình duyệt của người đọc">
-
 <!ENTITY normalText.label "Chữ thường">
 <!ENTITY normalText.accessKey "B">
 <!ENTITY linkText.label "Chữ liên kết">

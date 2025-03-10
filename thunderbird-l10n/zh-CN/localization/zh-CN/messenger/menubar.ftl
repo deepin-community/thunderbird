@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = 菜单栏
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = 设置
     .accesskey = e
 menu-addons-and-themes =
     .label = 扩展和主题
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = 导出到移动设备…
+    .accesskey = p
 menu-help-help-title =
     .label = 帮助
     .accesskey = H
 menu-help-get-help =
     .label = 获取帮助
     .accesskey = H
-menu-help-explore-features =
-    .label = 探索功能
-    .accesskey = F
 menu-help-get-release-help =
     .label = 获取 { -brand-short-name } 帮助
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = 关于 { -brand-short-name }
     .accesskey = A
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] x
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = 退出 { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] 退出 { -brand-full-name }
            *[other] 退出 { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = 垃圾邮件
     .tooltiptext = 将选择的消息标记为垃圾邮件
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = 恢复
     .tooltiptext = 恢复选择的消息或文件夹
-
-## View
-
 menu-view-repair-text-encoding =
     .label = 修复文字编码
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = 文件夹窗格标题
     .accesskey = F
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = 消息标题
     .accesskey = H
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = 空间工具栏
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = 邮箱账户...
     .accesskey = E

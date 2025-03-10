@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Initen d u&amp;gilal n usebter">
 <!ENTITY pageColors.label "Initen n usebter">
 <!ENTITY defaultColorsRadio.label "Initen imezwar n umeɣri (Ur sbaduy ara initen ɣef usebter)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Seqdac initen-inek:">
 <!ENTITY customColorsRadio.accessKey "q">
 <!ENTITY customColorsRadio.tooltip "Iɣewwaṛen-agi n yiniten ad semselsin iɣewwaṛen n iminig n umeskan">
-
 <!ENTITY normalText.label "Aḍris amagnu">
 <!ENTITY normalText.accessKey "m">
 <!ENTITY linkText.label "Aḍris n useɣwen">

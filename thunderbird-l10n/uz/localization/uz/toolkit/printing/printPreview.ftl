@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 printpreview-simplify-page-checkbox =
     .label = Sahifani soddalashtirish
     .accesskey = S
@@ -37,11 +33,6 @@ printpreview-page-setup =
 printpreview-page =
     .value = Sahifa:
     .accesskey = S
-
-## Variables
-## $percent (integer) - menuitem percent label
-## $arrow (String) - UTF-8 arrow character for navigation buttons
-
 printpreview-homearrow =
     .label = { $arrow }
     .tooltiptext = Birinchi sahifa
@@ -54,4 +45,3 @@ printpreview-nextarrow =
 printpreview-endarrow =
     .label = { $arrow }
     .tooltiptext = Soʻnggi sahifa
-

@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY settings.caption "Կարգավորումներ">
 <!ENTITY security.caption "Անվտանգություն և Իսկորոշում">
 <!ENTITY serverName.label "Սպասարկիչի անունը.">
@@ -15,7 +11,6 @@
 <!ENTITY connectionSecurity.label "Կապակցվելու անվտանգությունը.">
 <!ENTITY connectionSecurity.accesskey "ց">
 <!ENTITY connectionSecurityType-0.label "Չկա">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, եթե հասանելի է">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY smtpEditTitle.label "SMTP սպասարկիչ">

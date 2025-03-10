@@ -1,3 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+sync-verification-sent-title = Verifikasi Dikirim
+sync-verification-sent-body = Tautan verifikasi telah dikirim ke { $userEmail }.
+sync-verification-not-sent-title = Tidak Bisa Mengirim Verifikasi
+sync-verification-not-sent-body = Kami tidak bisa mengirimkan surel verifikasi saat ini, coba lagi nanti.
+sync-signout-dialog-title = Keluar dari akun?
+sync-signout-dialog-body = Data yang telah tersinkronisasi akan tetap berada di akun Anda
+sync-signout-dialog-button = Keluar
+sync-disconnect-dialog-title = Putuskan?
+sync-disconnect-dialog-body = { -brand-product-name } akan berhenti menyinkronkan tetapi tidak akan menghapus data Anda di perangkat ini.
+sync-disconnect-dialog-button = Putuskan

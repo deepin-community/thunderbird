@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = À propos de la journalisation
 about-logging-page-title = Gestionnaire de journalisation
 about-logging-current-log-file = Fichier de journalisation actuel :
 about-logging-new-log-file = Nouveau fichier journal :
 about-logging-currently-enabled-log-modules = Modules de journalisation actuellement activés :
 about-logging-log-tutorial = Consultez <a data-l10n-name="logging">HTTP Logging</a> pour obtenir des informations sur l’utilisation de cet outil.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Ouvrir le répertoire
 about-logging-set-log-file = Définir un fichier de journalisation
 about-logging-set-log-modules = Définir des modules de journalisation
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Aucun
 about-logging-no-log-file = Aucun
 about-logging-logging-preset-selector-text = Réglage de journalisation :
 about-logging-with-profiler-stacks-checkbox = Activer les traces d’appels pour les messages du journal.
-
-## Logging presets
-
 about-logging-preset-networking-label = Réseau
 about-logging-preset-networking-description = Modules de journalisation pour diagnostiquer les problèmes de réseau
 about-logging-preset-networking-cookie-label = Cookies
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Modules de journalisation pour diagnostiquer les problèmes de WebGPU
 about-logging-preset-gfx-label = Accélération graphique
 about-logging-preset-gfx-description = Modules de journalisation pour diagnostiquer les problèmes d’accélération graphique
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Modules de journalisation pour diagnostiquer les problèmes spécifiques à Microsoft Windows
 about-logging-preset-custom-label = Personnalisé
 about-logging-preset-custom-description = Modules de journalisation sélectionnés manuellement
-# Error handling
 about-logging-error = Erreur :
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Valeur « { $v } » invalide pour la clé « { $k } »
 about-logging-unknown-logging-preset = Réglage de journalisation « { $v } » inconnu
 about-logging-unknown-profiler-preset = Réglage du profileur « { $v } » inconnu

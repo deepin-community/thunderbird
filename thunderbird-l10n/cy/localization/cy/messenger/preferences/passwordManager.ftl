@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Mewngofnodion wedi eu Cadw
-window-close =
-    .key = w
 saved-logins-title = Mewngofnodion wedi eu Cadw
 focus-search-primary-shortcut =
     .key = f
@@ -69,20 +61,9 @@ remove-all-shown =
 remove-all-passwords-prompt = Ydych chi'n siŵr eich bod am dynnu pob cyfrinair?
 remove-all-passwords-title = Tynnu pob cyfrinair
 no-master-password-prompt = Ydych chi'n siŵr eich bod am ddangos eich cyfrineiriau?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Gwiriwch eich hunaniaeth i ddatgelu'r cyfrineiriau sydd wedi'u cadw.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = datgelu'r cyfrineiriau sydd wedi'u cadw
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
-# This message can be seen when attempting to disable osauth in about:preferences.
 password-os-auth-change-dialog-message =
     { PLATFORM() ->
         [macos] newid y gosodiadau ar gyfer cyfrineiriau

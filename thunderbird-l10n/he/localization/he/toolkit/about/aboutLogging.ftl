@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = על אודות רישום
 about-logging-page-title = מנהל הרישום
 about-logging-current-log-file = קובץ רישום נוכחי:
 about-logging-new-log-file = קובץ רישום חדש:
 about-logging-currently-enabled-log-modules = מודולי רישום המופעלים כעת:
 about-logging-log-tutorial = לקבלת הוראות לגבי השימוש בכלי זה, נא לפנות אל המאמר <a data-l10n-name="logging">רישום HTTP</a>.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = פתיחת תיקייה
 about-logging-set-log-file = הגדרת קובץ רישום
 about-logging-set-log-modules = הגדרת מודולי רישום
@@ -26,9 +20,6 @@ about-logging-logging-to-profiler = רישום ל־{ -profiler-brand-name }
 about-logging-no-log-modules = ללא
 about-logging-no-log-file = ללא
 about-logging-logging-preset-selector-text = ערכת רישום:
-
-## Logging presets
-
 about-logging-preset-networking-label = Networking
 about-logging-preset-networking-description = מודולי רישום לאבחון בעיות רשת
 about-logging-preset-networking-cookie-label = עוגיות
@@ -47,18 +38,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = מודולי רישום לאבחון בעיות WebGPU
 about-logging-preset-gfx-label = גרפיקה
 about-logging-preset-gfx-description = מודולי רישום לאבחון בעיות של גרפיקה
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = מודולי רישום לאבחון בעיות הספציפיות ל־Microsoft Windows
 about-logging-preset-custom-label = התאמה אישית
 about-logging-preset-custom-description = מודולי רישום שנבחרים בצורה ידנית
-# Error handling
 about-logging-error = שגיאה:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = ערך שגוי ״{ $v }״ עבור המפתח ״{ $k }״
 about-logging-unknown-logging-preset = ערכת רישום לא ידועה ״{ $v }״
 about-logging-unknown-profiler-preset = ערכה לא ידועהשל יוצר הפרופילים ״{ $v }״

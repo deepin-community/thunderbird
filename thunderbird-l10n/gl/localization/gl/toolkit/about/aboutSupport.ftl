@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Información para solucionar problemas
 page-subtitle = Esta páxina contén información técnica que pode serlle útil cando tente solucionar un problema. Se está buscando respostas a preguntas frecuentes sobre o { -brand-short-name }, visite o noso <a data-l10n-name="support-link">sitio web de asistencia</a>.
 crashes-title = Informes de erro
@@ -38,8 +34,6 @@ app-basics-version = Versión
 app-basics-build-id = ID da compilación
 app-basics-distribution-id = Idenfificador de distribución
 app-basics-update-channel = Canle de actualización
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Actualizar directorio
@@ -47,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Historial de actualizacións
 app-basics-show-update-history = Amosar o historial de actualizacións
-# Represents the path to the binary used to start the application.
 app-basics-binary = Aplicación binaria
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Cartafol do perfil
        *[other] Cartafol do perfil
     }
-app-basics-enabled-plugins = Engadidos activados
 app-basics-build-config = Configuración da compilación
 app-basics-user-agent = User Agent
 app-basics-os = SO
 app-basics-os-theme = Tema do OS
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Traducido con Rosetta
 app-basics-memory-use = Uso de memoria
 app-basics-performance = Rendemento
@@ -79,9 +69,6 @@ app-basics-safe-mode = Modo seguro
 app-basics-memory-size = Tamaño da memoria (RAM)
 app-basics-disk-available = Espazo de disco dispoñíbel
 app-basics-pointing-devices = Dispositivos apuntadores
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -113,9 +100,7 @@ graphics-decision-log-title = Rexistro de decisións
 graphics-crash-guards-title = Características desactivadas para a protección contra fallos
 graphics-workarounds-title = Solucións alternativas
 graphics-device-pixel-ratios = Proporcións de píxeles de dispositivos de xanela
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protocolo de xanelas
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Ambiente de escritorio
 place-database-title = Bases de datos de lugares
 place-database-stats = Estatísticas
@@ -153,9 +138,6 @@ clear-startup-cache-label = Borrar a caché de inicio ...
 startup-cache-dialog-title2 = Reiniciar o { -brand-short-name } para limpar a caché de inicio?
 startup-cache-dialog-body2 = Isto non cambia a súa configuración nin elimina extensións.
 restart-button-label = Reiniciar
-
-## Media titles
-
 audio-backend = Sistema de son
 max-audio-channels = Número máximo de canles
 sample-rate = Frecuencia de mostraxe preferida
@@ -174,11 +156,7 @@ media-device-rate = Frecuencia
 media-device-latency = Latencia
 media-capabilities-title = Capacidades de multimedia
 media-codec-support-info = Información de compatibilidade con códecs
-# List all the entries of the database.
 media-capabilities-enumerate = Enumerar a base de datos
-
-## Codec support table
-
 media-codec-support-sw-decoding = Decodificación por software
 media-codec-support-hw-decoding = Decodificación por hardware
 media-codec-support-codec-name = Nome do códec
@@ -186,20 +164,10 @@ media-codec-support-supported = Compatible
 media-codec-support-unsupported = Non compatible
 media-codec-support-error = A información de soporte do códec non está dispoñible. Ténteo de novo despois de reproducir un ficheiro multimedia.
 media-codec-support-lack-of-extension = Instalar extensión
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-video-robustness = Robusteza do vídeo
 media-audio-robustness = Robusteza do audio
 media-cdm-capabilities = Capacidades
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Compatible con HDCP 2.2
-
-##
-
 intl-title = Internacionalización e localización
 intl-app-title = Configuración do aplicativo
 intl-locales-requested = Idiomas solicitados
@@ -209,52 +177,29 @@ intl-locales-default = Idioma predeterminado
 intl-os-title = Sistema operativo
 intl-os-prefs-system-locales = Idiomas do sistema
 intl-regional-prefs = Preferencias rexionais
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Depuración remota (protocolo do Chromium)
 remote-debugging-accepting-connections = Aceptando conexións
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Informes de erro do último día
        *[other] Informes de erro dos últimos { $days } días
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] Hai { $minutes } minuto
        *[other] Hai { $minutes } minutos
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] Hai { $hours } hora
        *[other] Hai { $hours } horas
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] Hai { $days } día
        *[other] Hai { $days } días
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Todos os informes de erro (incluíndo { $reports } falla pendente no intervalo de tempo indicado)
@@ -262,18 +207,11 @@ pending-reports =
     }
 raw-data-copied = Copiáronse os datos sen procesar ao portapapeis
 text-copied = Copiouse o texto ao portapapeis
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Bloqueada para a versión do seu controlador gráfico.
 blocked-gfx-card = Bloqueada para a súa tarxeta gráfica debido a problemas non resoltos no controlador.
 blocked-os-version = Bloqueada para a versión do seu sistema operativo.
 blocked-mismatched-version = Bloqueada porque non coinciden a versión do controlador gráfico no rexistro e a DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Bloqueada para a versión do seu controlador gráfico. Tente actualizar o seu controlador gráfico á versión { $driverVersion } ou superior.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parámetros de ClearType
 compositing = Composición
 hardware-h264 = Descodificación por hardware H264
@@ -282,11 +220,6 @@ yes = Si
 no = Non
 unknown = Descoñecido
 virtual-monitor-disp = Disposición de monitores virtuais
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Atopado
 missing = Ausente
 gpu-process-pid = GPUProcessPid
@@ -313,11 +246,7 @@ webgl2-driver-extensions = Extensións do controlador WebGL 2
 webgl2-extensions = Extensións WebGL 2
 webgpu-default-adapter = Adaptador predeterminado de WebGPU
 webgpu-fallback-adapter = Adaptador de reserva de WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Lista bloqueada por problemas coñecidos: <a data-l10n-name="bug-link">erro { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Pór na lista de bloqueos; código do erro { $failureCode }
 d3d11layers-crash-guard = Compositor D3D11
 glcontext-crash-guard = OpenGL
@@ -356,16 +285,8 @@ launcher-process-status-0 = Activado
 launcher-process-status-1 = Desactivado por fallo
 launcher-process-status-2 = Desactivado forzosamente
 launcher-process-status-unknown = Estado descoñecido
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Desactivada polo experimento
-fission-status-experiment-treatment = Activada polo experimento
 fission-status-disabled-by-e10s-env = Desactivada polo entorno
 fission-status-enabled-by-env = Activada polo entorno
 fission-status-disabled-by-env = Desactivada polo ambiente
@@ -374,7 +295,6 @@ fission-status-disabled-by-default = Desactivada por omisión
 fission-status-enabled-by-user-pref = Activada polo usuario
 fission-status-disabled-by-user-pref = Desactivada polo usuario
 fission-status-disabled-by-e10s-other = Desactivadas por E10s
-fission-status-enabled-by-rollout = Activada por unha publicación gradual
 async-pan-zoom = Pan/Zoom asíncrono
 apz-none = ningún
 wheel-enabled = entrada da roda do rato activada
@@ -383,30 +303,17 @@ drag-enabled = arrastre da barra de desprazamento activado
 keyboard-enabled = teclado activado
 autoscroll-enabled = desprazamento automático activado
 zooming-enabled = activado a ampliación suave cun belisco
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = entrada da roda do rato asíncrona desactivada debido a unha preferencia non admitida: { $preferenceKey }
 touch-warning = entrada táctil asíncrona desactivada debido a unha preferencia non admitida: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Inactivo
 policies-active = Activo
 policies-error = Erro
-
-## Printing section
-
 support-printing-title = Impresión
 support-printing-troubleshoot = Resolución de problemas
 support-printing-clear-settings-button = Limpar a configuración de impresión gardada
 support-printing-modified-settings = Configuración de impresión modificada
 support-printing-prefs-name = Nome
 support-printing-prefs-value = Valor
-
-## Normandy sections
-
 support-remote-experiments-title = Experimentos remotos
 support-remote-experiments-name = Nome
 support-remote-experiments-branch = Ramificación experimental
@@ -414,9 +321,6 @@ support-remote-experiments-see-about-studies = Vexa<a data-l10n-name="support-ab
 support-remote-features-title = Características remotas
 support-remote-features-name = Nome
 support-remote-features-status = Status
-
-## Pointing devices
-
 pointing-device-mouse = Rato
 pointing-device-touchscreen = Pantalla táctil
 pointing-device-pen-digitizer = Bolígrafo dixitalizador

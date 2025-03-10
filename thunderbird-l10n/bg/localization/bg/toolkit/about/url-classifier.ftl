@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Информация за класификатора на URL
 url-classifier-search-title = Търсене
 url-classifier-search-result-title = Резултати
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = Адрес: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = Списък на таблици: { $list }
 url-classifier-search-input = Адрес
 url-classifier-search-error-invalid-url = Неправилен адрес
@@ -53,9 +45,5 @@ url-classifier-disabled = Изключено
 url-classifier-updating = обновяване
 url-classifier-cannot-update = грешка при обновяване
 url-classifier-success = успешно
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = грешка при обновяване ({ $error })
 url-classifier-download-error = грешка при изтегляне ({ $error })

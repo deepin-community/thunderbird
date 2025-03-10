@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Lagring av meddelanden">
 <!ENTITY securitySettings.label "Säkerhetsinställningar">
 <!ENTITY serverSettings.label "Serverinställningar">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Standard:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Kontrollera var ">
 <!ENTITY biffStart.accesskey "K">
 <!ENTITY biffEnd.label "minut om det kommit nya meddelanden">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Anslutningssäkerhet:">
 <!ENTITY connectionSecurity.accesskey "A">
 <!ENTITY connectionSecurityType-0.label "Ingen">
-<!ENTITY connectionSecurityType-1.label "STARTTLS (om tillgängligt)">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Autentiseringsmetod:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "ä">
 <!ENTITY modelDeleteImmediately.label "Ta bort det omedelbart">
 <!ENTITY modelDeleteImmediately.accesskey "o">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Städa Inkorgen vid stängning">
 <!ENTITY expungeOnExit.accesskey "I">
 <!ENTITY emptyTrashOnExit.label "Töm papperskorgen vid stängning">
 <!ENTITY emptyTrashOnExit.accesskey "v">
 <!ENTITY loginAtStartup.label "Kontrollera om det kommit nya meddelanden vid start">
 <!ENTITY loginAtStartup.accesskey "m">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Fråga innan mer än ">
 <!ENTITY maxMessagesStart.accesskey "F">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "meddelanden hämtas">
 <!ENTITY alwaysAuthenticate.label "Begär alltid inloggning vid anslutning till denna server">
 <!ENTITY alwaysAuthenticate.accesskey "e">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "B">
 <!ENTITY browseNewsrc.label "Bläddra…">
 <!ENTITY browseNewsrc.accesskey "d">
-
 <!ENTITY accountTitle.label "Kontoinställningar">
 <!ENTITY accountSettingsDesc.label "Detta är ett specialkonto. Det finns ingen identitet knuten till det.">
 <!ENTITY storeType.label "Lagringstyp för meddelande:">

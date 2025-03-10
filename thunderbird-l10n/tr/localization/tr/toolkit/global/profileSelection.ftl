@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 profile-selection-window =
     .title = { -brand-short-name } - Kullanıcı profilini seçin
 profile-selection-button-accept =
@@ -18,9 +14,6 @@ profile-selection-delete-button =
     .label = Profili sil…
     .accesskey = s
 profile-selection-conflict-message = Başka bir { -brand-product-name } kopyası profillerde değişiklik yaptı. Daha fazla değişiklik yapmadan önce { -brand-short-name } tarayıcınızı yeniden başlatmalısınız.
-
-## Messages used in the profile manager
-
 profile-manager-description = { -brand-short-name }; ayarlarınız, tercihleriniz ve diğer kullanıcı öğelerinizle ilgili bilgileri kullanıcı profilinizde depolar.
 profile-manager-work-offline =
     .label = Çevrimdışı çalış

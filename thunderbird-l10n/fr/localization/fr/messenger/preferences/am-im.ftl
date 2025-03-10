@@ -1,13 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Paramètres d’authentification
 account-channel-title = Canaux par défaut
-
 chat-autologin =
     .label = S’identifier au démarrage
-
 chat-encryption-generic = Générique
 chat-encryption-log =
     .label = Inclure les messages chiffrés de bout en bout dans les historiques de conversation

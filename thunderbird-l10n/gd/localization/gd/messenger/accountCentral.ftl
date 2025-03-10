@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Fàilte gu { -brand-full-name }
 account-settings = Roghainnean a’ chunntais
-#   $accounts (Number) - the number of configured accounts
 setup-title =
     { $accounts ->
         [0] Tagh na thèid a shuidheachadh
@@ -44,7 +39,6 @@ import-label = Ion-phortaich
     .aria-label = Ion-phortaich dàta o phrògraman eile
 about-paragraph = ’S e Thunderbird am prìomh-chliant airson post-d agus mìosachan a dh’obraicheas air feadh nan ùrlaran ann an saoghal bathar-bog còd fosgailte, saor an-asgaidh do ghnìomhachasan is cleachdadh pearsanta. Tha sinn airson a chumail tèarainte ’s a dhèanamh fiù nas fhearr.
 about-paragraph-consider-donation = <b>Tha Thunderbird ga mhaoineachadh le daoine mar thu fhèin! Ma tha Thunderbird a’ còrdadh riut, nach cùm thu taic rinn?</b> Ma bheir thu <a data-l10n-name="donation-link">tabhartas</a> dhuinn, sin an dòigh as fheàrr airson dèanamh cinnteach gum fan Thunderbird beò.
-explore-link = Fidir na gleusan
 support-link = Taic
 involved-link = Gabh pàirt ann
 developer-link = Docamaideachd luchd-leasachaidh

@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-crashreporter-title = Pelapor Ranap
-crashreporter-crash-message = { -brand-short-name } mempunyai masalah dan ranap.
 crashreporter-plea = Untuk membantu kami mendiagnosis dan memperbetulkan masalah tersebut, anda boleh menghantarkan. laporan ranap kepada kami.
-# $details (String) - the reason that a crash report cannot be submitted
-crashreporter-error-details = Butirannya: { $details }
 crashreporter-no-run-message = Aplikasi ini dilaksanakan selepas ranap untuk melaporkan kerosakan kepada penyedia aplikasi. Ini tidak sepatutnya terus dilaksanakan.
 crashreporter-button-details = Butiran…
 crashreporter-view-report-title = Kandungan Laporan
@@ -21,8 +13,4 @@ crashreporter-button-quit = Keluar { -brand-short-name }
 crashreporter-button-restart = Mula semula { -brand-short-name }
 crashreporter-button-ok = OK
 crashreporter-button-close = Tutup
-# $id (String) - the crash id from the server, typically a UUID
 crashreporter-crash-identifier = ID Ranap: { $id }
-
-# Error strings
-

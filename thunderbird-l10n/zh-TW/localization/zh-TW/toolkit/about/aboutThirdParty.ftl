@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = 第三方模組資訊
 third-party-section-title = { -brand-short-name } 當中的第三方模組清單
 third-party-intro = 此頁面顯示插入到您的 { -brand-short-name } 的第三方程式模組。任何未經 Microsoft 或 { -vendor-short-name } 簽署過的模組都會被視為第三方模組。
@@ -41,15 +37,6 @@ third-party-button-reload = 重新載入系統資訊
     .title = 重新載入系統資訊
 third-party-button-open =
     .title = 開啟檔案位置…
-third-party-button-to-block =
-    .title = 封鎖此模組
-    .aria-label = 封鎖此模組
-third-party-button-to-unblock =
-    .title = 目前已封鎖，點擊即可取消封鎖。
-    .aria-label = 目前已封鎖，點擊即可取消封鎖。
-third-party-button-to-unblock-disabled =
-    .title = 目前標示為已封鎖，但此次執行 { -brand-short-name } 時已停用封鎖清單。請點擊即可取消封鎖。
-    .aria-label = 目前標示為已封鎖，但此次執行 { -brand-short-name } 時已停用封鎖清單。請點擊即可取消封鎖。
 third-party-button-to-block-module = 封鎖此模組
     .title = 封鎖此模組
     .aria-label = 封鎖此模組

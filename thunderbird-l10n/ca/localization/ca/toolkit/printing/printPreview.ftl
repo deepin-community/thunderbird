@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 printpreview-simplify-page-checkbox =
     .label = Simplifica la pàgina
     .accesskey = i
@@ -38,16 +34,7 @@ printpreview-page-setup =
 printpreview-page =
     .value = Pàgina:
     .accesskey = a
-
-# Variables
-# $sheetNum (integer) - The current sheet number
-# $sheetCount (integer) - The total number of sheets to print
 printpreview-sheet-of-sheets = { $sheetNum } de { $sheetCount }
-
-## Variables
-## $percent (integer) - menuitem percent label
-## $arrow (String) - UTF-8 arrow character for navigation buttons
-
 printpreview-percentage-value =
     .label = { $percent } %
 printpreview-homearrow =
@@ -62,7 +49,6 @@ printpreview-nextarrow =
 printpreview-endarrow =
     .label = { $arrow }
     .tooltiptext = Darrera pàgina
-
 printpreview-homearrow-button =
     .title = Primera pàgina
 printpreview-previousarrow-button =

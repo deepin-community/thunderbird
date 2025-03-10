@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Kalender
 calendar-title-reminder = Meeldetuletused
 calendar-title-notification = Teavitused
@@ -9,10 +5,8 @@ calendar-title-category = Kategooriad
 dateformat-label =
     .value = Kuupäeva vorming:
     .accesskey = K
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = pikk: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = lühike: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Enne sündmuste ja ülesannete kustutamist küsitakse.
     .accesskey = E
-accessibility-legend = Hõlbustus
-accessibility-colors-label =
-    .label = Kasutamise hõlbustamiseks optimeeritakse värve
-    .accesskey = v
 reminder-legend = Meeldetuletuse korral:
 reminder-play-checkbox =
     .label = Mängitakse heli

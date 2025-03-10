@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Tietoja ongelmatilanteiden ratkaisuun
 page-subtitle =
     Tällä sivulla on teknisiä tietoja, jotka voivat olla avuksi kun yritetään ratkaista
@@ -41,25 +37,19 @@ app-basics-version = Versio
 app-basics-build-id = Koosteen tunniste
 app-basics-distribution-id = Jakelutunnus
 app-basics-update-channel = Päivityskanava
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir = Päivityskansio
 app-basics-update-history = Päivityshistoria
 app-basics-show-update-history = Näytä päivityshistoria
-# Represents the path to the binary used to start the application.
 app-basics-binary = Sovelluksen ohjelmatiedosto
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Profiilikansio
        *[other] Profiilikansio
     }
-app-basics-enabled-plugins = Käytössä olevat liitännäiset
 app-basics-build-config = Koostamisasetukset
 app-basics-user-agent = Selaintunniste
 app-basics-os = Käyttöjärjestelmä
 app-basics-os-theme = Käyttöjärjestelmän teema
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta-muunnettu
 app-basics-memory-use = Muistin käyttö
 app-basics-performance = Suorituskyky
@@ -78,9 +68,6 @@ app-basics-safe-mode = Vikasietotila
 app-basics-memory-size = Muistin koko (RAM)
 app-basics-disk-available = Levytilaa käytettävissä
 app-basics-pointing-devices = Osoitinlaitteet
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -112,9 +99,7 @@ graphics-decision-log-title = Päätösloki
 graphics-crash-guards-title = Kaatumisvahdin käytöstä poistamat ominaisuudet
 graphics-workarounds-title = Hätäratkaisut
 graphics-device-pixel-ratios = Ikkunoiden pikselisuhteet
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Ikkunointiprotokolla
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Työpöytäympäristö
 place-database-title = Places-tietokanta
 place-database-stats = Tilastot
@@ -152,9 +137,6 @@ clear-startup-cache-label = Tyhjennä käynnistyksen välimuisti…
 startup-cache-dialog-title2 = Käynnistä { -brand-short-name } uudestaan ja tyhjennä käynnistyksen välimuisti?
 startup-cache-dialog-body2 = Tämä ei muuta asetuksiasi tai poista laajennuksia.
 restart-button-label = Käynnistä uudestaan
-
-## Media titles
-
 audio-backend = Äänen taustajärjestelmä
 max-audio-channels = Kanavia enintään
 sample-rate = Ensisijainen näytteenottotaajuus
@@ -173,11 +155,7 @@ media-device-rate = Näytteenottotaajuus
 media-device-latency = Viive
 media-capabilities-title = Mediaominaisuudet
 media-codec-support-info = Koodekkitukitiedot
-# List all the entries of the database.
 media-capabilities-enumerate = Listaa tietokannan sisältö
-
-## Codec support table
-
 media-codec-support-sw-decoding = Ohjelmistopohjainen purku
 media-codec-support-hw-decoding = Laitteistopohjainen purku
 media-codec-support-codec-name = Koodekin nimi
@@ -185,9 +163,7 @@ media-codec-support-supported = Tuettu
 media-codec-support-unsupported = Ei tuettu
 media-codec-support-error = Koodekkitukitietoja ei ole saatavilla. Yritä uudelleen mediatiedoston toiston jälkeen.
 media-codec-support-lack-of-extension = Asenna laajennus
-
-##
-
+media-hdcp-22-compatible = HDCP 2.2 -yhteensopiva
 intl-title = Internationalisointi ja lokalisointi
 intl-app-title = Sovelluksen asetukset
 intl-locales-requested = Pyydetyt localet
@@ -197,52 +173,29 @@ intl-locales-default = Oletuslocale
 intl-os-title = Käyttöjärjestelmä
 intl-os-prefs-system-locales = Järjestelmän localet
 intl-regional-prefs = Alueasetukset
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Etävianjäljitys (Chromium-protokolla)
 remote-debugging-accepting-connections = Hyväksyy yhteyksiä
 remote-debugging-url = URL-osoite
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Kaatumisilmoitukset viimeisen { $days } päivän aikana
        *[other] Kaatumisilmoitukset viimeisen { $days } päivän aikana
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } minuutti sitten
        *[other] { $minutes } minuuttia sitten
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } tunti sitten
        *[other] { $hours } tuntia sitten
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } päivä sitten
        *[other] { $days } päivää sitten
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Kaikki kaatumisilmoitukset (sisältäen { $reports } lähetyslupaa odottavan ilmoituksen annetulla aikarajoituksella)
@@ -250,18 +203,11 @@ pending-reports =
     }
 raw-data-copied = Käsittelemätön data kopioitiin leikepöydälle
 text-copied = Teksti kopioitiin leikepöydälle
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Estetty näytönohjaimen ajureiden käytetyssä versiossa.
 blocked-gfx-card = Estetty näytönohjaimellasi ohjaimen ajurien korjaamattomista ongelmista.
 blocked-os-version = Estetty käyttöjärjestelmäsi versiolla.
 blocked-mismatched-version = Estetty koska näytönohjaimen ajureiden versio eroaa rekisterissä ja DLL:ssä.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Estetty näytönohjaimen ajureiden käytetyssä versiossa. Yritä päivittää näytönohjaimesi ajurit versioon { $driverVersion } tai uudempaan.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType-parametrit
 compositing = Koostaminen
 hardware-h264 = Laitteistopohjainen H264-koodauksen purku
@@ -270,11 +216,6 @@ yes = Kyllä
 no = Ei
 unknown = Tuntematon
 virtual-monitor-disp = Virtuaalinen näyttö
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Löytyy
 missing = Puuttuu
 gpu-process-pid = GPU-prosessin PID
@@ -301,11 +242,7 @@ webgl2-driver-extensions = WebGL 2 -ajurin laajennukset
 webgl2-extensions = WebGL 2 -laajennukset
 webgpu-default-adapter = WebGPU-oletussovitin
 webgpu-fallback-adapter = WebGPU-varasovitin
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Estolistalla tunnetuista ongelmista johtuen: <a data-l10n-name="bug-link">vika { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Estolistalla; virhekoodi { $failureCode }
 d3d11layers-crash-guard = D3D11-koostaminen
 glcontext-crash-guard = OpenGL
@@ -344,16 +281,8 @@ launcher-process-status-0 = Käytössä
 launcher-process-status-1 = Ei käytössä johtuen viasta
 launcher-process-status-2 = Poistettu käytöstä pakottaen
 launcher-process-status-unknown = Tuntematon tila
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Kokeilun käytöstä poistama
-fission-status-experiment-treatment = Kokeilun käyttöön ottama
 fission-status-disabled-by-e10s-env = Ympäristön käytöstä poistama
 fission-status-enabled-by-env = Ympäristön käyttöön ottama
 fission-status-disabled-by-env = Ympäristön käytöstä poistama
@@ -362,7 +291,6 @@ fission-status-disabled-by-default = Poistettu käytöstä oletuksena
 fission-status-enabled-by-user-pref = Käyttäjän käyttöön ottama
 fission-status-disabled-by-user-pref = Käyttäjän käytöstä poistama
 fission-status-disabled-by-e10s-other = E10s poistettu käytöstä
-fission-status-enabled-by-rollout = Otettu käyttöön vaiheittaisessa levityksessä
 async-pan-zoom = Asynkroninen siirto/lähennys
 apz-none = ei mitään
 wheel-enabled = rullaliittymä käytössä
@@ -371,30 +299,25 @@ drag-enabled = vierityspalkin vastus käytössä
 keyboard-enabled = näppäimistö käytössä
 autoscroll-enabled = automaattivieritys käytössä
 zooming-enabled = portaaton nipistyszoomaus käytössä
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = async rullaliittymä pois käytöstä ei tuetun asetuksen johdosta: { $preferenceKey }
 touch-warning = async kosketusliittymä pois käytöstä ei tuetun asetuksen johdosta: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Ei käytössä
 policies-active = Käytössä
 policies-error = Virhe
-
-## Printing section
-
 support-printing-title = Tulostaminen
 support-printing-troubleshoot = Ongelmanmääritys
 support-printing-clear-settings-button = Tyhjennä tallennetut tulostusasetukset
 support-printing-modified-settings = Muokatut tulostusasetukset
 support-printing-prefs-name = Nimi
 support-printing-prefs-value = Arvo
-
-## Normandy sections
-
+support-remote-settings-status = Tila
+support-remote-settings-status-ok = OK
+support-remote-settings-status-broken = Ei toimi
+support-remote-settings-last-check = Viimeinen tarkistus
+support-remote-settings-local-timestamp = Paikallinen aikaleima
+support-remote-settings-sync-history = Historia
+support-remote-settings-sync-history-status = Tila
+support-remote-settings-sync-history-datetime = Päiväys
 support-remote-experiments-title = Etäkokeilut
 support-remote-experiments-name = Nimi
 support-remote-experiments-branch = Kokeiluhaara
@@ -402,10 +325,12 @@ support-remote-experiments-see-about-studies = Sivulta <a data-l10n-name="suppor
 support-remote-features-title = Etäominaisuudet
 support-remote-features-name = Nimi
 support-remote-features-status = Tila
-
-## Pointing devices
-
 pointing-device-mouse = Hiiri
 pointing-device-touchscreen = Kosketusnäyttö
 pointing-device-pen-digitizer = Digitaalinen kynä
 pointing-device-none = Ei osoitinlaitteita
+content-analysis-title = Sisältöanalyysi (DLP)
+content-analysis-active = Aktiivinen
+content-analysis-connected-to-agent = Yhdistetty agenttiin
+content-analysis-agent-path = Agentin polku
+content-analysis-request-count = Pyyntöjen määrä

@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Складиште порука">
 <!ENTITY securitySettings.label "Подешавања безбедности">
 <!ENTITY serverSettings.label "Подешавања сервера">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Порт:">
 <!ENTITY port.accesskey "П">
 <!ENTITY serverPortDefault.label "Подразумевано:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Провери да ли има нових порука на сваких ">
 <!ENTITY biffStart.accesskey "х">
 <!ENTITY biffEnd.label "минута">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Безбедност везе:">
 <!ENTITY connectionSecurity.accesskey "з">
 <!ENTITY connectionSecurityType-0.label "Ништа">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, ако је доступно">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Начин идентификације:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "м">
 <!ENTITY modelDeleteImmediately.label "Одмах је уклони">
 <!ENTITY modelDeleteImmediately.accesskey "д">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Очисти (&quot;Избриши&quot;) долазно сандуче на изласку из програма">
 <!ENTITY expungeOnExit.accesskey "е">
 <!ENTITY emptyTrashOnExit.label "Испразни смеће при крају рада">
 <!ENTITY emptyTrashOnExit.accesskey "ј">
 <!ENTITY loginAtStartup.label "Провери да ли има нових порука приликом покретања">
 <!ENTITY loginAtStartup.accesskey "е">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Питај ме пре преузимања више од">
 <!ENTITY maxMessagesStart.accesskey "м">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "порука">
 <!ENTITY alwaysAuthenticate.label "Увек затражи идентификацију приликом повезивања на овај сервер">
 <!ENTITY alwaysAuthenticate.accesskey "в">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "П">
 <!ENTITY browseNewsrc.label "Прегледај…">
 <!ENTITY browseNewsrc.accesskey "е">
-
 <!ENTITY accountTitle.label "Подешавања налога">
 <!ENTITY accountSettingsDesc.label "Следеће је посебан налог.  Нема идентитета повезаних са њим.">
 <!ENTITY storeType.label "Врста складишта порука:">

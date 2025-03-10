@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Tz'ib'atzij chuqa' Rupam
 text-color-label =
     .value = Rucholajem tzij:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Taq Ximonel Etz'eton:
     .accesskey = E
-underline-link-checkbox =
-    .label = Tijux kixe' ri ximonela'
-    .accesskey = T
 override-color-label =
     .value = Kejalwachïx ri taq b'onil ya'on rutzijol richin re rupam rik'in ri nucha'oj nib'anon chik:
     .accesskey = K

@@ -1,221 +1,308 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message List Header Bar
-
-
-## Quick Filter Bar
-
-# The tooltip to display when the user hovers over the sticky button
-# (currently displayed as a push-pin). When active, the sticky button
-# causes the current filter settings to be retained when the user changes
-# folders or opens new tabs. (When inactive, only the state of the text
-# filters are propagated between folder changes and when opening new tabs.)
+quick-filter-button =
+    .title = Jungkitkan Bilah Filter Cepat
+quick-filter-button-label = Filter Cepat
+thread-pane-header-display-button =
+    .title = Opsi tampilan daftar pesan
+thread-pane-folder-message-count = { $count } Pesan
+thread-pane-folder-selected-count = { $count } Dipilih
+thread-pane-header-context-table-view =
+    .label = Tampilan Tabel
+thread-pane-header-context-cards-view =
+    .label = Tampilan Kartu
+thread-pane-header-context-hide =
+    .label = Sembunyikan Tajuk Daftar Pesan
 quick-filter-bar-sticky =
     .title = Terapkan pesan ketika berganti folder?
-# The tooltip for the filter button that causes us to filter results to only
-# include unread messages.
+quick-filter-bar-dropdown =
+    .title = Menu filter cepat
+quick-filter-bar-dropdown-unread =
+    .label = Belum Dibaca
+quick-filter-bar-dropdown-starred =
+    .label = Berbintang
+quick-filter-bar-dropdown-inaddrbook =
+    .label = Kontak
+quick-filter-bar-dropdown-tags =
+    .label = Tag
+quick-filter-bar-dropdown-attachment =
+    .label = Lampiran
 quick-filter-bar-unread =
     .title = Hanya tampilkan pesan yang belum dibaca.
-# The label for the filter button that causes us to filter results to only
-# include unread messages.
 quick-filter-bar-unread-label = Belum Dibaca
-# The tooltip for the filter button that causes us to filter results to only
-# include messages that have been starred/flagged.
 quick-filter-bar-starred =
     .title = Hanya tampilkan pesan berbintang.
-# The label for the filter button that causes us to filter results to only
-# include messages that have been starred/flagged.
 quick-filter-bar-starred-label = Berbintang
-# The tooltip for the filter button that causes us to filter results to only
-# include messages from contacts in one of the user's non-remote address
-# books.
 quick-filter-bar-inaddrbook =
     .title = Hanya tampilkan pesan dari orang yang tercantum dalam buku alamat Anda
-# The label for the filter button that causes us to filter results to only
-# include messages from contacts in one of the user's non-remote address
-# books.
 quick-filter-bar-inaddrbook-label = Kontak
-# The tooltip for the filter button that causes us to filter results to only
-# include messages with at least one tag on them.
 quick-filter-bar-tags =
     .title = Hanya tampilkan pesan yang diberi tag.
-# The label for the filter button that causes us to filter results to only
-# include messages with at least one tag on them.
 quick-filter-bar-tags-label = Tag
-# The tooltip for the filter button that causes us to filter results to only
-# include messages with attachments.
 quick-filter-bar-attachment =
     .title = Hanya tampilkan pesan yang mengandung lampiran.
-# The label for the filter button that causes us to filter results to only
-# include messages with attachments.
 quick-filter-bar-attachment-label = Lampiran
-# The contents of the results box when there is a filter active but there
-# are no messages matching the filter.
 quick-filter-bar-no-results = Tidak ada hasil
-# This is used to populate the results box; it either displays the
-# number of messages found using this string, that there are no messages
-# (using quick-filter-bar-no-results), or the box is hidden.
-# Variables:
-# $count (Number) - The number of messages that match selected filters.
 quick-filter-bar-results = { $count } pesan
-# Keyboard shortcut for the text search box.
-# This should match quick-filter-bar-show in messenger.ftl.
-quick-filter-bar-textbox-shortcut =
+quick-filter-bar-search2 =
+    .label = Saring pesan
+quick-filter-bar-searching =
+    .title = Mencari…
+quick-filter-bar-search-shortcut =
     { PLATFORM() ->
-        [macos] ⇧ ⌘ K
-       *[other] Ctrl+Shift+K
+        [macos] <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>K</kbd>
+       *[other] <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd>
     }
-# This is the empty text for the text search box.
-# The goal is to convey to the user that typing in the box will filter
-# the messages and that there is a hotkey they can press to get to the
-# box faster.
-quick-filter-bar-textbox =
-    .placeholder = Saring pesan-pesan ini <{ quick-filter-bar-textbox-shortcut }>
-# Tooltip of the Any-of/All-of tagging mode selector.
+quick-filter-bar-search-placeholder-with-key = Saring pesan… { quick-filter-bar-search-shortcut }
+quick-filter-bar-search-button =
+    .alt = Cari di semua tempat
 quick-filter-bar-boolean-mode =
     .title = Mode penyaringan tag
-# The Any-of tagging mode.
 quick-filter-bar-boolean-mode-any =
     .label = Setiap
     .title = Setidaknya satu dari kriteria tag yang dipilih harus cocok
-# The All-of tagging mode.
 quick-filter-bar-boolean-mode-all =
     .label = Seluruh
     .title = Semua kriteria tag yang dipilih harus cocok
-# This label explains what the sender/recipients/subject/body buttons do.
-# This string should ideally be kept short because the label and the text
-# filter buttons share their bar (that appears when there is text in the text
-# filter box) with the list of tags when the tag filter is active, and the
-# tag sub-bar wants as much space as possible. (Overflow is handled by an
-# arrow scroll box.)
 quick-filter-bar-text-filter-explanation = Filter pesan berdasarkan:
-# The button label that toggles whether the text filter searches the message
-# sender for the string.
 quick-filter-bar-text-filter-sender = Pengirim
-# The button label that toggles whether the text filter searches the message
-# recipients (to, cc) for the string.
 quick-filter-bar-text-filter-recipients = Penerima
-# The button label that toggles whether the text filter searches the message
-# subject for the string.
 quick-filter-bar-text-filter-subject = Judul
-# The button label that toggles whether the text filter searches the message
-# body for the string.
 quick-filter-bar-text-filter-body = Isi
-# The first line of the panel popup that tells the user we found no matches
-# but we can convert to a global search for them.
 quick-filter-bar-gloda-upsell-line1 = Lanjutkan pencarian pada semua folder
-# The second line of the panel popup that tells the user we found no matches.
-# Variables:
-# $text (String) - What the user has typed so far.
 quick-filter-bar-gloda-upsell-line2 = Tekan tombol ‘Enter’ sekali lagi untuk melanjutkan pencarian: { $text }
-
-## Folder pane
-
+folder-pane-get-messages-button =
+    .title = Ambil Pesan
 folder-pane-get-all-messages-menuitem =
     .label = Ambil Semua Pesan Baru
     .accesskey = A
+folder-pane-write-message-button = Pesan Baru
+    .title = Susun suatu pesan baru
+folder-pane-more-menu-button =
+    .title = Opsi panel folder
+folder-pane-header-folder-modes =
+    .label = Mode Folder
+folder-pane-header-context-toggle-get-messages =
+    .label = Tampilkan “Ambil Pesan”
+folder-pane-header-context-toggle-new-message =
+    .label = Tampilkan “Pesan Baru”
+folder-pane-header-context-hide =
+    .label = Sembunyikan Header Panel Folder
+folder-pane-show-total-toggle =
+    .label = Tampilkan Cacah Pesan Total
+folder-pane-header-toggle-folder-size =
+    .label = Tampilkan Ukuran Folder
+folder-pane-header-hide-local-folders =
+    .label = Sembunyikan Folder Lokal
+folder-pane-mode-context-button =
+    .title = Opsi mode folder
 folder-pane-mode-context-toggle-compact-mode =
     .label = Tampilan Ringkas
     .accesskey = C
-
-## Message thread pane
-
+folder-pane-mode-move-up =
+    .label = Naikkan
+folder-pane-mode-move-down =
+    .label = Turunkan
+folder-pane-unread-aria-label = { $count } pesan belum dibaca
+folder-pane-total-aria-label = { $count } total pesan
 threadpane-column-header-select =
     .title = Alihkan pilih semua pesan
+threadpane-column-header-select-all =
+    .title = Pilih semua pesan
+threadpane-column-header-deselect-all =
+    .title = Batal pilih semua pesan
 threadpane-column-label-select =
     .label = Pilih Pesan
+threadpane-cell-select =
+    .aria-label = Pilih pesan
+threadpane-column-header-thread =
+    .title = Jungkitkan utas pesan
 threadpane-column-label-thread =
     .label = Utas
+threadpane-cell-thread =
+    .aria-label = Status utas
 threadpane-column-header-flagged =
     .title = Urut berdasarkan bintang
 threadpane-column-label-flagged =
     .label = Bintang
+threadpane-cell-flagged =
+    .aria-label = Berbintang
+threadpane-flagged-cell-label = Berbintang
 threadpane-column-header-attachments =
     .title = Urut berdasarkan lampiran
 threadpane-column-label-attachments =
     .label = Lampiran
+threadpane-cell-attachments =
+    .aria-label = Lampiran
+threadpane-attachments-cell-label = Lampiran
+threadpane-column-header-spam =
+    .title = Urut berdasarkan status spam
+threadpane-column-label-spam =
+    .label = Spam
+threadpane-cell-spam =
+    .aria-label = Status spam
+threadpane-spam-cell-label = Spam
+threadpane-column-header-unread-button =
+    .title = Urut berdasarkan status baca
+threadpane-column-label-unread-button =
+    .label = Status baca
+threadpane-cell-read-status =
+    .aria-label = Status baca
+threadpane-read-cell-label = Baca
+threadpane-unread-cell-label = Belum Dibaca
 threadpane-column-header-sender = Dari
     .title = Urutkan berdasarkan dari
 threadpane-column-label-sender =
     .label = Dari
+threadpane-cell-sender-title =
+    .aria-label = Dari
+    .title = { $title }
 threadpane-column-header-recipient = Penerima
     .title = Urut berdasarkan penerima
 threadpane-column-label-recipient =
     .label = Penerima
+threadpane-cell-recipient-title =
+    .aria-label = Penerima
+    .title = { $title }
 threadpane-column-header-correspondents = Koresponden
     .title = Urut berdasarkan koresponden
 threadpane-column-label-correspondents =
     .label = Koresponden
+threadpane-cell-correspondents-title =
+    .aria-label = Koresponden
+    .title = { $title }
 threadpane-column-header-subject = Subjek
     .title = Urut berdasarkan subjek
 threadpane-column-label-subject =
     .label = Subjek
+threadpane-cell-subject-title =
+    .aria-label = Subjek
+    .title = { $title }
 threadpane-column-header-date = Tanggal
     .title = Urut berdasarkan tanggal
 threadpane-column-label-date =
     .label = Tanggal
+threadpane-cell-date-title =
+    .aria-label = Tanggal
+    .title = { $title }
 threadpane-column-header-received = Diterima
     .title = Urut berdasarkan tanggal diterima
 threadpane-column-label-received =
     .label = Diterima
+threadpane-cell-received-title =
+    .aria-label = Tanggal diterima
+    .title = { $title }
 threadpane-column-header-status = Status
     .title = Urut berdasarkan status
 threadpane-column-label-status =
     .label = Status
+threadpane-cell-status-title =
+    .aria-label = Status
+    .title = { $title }
 threadpane-column-header-size = Ukuran
     .title = Urut berdasarkan ukuran
 threadpane-column-label-size =
     .label = Ukuran
+threadpane-cell-size-title =
+    .aria-label = Ukuran
+    .title = { $title }
 threadpane-column-header-tags = Tag
     .title = Urut berdasarkan tag
 threadpane-column-label-tags =
     .label = Tag
+threadpane-cell-tags-title =
+    .aria-label = Tag
+    .title = { $title }
 threadpane-column-header-account = Akun
     .title = Urut berdasarkan akun
 threadpane-column-label-account =
     .label = Akun
+threadpane-cell-account-title =
+    .aria-label = Akun
+    .title = { $title }
 threadpane-column-header-priority = Prioritas
     .title = Urut berdasarkan prioritas
 threadpane-column-label-priority =
     .label = Prioritas
+threadpane-cell-priority-title =
+    .aria-label = Prioritas
+    .title = { $title }
 threadpane-column-header-unread = Belum Dibaca
     .title = Jumlah pesan yang belum dibaca di utas
 threadpane-column-label-unread =
     .label = Belum Dibaca
+threadpane-cell-unread-title =
+    .aria-label = Cacah pesan yang belum dibaca
+    .title = { $title }
 threadpane-column-header-total = Total
     .title = Jumlah total pesan dalam utas
 threadpane-column-label-total =
     .label = Total
+threadpane-cell-total-title =
+    .aria-label = Cacah total pesan
+    .title = { $title }
 threadpane-column-header-location = Lokasi
     .title = Urut berdasarkan lokasi
 threadpane-column-label-location =
     .label = Lokasi
+threadpane-cell-location-title =
+    .aria-label = Lokasi
+    .title = { $title }
 threadpane-column-header-id = Urutan Diterima
     .title = Urutkan berdasarkan pesanan diterima
 threadpane-column-label-id =
     .label = Urutan Diterima
+threadpane-cell-id-title =
+    .aria-label = Pesanan diterima
+    .title = { $title }
 threadpane-column-header-delete =
     .title = Hapus sebuah pesan
 threadpane-column-label-delete =
     .label = Hapus
-
-## Message state variations
-
+threadpane-cell-delete =
+    .aria-label = Hapus
+threadpane-replies = { $count } balasan
+threadpane-message-new =
+    .alt = Indikator pesan baru
+    .title = Pesan baru
+threadpane-message-replied =
+    .alt = Indikator dibalas
+    .title = Pesan dibalas
+threadpane-message-redirected =
+    .alt = Indikator dialihkan
+    .title = Pesan dialihkan
+threadpane-message-forwarded =
+    .alt = Indikator diteruskan
+    .title = Pesan diteruskan
+threadpane-message-replied-forwarded =
+    .alt = Indikator dijawab dan diteruskan
+    .title = Pesan dijawab dan diteruskan
+threadpane-message-replied-redirected =
+    .alt = Indikator dijawab dan dialihkan
+    .title = Pesan dijawab dan dialihkan
+threadpane-message-forwarded-redirected =
+    .alt = Indikator diteruskan dan dialihkan
+    .title = Pesan diteruskan dan dialihkan
+threadpane-message-replied-forwarded-redirected =
+    .alt = Indikator dijawab, diteruskan, dan dialihkan
+    .title = Pesan dijawab, diteruskan, dan dialihkan
 apply-columns-to-menu =
     .label = Terapkan setelan kolom untuk…
+apply-current-view-to-menu =
+    .label = Terapkan tampilan saat ini ke…
 apply-current-view-to-folder =
     .label = Folder…
 apply-current-view-to-folder-children =
     .label = Folder dan folder di bawahnya…
-
-## Apply columns confirmation dialog
-
-# Variables:
-#  $name (String): The name of the folder to apply to.
+apply-changes-to-folder-title = Terapkan Perubahan?
 apply-current-columns-to-folder-message = Terapkan setelan kolom folder ini untuk { $name }?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-columns-to-folder-with-children-message = Terapkan setelan kolom folder ini untuk { $name } dan folder di bawahnya?
+apply-current-view-to-folder-message = Terapkan tampilan folder saat ini ke { $name }?
+apply-current-view-to-folder-with-children-message = Terapkan tampilan folder saat ini ke { $name } dan turunannya?
+threadpane-sort-header-unread-count = <span>{ $unread }</span> belum dibaca dari <span>{ $total }</span> pesan
+threadpane-sort-header-count = <span>{ $total }</span> pesan
+threadpane-card-menu-button =
+    .title = Menu pesan
+message-list-placeholder-no-messages = Tidak ada pesan ditemukan
+message-list-placeholder-multiple-folders = Beberapa folder dipilih
+folder-pane-context-mark-folder-read =
+    .label = Tandai Folder Sudah Dibaca
+    .accesskey = d

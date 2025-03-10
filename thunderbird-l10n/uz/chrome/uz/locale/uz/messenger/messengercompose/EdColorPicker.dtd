@@ -1,10 +1,9 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY windowTitle.label "Rangi">
 <!ENTITY lastPickedColor.label "So‘nggi tanlangan rang">
 <!ENTITY lastPickedColor.accessKey "S">
+<!ENTITY chooseColor1.label "Choose a color:">
+<!ENTITY chooseColor2.label "Enter an HTML color string">
+<!ENTITY chooseColor2.accessKey "H">
 <!ENTITY setColorExample.label "(masalan: &quot;#0000ff&quot; yoki &quot;blue&quot;):">
 <!ENTITY default.label "Standart">
 <!ENTITY default.accessKey "S">
@@ -17,7 +16,3 @@
 <!ENTITY table.accessKey "J">
 <!ENTITY cell.label "Katak(lar)">
 <!ENTITY cell.accessKey "K">
-
-<!ENTITY chooseColor1.label "Choose a color:">
-<!ENTITY chooseColor2.label "Enter an HTML color string">
-<!ENTITY chooseColor2.accessKey "H">

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Matn va orqa fon
 text-color-label =
     .value = Matn:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Kirilgan havolalar:
     .accesskey = K
-underline-link-checkbox =
-    .label = Tagiga chizilgan havolalar
-    .accesskey = c
 override-color-label =
     .value = Tarkib bo‘yicha ko‘rsatilgan ranglarni men tepada tanlaganlar bilan almashtiradi:
     .accesskey = a

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Abmelden…
     .accesskey = A
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Neues Konto
 appmenu-new-account-panel =
     .label = Neues Konto
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Neue E-Mail-Adresse erhalten
-    .accesskey = E
-appmenu-new-mail-account =
-    .label = Bestehende E-Mail-Adresse
-    .accesskey = B
 appmenu-new-email-account =
     .label = E-Mail
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Newsgroup
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Neues Adressbuch
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-Adressbuch
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Erstellen
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Öffnen aus Datei
     .accesskey = Ö
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalender…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Ansicht
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Vergrößern der Schriftgröße
 appmenuitem-font-size-reduce =
     .tooltiptext = Verkleinern der Schriftgröße
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Zurücksetzen der Schriftgröße
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Werkzeuge
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Exportieren
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = Auf Mobilgerät exportieren
+    .accesskey = p
 appmenu-tools-message-search =
     .label = Nachrichten suchen
     .accesskey = S
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Entwicklerwerkzeuge
     .accesskey = T
-
-## Help
-
 appmenu-help-panel-title =
     .title = Hilfe
 appmenu-help-get-help =
     .label = Unterstützung erhalten
     .accesskey = h
-appmenu-help-explore-features =
-    .label = Funktionen kennenlernen
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = Hilfe zu { -brand-short-name }
     .accesskey = H
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Über { -brand-short-name }
     .accesskey = Ü
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = { -brand-shorter-name }-Update wird heruntergeladen
 appmenuitem-banner-update-available =

@@ -1,13 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Authentifizierungs-Einstellungen
 account-channel-title = Standardräume
-
 chat-autologin =
     .label = Automatisches Verbinden beim Start
-
 chat-encryption-generic = Allgemein
 chat-encryption-log =
     .label = Ende-zu-Ende-verschlüsselte Nachrichten ebenfalls in Gesprächsprotokoll aufnehmen

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Abipusis šifravimas
 account-otr-label = Neįrašomos žinutės (OTR)
@@ -12,7 +8,6 @@ view-fingerprint-button =
     .label = Tvarkykite kontaktų „pirštų atspaudus“
     .accesskey = T
 otr-settings-title = OTR nuostatos
-
 otr-require-encryption =
     .label = Tiesioginiai privatūs pokalbiai turi būti abipusiai šifruoti
 otr-require-encryption-info =
@@ -21,6 +16,4 @@ otr-require-encryption-info =
     nebus rodomos kaip įprasto pokalbio dalis ir nebus fiksuojamos.
 otr-verify-nudge =
     .label = Visada priminti, kad reikia patikrinti nepatvirtintą kontaktą
-
 otr-not-yet-available = kol kas nepasiekiamas
-

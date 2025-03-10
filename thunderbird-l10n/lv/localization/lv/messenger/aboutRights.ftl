@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Par jūsu tiesībām
 rights-intro = { -brand-full-name } ir brīva bezmaksas atvērtā koda programma, ko veido tūkstošiem brīvprātīgo no visas pasaules. Ir dažas lietas, ko jums būtu vērts zināt:
 rights-intro-point-1 = { -brand-short-name } ir pieejams ar <a data-l10n-name="mozilla-public-license-link">Mozilla publiskās licences</a>nosacījumiem. Tas nozīmē, ka jūs varat brīvi izmantot, pavairot uz izplatīt { -brand-short-name } citiem.  Tāpat jūs droši varat mainīt un papildināt { -brand-short-name } pirmkodu pēc saviem ieskatiem. Mozilla publiskā licence dod jums tiesības brīvi izplatīt savas mainītās versijas.

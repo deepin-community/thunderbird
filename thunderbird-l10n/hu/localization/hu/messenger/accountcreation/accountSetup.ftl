@@ -1,11 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-setup-tab-title = Fiók beállítása
-
-## Header
-
 account-setup-title = Meglévő e-mail fiók beállítása
 account-setup-description =
     A jelenlegi e-mail-címe használatához ki kell töltenie a hitelesítő adatait.<br/>
@@ -14,12 +7,8 @@ account-setup-secondary-description = A { -brand-product-name } automatikusan me
 account-setup-success-title = Fiók sikeresen létrehozva
 account-setup-success-description = Most már használhatja ezt a fiókot a { -brand-short-name }del.
 account-setup-success-secondary-description = A kapcsolódó szolgáltatások összekapcsolásával, és a fiók speciális beállításainak konfigurálásával javíthatja a felhasználói élményt.
-
-## Form fields
-
 account-setup-name-label = A teljes neve
     .accesskey = n
-# Note: "John Doe" is a multiple-use name that is used when the true name of a person is unknown. We use this fake name as an input placeholder. Translators should update this to reflect the placeholder name of their language/country.
 account-setup-name-input =
     .placeholder = Gipsz Jakab
 account-setup-name-info-icon =
@@ -37,8 +26,6 @@ account-setup-email-warning-icon =
 account-setup-password-label = Jelszó
     .accesskey = J
     .title = Nem kötelező, csak a felhasználónév ellenőrzéséhez használatos
-account-provisioner-button = Új e-mail-cím kérése
-    .accesskey = j
 account-setup-password-toggle-show =
     .title = Jelszó megjelenítése
 account-setup-password-toggle-hide =
@@ -47,15 +34,10 @@ account-setup-remember-password = Jelszó megjegyzése
     .accesskey = m
 account-setup-exchange-label = Az Ön bejelentkezése
     .accesskey = b
-#   YOURDOMAIN refers to the Windows domain in ActiveDirectory. yourusername refers to the user's account name in Windows.
 account-setup-exchange-input =
     .placeholder = TARTOMÁNY\felhasználónév
-#   Domain refers to the Windows domain in ActiveDirectory. We mean the user's login in Windows at the local corporate network.
 account-setup-exchange-info-icon =
     .title = Tartományi bejelentkezés
-
-## Action buttons
-
 account-setup-button-cancel = Mégse
     .accesskey = M
 account-setup-button-manual-config = Kézi beállítás
@@ -68,15 +50,11 @@ account-setup-button-continue = Folytatás
     .accesskey = F
 account-setup-button-done = Kész
     .accesskey = K
-
-## Notifications
-
 account-setup-looking-up-settings = Konfiguráció keresése…
 account-setup-looking-up-settings-guess = Konfiguráció keresése: Gyakori kiszolgálónevek kipróbálása…
 account-setup-looking-up-settings-half-manual = Konfiguráció keresése: Kiszolgáló vizsgálata…
 account-setup-looking-up-disk = Konfiguráció keresése: { -brand-short-name } telepítés…
 account-setup-looking-up-isp = Konfiguráció keresése: E-mail-szolgáltató…
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-looking-up-db = Konfiguráció keresése: Mozilla ISP adatbázis…
 account-setup-looking-up-mx = Konfiguráció keresése: Bejövő e-mail domain…
 account-setup-looking-up-exchange = Konfiguráció keresése: Exchange kiszolgáló…
@@ -87,15 +65,10 @@ account-setup-success-guess = A beállításokat a gyakori kiszolgálónevek ker
 account-setup-success-guess-offline = Kapcsolat nélküli üzemmódban van. Néhány beállítást kitaláltunk, de meg kell adnia a helyes beállításokat.
 account-setup-success-password = Jelszó rendben
 account-setup-success-addon = A kiegészítő telepítése sikeresen megtörtént
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-success-settings-db = A konfiguráció megtalálható a Mozilla ISP adatbázisában.
 account-setup-success-settings-disk = A konfiguráció megtalálható a { -brand-short-name } telepítésben.
 account-setup-success-settings-isp = A konfiguráció megtalálható az e-mail-szolgáltatónál.
-# Note: Microsoft Exchange is a product name.
 account-setup-success-settings-exchange = A Microsoft Exchange kiszolgáló konfigurációja megtalálva.
-
-## Illustrations
-
 account-setup-step1-image =
     .title = Kezdeti beállítás
 account-setup-step2-image =
@@ -114,11 +87,6 @@ account-setup-documentation-help = Telepítési dokumentáció
 account-setup-forum-help = Támogatói fórum
 account-setup-privacy-help = Adatvédelmi irányelvek
 account-setup-getting-started = Első lépések
-
-## Results area
-
-# Variables:
-#  $count (Number) - Number of available protocols.
 account-setup-results-area-title =
     { $count ->
         [one] Elérhető konfiguráció
@@ -126,7 +94,6 @@ account-setup-results-area-title =
     }
 account-setup-result-imap-description = Mappák és e-mailek szinkronban tartása a kiszolgálón
 account-setup-result-pop-description = Mappák és e-mailek tárolása az Ön számítógépén
-# Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Microsoft Exchange vagy Office 365 felhőszolgáltatások használata
 account-setup-incoming-title = Bejövő
 account-setup-outgoing-title = Kimenő
@@ -136,22 +103,11 @@ account-setup-result-no-encryption = Nincs titkosítás
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
 account-setup-result-outgoing-existing = Meglévő SMTP-kiszolgáló használata
-# Variables:
-#  $incoming (String): The email/username used to log into the incoming server
-#  $outgoing (String): The email/username used to log into the outgoing server
 account-setup-result-username-different = Bejövő: { $incoming }, Kimenő: { $outgoing }
-
-## Error messages
-
-# Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
 account-setup-credentials-incomplete = Hitelesítés sikertelen. A megadott hitelesítő adatok hibásak vagy külön felhasználónév szükséges a bejelentkezéshez. Ez a felhasználónév általában a Windows tartományi bejelentkezése a tartomány nevével vagy anélkül (például gipszjakab vagy AD\\gipszjakab).
 account-setup-credentials-wrong = Hitelesítés sikertelen. Ellenőrizze a felhasználónevet és a jelszót.
 account-setup-find-settings-failed = A { -brand-short-name } nem találta meg az e-mail-fiókja beállításait
 account-setup-exchange-config-unverifiable = A konfigurációt nem lehetett megerősíteni. Ha a felhasználóneve és a jelszava helyes, akkor valószínű, hogy a kiszolgáló adminisztrátora letiltotta a fiókjának kiválasztott konfigurációját. Próbáljon meg másik protokollt választani.
-account-setup-provisioner-error = Hiba történt az új fiókja beállításakor a { -brand-short-name }ban. Próbálja kézzel beállítani a fiókját a hitelesítő adataival.
-
-## Manual configuration area
-
 account-setup-manual-config-title = Kiszolgáló beállításai
 account-setup-incoming-server-legend = Bejövő kiszolgáló
 account-setup-protocol-label = Protokoll:
@@ -161,29 +117,18 @@ account-setup-port-label = Port:
 account-setup-auto-description = A { -brand-short-name } megpróbálja automatikusan észlelni az üresen hagyott mezőket.
 account-setup-ssl-label = Kapcsolat biztonsága:
 account-setup-outgoing-server-legend = Kimenő kiszolgáló
-
-## Incoming/Outgoing SSL Authentication options
-
 ssl-autodetect-option = Automatikus felismerés
 ssl-no-authentication-option = Nincs hitelesítés
 ssl-cleartext-password-option = Normál jelszó
 ssl-encrypted-password-option = Titkosított jelszó
-
-## Incoming/Outgoing SSL options
-
 ssl-noencryption-option = Egyik sem
 account-setup-auth-label = Hitelesítési módszer:
 account-setup-username-label = Felhasználónév:
 account-setup-advanced-setup-button = Speciális beállítások
     .accesskey = S
-
-## Warning insecure server dialog
-
 account-setup-insecure-title = Vigyázat!
 account-setup-insecure-incoming-title = Bejövő beállítások:
 account-setup-insecure-outgoing-title = Kimenő beállítások:
-# Variables:
-#  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = A(z) <b>{ $server }</b> nem használ titkosítást.
 account-setup-warning-cleartext-details = A nem biztonságos levelezőkiszolgálók nem használnak titkosított kapcsolatokat a jelszavak és a privát információk védelme érdekében. Ha ilyen kiszolgálóhoz kapcsolódik, a jelszava és privát információi kiderülhetnek.
 account-setup-insecure-server-checkbox = Megértettem a kockázatokat
@@ -193,17 +138,9 @@ insecure-dialog-cancel-button = Beállítások módosítása
     .accesskey = B
 insecure-dialog-confirm-button = Megerősítés
     .accesskey = M
-
-## Warning Exchange confirmation dialog
-
-# Variables:
-#  $domain (String): The name of the server where the configuration was found, e.g. rackspace.com.
 exchange-dialog-question = A { -brand-short-name } megtalálta a fiókinformációit ehhez: { $domain }. Folytatja és elküldi a hitelesítő adatait?
 exchange-dialog-confirm-button = Bejelentkezés
 exchange-dialog-cancel-button = Mégse
-
-## Dismiss account creation dialog
-
 exit-dialog-title = Nincs e-mail-fiók beállítva
 exit-dialog-description = Biztos, hogy megszakítja a telepítési folyamatot? A { -brand-short-name } továbbra is használható lesz e-mail-fiók nélkül, de számos funkció nem lesz elérhető.
 account-setup-no-account-checkbox = A { -brand-short-name } használata e-mail-fiók nélkül
@@ -212,22 +149,13 @@ exit-dialog-cancel-button = Beállítás folytatása
     .accesskey = f
 exit-dialog-confirm-button = Kilépés a beállításból
     .accesskey = K
-
-## Alert dialogs
-
 account-setup-creation-error-title = Hiba a fiók létrehozásakor
 account-setup-error-server-exists = Már van bejövő kiszolgáló.
 account-setup-confirm-advanced-title = Speciális beállítások megerősítése
 account-setup-confirm-advanced-description = Ez a párbeszédpanel bezáródik, és létrejön egy fiók a jelenlegi beállításokkal, még akkor is, ha a konfiguráció hibás. Folytatja?
-
-## Addon installation section
-
 account-setup-addon-install-title = Telepítés
 account-setup-addon-install-intro = Egy harmadik féltől származó kiegészítővel hozzáférhet az e-mail fiókjához ezen a kiszolgálón:
 account-setup-addon-no-protocol = Ez az e-mail-kiszolgáló sajnos nem támogatja a nyílt protokollokat. { account-setup-addon-install-intro }
-
-## Success view
-
 account-setup-settings-button = Fiókbeállítások
 account-setup-encryption-button = Végpontok közötti titkosítás
 account-setup-signature-button = Aláírás hozzáadása
@@ -238,15 +166,11 @@ account-setup-calendar-button = Kapcsolódás egy távoli naptárhoz
 account-setup-linked-services-title = Kapcsolt szolgáltatások összekapcsolása
 account-setup-linked-services-description = A { -brand-short-name } egyéb, az e-mail-fiókjához kapcsolódó szolgáltatások észlelt.
 account-setup-no-linked-description = Állítson be más szolgáltatásokat, hogy a legtöbbet hozza ki a { -brand-short-name } élményéből.
-# Variables:
-# $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
     { $count ->
         [one] A { -brand-short-name } egy, az e-mail-fiókjához kapcsolódó címjegyzéket talált.
        *[other] A { -brand-short-name } { $count }, az e-mail-fiókjához kapcsolódó címjegyzéket talált.
     }
-# Variables:
-# $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
     { $count ->
         [one] A { -brand-short-name } egy, az e-mail-fiókjához kapcsolódó naptárat talált.
@@ -265,9 +189,6 @@ account-setup-existing-calendar = Kapcsolódva
     .title = Már kapcsolódik a naptárhoz
 account-setup-connect-all-calendars = Kapcsolódás az összes naptárhoz
 account-setup-connect-all-address-books = Kapcsolódás az összes címjegyzékhez
-
-## Calendar synchronization dialog
-
 calendar-dialog-title = Kapcsolódás egy naptárhoz
 calendar-dialog-cancel-button = Mégse
     .accesskey = M
@@ -279,8 +200,6 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Szín
 account-setup-calendar-refresh-label = Frissítés
 account-setup-calendar-refresh-manual = Kézzel
-# Variables:
-# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Percenként

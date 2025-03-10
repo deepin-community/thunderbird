@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Закрити
 preferences-doc-title2 = Налаштування
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Синхронізація
 category-sync =
     .tooltiptext = Синхронізація
+pane-qr-export-title = Експорт для мобільного пристрою
+category-qr-export =
+    .tooltiptext = Експорт для мобільного пристрою
 general-language-and-appearance-header = Мова та зовнішній вигляд
 general-incoming-mail-header = Вхідна пошта
 general-files-and-attachment-header = Файли та вкладення
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Дозволити { -brand-short-name } надсилати технічні та користувацькі дані в { -vendor-short-name }
     .accesskey = д
 collection-health-report-link = Докладніше
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Надсилання даних вимкнено для цієї конфігурації збірки
 collection-backlogged-crash-reports =
     .label = Дозволити { -brand-short-name } надсилати від вашого імені зібрані звіти про збої
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Перезапустіть { -brand-short-name } для застосування змін
 confirm-messenger-language-change-button = Застосувати й перезапустити
 update-setting-write-failure-title = Помилка при збереженні налаштувань оновлення
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     У програмі { -brand-short-name } сталася помилка, і цю зміну не було збережено. Зверніть увагу, що для встановлення цього параметра оновлення потрібен дозвіл на запис у файл, наведений нижче. Ви або адміністратор комп’ютера зможете усунути помилку, надавши групі "Користувачі" повний контроль над цим файлом.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Оновлення триває
 update-in-progress-message = Ви хочете продовжити оновлення { -brand-short-name }?
 update-in-progress-ok-button = &Відхилити
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Продовжити
 account-button = Налаштування облікового запису
 open-addons-sidebar-button = Додатки й теми
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Щоб створити головний пароль, введіть свої облікові дані входу для Windows. Це допомагає захистити ваші збережені паролі.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = створити головний пароль
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Додайте постачальника OpenSearch
 add-opensearch-provider-text = Введіть URL-адресу постачальника OpenSearch, який потрібно додати. Або використовуйте пряму URL-адресу файлу опису OpenSearch, або URL-адресу, де його можна автоматично знайти.
 adding-opensearch-provider-failed-title = Помилка додавання постачальника OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Не вдалося додати постачальника OpenSearch для { $url }.
 minimize-to-tray-label =
     .label = Згортати { -brand-short-name } в область сповіщень
@@ -210,8 +187,6 @@ always-check-default =
 check-default-button =
     .label = Перевірити зараз…
     .accesskey = з
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -229,8 +204,6 @@ return-receipts-button =
     .label = Сповіщення про отримання…
     .accesskey = я
 update-app-legend = Оновлення { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Версія { $version }
 allow-description = Дозволити { -brand-short-name }
 automatic-updates-label =
@@ -265,18 +238,10 @@ offline-compact-folder-automatically =
     .accesskey = п
 compact-folder-size =
     .value = МБ всього
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Використовувати до
     .accesskey = и
 use-cache-after = МБ обсяг для кешу
-
-##
-
 smart-cache-label =
     .label = Відключити автоматичне керування кешем
     .accesskey = ю
@@ -300,7 +265,6 @@ color-options-button =
     .label = Кольори…
     .accesskey = К
 display-width-legend = Звичайні текстові повідомлення
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Показувати смайлики як графіку
     .accesskey = й
@@ -368,17 +332,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Показувати вкладення вбудовано
     .accesskey = к
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Після відкриття через
     .accesskey = я
 seconds-label = секунд
-
-##
-
 open-msg-label =
     .value = Відкривати повідомлення в:
 open-msg-tab =
@@ -393,8 +350,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Закривати вікно повідомлення після видалення/переміщення
     .accesskey = З
-display-name-label =
-    .value = Ім’я для показу:
 address-display-legend = Список повідомлень
 address-display-description = Бажаний формат відображення адреси:
 address-display-full =
@@ -409,9 +364,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Показуване ім'я для людей з адресної книги
     .accesskey = м
-
-## Compose Tab
-
+table-layout-legend = Подання таблицею
+table-layout-horizontal-scroll-label =
+    .label = Дозволити горизонтальне прокручування
+    .accesskey = г
+conversation-view-legend = Режим розмов
+conversation-view-checkbox-label =
+    .label = Увімкнути режим розмов
+    .accesskey = к
+conversation-view-checkbox-description = Експериментальна функція на основі Gloda. Використовуйте на власний ризик.
+label-experiment = Експериментальне
+account-hub-legend = Центр облікових записів
+account-hub-checkbox-label =
+    .label = Створити облікові записи в новому центрі облікових записів
+    .accesskey = з
+account-hub-checkbox-description = Експериментальна функція створення нового облікового запису електронної пошти
 forward-label =
     .value = Пересилати повідомлення:
     .accesskey = П
@@ -422,17 +389,10 @@ as-attachment-label =
 extension-label =
     .label = додати розширення до імені файлу
     .accesskey = ф
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Автоматично зберігати лист кожні
     .accesskey = А
 auto-save-end = хвилин
-
-##
-
 warn-on-send-accel-key =
     .label = Запитувати підтвердження під час використання комбінації клавіш для надсилання повідомлення
     .accesskey = З
@@ -523,9 +483,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Знайти більше провайдерів…
 cloud-account-description = Додати нову службу зберігання Filelink
-
-## Privacy Tab
-
 mail-content = Вміст пошти
 remote-content-label =
     .label = Дозволити віддалений вміст в повідомленнях
@@ -554,11 +511,11 @@ third-party-visited =
 cookies-button =
     .label = Показати файли cookie…
     .accesskey = з
-do-not-track-label =
-    .label = Надішліть вебсайтам сигнал “Не стежити”, якщо ви не хочете, щоб вас відстежували
-    .accesskey = с
-dnt-learn-more-button =
-    .value = Докладніше
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Вказувати вебсайтам не продавати мої дані та не ділитися ними
+    .accesskey = к
+do-not-track-removal = Ми більше не підтримуємо сигнал “Не відстежувати”
 passwords-description = { -brand-short-name } може запам’ятовувати реєстраційну інформацію для всіх ваших облікових записів так, що вам не доведеться вводити її знову.
 passwords-button =
     .label = Збережені паролі…
@@ -567,7 +524,6 @@ primary-password-description = Головний пароль захищає вс
 primary-password-label =
     .label = Використовувати головний пароль
     .accesskey = г
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Вимагати вхід на пристрої для заповнення та керування паролями
 primary-password-button =
@@ -576,9 +532,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Зараз ви в режимі FIPS. Для цього режиму необхідно встановити головний пароль.
 forms-master-pw-fips-desc = Не вдалося змінити пароль
 junk-description = Налаштуйте загальні параметри спам-фільтрів. Специфічні для облікових записів параметри можуть бути змінені в налаштуваннях облікового запису.
-junk-label =
-    .label = Коли я позначаю повідомлення як спам:
-    .accesskey = я
 junk-marked-label =
     .label = Коли повідомлення позначено як небажані:
     .accesskey = ж
@@ -588,9 +541,6 @@ junk-move-label =
 junk-delete-label =
     .label = Видалити
     .accesskey = л
-junk-read-label =
-    .label = Позначити такі повідомлення прочитаними
-    .accesskey = ч
 junk-read-description = Позначити повідомлення прочитаними
 junk-read-manual-label =
     .label = Коли вручну позначено як небажане
@@ -647,9 +597,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Автоматичні рішення можна перевизначити, увімкнувши або вимкнувши шифрування вручну під час написання повідомлення.
     Примітка: шифрування завжди вмикається автоматично під час відповіді на зашифроване повідомлення.
-
-## Chat Tab
-
 startup-label =
     .value = Коли { -brand-short-name } запускається:
     .accesskey = з
@@ -657,20 +604,10 @@ offline-label =
     .label = Тримати мої чатові облікові записи в офлайні
 auto-connect-label =
     .label = Під'єднати мої облікові записи автоматично
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Дозволити моїм контактам знати, що я бездіяльний після
     .accesskey = я
 idle-time-label = хвилин неактивності
-
-##
-
 away-message-label =
     .label = та встановлювати мені статус Відійшов із повідомленням статусу:
     .accesskey = В
@@ -732,41 +669,21 @@ no-preview-description = Ця тема недоступна (вимкнений 
 chat-variant-label =
     .value = Варіант:
     .accesskey = В
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Знайти в налаштуваннях
-
-## Settings UI Search Results
-
 search-results-header = Результати пошуку
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Перепрошуємо! В налаштуваннях немає результатів для “<span data-l10n-name="query"></span>”.
        *[other] Перепрошуємо! В налаштуваннях немає результатів для “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Потрібна допомога? Відвідайте <a data-l10n-name="url">Підтримку { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Візьміть свій інтернет з собою
 sync-signedout-description = Синхронізуйте свої облікові записи, адресні книги, календарі, додатки та налаштування на всіх пристроях.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Увійти до синхронізації…
 sync-pane-header = Синхронізація
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” не підтверджено.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Увійдіть, щоб повторно під'єднати “{ $userEmail }”
 sync-pane-resend-verification = Повторно надіслати підтвердження
 sync-pane-sign-in = Увійти
@@ -796,3 +713,53 @@ synced-acount-item-filters = Фільтри
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Синхронізуйте свої облікові записи електронної пошти, адресні книги, календарі та особисті дані на всіх пристроях.
 sync-disconnected-turn-on-sync = Увімкнути синхронізацію…
+qr-export-pane-header = Експорт облікових записів у { -brand-product-name } для мобільних пристроїв
+qr-export-description = Швидко перенесіть налаштування облікового запису з комп'ютера на мобільний, згенерувавши QR-код. Виберіть, які облікові записи включити, вирішіть, чи бажаєте ви передати свій пароль, і скануйте код за допомогою мобільного пристрою. Швидко, безпечно та просто.
+qr-export-get-app = Ще не маєте { -brand-product-name } на мобільному? <a data-l10n-name="app-link">Завантажте його з Google Play</a>
+qr-export-create = Створити QR-код, щоб експортувати свої облікові записи
+qr-export-select-accounts = Виберіть облікові записи для експорту:
+qr-export-no-accounts = Не бачите всіх своїх облікових записів? Деякі облікові записи можуть бути вимкнені, оскільки вони не підтримуються { -brand-product-name } для Android. <a data-l10n-name="account-support-link">Підтримка</a>
+qr-export-accounts-legend = Облікові записи електронної пошти
+qr-export-select-all-accounts = Вибрати все
+qr-export-security-legend = Безпека
+qr-export-include-passwords = Включити паролі всіх облікових записів
+qr-export-oauth-warning = Деякі з ваших облікових записів використовують метод автентифікації, який може вимагати повторної автентифікації на вашому мобільному пристрої. Під час цього процесу вам, можливо, доведеться знову ввести паролі.
+qr-export-security-hint = Сканувавши наведені нижче QR-коди, налаштування вашого облікового запису, включно з адресою електронної пошти та паролем, буде безпечно передано. Ми не збираємо, не зберігаємо та не передаємо ці дані під час процесу. Передавання відбувається безпосередньо між вашими пристроями.
+qr-export-security-warning = Для вашої безпеки переконайтеся, що ви перебуваєте в приватній обстановці та скануєте QR-коди лише з надійних джерел.
+qr-export-start-export = Експорт
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } із { $count } QR-код
+        [few] { $step } із { $count } QR-кодів
+       *[many] { $step } із { $count } QR-кодів
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Скануйте QR-код за допомогою { -brand-product-name } на своєму мобільному пристрої
+        [few] Скануйте QR-коди за допомогою { -brand-product-name } на своєму мобільному пристрої
+       *[many] Скануйте QR-коди за допомогою { -brand-product-name } на своєму мобільному пристрої
+    }
+qr-export-scan-step1 = Відкрийте { -brand-product-name } на своєму мобільному пристрої.
+qr-export-scan-step2 = Перейдіть до налаштувань
+qr-export-scan-step3 = Виберіть <strong>Налаштування імпорту</strong>
+qr-export-scan-step4-revision = Торкніться <strong>Сканувати QR-код</strong> і наведіть камеру на цей код
+qr-export-back = Назад
+qr-export-next = Далі
+qr-export-done = Готово
+qr-export-summary-description = Облікові записи експортовано. Продовжте на своєму мобільному пристрої.
+qr-export-summary-title = Підсумок експорту:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] Згенеровано { $count } QR-код
+        [few] Згенеровано { $count } QR-коди
+       *[many] Згенеровано { $count } QR-кодів
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] Експортовано { $count } обліковий запис:
+        [few] Експортовано { $count } облікові записи:
+       *[many] Експортовано { $count } облікових записів:
+    }
+qr-export-summary-passwords-included = Включно з паролями
+qr-export-summary-passwords-excluded = За винятком паролів
+qr-export-more-accounts = Експортувати інші облікові записи

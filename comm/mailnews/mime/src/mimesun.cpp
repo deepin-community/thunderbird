@@ -267,8 +267,7 @@ static int MimeSunAttachment_create_child(MimeObject* obj) {
    */
   PR_FREEIF(child->content_type);
   PR_FREEIF(child->encoding);
-  PR_ASSERT(mime_ct);
-  child->content_type = (mime_ct ? strdup(mime_ct) : 0);
+  child->content_type = strdup(mime_ct);
   child->encoding = (mime_cte ? strdup(mime_cte) : 0);
 
   status = ((MimeContainerClass*)obj->clazz)->add_child(obj, child);
@@ -310,5 +309,6 @@ static int MimeSunAttachment_parse_child_line(MimeObject* obj, const char* line,
   PR_ASSERT(kid);
   if (!kid) return -1;
 
-  return kid->clazz->parse_buffer(line, length, kid);
+  return kid->clazz->parse_buffer(line, length,
+                                  MimeClosure(MimeClosure::isMimeObject, kid));
 }

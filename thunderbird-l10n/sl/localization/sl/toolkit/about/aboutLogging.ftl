@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = O beleženju
 about-logging-page-title = Upravitelj beleženja
 about-logging-current-log-file = Trenutna dnevniška datoteka:
 about-logging-new-log-file = Nova dnevniška datoteka:
 about-logging-currently-enabled-log-modules = Trenutno omogočeni dnevniški moduli:
 about-logging-log-tutorial = Za navodila o uporabi tega orodja si oglejte <a data-l10n-name="logging">Beleženje HTTP</a>.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Odpri mapo
 about-logging-set-log-file = Nastavi dnevniško datoteko
 about-logging-set-log-modules = Nastavi dnevniške module
@@ -27,9 +21,6 @@ about-logging-no-log-modules = brez
 about-logging-no-log-file = brez
 about-logging-logging-preset-selector-text = Prednastavitev beleženja:
 about-logging-with-profiler-stacks-checkbox = Omogoči sledi skladov za dnevniška sporočila
-
-## Logging presets
-
 about-logging-preset-networking-label = Omrežje
 about-logging-preset-networking-description = Beleženje modulov za diagnosticiranje težav z omrežjem
 about-logging-preset-networking-cookie-label = Piškotki
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Beleženje modulov za diagnosticiranje težav z WebGPU
 about-logging-preset-gfx-label = Grafika
 about-logging-preset-gfx-description = Beleženje modulov za diagnosticiranje težav z grafiko
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Beleženje modulov za diagnosticiranje težav z Microsoft Windows
 about-logging-preset-custom-label = Po meri
 about-logging-preset-custom-description = Beleženje modulov po lastni izbiri
-# Error handling
 about-logging-error = Napaka:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Neveljavna vrednost "{ $v }" za ključ "{ $k }"
 about-logging-unknown-logging-preset = Neznana prednastavitev beleženja "{ $v }"
 about-logging-unknown-profiler-preset = Neznana prednastavitev profilerja "{ $v }"

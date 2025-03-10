@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Upravljač certifikata
 certmgr-tab-mine =
@@ -46,6 +42,8 @@ certmgr-email =
     .label = Adresa e-pošte
 certmgr-serial =
     .label = Serijski broj
+certmgr-fingerprint-sha-256 =
+    .label = SHA-256 otisak
 certmgr-view =
     .label = Pogled…
     .accesskey = P
@@ -97,27 +95,13 @@ pkcs12-unknown-err-backup = Stvaranje sigurnosne kopije PKCS #12 datoteke nije u
 pkcs12-unknown-err = PKCS #12 operacija nije uspjela zbog nepoznatih razloga.
 pkcs12-info-no-smartcard-backup = Nije moguće napraviti sigurnosnu kopiju certifikata iz hardverskog sigurnosnog uređaja poput smart kartice.
 pkcs12-dup-data = Certifikat i sigurnosni ključ već postoje na sigurnosnom uređaju.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Ime datoteke za sigurnosnu kopiju
 file-browse-pkcs12-spec = PKCS12 Datoteke
 choose-p12-restore-file-dialog = Datoteka certifikata za uvoz
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Datoteke certifikata
 import-ca-certs-prompt = Za uvoz odaberi datoteku koja sadrži CA certifikat
 import-email-cert-prompt = Za uvoz odaberi datoteku koja sadrži nečiji certifikat e-pošte
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Certifikat „{ $certName }” predstavlja certifikacijsko tijelo.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Izbriši svoje certifikate
 delete-user-cert-confirm = Stvarno želiš izbrisati ove certifikate?
@@ -134,25 +118,14 @@ delete-email-cert-title =
     .title = Izbriši certifikate e-pošte
 delete-email-cert-confirm = Stvarno želiš izbrisati certifikate e-pošte ovih ljudi?
 delete-email-cert-impact = Ako izbrišete certifikat e-pošte određene osobe, više nećeš moći toj osobi slati šifrirane e-poruke.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Certifikat sa serijskim brojem: { $serialNumber }
-# Used when no cert is stored for an override
+send-no-client-certificate = Ne šalji certifikat klijenta
 no-cert-stored-for-override = (nije pohranjeno)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (Nedostupno)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Trajno
 temporary-override = Privremeno
-
-## Add Security Exception dialog
-
-add-exception-branded-warning = Promijeniti ćete na način na koji { -brand-short-name } identificira ovu stranicu.
+add-exception-branded-warning = Promijenit ćeš na način na koji { -brand-short-name } identificira ovu web stranicu.
 add-exception-invalid-header = Ova se stranica pokušava identificirati s neispravnim informacijama.
 add-exception-domain-mismatch-short = Pogrešna stranica
 add-exception-domain-mismatch-long = Certifikat pripada drugoj stranici, što može značiti da netko pokušava krivotvoriti ovu stranicu.
@@ -166,9 +139,6 @@ add-exception-checking-short = Provjera informacija
 add-exception-checking-long = Pokušaj identificiranja stranice…
 add-exception-no-cert-short = Nema dostupnih informacija
 add-exception-no-cert-long = Nije moguće dobiti identifikacijski status za ovu stranicu.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Spremiti certifikat u datoteku
 cert-format-base64 = X.509 certifikat (PEM)
 cert-format-base64-chain = X.509 lančani certifikat (PEM)

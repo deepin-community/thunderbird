@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-update-whats-new = Τι νέο υπάρχει
 about-dialog-title = Σχετικά με το { -brand-full-name }
 release-notes-link = Σημειώσεις έκδοσης
@@ -21,32 +17,12 @@ update-other-instance-handling-updates = Το { -brand-short-name } ενημερ
 update-manual = Οι ενημερώσεις διατίθενται στο <a data-l10n-name="manual-link"/>
 update-unsupported = Δεν μπορείτε να κάνετε περαιτέρω ενημερώσεις σε αυτό το σύστημα. <a data-l10n-name="unsupported-link">Μάθετε περισσότερα</a>
 update-restarting = Επανεκκίνηση…
-# Variables:
-#   $channel (String): description of the update channel (e.g. "release", "beta", "nightly" etc.)
 channel-description = Αυτήν τη στιγμή, βρίσκεστε στο κανάλι ενημερώσεων της έκδοσης <span data-l10n-name="current-channel">{ $channel }</span> .
 warning-desc-version = Το { -brand-short-name } είναι πειραματικό και ενδεχομένως ασταθές.
 warning-desc-telemetry = Στέλνει αυτόματα πληροφορίες σχετικά με τις επιδόσεις, το υλικό, τη χρήση και τις προσαρμογές στη { -vendor-short-name } για τη βελτίωση του { -brand-short-name }.
-# Example of resulting string: 66.0.1 (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 66.0.1
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version = { $version } ({ $bits }-bit)
-# Example of resulting string: 66.0a1 (2019-01-16) (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird for Daily builds, e.g. 66.0a1
-#   $isodate (String): date in ISO format, e.g. 2019-01-16
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version-nightly = { $version } ({ $isodate }) ({ $bits }-bit)
-# Example of resulting string: 131.0a1 (aarch64)
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 66.0.1
-#   $arch (String): name of the architecture (arm, aarch64, etc.)
 aboutdialog-version-arch = { $version } ({ $arch })
-# Example of resulting string: 131.0a1 (2024-08-27) (aarch64)
-# Variables:
-#   $version (String): version of Thunderbird for Daily builds, e.g. 66.0a1
-#   $isodate (String): date in ISO format, e.g. 2019-01-16
-#   $arch (String): name of the architecture (arm, aarch64, etc.)
 aboutdialog-version-arch-nightly = { $version } ({ $isodate }) ({ $arch })
 aboutdialog-update-checking-failed = Ο έλεγχος για ενημερώσεις απέτυχε.
 community-experimental = <a data-l10n-name="community-exp-mozilla-link">Η { -vendor-short-name }</a> είναι μια <a data-l10n-name="community-exp-credits-link">παγκόσμια κοινότητα</a> που συνεργάζεται για να διατηρήσει το διαδίκτυο ανοικτό, δημόσιο και προσβάσιμο σε όλους.

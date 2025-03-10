@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 accounts-title = Taqotz'ib' chuqa' Taq Rutzijol
 show-private-data-main-text = Titz'aqatisäx rub'i' taqotz'ib'
 show-private-data-explanation-text = (k'o rub'eyal richin niya' retal ri etamab'äl)

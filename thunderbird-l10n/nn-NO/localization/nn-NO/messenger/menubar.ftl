@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menylinje
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Innstillingar
     .accesskey = I
 menu-addons-and-themes =
     .label = Tillegg og tema
     .accesskey = T
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Eksporter til mobil…
+    .accesskey = E
 menu-help-help-title =
     .label = Hjelp
     .accesskey = H
 menu-help-get-help =
     .label = Få hjelp
     .accesskey = F
-menu-help-explore-features =
-    .label = Utforsk funksjonar
-    .accesskey = U
 menu-help-get-release-help =
     .label = Få hjelp med { -brand-short-name }
     .accesskey = F
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Om { -brand-short-name }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] A
            *[other] A
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Avslutt { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Avslutt { -brand-full-name }
            *[other] Avslutt { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Uønskt
     .tooltiptext = Merk dei valde meldingane som uønskt e-post
@@ -94,18 +76,9 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Angre sletting
     .tooltiptext = Angre sletting av valde meldingar
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Reparer tekstkoding
     .accesskey = k
-
-## View / Folders
-
-
-## View / Layout
-
 menu-font-size-label =
     .label = Skriftstorleik
     .accesskey = S
@@ -130,9 +103,6 @@ mail-uidensity-default =
 mail-uidensity-relaxed =
     .label = Avslappa
     .accesskey = A
-
-## File
-
 file-new-email-account =
     .label = E-postkonto…
     .accesskey = E

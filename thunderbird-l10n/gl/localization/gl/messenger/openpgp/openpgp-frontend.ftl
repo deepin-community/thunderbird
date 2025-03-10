@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Xestor de chaves OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Verificar a sinatura
     .accesskey = V
 openpgp-has-sender-key = Esta mensaxe afirma que contén a chave pública OpenPGP do remitente.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Aviso: a nova chave pública OpenPGP desta mensaxe difire das chaves públicas que aceptou anteriormente para { $email }.
 openpgp-import-sender-key =
     .label = Importar…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Esta mensaxe asinouse cunha chave que aínda non ten.
 openpgp-search-signature-key =
     .label = Descubrir…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Esta é unha mensaxe OpenPGP que aparentemente foi corrompida por MS-Exchange e non se pode reparar porque se abriu desde un ficheiro local. Copie a mensaxe nun cartafol de correo para probar unha reparación automática.
 openpgp-broken-exchange-info = Esta é unha mensaxe OpenPGP que aparentemente foi corrompida por MS-Exchange. Se o contido da mensaxe non se amosa como se esperaba, pode probar unha reparación automática.
 openpgp-broken-exchange-repair =

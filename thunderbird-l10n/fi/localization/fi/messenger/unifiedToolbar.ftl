@@ -1,42 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = Etsi
-search-bar-item =
-    .label = Etsi:
 search-bar-item2 =
     .label = Etsi
 search-bar-placeholder = Etsi…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Muokkaa…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Nouda kaikki uudet viestit
     .accesskey = N
-
-## Unified Toolbar customization
-
 customize-title = Muokkaa työkalupalkkeja
 customize-space-tab-mail = Sähköposti
     .title = Sähköposti
@@ -60,8 +36,6 @@ customize-button-style-text-only-option = Vain teksti
 customize-cancel = Peruuta
 customize-save = Tallenna
 customize-unsaved-changes = Tallentamattomia muutoksia muissa näkymissä
-customize-search-bar =
-    .label = Etsi työkalupalkin painikkeita…
 customize-search-bar2 =
     .label = Etsi työkalupalkin painikkeita
     .placeholder = Etsi työkalupalkin painikkeita…
@@ -77,18 +51,10 @@ customize-palette-tasks-specific-title = Saatavilla vain tehtävien näkymään
 customize-palette-chat-specific-title = Saatavilla vain keskustelun näkymään
 customize-palette-settings-specific-title = Saatavilla vain asetusten näkymään
 customize-palette-extension-specific-title = Saatavilla vain tähän näkymään
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = Lisää näkymään { $target }
 customize-palette-add-everywhere =
     .label = Lisää kaikkiin työkalupalkkeihin
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = Siirrä eteenpäin
 customize-target-backward =

@@ -1,42 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = 搜索
-search-bar-item =
-    .label = 搜索：
 search-bar-item2 =
     .label = 搜索
 search-bar-placeholder = 搜索…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = 自定义…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = 获取所有新消息
     .accesskey = G
-
-## Unified Toolbar customization
-
 customize-title = 定制工具栏…
 customize-space-tab-mail = 邮件
     .title = 邮件
@@ -60,8 +36,6 @@ customize-button-style-text-only-option = 仅文本
 customize-cancel = 取消
 customize-save = 保存
 customize-unsaved-changes = 其他空间中有未保存的更改
-customize-search-bar =
-    .label = 搜索工具栏按钮…
 customize-search-bar2 =
     .label = 搜索工具栏按钮
     .placeholder = 搜索工具栏按钮…
@@ -77,18 +51,10 @@ customize-palette-tasks-specific-title = 仅适用于任务空间
 customize-palette-chat-specific-title = 仅适用于聊天空间
 customize-palette-settings-specific-title = 仅适用于设置空间
 customize-palette-extension-specific-title = 仅适用于此空间
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = 加入 { $target }
 customize-palette-add-everywhere =
     .label = 添加到全部工具栏
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = 向前移动
 customize-target-backward =

@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Vítá vás <span data-l10n-name="brand-name">{ -brand-full-name }</span>
 account-hub-title = Účty
-
-## Footer
-
 account-hub-release-notes = Poznámky k vydání
 account-hub-support = Podpora
 account-hub-donate = Přispějte
-
-## Initial setup page
-
 account-hub-email-setup-button = E-mailový účet
     .title = Nastavit e-mailový účet
 account-hub-calendar-setup-button = Kalendář
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Diskusní skupina
     .title = Nastavit účet diskusní skupiny
 account-hub-import-setup-button = Import
     .title = Importovat zálohu profilu
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Přihlásit se ke službě Sync…
-
-## Email page
-
-account-hub-email-title = Nastavení vašeho e-mailového účtu
 account-hub-add-email-title = Přidat váš účet
 account-hub-manually-configure-email-title = Nastavit konfiguraci účtu
 account-hub-email-cancel-button = Zrušit
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Dokončit
 account-hub-email-manually-configure-button = Nastavit ručně
 account-hub-email-continue-button = Pokračovat
 account-hub-email-confirm-button = Potvrdit
-account-hub-incoming-server-legend = Příchozí server
-account-hub-outgoing-server-legend = Server odchozí pošty
+account-hub-result-incoming-server-legend = Příchozí server
+    .title = Příchozí server
+account-hub-result-outgoing-server-legend = Odchozí server
+    .title = Odchozí server
 account-hub-protocol-label = Protokol
-account-hub-hostname-label = Server
+account-hub-result-hostname-label = Server
+    .title = Server
+account-hub-result-authentication-label = Autentizace
+    .title = Autentizace
 account-hub-port-label = Port
     .title = Pro automatickou detekci nastavte číslo portu na 0
 account-hub-auto-description = { -brand-short-name } se pokusí automaticky doplnit pole, která jste nevyplnili.
 account-hub-ssl-label = Zabezpečení připojení
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Rozpoznat automaticky
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = Heslo, zabezpečený přenos
 account-hub-ssl-encrypted-password-option =
     .label = Šifrované heslo
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Žádný
 account-hub-auth-no-authentication-option =
     .label = Bez autentizace
 account-hub-auth-label = Způsob autentizace
-account-hub-username-label = Uživatelské jméno
+account-hub-result-username-label = Uživatelské jméno
+    .title = Uživatelské jméno
 account-hub-name-label = Celé jméno
     .accesskey = j
 account-hub-adding-account-title = Přidání účtu
@@ -101,3 +79,30 @@ account-hub-email-enter-password = Zadejte heslo k poštovnímu účtu
 account-hub-email-sync-accounts = Synchronizace kalendářů a kontaktů
 account-hub-test-configuration = Test
 account-hub-add-new-email = Přidat další e-mail
+account-hub-result-imap-description = Udržuje své složky a e-maily synchronizované na svém serveru
+account-hub-result-pop-description = Uchová vaše složky a e-maily na vašem počítači
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Použijte webové služby Microsoft Exchange pro synchronizaci složek a e-mailů
+account-hub-result-ews-text = Server
+account-hub-result-recommended-label = Doporučeno
+account-hub-edit-configuration = Upravit konfiguraci
+account-hub-config-success = Nastavení bylo nalezeno v Mozilla ISPDB
+account-hub-password-info = Vaše přihlašovací údaje budou uloženy pouze na vašem počítači
+account-hub-sync-success = Thunderbird nalezl nějaké propojené služby
+account-hub-sync-failure = Thunderbird nemohl najít připojené služby
+account-hub-unable-to-sync-accounts = Thunderbirdu se nepodařilo připojit vybrané služby
+account-hub-email-added-success = E-mailový účet byl úspěšně připojen
+account-hub-config-test-success = Konfigurační nastavení je platné
+account-hub-select-all = Vybrat vše
+account-hub-deselect-all = Zrušit výběr
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] { $count } vybrán
+        [few] { $count } vybrány
+        [many] { $count } vybráno
+       *[other] { $count } vybráno
+    }
+account-hub-no-address-books = Nebyly nalezeny žádné složky kontaktů
+account-hub-no-calendars = Nebyly nalezeny žádné kalendáře
+account-hub-email-added-success-links-title = Prozkoumejte možnosti zabezpečení a přizpůsobení:
+account-hub-signature-link = Podpis e-mailu

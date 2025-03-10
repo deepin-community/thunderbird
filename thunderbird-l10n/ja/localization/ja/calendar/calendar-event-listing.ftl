@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = 予定検索と予定リストを閉じます
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = カレンダー名
     .tooltiptext = カレンダー名で並べ替えます
 calendar-event-listing-column-category =
     .label = カテゴリー
     .tooltiptext = カテゴリー名で並べ替えます
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = 完了
     .tooltiptext = 完了マークで並べ替えます
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = 件名
     .tooltiptext = 件名で並べ替えます
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = 過去の予定
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = 半年後までの予定
 calendar-event-listing-interval-next-12-months =
     .label = 1 年後までの予定
+calendar-event-listing-interval-future =
+    .label = 今後のすべての予定
 calendar-event-listing-interval-all =
     .label = すべての予定
 calendar-event-listing-interval-selected-day =

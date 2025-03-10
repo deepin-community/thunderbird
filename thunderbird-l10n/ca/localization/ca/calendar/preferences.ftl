@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Calendari
 calendar-title-reminder = Recordatoris
 calendar-title-notification = Notificacions
@@ -9,10 +5,8 @@ calendar-title-category = Categories
 dateformat-label =
     .value = Format de les dates:
     .accesskey = d
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Llarg: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Curt: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Pregunta abans de suprimir cites i tasques.
     .accesskey = P
-accessibility-legend = Accessibilitat
-accessibility-colors-label =
-    .label = Optimitza els colors per a l'accessibilitat
-    .accesskey = c
 reminder-legend = Quan arribi l'hora d'un recordatori:
 reminder-play-checkbox =
     .label = Reprodueix un so

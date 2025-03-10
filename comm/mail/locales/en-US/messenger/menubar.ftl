@@ -16,6 +16,10 @@ menu-addons-and-themes =
     .label = Add-ons and Themes
     .accesskey = A
 
+menu-export-for-mobile =
+    .label = Export for Mobile…
+    .accesskey = p
+
 ## Help Menu
 
 menu-help-help-title =
@@ -79,6 +83,13 @@ menu-quit =
 menu-quit-mac =
     .label = Quit { -brand-shorter-name }
 
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Exit { -brand-full-name }
+           *[other] Quit { -brand-full-name }
+        }
+
 # Localization note: Do not translate unless your locale's keyboard layout
 # does not include this key, as it determines the keyboard shortcut for
 # shutting down the application.
@@ -110,7 +121,7 @@ menu-view-repair-text-encoding =
 
 menu-view-folders-toggle-header =
     .label = Folder Pane Header
-    .accesskey = F
+    .accesskey = P
 
 ## View / Layout
 

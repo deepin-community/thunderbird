@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = ღონისძიებათა ძიებისა და სიის დახურვა
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = კალენდრის სახელი
     .tooltiptext = კალენდრის სახელით დალაგება
 calendar-event-listing-column-category =
     .label = კატეგორია
     .tooltiptext = კატეგორიებით დალაგება
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = მზადაა
     .tooltiptext = დასრულებულების დალაგება
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = სათაური
     .tooltiptext = დასახელებით დალაგება
-
-## Interval dropdown options
-
 calendar-event-listing-interval-calendar-month =
     .label = ღონისძიებები ამ კალენდარულ თვეში
 calendar-event-listing-interval-current-view =

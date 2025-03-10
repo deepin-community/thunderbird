@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Закрыць
 preferences-doc-title2 = Налады
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Сінхранізацыя
 category-sync =
     .tooltiptext = Сінхранізацыя
+pane-qr-export-title = Экспарт для мабільных прылад
+category-qr-export =
+    .tooltiptext = Экспарт для мабільных прылад
 general-language-and-appearance-header = Мова і вонкавы выгляд
 general-incoming-mail-header = Уваходная пошта
 general-files-and-attachment-header = Файлы і прамацаванні
@@ -42,13 +41,18 @@ privacy-main-header = Прыватнасць
 privacy-passwords-header = Паролі
 privacy-junk-header = Спам
 collection-header = Збор і выкарыстанне даных { -brand-short-name }
+collection-description = Мы імкнёмся збіраць толькі тыя даныя, якія вы дазваляеце збіраць і якія патрэбны для выпуску і паляпшэння { -brand-short-name }. Мы заўсёды пытаемся дазволу перад атрыманнем асабістых звестак.
 collection-privacy-notice = Апавяшчэнне аб прыватнасці
-collection-health-report-telemetry-disabled = Вы больш не дазваляеце { -vendor-short-name } збіраць тэхнічныя даныя і даныя ўзаемадзеяння. Усе пазбіраныя даныя будуць выдалены на працягу 30 дзён.
+collection-health-report-telemetry-disabled = Вы больш не дазваляеце { -vendor-short-name } збіраць тэхнічныя даныя і даныя ўзаемадзеяння. Усе назбіраныя даныя будуць выдалены на працягу 30 дзён.
 collection-health-report-telemetry-disabled-link = Даведацца больш
 collection-health-report =
     .label = Дазволіць { -brand-short-name } адпраўляць тэхнічныя даныя і даныя ўзаемадзеяння ў { -vendor-short-name }
     .accesskey = Д
 collection-health-report-link = Даведацца больш
+collection-health-report-disabled = Справаздачнасць па даным адключана для гэтай канфігурацыі зборкі
+collection-backlogged-crash-reports =
+    .label = Дазволіць { -brand-short-name } адпраўляць назбіраныя справаздачы аб збоях ад вашага імя
+    .accesskey = Д
 collection-backlogged-crash-reports-link = Даведацца больш
 privacy-security-header = Бяспека
 privacy-scam-detection-title = Выяўленне махлярства
@@ -67,26 +71,12 @@ confirm-messenger-language-change-button = Ужыць і перазапусці�
 update-setting-write-failure-title = Памылка пры захаванні параметраў абнаўлення
 update-in-progress-title = Выконваецца абнаўленне
 update-in-progress-ok-button = &Адхіліць
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Працягнуць
 account-button = Налады ўліковага запісу
 open-addons-sidebar-button = Дадаткі і тэмы
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Каб стварыць майстар-пароль, увядзіце вашы ўліковыя даныя Windows. Гэта дапаможа трымаць вашы ўліковыя запісы ў бяспецы.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = стварыць майстар-пароль
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -111,8 +101,6 @@ remove-search-engine =
 add-opensearch-provider-title = Дадаць дастаўніка паслуг OpenSearch
 add-opensearch-provider-text = Каб дадаць дастаўніка паслуг OpenSearch, увядзіце яго URL. Выкарыстоўвайце альбо прамы URL файла апісання OpenSearch, альбо URL, па якому гэты файл можа быць аўтаматычна выяўлены.
 adding-opensearch-provider-failed-title = Не атрымалася дадаць дастаўніка паслуг OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Не атрымалася дадаць дастаўніка паслуг OpenSearch для { $url }.
 new-message-arrival = Пры з'яўленні новых паведамленняў:
 mail-play-sound-label =
@@ -171,6 +159,7 @@ smooth-scrolling-label =
 browsing-gtk-use-non-overlay-scrollbars =
     .label = Заўсёды паказваць палосы прагорткі
     .accesskey = З
+window-layout-legend = Макет вокнаў
 draw-in-titlebar-label =
     .label = Хаваць загаловак сістэмнага акна
     .accesskey = Х
@@ -191,9 +180,11 @@ search-integration-label =
 config-editor-button =
     .label = Рэдактар канфігурацыі…
     .accesskey = ф
+return-receipts-description = Вызначыце, як { -brand-short-name } павінен апрацоўваць паведамленні аб прачытанні
+return-receipts-button =
+    .label = Паведамленні аб прачытанні…
+    .accesskey = П
 update-app-legend = Абнаўленні { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Версія { $version }
 allow-description = Дазволіць { -brand-short-name }
 automatic-updates-label =
@@ -206,11 +197,12 @@ use-service =
     .label = Выкарыстоўваць фонавую службу для ўсталёўкі абналенняў
     .accesskey = ф
 networking-legend = Злучэнне
+proxy-config-description = Наладзьце, як { -brand-short-name } павінен злучацца з інтэрнэтам
 network-settings-button =
     .label = Налады…
     .accesskey = Н
 offline-legend = Па-за сеткай
-offline-settings = Наладзіць працу па-за сеткаю
+offline-settings = Наладзьце працу па-за сеткаю
 offline-settings-button =
     .label = Па-за сеткай…
     .accesskey = й
@@ -223,18 +215,13 @@ offline-compact-folder-automatically =
     .accesskey = к
 compact-folder-size =
     .value = МБ месца на дыску
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Выкарыстоўваць да
     .accesskey = ы
 use-cache-after = МБ месца на дыску для кэшу
-
-##
-
+smart-cache-label =
+    .label = Адключыць аўтаматычнае кіраванне кэшам
+    .accesskey = А
 clear-cache-button =
     .label = Ачысціць зараз
     .accesskey = ч
@@ -255,7 +242,6 @@ color-options-button =
     .label = Колеры…
     .accesskey = К
 display-width-legend = Паведамленні ў звычайным тэкставым фармаце
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Адлюстроўваць эматыконы як графіку
     .accesskey = ю
@@ -323,17 +309,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Паказваць прымацаванні ў целе паведамлення
     .accesskey = П
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Пасля паказу на працягу
     .accesskey = п
 seconds-label = секунд(ы)
-
-##
-
 open-msg-label =
     .value = Адкрываць паведамленні ў:
 open-msg-tab =
@@ -348,8 +327,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Закрываць акно/укладку паведамлення пры яго перамяшчэнні або выдаленні
     .accesskey = З
-display-name-label =
-    .value = Бачнае імя:
 address-display-legend = Спіс паведамленняў
 address-display-description = Пераважны фармат адлюстравання адрасоў:
 address-display-full =
@@ -364,9 +341,15 @@ address-display-name =
 condensed-addresses-label =
     .label = Паказваць толькі бачнае імя для людзей, якія знаходзяцца ў маёй адраснай кнізе
     .accesskey = П
-
-## Compose Tab
-
+table-layout-legend = Таблічны выгляд
+table-layout-horizontal-scroll-label =
+    .label = Дазволіць гарызантальную прагортку
+    .accesskey = Д
+account-hub-legend = Цэнтр уліковых запісаў
+account-hub-checkbox-label =
+    .label = Стварыце ўліковыя запісы ў новым цэнтры ўліковых запісаў
+    .accesskey = С
+account-hub-checkbox-description = Эксперыментальны працэс стварэння новага ўліковага запісу электроннай пошты
 forward-label =
     .value = Перасылаць паведамленні:
     .accesskey = е
@@ -377,17 +360,10 @@ as-attachment-label =
 extension-label =
     .label = дадаваць пашырэнне да імя файла
     .accesskey = ф
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Аўтазахоўваць кожныя
     .accesskey = ў
 auto-save-end = хвілін
-
-##
-
 warn-on-send-accel-key =
     .label = Запрашаць пацвярджэнне пры выкарыстанні спалучэння клавіш для адпраўкі паведамлення
     .accesskey = З
@@ -425,7 +401,7 @@ restore-html-label =
 compose-send-format-title = Фармат адпраўкі
 compose-send-automatic-option =
     .label = Аўтаматычны
-compose-send-automatic-description = Калі ў паведамленні не выкарыстоўваюцца стылі, адпраўляць іх у звычайным тэкставым фармаце. Інакш, адпраўляць іх у фармаце HTML са звычайным тэкставым фарматам у якасці рэзерву.
+compose-send-automatic-description = Калі ў паведамленні не выкарыстоўваюцца стылі, адпраўляць іх у звычайным тэкставым фармаце. Інакш адпраўляць іх у фармаце HTML са звычайным тэкставым фарматам у якасці рэзерву.
 compose-send-both-option =
     .label = HTML і звычайны тэкставы
 compose-send-both-description = Праграма электроннай пошты атрымальніка вызначыць, у якім фармаце паказваць.
@@ -435,6 +411,7 @@ compose-send-html-description = Некаторыя атрымальнікі не
 compose-send-plain-option =
     .label = Толькі звычайны тэкставы
 compose-send-plain-description = Некаторыя стылі будуць пераўтвораны ў альтэрнатыву ў выглядзе звычайнага тэксту, іншыя віды афармлення будуць адключаны.
+autocomplete-description = Пры ўводзе адрасоў шукаць адпаведныя адрасы ў:
 ab-label =
     .label = Лакальных адрасных кнігах
     .accesskey = Л
@@ -454,9 +431,14 @@ default-directory-label =
     .accesskey = П
 default-last-label =
     .none = Апошні выкарыстаны каталог
+attachment-label =
+    .label = Папярэджваць аб адсутных прымацаваннях
+    .accesskey = П
 attachment-options-label =
     .label = Ключавыя словы…
     .accesskey = К
+enable-cloud-share =
+    .label = Прапаноўваць службу сховішчаў для файлаў памерам больш чым
 cloud-share-size =
     .value = МБ
 add-cloud-account =
@@ -468,9 +450,7 @@ remove-cloud-account =
     .accesskey = В
 find-cloud-providers =
     .value = Знайсці больш дастаўнікаў паслуг…
-
-## Privacy Tab
-
+cloud-account-description = Дадаць новую службу сховішчаў Filelink
 mail-content = Змесціва пошты
 remote-content-label =
     .label = Дазволіць адлеглае змесціва ў паведамленнях
@@ -478,7 +458,12 @@ remote-content-label =
 exceptions-button =
     .label = Выключэнні…
     .accesskey = ы
+remote-content-info =
+    .value = Даведайцеся больш пра прыватнасць аддаленага змесціва
 web-content = Змесціва вэб-сайтаў
+history-label =
+    .label = Запамінаць вэб-сайты і спасылкі, якія вы наведваеце
+    .accesskey = З
 cookies-label =
     .label = Прымаць кукі з сайтаў
     .accesskey = П
@@ -494,23 +479,25 @@ third-party-visited =
 cookies-button =
     .label = Паказаць кукі…
     .accesskey = к
-dnt-learn-more-button =
-    .value = Даведацца больш
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Паведамляць вэб-сайтам, каб яны не прадавалі і не абагульвалі мае даныя
+    .accesskey = П
+do-not-track-removal = Мы больш не падтрымліваем сігнал «Не адсочваць»
 passwords-description = { -brand-short-name } можа запамінаць паролі да ўсіх вашых уліковых запісаў.
 passwords-button =
     .label = Захаваныя паролі…
     .accesskey = З
-primary-password-description = Майстар-пароль бароніць усе вашы паролі, але вы павінны ўводзіць яго адзін раз для кожнага сеанса.
+primary-password-description = Майстар-пароль бароніць усе вашы паролі, але вы павінны ўводзіць яго кожны раз пры пачатку новага сеанса.
 primary-password-label =
     .label = Выкарыстоўваць майстар-пароль
     .accesskey = м
 primary-password-button =
     .label = Змяніць майстар-пароль…
     .accesskey = З
+forms-primary-pw-fips-title = Вы працуеце ў рэжыме адпаведнасці FIPS. FIPS патрабуе непусты майстар-пароль.
 forms-master-pw-fips-desc = Не атрымалася змяніць пароль
-junk-label =
-    .label = Калі я пазначаю паведамленні як спам:
-    .accesskey = я
+junk-description = Задайце стандартныя налады спам-фільтраў. Налады спам-фільтраў, спецыфічныя для ўліковага запісу, задаюцца ў наладах уліковага запісу.
 junk-marked-label =
     .label = Калі паведамленні пазначаны як спам:
     .accesskey = п
@@ -520,10 +507,7 @@ junk-move-label =
 junk-delete-label =
     .label = Выдаляць іх
     .accesskey = В
-junk-read-label =
-    .label = Пазначаць вызначаныя як спам паведамленні прачытанымі
-    .accesskey = з
-junk-read-description = Пазначыць паведамленні прачытанымі
+junk-read-description = Пазначаць паведамленні прачытанымі
 junk-read-manual-label =
     .label = Калі пазначана як спам уручную
     .accesskey = К
@@ -539,6 +523,11 @@ junk-log-button =
 reset-junk-button =
     .label = Скінуць даныя навучання
     .accesskey = С
+phishing-description = { -brand-short-name } можа аналізаваць паведамленні для выяўлення патэнцыйных махлярстваў праз электронную пошту шляхам пошуку ў іх распаўсюджаных прыёмаў і тэхнік, якія выкарыстоўваюцца, каб увесці вас у зман.
+phishing-label =
+    .label = Паведамляць мяне, калі паведамленне, якое я чытаю, з'яўляецца патэнцыйным махлярствам праз электронную пошту.
+    .accesskey = П
+antivirus-description = { -brand-short-name } можа спрасціць працу антывіруса па праверцы ўваходных паштовых паведамленняў на наяўнасць вірусаў перад іх захаваннем у лакальнае сховішча.
 antivirus-label =
     .label = Дазволіць антывірусным кліентам змяшчаць у каранцін некаторыя ўваходныя паведамленні
     .accesskey = Д
@@ -549,6 +538,9 @@ certificate-auto =
 certificate-ask =
     .label = Пытацца ў мяне кожны раз
     .accesskey = м
+ocsp-label =
+    .label = Запытваць у OCSP-сервераў пацвярджэнне бягучага статусу сертыфікатаў
+    .accesskey = З
 certificate-button =
     .label = Кіраванне сертыфікатамі…
     .accesskey = К
@@ -559,13 +551,18 @@ email-e2ee-header = Скразное шыфраванне электроннай
 account-settings = Налады ўліковага запісу
 email-e2ee-enable-info = Наладзьце ўліковыя запісы электроннай пошты і ідэнтыфікацыйныя даныя для скразнога шыфравання ў наладах уліковага запісу.
 email-e2ee-automatism = Аўтаматычнае выкарыстанне шыфравання
+email-e2ee-automatism-pre =
+    { -brand-short-name } можа аўтаматычна ўключаць і адключаць шыфраванне пры складанні электроннага ліста.
+    Аўтаматычнае ўключэнне/адключэнне выконваецца на падставе наяўнасці сапраўдных і прынятых ключоў карэспандэнтаў.
 email-e2ee-auto-on =
     .label = Аўтаматычна ўключаць шыфраванне, калі гэта магчыма
+email-e2ee-auto-off =
+    .label = Аўтаматычна адключаць шыфраванне пры змене атрымальнікаў і немагчымасці шыфравання
 email-e2ee-auto-off-notify =
-    .label = Паказваць апавяшчэнне кожны раз, калі шыфраванне адключаецца аўтаматычна
-
-## Chat Tab
-
+    .label = Паказваць апавяшчэнне кожны раз, калі шыфраванне аўтаматычна адключаецца
+email-e2ee-automatism-post =
+    Аўтаматычныя рашэнні можна скасаваць, калі ўключыць або адключыць шыфраванне ўручную пры складанні паведамлення.
+    Заўвага: шыфраванне заўсёды аўтаматычна ўключаецца пры адказе на зашыфраваныя паведамленні.
 startup-label =
     .value = Калі { -brand-short-name } запускаецца:
     .accesskey = з
@@ -573,22 +570,12 @@ offline-label =
     .label = Не падлучаць мае ўліковыя запісы чатаў
 auto-connect-label =
     .label = Падлучаць мае ўліковыя запісы чатаў аўтаматычна
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Паведаміць мае кантакты пра маю бяздзейнасць праз
     .accesskey = б
 idle-time-label = хвілін неактыўнасці
-
-##
-
 away-message-label =
-    .label = і задаць мне статус "Адышоў" з гэтым паведамленнем:
+    .label = і задаць мне статус «Адышоў» з гэтым паведамленнем:
     .accesskey = А
 send-typing-label =
     .label = Адпраўляць апавяшчэнні аб друкаванні ў размовах
@@ -644,42 +631,23 @@ style-simple =
     .label = Простая
 preview-label = Перадпрагляд:
 no-preview-label = Перадпрагляд недаступны
+no-preview-description = Гэта тэма пашкоджана або зараз недаступна (дадатак адключаны, уключаны бяспечны рэжым…).
 chat-variant-label =
     .value = Варыянт:
     .accesskey = В
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Знайсці ў наладах
-
-## Settings UI Search Results
-
 search-results-header = Вынікі пошуку
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Выбачайце! Не атрымалася знайсці «<span data-l10n-name="query"></span>» у параметрах.
        *[other] Выбачайце! Не атрымалася знайсці «<span data-l10n-name="query"></span>» у наладах.
     }
-
-## Sync Tab
-
 sync-signedout-description = Сінхранізуйце свае ўліковыя запісы, адрасныя кнігі, календары, дадаткі і налады на ўсіх вашых прыладах.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Увайсці для сінхранізацыі…
 sync-pane-header = Сінхранізацыя
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = «{ $userEmail }» не пацверджаны.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Калі ласка, увайдзіце для перападлучэння «{ $userEmail }»
 sync-pane-resend-verification = Адправіць запыт на пацвярджэнне зноў
 sync-pane-sign-in = Увайсці
@@ -693,7 +661,7 @@ sync-pane-change-device-name = Змяніць імя прылады
 sync-pane-cancel = Скасаваць
 sync-pane-save = Захаваць
 sync-pane-show-synced-header-on = Сінхранізацыя УКЛЮЧАНА
-sync-pane-show-synced-header-off = Сінхранізацыя ВЫКЛЮЧАНА
+sync-pane-show-synced-header-off = Сінхранізацыя АДКЛЮЧАНА
 sync-pane-sync-now = Сінхранізаваць зараз
 sync-panel-sync-now-syncing = Сінхранізацыя...
 show-synced-list-heading = Вы зараз сінхранізуеце:
@@ -709,3 +677,53 @@ synced-acount-item-filters = Фільтры
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Сінхранізуйце свае ўліковыя запісы электроннай пошты, адрасныя кнігі, календары і ідэнтыфікацыйныя даныя на ўсіх вашых прыладах.
 sync-disconnected-turn-on-sync = Уключыць сінхранізацыю...
+qr-export-pane-header = Экспартуйце ўліковыя запісы ў { -brand-product-name } для мабільных прылад
+qr-export-description = Сгенеруйце QR-код і хутка перанясіце налады вашага ўліковага запісу з камп'ютара на мабільную прыладу. Выберыце, якія ўліковыя запісы ўключыць у экспарт, вырашыце, ці жадаеце перанесці вашы паролі, потым адскануйце код на вашай мабільнай прыладзе. Хутка, бяспечна і проста.
+qr-export-get-app = У вас яшчэ няма { -brand-product-name } для мабільных прылад? <a data-l10n-name="app-link">Спампуйце ў Google Play</a>
+qr-export-create = Стварыце QR-код для экспарта вашых уліковых запісаў
+qr-export-select-accounts = Выберыце ўліковыя запісы для экспарту:
+qr-export-no-accounts = Не бачыце ўсе вашы ўліковыя запісы? Некаторыя ўліковыя запісы могуць быць адключаны, таму што яны не падтрымліваюцца { -brand-product-name } для Android. <a data-l10n-name="account-support-link">Падтрымка</a>
+qr-export-accounts-legend = Уліковыя запісы электроннай пошты
+qr-export-select-all-accounts = Выбраць усе
+qr-export-security-legend = Бяспека
+qr-export-include-passwords = Уключыць паролі ўсіх уліковых запісаў
+qr-export-oauth-warning = Некаторыя вашы ўліковыя запісы выкарыстоўваюць спосабы аўтэнтыфікацыі, які могуць запатрабаваць паўторную аўтэнтыфікацыю на вашай мабільнай прыладзе. Вам можа спатрэбіцца зноў увесці свае паролі.
+qr-export-security-hint = Пры сканаванні наступных QR-кодаў налады вашага ўліковага запісу, уключаючы адрас электроннай пошты і пароль, будуць бяспечна перанесены. Мы не збіраем, не захоўваем і не абагульваем ніякія з гэтых даных падчас пераносу. Перанос адбываецца напрамую паміж вашымі прыладамі.
+qr-export-security-warning = У мэтах вашай бяспекі, калі ласка, упэўніцеся, што вы знаходзіцеся ў прыватных абставінах і скануеце QR-коды толькі з надзейных крыніц.
+qr-export-start-export = Экспартаваць
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } з { $count } QR-кода
+        [few] { $step } з { $count } QR-кодаў
+       *[many] { $step } з { $count } QR-кодаў
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Адскануйце QR-код з дапамогай { -brand-product-name } на вашай мабільнай прыладзе
+        [few] Адскануйце QR-коды з дапамогай { -brand-product-name } на вашай мабільнай прыладзе
+       *[many] Адскануйце QR-коды з дапамогай { -brand-product-name } на вашай мабільнай прыладзе
+    }
+qr-export-scan-step1 = Адкрыйце { -brand-product-name } на вашай мабільнай прыладзе
+qr-export-scan-step2 = Перайсці ў налады
+qr-export-scan-step3 = Выберыце <strong>Налады імпарта</strong>
+qr-export-scan-step4-revision = Націсніце <strong>Сканаваць QR-код</strong> і навядзіце камеру вашай мабільнай прылады на гэты код
+qr-export-back = Назад
+qr-export-next = Далей
+qr-export-done = Гатова
+qr-export-summary-description = Уліковыя запісы экспартаваны. Працягніце на вашай мабільнай прыладзе.
+qr-export-summary-title = Вынікі экспарту:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-код сгенераваны
+        [few] { $count } QR-коды сгенеравана
+       *[many] { $count } QR-кодаў сгенеравана
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } уліковы запіс экспартаваны:
+        [few] { $count } уліковыя запісы экспартаваны:
+       *[many] { $count } уліковых запісаў экспартавана:
+    }
+qr-export-summary-passwords-included = Уключаючы паролі
+qr-export-summary-passwords-excluded = За выключэннем пароляў
+qr-export-more-accounts = Экспартаваць іншыя ўліковыя запісы

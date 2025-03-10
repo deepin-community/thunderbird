@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = <span data-l10n-name="brand-name">{ -brand-full-name }’e</span> hoş geldiniz
 account-hub-title = Hesap merkezi
-
-## Footer
-
 account-hub-release-notes = Sürüm notları
 account-hub-support = Destek
 account-hub-donate = Bağış yapın
-
-## Initial setup page
-
 account-hub-email-setup-button = E-posta hesabı
     .title = E-posta hesabı kur
 account-hub-calendar-setup-button = Takvim
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Haber grubu
     .title = Bir haber grubu hesabı kur
 account-hub-import-setup-button = İçe aktar
     .title = Yedeklenmiş bir profili içe aktar
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Eşitlemek için giriş yap…
-
-## Email page
-
-account-hub-email-title = E-posta hesabınızı ayarlayın
 account-hub-add-email-title = Hesabınızı ekleyin
 account-hub-manually-configure-email-title = Hesap yapılandırmasını ayarla
 account-hub-email-cancel-button = Vazgeç
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Bitir
 account-hub-email-manually-configure-button = Manuel olarak yapılandır
 account-hub-email-continue-button = Devam et
 account-hub-email-confirm-button = Onayla
-account-hub-incoming-server-legend = Gelen sunucusu
-account-hub-outgoing-server-legend = Giden sunucusu
+account-hub-result-incoming-server-legend = Gelen sunucusu
+    .title = Gelen sunucusu
+account-hub-result-outgoing-server-legend = Giden sunucusu
+    .title = Giden sunucusu
 account-hub-protocol-label = Protokol
-account-hub-hostname-label = Sunucu
+account-hub-result-hostname-label = Sunucu
+    .title = Sunucu
+account-hub-result-authentication-label = Kimlik doğrulama
+    .title = Kimlik doğrulama
 account-hub-port-label = Port
     .title = Otomatik algılama için port numarasını 0 olarak ayarlayın
 account-hub-auto-description = { -brand-short-name }, boş bırakılan alanları otomatik olarak algılamaya çalışır.
 account-hub-ssl-label = Bağlantı güvenliği
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Otomatik algıla
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,15 @@ account-hub-ssl-cleartext-password-option =
     .label = Normal parola
 account-hub-ssl-encrypted-password-option =
     .label = Şifrelenmiş parola
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Yok
 account-hub-auth-no-authentication-option =
     .label = Yetkilendirme yok
 account-hub-auth-label = Yetkilendirme yöntemi
-account-hub-username-label = Kullanıcı adı
+account-hub-result-username-label = Kullanıcı adı
+    .title = Kullanıcı adı
+account-hub-name-label = Tam isim
+    .accesskey = T
 account-hub-adding-account-title = Hesap ekleme
 account-hub-adding-account-subheader = Hesap yapılandırma ayarları yeniden sınanıyor
 account-hub-lookup-email-configuration-title = Yapılandırma aranıyor
@@ -95,3 +75,28 @@ account-hub-email-enter-password = E-posta hesabınızın parolasını girin
 account-hub-email-sync-accounts = Takvimlerinizi ve adres defterlerinizi eşitleyin
 account-hub-test-configuration = Test et
 account-hub-add-new-email = Başka bir e-posta ekle
+account-hub-result-imap-description = Klasörlerimi ve e-postalarımı sunucuyla eşitlenmiş halde tut
+account-hub-result-pop-description = Klasörlerimi ve e-postalarımı bilgisayarımda tut
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Klasörlerimi ve e-postalarımı eşitlemek için Microsoft Exchange Web Servisleri’ni kullan
+account-hub-result-ews-text = Sunucu
+account-hub-result-recommended-label = Önerilen
+account-hub-edit-configuration = Yapılandırmayı düzenle
+account-hub-config-success = Mozilla İSS veritabanında yapılandırma bulundu
+account-hub-password-info = Hesap bilgileriniz yalnızca yerel olarak bilgisayarınızda depolanır
+account-hub-sync-success = Thunderbird bazı bağlı servisler buldu
+account-hub-sync-failure = Thunderbird bağlı servisleri bulamadı
+account-hub-unable-to-sync-accounts = Thunderbird seçilen servislere bağlanamadı
+account-hub-email-added-success = E-posta hesabı başarıyla bağlandı
+account-hub-config-test-success = Yapılandırma ayarları geçerli
+account-hub-select-all = Tümünü seç
+account-hub-deselect-all = Seçimi temizle
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] { $count } hesap seçildi
+       *[other] { $count } hesap seçildi
+    }
+account-hub-no-address-books = Hiç adres defteri bulunamadı
+account-hub-no-calendars = Hiç takvim bulunamadı
+account-hub-email-added-success-links-title = Güvenlik ve kişiselleştirme seçeneklerini keşfedin:
+account-hub-signature-link = E-posta imzası

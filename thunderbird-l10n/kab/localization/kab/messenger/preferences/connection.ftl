@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Seqdec asaǧǧaw
     .accesskey = q
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (s wudem amezwer)
     .tooltiptext = Seqdec tansa URL tamezwert i ferru n DNS s HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = U
     .tooltiptext = Sekcem tansa-ik tudmawant tufrint akken ad tefruḍ DNS s HTTPS
 connection-dns-over-https-custom-label = Udmawan
-connection-dialog-window2 =
-    .title = Iɣewwaṛen n tuqqna
 connection-dialog-title = Iɣewwaṛen n tuqqna
 disable-extension-button = Sens asiɣzef
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Azegrir, <img data-l10n-name="extension-icon" alt="" />{ $name }, isefrak amek { -brand-short-name } ad iqqen γer internet.
 connection-proxy-legend = Tawila n uqeddac apṛuksi n unekcum ar Internet
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Ulac apṛuksi i:
     .accesskey = U
 no-proxy-example = Amedya: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Tuqqniwin ɣer usenneftaɣ adigan, 127.0.0.1/8, akked ::1 urǧin ad ɛeddint s upṛuksi.
 proxy-password-prompt =
     .label = Ur sutur ara asesteb ma yella awal uffir yettwakles

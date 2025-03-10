@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = დრეკადი არე
 search-bar-label = ძიება
 toolbar-write-message-label = მიწერა
@@ -142,3 +135,6 @@ toolbar-stop =
 toolbar-throbber-label = აქტიობის მაჩვენებელი
 toolbar-throbber =
     .title = აქტიობის მაჩვენებელი
+toolbar-create-contact-label = ახალი პირი
+toolbar-create-contact =
+    .title = ახალი პირის დამატება

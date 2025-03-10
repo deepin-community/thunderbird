@@ -1,21 +1,17 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message List Header Bar
-
 quick-filter-button =
     .title = Alternar la barra de filtro rápido
 quick-filter-button-label = Filtro rápido
 thread-pane-header-display-button =
     .title = Opciones de visualización de la lista de mensajes
-# Variables:
-# $count (Number) - The number of messages in this folder.
 thread-pane-folder-message-count =
     { $count ->
         [one] { $count } Mensaje
        *[other] { $count } Mensajes
+    }
+thread-pane-folder-selected-count =
+    { $count ->
+        [one] { $count } seleccionado
+       *[other] { $count } seleccionados
     }
 thread-pane-header-context-table-view =
     .label = Vista de tabla
@@ -23,123 +19,68 @@ thread-pane-header-context-cards-view =
     .label = Vista de tarjetas
 thread-pane-header-context-hide =
     .label = Ocultar encabezado de lista de mensajes
-
-## Quick Filter Bar
-
-# The tooltip to display when the user hovers over the sticky button
-# (currently displayed as a push-pin). When active, the sticky button
-# causes the current filter settings to be retained when the user changes
-# folders or opens new tabs. (When inactive, only the state of the text
-# filters are propagated between folder changes and when opening new tabs.)
 quick-filter-bar-sticky =
     .title = ¿Mantener filtros aplicados al cambiar de carpetas?
+quick-filter-bar-dropdown =
+    .title = Menú de filtro rápido
+quick-filter-bar-dropdown-unread =
+    .label = Sin leer
+quick-filter-bar-dropdown-starred =
+    .label = Destacados
+quick-filter-bar-dropdown-inaddrbook =
+    .label = Contacto
 quick-filter-bar-dropdown-tags =
     .label = Etiquetas
 quick-filter-bar-dropdown-attachment =
     .label = Adjunto
-# The tooltip for the filter button that causes us to filter results to only
-# include unread messages.
 quick-filter-bar-unread =
     .title = Mostrar sólo mensajes no leídos
-# The label for the filter button that causes us to filter results to only
-# include unread messages.
 quick-filter-bar-unread-label = Sin leer
-# The tooltip for the filter button that causes us to filter results to only
-# include messages that have been starred/flagged.
 quick-filter-bar-starred =
     .title = Mostrar solamente mensajes destacados
-# The label for the filter button that causes us to filter results to only
-# include messages that have been starred/flagged.
 quick-filter-bar-starred-label = Destacados
-# The tooltip for the filter button that causes us to filter results to only
-# include messages from contacts in one of the user's non-remote address
-# books.
 quick-filter-bar-inaddrbook =
     .title = Mostrar solo mensajes de personas en tu libreta de direcciones
-# The label for the filter button that causes us to filter results to only
-# include messages from contacts in one of the user's non-remote address
-# books.
 quick-filter-bar-inaddrbook-label = Contacto
-# The tooltip for the filter button that causes us to filter results to only
-# include messages with at least one tag on them.
 quick-filter-bar-tags =
     .title = Mostrar solo mensajes con etiquetas
-# The label for the filter button that causes us to filter results to only
-# include messages with at least one tag on them.
 quick-filter-bar-tags-label = Etiquetas
-# The tooltip for the filter button that causes us to filter results to only
-# include messages with attachments.
 quick-filter-bar-attachment =
     .title = Mostrar solo mensajes con archivos adjuntos
-# The label for the filter button that causes us to filter results to only
-# include messages with attachments.
 quick-filter-bar-attachment-label = Adjunto
-# The contents of the results box when there is a filter active but there
-# are no messages matching the filter.
 quick-filter-bar-no-results = Sin resultados
-# This is used to populate the results box; it either displays the
-# number of messages found using this string, that there are no messages
-# (using quick-filter-bar-no-results), or the box is hidden.
-# Variables:
-# $count (Number) - The number of messages that match selected filters.
 quick-filter-bar-results =
     { $count ->
         [one] { $count } mensaje
        *[other] { $count } mensajes
     }
-# Keyboard shortcut for the text search box.
-# This should match quick-filter-bar-show in messenger.ftl.
-quick-filter-bar-textbox-shortcut =
+quick-filter-bar-search2 =
+    .label = Filtrar mensajes
+quick-filter-bar-searching =
+    .title = Buscando…
+quick-filter-bar-search-shortcut =
     { PLATFORM() ->
-        [macos] ⇧ ⌘ K
-       *[other] Ctrl+Shift+K
+        [macos] <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>K</kbd>
+       *[other] <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd>
     }
-# This is the empty text for the text search box.
-# The goal is to convey to the user that typing in the box will filter
-# the messages and that there is a hotkey they can press to get to the
-# box faster.
-quick-filter-bar-textbox =
-    .placeholder = Filtrar estos mensajes <{ quick-filter-bar-textbox-shortcut }>
-# Tooltip of the Any-of/All-of tagging mode selector.
+quick-filter-bar-search-placeholder-with-key = Filtrar mensajes… { quick-filter-bar-search-shortcut }
+quick-filter-bar-search-button =
+    .alt = Buscar en todas partes
 quick-filter-bar-boolean-mode =
     .title = Modo de filtrado de etiquetas
-# The Any-of tagging mode.
 quick-filter-bar-boolean-mode-any =
     .label = Cualquiera de
     .title = Al menos uno de los siguientes criterios seleccionados debería coincidir
-# The All-of tagging mode.
 quick-filter-bar-boolean-mode-all =
     .label = Todos
     .title = Todos los criterios seleccionados deben coincidir
-# This label explains what the sender/recipients/subject/body buttons do.
-# This string should ideally be kept short because the label and the text
-# filter buttons share their bar (that appears when there is text in the text
-# filter box) with the list of tags when the tag filter is active, and the
-# tag sub-bar wants as much space as possible. (Overflow is handled by an
-# arrow scroll box.)
 quick-filter-bar-text-filter-explanation = Filtrar mensajes por:
-# The button label that toggles whether the text filter searches the message
-# sender for the string.
 quick-filter-bar-text-filter-sender = Remitente
-# The button label that toggles whether the text filter searches the message
-# recipients (to, cc) for the string.
 quick-filter-bar-text-filter-recipients = Destinatarios
-# The button label that toggles whether the text filter searches the message
-# subject for the string.
 quick-filter-bar-text-filter-subject = Asunto
-# The button label that toggles whether the text filter searches the message
-# body for the string.
 quick-filter-bar-text-filter-body = Contenido
-# The first line of the panel popup that tells the user we found no matches
-# but we can convert to a global search for them.
 quick-filter-bar-gloda-upsell-line1 = Continuar esta búsqueda en todas las carpetas
-# The second line of the panel popup that tells the user we found no matches.
-# Variables:
-# $text (String) - What the user has typed so far.
 quick-filter-bar-gloda-upsell-line2 = Presionar ‘Intro’ de nuevo para continuar la búsqueda de: { $text }
-
-## Folder pane
-
 folder-pane-get-messages-button =
     .title = Obtener mensajes
 folder-pane-get-all-messages-menuitem =
@@ -149,13 +90,10 @@ folder-pane-write-message-button = Nuevo mensaje
     .title = Redactar un nuevo mensaje
 folder-pane-more-menu-button =
     .title = Opciones del panel de carpetas
-# Context menu item to show/hide different folder types in the folder pane
 folder-pane-header-folder-modes =
     .label = Modos de carpeta
-# Context menu item to toggle display of "Get messages" button in folder pane header
 folder-pane-header-context-toggle-get-messages =
     .label = Mostrar “Obtener mensajes”
-# Context menu item to toggle display of "New Message" button in folder pane header
 folder-pane-header-context-toggle-new-message =
     .label = Mostrar “Nuevo mensaje”
 folder-pane-header-context-hide =
@@ -165,9 +103,6 @@ folder-pane-show-total-toggle =
 folder-pane-mode-context-toggle-compact-mode =
     .label = Vista compacta
     .accesskey = C
-
-## Message thread pane
-
 threadpane-column-header-select =
     .title = Alternar seleccionar todos los mensajes
 threadpane-column-header-select-all =
@@ -265,9 +200,6 @@ threadpane-column-header-delete =
     .title = Eliminar un mensaje
 threadpane-column-label-delete =
     .label = Eliminar
-
-## Message state variations
-
 threadpane-message-new =
     .alt = Indicador de nuevo mensaje
     .title = Nuevo mensaje
@@ -288,22 +220,8 @@ apply-current-view-to-folder =
     .label = Carpeta…
 apply-current-view-to-folder-children =
     .label = Carpeta y subcarpetas…
-
-## Apply columns confirmation dialog
-
 apply-changes-to-folder-title = ¿Aplicar cambios?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-columns-to-folder-message = ¿Aplicar las columnas de la carpeta actual a { $name }?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-columns-to-folder-with-children-message = ¿Aplicar las columnas de la carpeta actual a { $name } y sus subcarpetas?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-message = ¿Aplicar la vista de la carpeta actual a { $name }?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = ¿Aplicar la vista de la carpeta actual a { $name } y sus elementos secundarios?
-
-## Folder pane context menu
-

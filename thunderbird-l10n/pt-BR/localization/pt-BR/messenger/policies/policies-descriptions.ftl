@@ -1,15 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## The Enterprise Policies feature is aimed at system administrators
-## who want to deploy these settings across several Thunderbird installations
-## all at once. This is traditionally done through the Windows Group Policy
-## feature, but the system also supports other forms of deployment.
-## These are short descriptions for individual policies, to be displayed
-## in the documentation section in about:policies.
-
 policy-3rdparty = Definir políticas que WebExtensions podem acessar via chrome.storage.managed.
 policy-AppAutoUpdate = Ativar ou desativar atualizações automáticas do aplicativo.
 policy-AppUpdatePin = Evitar que o { -brand-short-name } seja atualizado além da versão especificada.
@@ -43,13 +31,8 @@ policy-DisplayMenuBar = Mostrar a barra de menu por padrão.
 policy-DNSOverHTTPS = Configurar DNS sobre HTTPS.
 policy-DontCheckDefaultClient = Desativar verificação de cliente padrão ao iniciar.
 policy-DownloadDirectory = Definir e bloquear o diretório de download.
-# “lock” means that the user won’t be able to change this setting
 policy-EnableTrackingProtection = Ativar ou desativar o bloqueio de conteúdo e opcionalmente o bloquear.
-# “lock” means that the user won’t be able to change this setting
 policy-EncryptedMediaExtensions = Ativar ou desativar Extensões de Mídias Criptografadas e, opcionalmente, bloquear.
-# A “locked” extension can’t be disabled or removed by the user. This policy
-# takes 3 keys (“Install”, ”Uninstall”, ”Locked”), you can either keep them in
-# English or translate them as verbs.
 policy-Extensions = Instalar, desinstalar ou bloquear extensões. A opção 'Install' recebe URLs ou paths como parâmetros. As opções 'Uninstall' e 'Locked' recebem IDs de extensões.
 policy-ExtensionSettings = Gerencia todos os aspectos de instalação de extensões.
 policy-ExtensionUpdate = Ativar ou desativar atualizações automáticas de extensões.
@@ -57,14 +40,8 @@ policy-Handlers = Configurar manipuladores de aplicativos padrão.
 policy-HardwareAcceleration = Se for false, desativar aceleração de hardware.
 policy-InstallAddonsPermission = Permitir que certos sites instalem extensões.
 policy-LegacyProfiles = Desativar o recurso de impor um perfil separado para cada instalação.
-
-## Do not translate "SameSite", it's the name of a cookie attribute.
-
 policy-LegacySameSiteCookieBehaviorEnabled = Ativar a configuração padrão de comportamento legado do atributo SameSite de cookie.
 policy-LegacySameSiteCookieBehaviorEnabledForDomainList = Reverter para o comportamento legado do atributo SameSite de cookies em sites especificados.
-
-##
-
 policy-LocalFileLinks = Permitir que sites específicos tenham link para arquivos locais.
 policy-ManualAppUpdateOnly = Permitir apenas atualizações manuais e não notificar o usuário sobre atualizações disponíveis.
 policy-NetworkPrediction = Ativar ou desativar predição de rede (DNS prefetching).
@@ -73,7 +50,6 @@ policy-OfferToSaveLoginsDefault = Definir o valor padrão para permitir que o { 
 policy-OverrideFirstRunPage = Substituir a página de primeira execução. Defina esta política como vazio se quiser desativar a página de primeira execução.
 policy-OverridePostUpdatePage = Substituir a página “Novidades” exibida após uma atualização. Defina esta política como vazio se quiser desativar a exibição de uma página após atualizações.
 policy-PasswordManagerEnabled = Ativar salvamento de senhas no gerenciador de senhas.
-# PDF.js and PDF should not be translated
 policy-PDFjs = Desativar ou configurar PDF.js, o visor de PDF integrado no { -brand-short-name }.
 policy-Permissions2 = Configurar permissões de câmera, microfone, localização, notificações e reprodução automática.
 policy-Preferences = Definir e bloquear o valor de um subconjunto de preferências.
@@ -84,11 +60,9 @@ policy-RequestedLocales = Definir a lista de idiomas solicitados para o aplicati
 policy-SanitizeOnShutdown2 = Limpar dados de navegação ao sair.
 policy-SearchEngines = Definir configurações de mecanismos de pesquisa. Esta política está disponível somente na versão Extended Support Release (ESR).
 policy-SearchSuggestEnabled = Ativar ou desativar sugestões de pesquisa.
-# For more information, see https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/PKCS11/Module_Installation
 policy-SecurityDevices = Instalar módulos PKCS #11.
 policy-SSLVersionMax = Definir a versão máxima de SSL.
 policy-SSLVersionMin = Definir a versão mínima de SSL.
 policy-SupportMenu = Adicionar um item de menu personalizado de suporte ao menu de ajuda.
 policy-UserMessaging = Não mostrar determinadas mensagens para o usuário.
-# “format” refers to the format used for the value of this policy.
 policy-WebsiteFilter = Bloquear a visita a sites. Veja a documentação para mais detalhes sobre o formato.

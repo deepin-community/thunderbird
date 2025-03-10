@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-accountsFolders = Δημιουργία, μετονομασία ή διαγραφή φακέλων λογαριασμών email
 webext-perms-description-accountsIdentities = Δημιουργία, τροποποίηση ή διαγραφή ταυτοτήτων λογαριασμών email
 webext-perms-description-accountsRead = Προβολή λογαριασμών email, ταυτοτήτων και των φακέλων τους
@@ -20,7 +11,6 @@ webext-perms-description-messagesModify = Ανάγνωση και τροποπο
 webext-perms-description-messagesModifyPermanent = Μόνιμη τροποποίηση της πηγής των μηνυμάτων σας (συμπεριλαμβανομένων των επικεφαλίδων, του κυρίως κειμένου και των συνημμένων)
 webext-perms-description-messagesMove = Αντιγραφή ή μετακίνηση μηνυμάτων email (και μετακίνηση στον φάκελο απορριμμάτων)
 webext-perms-description-messagesDelete = Οριστική διαγραφή email
-webext-perms-description-messagesRead = Ανάγνωση, επισήμανση και προσθήκη ετικετών σε email
 webext-perms-description-messagesRead2 = Ανάγνωση των μηνυμάτων email σας
 webext-perms-description-messagesUpdate = Αλλαγή των ιδιοτήτων και των ετικετών των μηνυμάτων email σας
 webext-perms-description-messagesTags = Δημιουργία, τροποποίηση και διαγραφή ετικετών μηνυμάτων

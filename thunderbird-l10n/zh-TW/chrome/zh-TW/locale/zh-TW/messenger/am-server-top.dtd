@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "郵件儲存">
 <!ENTITY securitySettings.label "安全設定">
 <!ENTITY serverSettings.label "伺服器設定">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "預設:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "每">
 <!ENTITY biffStart.accesskey "y">
 <!ENTITY biffEnd.label "分鐘檢查新郵件">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "連線安全性:">
 <!ENTITY connectionSecurity.accesskey "u">
 <!ENTITY connectionSecurityType-0.label "無">
-<!ENTITY connectionSecurityType-1.label "嘗試使用 STARTTLS">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "驗證方式:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "k">
 <!ENTITY modelDeleteImmediately.label "直接砍掉">
 <!ENTITY modelDeleteImmediately.accesskey "d">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "結束時清理「收件匣」">
 <!ENTITY expungeOnExit.accesskey "e">
 <!ENTITY emptyTrashOnExit.label "結束時清空垃圾桶">
 <!ENTITY emptyTrashOnExit.accesskey "x">
 <!ENTITY loginAtStartup.label "啟動時檢查有無新郵件或文章">
 <!ENTITY loginAtStartup.accesskey "C">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "要下載超過">
 <!ENTITY maxMessagesStart.accesskey "m">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "封">
 <!ENTITY alwaysAuthenticate.label "連線到此伺服器時一律要求認證">
 <!ENTITY alwaysAuthenticate.accesskey "w">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "B">
 <!ENTITY browseNewsrc.label "瀏覽…">
 <!ENTITY browseNewsrc.accesskey "e">
-
 <!ENTITY accountTitle.label "帳號設定">
 <!ENTITY accountSettingsDesc.label "這是沒有任何身份資訊的特殊帳號。">
 <!ENTITY storeType.label "訊息儲存方式:">

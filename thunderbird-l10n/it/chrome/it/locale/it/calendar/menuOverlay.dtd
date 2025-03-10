@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY event.new.event "Nuovo evento…">
 <!ENTITY event.new.event.accesskey "u">
 <!ENTITY event.new.task "Nuova attività…">
@@ -18,8 +14,6 @@
 <!ENTITY calendar.unsubscribecalendar.accesskey "u">
 <!ENTITY calendar.removecalendar.label "Rimuovi il calendario selezionato… (conserva i dati)">
 <!ENTITY calendar.removecalendar.accesskey "a">
-<!ENTITY calendar.menu.customize.label "Personalizza…">
-<!ENTITY calendar.menu.customize.accesskey "P">
 <!ENTITY showUnifinderCmd.label "Trova eventi">
 <!ENTITY showUnifinderCmd.accesskey "T">
 <!ENTITY showUnifinderCmd.tooltip "Attiva/disattiva il pannello Trova eventi">

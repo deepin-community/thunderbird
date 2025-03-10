@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "כדי לחסוך בשטח דיסק, לא להוריד:">
 <!ENTITY doNotDownloadNntp.label "כדי לחסוך בשטח דיסק, לא להוריד לשימוש לא־מקוון:">
 <!ENTITY doNotDownloadImap.label "כדי לחסוך בשטח דיסק, הורדת הודעות מהשרת ושמירת עותקים מקומיים לשימוש לא־מקוון יכולים להיות מוגבלים לפי גיל או גודל הודעה.">
@@ -26,6 +22,7 @@
 <!ENTITY retentionKeepMsg.accesskey "ל">
 <!ENTITY retentionKeepAll.label "לא למחוק שום הודעה">
 <!ENTITY retentionKeepAll.accesskey "ש">
+<!ENTITY retentionKeepRecent.label "Delete all but the most recent">
 <!ENTITY retentionKeepRecent.accesskey "מ">
 <!ENTITY retentionApplyToFlagged.label "לשמור תמיד הודעות מסומנות בכוכבית">
 <!ENTITY retentionApplyToFlagged.accesskey "ס">
@@ -37,22 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "מ">
 <!ENTITY syncGroupTitle.label "סנכרון הודעות">
 <!ENTITY diskspaceGroupTitle.label "שטח דיסק">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "סנכרון כל ההודעות מקומית ללא התחשבות בגיל">
-<!ENTITY allAutosync.accesskey           "ל">
-<!ENTITY ageAutosync.accesskey           "ס">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "ימים">
-<!ENTITY weekAgeInterval.label           "שבועות">
-<!ENTITY monthAgeInterval.label          "חודשים">
-<!ENTITY yearAgeInterval.label           "שנים">
-<!ENTITY ageAutosyncAfter.label          "">
-
-<!ENTITY retentionKeepRecent.label "Delete all but the most recent">
-<!ENTITY ageAutosyncBefore.label         "Synchronize the most recent">
+<!ENTITY allAutosync.label "סנכרון כל ההודעות מקומית ללא התחשבות בגיל">
+<!ENTITY allAutosync.accesskey "ל">
+<!ENTITY ageAutosyncBefore.label "Synchronize the most recent">
+<!ENTITY ageAutosync.accesskey "ס">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "ימים">
+<!ENTITY weekAgeInterval.label "שבועות">
+<!ENTITY monthAgeInterval.label "חודשים">
+<!ENTITY yearAgeInterval.label "שנים">
+<!ENTITY ageAutosyncAfter.label "">

@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = { $identity } のための OpenPGP 鍵を追加
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = GnuPG 経由で外部の鍵を利用 (例: スマートカードに保存された鍵)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP 鍵を生成
 openpgp-keygen-secret-protection = 秘密鍵の保護
 radio-keygen-no-protection =
@@ -79,23 +71,17 @@ openpgp-keygen-short-expiry = 有効期限を 1 日以内に設定すること�
 openpgp-keygen-ongoing = 鍵の生成が進行中です！
 openpgp-keygen-error-core = OpenPGP コアサービスを初期化できません
 openpgp-keygen-error-failed = OpenPGP 鍵の生成に予期せず失敗しました
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP 鍵の生成に成功しましたが、鍵 { $key } の失効証明書を生成できませんでした
 openpgp-keygen-abort-title = 鍵の生成を中止しますか？
 openpgp-keygen-abort = 現在 OpenPGP 鍵の生成が進行中です。キャンセルしますか？
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = { $identity } の公開鍵と秘密鍵を生成しますか？
-
-## Import Key section
-
 openpgp-import-key-title = 既存の OpenPGP 個人鍵をインポート
 openpgp-import-key-legend = 以前にバックアップされたファイルを選択
 openpgp-import-key-description = 他の OpenPGP ソフトウェアで生成された個人鍵をインポートできます。
 openpgp-import-key-info = 他のソフトウェアでは、個人鍵のことをあなた自身の鍵、秘密鍵、プライベート鍵、鍵ペアなどと呼んでいるかもしれません。
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
-        [one]   { -brand-short-name } にインポート可能な鍵が 1 個あります。
+        [one] { -brand-short-name } にインポート可能な鍵が 1 個あります。
        *[other] { -brand-short-name } にインポート可能な鍵が { $count } 個あります。
     }
 openpgp-import-key-list-description = どの鍵をあなたの個人鍵として利用するか確認してください。あなた自身が作成し、あなた自身の差出人情報が表示される鍵のみを個人鍵として利用可能です。後からこの設定を鍵のプロパティダイアログから変更することもできます。
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = この鍵を個人鍵として利用する
 gnupg-file = GnuPG ファイル
 import-error-file-size = <b>エラー！</b> 5MB より大きいファイルはサポートしていません。
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>エラー！</b> ファイルのインポートに失敗しました。{ $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>エラー！</b> 鍵のインポートに失敗しました。{ $error }
 openpgp-import-identity-label = 差出人
 openpgp-import-fingerprint-label = フィンガープリント
@@ -122,9 +106,6 @@ openpgp-import-bits-label = ビット
 openpgp-import-key-props =
     .label = 鍵のプロパティ
     .accesskey = K
-
-## External Key section
-
 openpgp-external-key-title = 外部の GnuPG 鍵
 openpgp-external-key-description = 鍵 ID を入力して、外部の GnuPG を設定してください。
 openpgp-external-key-info = また、対応する公開鍵を鍵マネージャーからインポートして受け入れる必要があります。

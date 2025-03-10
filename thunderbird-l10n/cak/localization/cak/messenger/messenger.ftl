@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Window controls
-
 messenger-window-minimize-button =
     .tooltiptext = Ch'utinarisaxïk
 messenger-window-maximize-button =
@@ -13,34 +6,10 @@ messenger-window-restore-down-button =
     .tooltiptext = Tich'utinisäx Ikim
 messenger-window-close-button =
     .tooltiptext = Titz'apïx
-
-## Content tabs
-
-
-# Back
-
-
-# Forward
-
-
-# Reload
-
-
-# Stop
-
-
-## Toolbar
-
-
-## Folder Pane
-
 folder-pane-toolbar =
     .toolbarname = Rukajtz'ik Rusamajib'al Ruyakwuj Pas
     .accesskey = R
 folder-pane-header-label = Taq yakwuj
-
-## Folder Toolbar Header Popup
-
 folder-toolbar-hide-toolbar-toolbarbutton =
     .label = Tewäch Molsamajib'äl
     .accesskey = w
@@ -65,20 +34,12 @@ show-tags-folders-label =
 folder-toolbar-toggle-folder-compact-view =
     .label = Molk'ïy Tz'etoj
     .accesskey = M
-
-## File Menu
-
 menu-file-save-as-file =
     .label = Yakb'äl…
     .accesskey = Y
-
-## Edit Menu
-
 menu-edit-delete-folder =
     .label = Tiyuj ri Yakwuj
     .accesskey = y
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-delete-messages =
     .label =
         { $count ->
@@ -86,8 +47,6 @@ menu-edit-delete-messages =
            *[other] Keyuj Cha'on taq Tzijol
         }
     .accesskey = y
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-undelete-messages =
     .label =
         { $count ->
@@ -104,73 +63,30 @@ menu-edit-folder-properties =
 menu-edit-newsgroup-properties =
     .label = Kichinil Kimolaj Tzijol
     .accesskey = o
-
-## Message Menu
-
-
-## AppMenu
-
 appmenu-save-as-file =
     .label = Yakb'äl…
 appmenu-settings =
     .label = Taq nuk'ulem
 appmenu-addons-and-themes =
     .label = Taq Tz'aqat chuqa' taq Wachinel
-
-## Context menu
-
 mail-context-menu-forward-forward =
     .label = Jun chik
     .accesskey = J
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-undelete-messages =
-    .label =
-        { $count ->
-            [one] Man Tiyuj Rutzijol
-           *[other] Man Keyuj Cha'on taq Tzijol
-        }
-
-## Message header pane
-
-
-## Message header cutomize panel
-
-
-## Message header customize panel
-
 message-header-button-style-default =
     .label = Taq wachib'äl chuqa' rucholajem tz'ib'
 message-header-button-style-text =
     .label = Rucholajem tz'ib'
 message-header-button-style-icons =
     .label = Xa xe taq wachib'äl
-
-## Action Button Context Menu
-
 toolbar-context-menu-manage-extension =
     .label = Tinuk'samajïx K'amal
     .accesskey = K
 toolbar-context-menu-remove-extension =
     .label = Tiyuj K'amal
     .accesskey = y
-
-## Add-on removal warning
-
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
 addon-removal-title = ¿La niyuj { $name }?
 addon-removal-confirmation-button = Tiyuj
 caret-browsing-prompt-title = Okem pa K'amaya'l Rik'in Retal Ch'oy
-
-## no-reply handling
-
-
-## error messages
-
-
-## Spaces toolbar
-
 spaces-toolbar-button-mail2 =
     .title = Taqoya'l
 spaces-toolbar-button-address-book2 =
@@ -193,9 +109,6 @@ settings-context-open-account-settings-item2 =
     .label = Kinuk'ulem Rub'i' Taqoya'l
 settings-context-open-addons-item2 =
     .label = Taq Tz'aqat chuqa' taq Wachinel
-
-## Spaces toolbar pinned tab menupopup
-
 spaces-pinned-button-menuitem-mail2 =
     .label = { spaces-toolbar-button-mail2.title }
 spaces-pinned-button-menuitem-address-book2 =
@@ -210,29 +123,13 @@ spaces-pinned-button-menuitem-settings2 =
     .label = { spaces-toolbar-button-settings2.title }
 spaces-pinned-button-menuitem-show =
     .label = { spaces-toolbar-button-show.title }
-
-## Spaces toolbar customize panel
-
 menuitem-customize-label =
     .label = Tichinäx…
 spaces-customize-background-color = Rub'onil rupam
 customize-panel-button-save = Xk'is
     .accesskey = k
-
-## Quick Filter Bar
-
-# The label to display for the "View... Toolbars..." menu item that controls
-# whether the quick filter bar is visible.
 quick-filter-bar-toggle =
     .label = Kikajtz'ik Aninäq taq Chayub'äl
     .accesskey = K
-# This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-textbox-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
-
-## OpenPGP
-
-
-## Quota panel.
-

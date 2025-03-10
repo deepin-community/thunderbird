@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Get ekki tengst á öruggan hátt því SSL samskiptareglurnar hafa verið gerðar óvirkar.
 psmerr-ssl2-disabled = Get ekki tengst á öruggan hátt því vefsvæðið notar eldri óörugga útgáfu af SSL samskiptareglum.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Þú hefur fengið rangt skilríki.  Hafið samband við vefstjóra eða póstaðila og láttu þá fá eftirfarandi upplýsingar:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Netþjónn sendi skilríki sem inn
 mozilla-pkix-error-empty-issuer-name = Netþjónn sendi skilríki sem var með tómt nafn útgefanda.
 mozilla-pkix-error-additional-policy-constraint-failed = Viðbótaröryggisráðstafanir mistókust við sannreyningu þessa skilríkis.
 mozilla-pkix-error-self-signed-cert = Skilríkinu er ekki treyst því það var undirritað af útgefandanum sjálfum.
+mozilla-pkix-error-issuer-no-longer-trusted = Vottunarstöðin sem gaf út skilríkið missti traust áður en skilríkið var gefið út.
 xp-java-remove-principal-error = Gat ekki fjarlægt umbjóðanda
 xp-java-delete-privilege-error = Get ekki eytt sérréttindunum
 xp-java-cert-not-exists-error = Umbjóðandi er ekki með skilríki

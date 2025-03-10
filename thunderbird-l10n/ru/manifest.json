@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ru@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: Русский (Russian)",
   "description": "Thunderbird Language Pack for Русский (ru) – Russian",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "ru": {
-      "version": "20240930174449",
+      "version": "20250227154241",
       "chrome_resources": {
         "alerts": "chrome/ru/locale/ru/alerts/",
         "autoconfig": "chrome/ru/locale/ru/autoconfig/",

@@ -1,26 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-account =
     .value = example@example.com
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Нови налог
 appmenu-new-account-panel =
     .label = Нови налог
     .accesskey = Н
-appmenu-create-new-mail-account =
-    .label = Направите нову е-адресу
-    .accesskey = д
-appmenu-new-mail-account =
-    .label = Постојећа е-адреса
-    .accesskey = ј
 appmenu-new-calendar =
     .label = Календар
     .accesskey = К
@@ -33,9 +17,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Новинска група
     .accesskey = г
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Нови именик
 appmenu-newab-panel =
@@ -50,9 +31,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP именик
     .accesskey = A
-
-## Create
-
 appmenu-create-panel-title =
     .title = Направи
 appmenu-create-panel =
@@ -70,9 +48,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Контакт
     .accesskey = н
-
-## Open
-
 appmenu-open-file-panel =
     .label = Отвори из датотеке
     .accesskey = з
@@ -84,9 +59,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Календар…
     .accesskey = л
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Преглед
 appmenu-view-panel =
@@ -106,14 +78,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Повећај величину фонта
 appmenuitem-font-size-reduce =
     .tooltiptext = Смањи величину фонта
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Врати величину фонта
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Алати
 appmenu-tools-panel =
@@ -140,17 +107,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Програмерске алатке
     .accesskey = г
-
-## Help
-
 appmenu-help-panel-title =
     .title = Помоћ
 appmenu-help-get-help =
     .label = Потражи помоћ
     .accesskey = м
-appmenu-help-explore-features =
-    .label = Истражи могућности
-    .accesskey = г
 appmenu-help-shortcuts =
     .label = Пречице на тастатури
     .accesskey = ц
@@ -175,9 +136,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = О програму { -brand-short-name }
     .accesskey = г
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Преузимање ажурирања за { -brand-shorter-name }
 appmenuitem-banner-update-available =

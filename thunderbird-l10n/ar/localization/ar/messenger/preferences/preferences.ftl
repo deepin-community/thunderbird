@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = أغلق
 pane-general-title = عام
@@ -41,12 +37,6 @@ confirm-messenger-language-change-description = أعِد تشغيل { -brand-sho
 confirm-messenger-language-change-button = طبِّق وأعِد التشغيل
 update-setting-write-failure-title = حدث عُطل أثناء تحديث التفضيلات
 update-in-progress-title = يجري الآن التحديث
-
-## OS Authentication dialog
-
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -122,8 +112,6 @@ always-check-default =
 check-default-button =
     .label = التمس الآن…
     .accesskey = ت
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -141,8 +129,6 @@ return-receipts-button =
     .label = إعلامات الوصول…
     .accesskey = ع
 update-app-legend = تحديثات { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = الإصدارة { $version }
 automatic-updates-label =
     .label = نصّب التحديثات آليًا (مستحسن: يزيد الأمان)
@@ -172,18 +158,10 @@ offline-compact-folder =
     .accesskey = و
 compact-folder-size =
     .value = م.بايت
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = استخدم حتى
     .accesskey = ى
 use-cache-after = م.بايت من المساحة للذاكرة المخبأة
-
-##
-
 smart-cache-label =
     .label = تخطَّ الإدارة الآلية للذاكرة الخبيئة
     .accesskey = ذ
@@ -204,7 +182,6 @@ color-options-button =
     .label = الألوان…
     .accesskey = ن
 display-width-legend = رسائل النص الصرف
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = اعرض أيقونات الانفعالات كرسوم
     .accesskey = ع
@@ -265,17 +242,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = فورًا عند العرض
     .accesskey = ف
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = بعد العرض لمدة
     .accesskey = ض
 seconds-label = ثانية
-
-##
-
 open-msg-label =
     .value = افتح الرسائل في:
 open-msg-tab =
@@ -293,9 +263,6 @@ close-move-delete =
 condensed-addresses-label =
     .label = اعرض فقط اسم العرض للأشخاص الذين في دفتر عناويني
     .accesskey = ع
-
-## Compose Tab
-
 forward-label =
     .value = مرّر الرسائل:
     .accesskey = م
@@ -306,17 +273,10 @@ as-attachment-label =
 extension-label =
     .label = أضِف الامتداد إلى اسم الملف
     .accesskey = ف
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = احفظ تلقائيًّا كل
     .accesskey = ح
 auto-save-end = دقائق
-
-##
-
 warn-on-send-accel-key =
     .label = اسأل التأكيد عند استخدام اختصارات لوحة المفاتيح لإرسال الرسالة
     .accesskey = س
@@ -383,9 +343,6 @@ remove-cloud-account =
     .label = أزِل
     .accesskey = ل
 cloud-account-description = أضِف خدمة تخزين ملفات على الإنترنت جديدة
-
-## Privacy Tab
-
 mail-content = محتوى البريد
 remote-content-label =
     .label = اسمح بالمحتوى البعيد في الرسائل
@@ -411,39 +368,20 @@ third-party-never =
     .label = أبدًا
 third-party-visited =
     .label = من المواقع المُزارة
-keep-label =
-    .value = احتفظ بها حتى:
-    .accesskey = ف
-keep-expire =
-    .label = تنتهي صلاحيتها
-keep-close =
-    .label = أُغلق { -brand-short-name }
-keep-ask =
-    .label = اسألني كل مرة
 cookies-button =
     .label = أظهِر الكعكات…
     .accesskey = ظ
-learn-button =
-    .label = اطّلع على المزيد
-dnt-learn-more-button =
-    .value = اطّلع على المزيد
 passwords-description = يستطيع { -brand-short-name } تذكر معلومات كلمة السر لكل حساباتك لذا لن تحتاج إلى إعادة إدخال بيانات الولوج.
 passwords-button =
     .label = كلمات السر المحفوظة…
     .accesskey = س
 junk-description = اضبط إعدادات السخام الافتراضيَّة. يمكن ضبط إعدادات السخام الخاصة بالحساب في إعدادات الحساب.
-junk-label =
-    .label = عند تأشير الرسائل كسخام:
-    .accesskey = ئ
 junk-move-label =
     .label = انقلها إلى مجلد ”السخام“
     .accesskey = ن
 junk-delete-label =
     .label = احذفهم
     .accesskey = ذ
-junk-read-label =
-    .label = أشِّر الرسائل السخام كمقروءة
-    .accesskey = ء
 junk-log-label =
     .label = فعل تسجيل مرشّح السّخام التكيّفي
     .accesskey = ف
@@ -471,9 +409,6 @@ certificate-ask =
 ocsp-label =
     .label = استعلم من خواديم مستجيبي OCSP عن الصلاحية الحالية للشهادات
     .accesskey = س
-
-## Chat Tab
-
 startup-label =
     .value = عند بدء { -brand-short-name }:
     .accesskey = ب
@@ -481,20 +416,10 @@ offline-label =
     .label = اترك حسابات الدردشة غير متصلة
 auto-connect-label =
     .label = اتصل بحسابات الدردشة تلقائيا
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = أعلِم جهات اتصالي بخمولي بعد
     .accesskey = ع
 idle-time-label = دقائق من عدم النشاط
-
-##
-
 away-message-label =
     .label = واجعل حالتي غائب مع هذه الرسالة:
     .accesskey = غ
@@ -554,9 +479,3 @@ no-preview-description = ليست هذه السمة صحيحة أو ربما غ�
 chat-variant-label =
     .value = التنويعة:
     .accesskey = ع
-
-## Settings UI Search Results
-
-
-## Sync Tab
-

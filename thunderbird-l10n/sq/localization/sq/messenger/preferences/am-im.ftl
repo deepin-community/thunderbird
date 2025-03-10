@@ -1,13 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Rregullime Mirëfilltësimi
 account-channel-title = Kanale Parazgjedhje
-
 chat-autologin =
     .label = Regjistrim gjatë nisjes
-
 chat-encryption-generic = Elementar
 chat-encryption-log =
     .label = Përfshi në regjistra bisedash mesazhe të fshehtëzuar skaj-më-skaj

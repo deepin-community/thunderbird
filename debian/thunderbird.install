@@ -28,8 +28,8 @@ debian/tmp/usr/lib/thunderbird/isp                usr/share/thunderbird
 debian/tmp/usr/lib/thunderbird/lib*
 debian/tmp/usr/lib/thunderbird/omni.ja            usr/share/thunderbird
 debian/tmp/usr/lib/thunderbird/removed-files
-#debian/tmp/usr/lib/thunderbird/rnp-cli
-#debian/tmp/usr/lib/thunderbird/rnpkeys
+debian/tmp/usr/lib/thunderbird/rnp-cli
+debian/tmp/usr/lib/thunderbird/rnpkeys
 #[amd64 armel armhf i386] debian/tmp/usr/lib/thunderbird/Throbber-small.gif
 #[amd64 armel armhf i386] debian/tmp/usr/lib/thunderbird/crashreporter
 [amd64 arm64 i386] debian/tmp/usr/lib/thunderbird/vaapitest

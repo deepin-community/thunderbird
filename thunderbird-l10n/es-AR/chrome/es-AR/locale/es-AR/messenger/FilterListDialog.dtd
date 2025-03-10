@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "Filtros de mensajes">
 <!ENTITY nameColumn.label "Nombre del filtro">
 <!ENTITY activeColumn.label "Activado">
@@ -36,8 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "c">
 <!ENTITY helpButton.label "Ayuda">
 <!ENTITY helpButton.accesskey "u">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Filtros de búsqueda por nombre…">
-
-
-

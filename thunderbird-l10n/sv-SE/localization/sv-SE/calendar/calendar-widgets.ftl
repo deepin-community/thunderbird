@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Alla kalendrar är för närvarande inaktiverade. Aktivera en befintlig kalender eller lägg till en ny för att skapa och redigera händelser.
 calendar-deactivated-notification-tasks = Alla kalendrar är för närvarande inaktiverade. Aktivera en befintlig kalender eller lägg till en ny för att skapa och redigera uppgifter.
 calendar-notifications-label = Visa aviseringar för kommande händelser
 calendar-add-notification-button =
     .label = Lägg till avisering
-
-## Side panel
-
 calendar-list-header = Kalendrar
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = { $calendarName } kalender har stängts av
 calendar-enable-button = Aktivera
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = { $calendarName } kalenderalternativ
 calendar-import-new-calendar = Ny kalender…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Ladda om alla kalendrar och synkronisera ändringar
 calendar-new-event-primary-button = Ny händelse
 calendar-new-task-primary-button = Ny uppgift
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Föregående dag
     .accesskey = F
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Flera veckor
     .title = Växla till flerveckorsöversikt
 calendar-view-toggle-month = Månad
     .title = Växla till månadsvy
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Alternativ för kalenderlayout
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Definiera arbetsveckodagar
 calendar-show-tasks-calendar-option =
     .label = Visa uppgifter i kalendern
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Föregående dag
     .accesskey = F

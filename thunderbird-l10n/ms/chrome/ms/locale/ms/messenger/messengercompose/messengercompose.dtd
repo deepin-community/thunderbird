@@ -1,16 +1,10 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!--LOCALIZATION NOTE messengercompose.dtd Main UI for message composition -->
 <!ENTITY msgComposeWindow.title "Tulis: (tiada subjek)">
-
-<!-- File Menu -->
 <!ENTITY fileMenu.label "Fail">
 <!ENTITY fileMenu.accesskey "l">
 <!ENTITY newMenu.label "Baru">
 <!ENTITY newMenu.accesskey "B">
 <!ENTITY newMessage.label "Mesej">
+<!ENTITY newMessage.accesskey "M">
 <!ENTITY newMessageCmd2.key "N">
 <!ENTITY newContact.label "Kenalan Buku Alamat…">
 <!ENTITY newContact.accesskey "K">
@@ -45,8 +39,6 @@
 <!ENTITY printCmd.label "Cetak…">
 <!ENTITY printCmd.key "P">
 <!ENTITY printCmd.accesskey "C">
-
-<!-- Edit Menu -->
 <!ENTITY editMenu.label "Edit">
 <!ENTITY editMenu.accesskey "d">
 <!ENTITY undoCmd.label "Batal">
@@ -85,24 +77,13 @@
 <!ENTITY findPrevCmd.accesskey "d">
 <!ENTITY findPrevCmd.key "G">
 <!ENTITY findPrevCmd.key2 "VK_F3">
-
-<!-- Reorder Attachment Panel -->
 <!ENTITY reorderAttachmentsPanel.label "Susun semula Lampiran">
 <!ENTITY moveAttachmentBundleUpPanelBtn.label "Pindah bersama">
-
-<!-- LOCALIZATION NOTE (sortAttachmentsPanelBtn.Sort.AZ.label):
-     Please ensure that this translation matches
-     sortAttachmentsPanelBtn.Sort.ZA.label, except for the sort direction. -->
 <!ENTITY sortAttachmentsPanelBtn.Sort.AZ.label "Susun: A - Z">
 <!ENTITY sortAttachmentsPanelBtn.Sort.ZA.label "Susun: Z - A">
-<!-- LOCALIZATION NOTE (sortAttachmentsPanelBtn.SortSelection.AZ.label):
-     Please ensure that this translation matches
-     sortAttachmentsPanelBtn.SortSelection.ZA.label, except for the sort direction. -->
 <!ENTITY sortAttachmentsPanelBtn.SortSelection.AZ.label "Susun Pilihan: A - Z">
 <!ENTITY sortAttachmentsPanelBtn.SortSelection.ZA.label "Susun Pilihan: Z - A">
 <!ENTITY sortAttachmentsPanelBtn.key "y">
-
-<!-- View Menu -->
 <!ENTITY viewMenu.label "Papar">
 <!ENTITY viewMenu.accesskey "p">
 <!ENTITY viewToolbarsMenuNew.label "Bar alatan">
@@ -117,15 +98,10 @@
 <!ENTITY showTaskbarCmd.accesskey "S">
 <!ENTITY customizeToolbar.label "Penyesuaian…">
 <!ENTITY customizeToolbar.accesskey "P">
-
 <!ENTITY addressSidebar.label "Bar sisi Kenalan">
 <!ENTITY addressSidebar.accesskey "s">
-
-<!-- Format Menu -->
 <!ENTITY formatMenu.label "Format">
 <!ENTITY formatMenu.accesskey "o">
-
-<!-- Options Menu -->
 <!ENTITY optionsMenu.label "Pilihan">
 <!ENTITY optionsMenu.accesskey "l">
 <!ENTITY checkSpellingCmd2.label "Semak Ejaan…">
@@ -136,11 +112,8 @@
 <!ENTITY enableInlineSpellChecker.accesskey "S">
 <!ENTITY quoteCmd.label "Mesej Petikan">
 <!ENTITY quoteCmd.accesskey "P">
-
-<!--LOCALIZATION NOTE attachVCard.label Don't translate the term 'vCard' -->
 <!ENTITY attachVCard.label "Lampir Kad Peribadi (vCard)">
 <!ENTITY attachVCard.accesskey "v">
-
 <!ENTITY returnReceiptMenu.label "Resit Pemberitahu Serahan">
 <!ENTITY returnReceiptMenu.accesskey "t">
 <!ENTITY dsnMenu.label "Notifikasi Status Penghantaran">
@@ -163,8 +136,6 @@
 <!ENTITY fileCarbonCopyCmd.label "Hantar satu Salinan Kepada">
 <!ENTITY fileCarbonCopyCmd.accesskey "r">
 <!ENTITY fileHereMenu.label "Failkan Di sini">
-
-<!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Alatan">
 <!ENTITY tasksMenu.accesskey "A">
 <!ENTITY messengerCmd.label "Mel &amp; Kumpulan berita">
@@ -176,41 +147,36 @@
 <!ENTITY accountManagerCmd2.label "Tetapan Akaun">
 <!ENTITY accountManagerCmd2.accesskey "T">
 <!ENTITY accountManagerCmdUnix2.accesskey "T">
-
-<!--  Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.key "m">
 <!ENTITY minimizeWindow.label "Minimum">
 <!ENTITY bringAllToFront.label "Bawa Semua ke Hadapan">
 <!ENTITY zoomWindow.label "Zum">
 <!ENTITY windowMenu.label "Tetingkap">
-
-<!-- Mail Toolbar -->
 <!ENTITY sendButton.label "Hantar">
 <!ENTITY quoteButton.label "Petikan">
 <!ENTITY addressButton.label "Kenalan">
 <!ENTITY spellingButton.label "Ejaan">
 <!ENTITY saveButton.label "Simpan">
 <!ENTITY printButton.label "Cetak">
-
-<!-- Mail Toolbar Tooltips -->
 <!ENTITY sendButton.tooltip "Hantar mesej ini sekarang">
 <!ENTITY sendlaterButton.tooltip "Hantar mesej ini kemudian">
 <!ENTITY quoteButton.tooltip "Petik mesej terdahulu">
 <!ENTITY addressButton.tooltip "Pilih penerima dalam Buku Alamat">
 <!ENTITY spellingButton.tooltip "Semak ejaan pilihan atau seluruh mesej">
 <!ENTITY saveButton.tooltip "Simpan mesej ini">
-<!ENTITY cutButton.tooltip              "Potong">
-<!ENTITY copyButton.tooltip             "Salin">
-<!ENTITY pasteButton.tooltip            "Tampal">
+<!ENTITY cutButton.tooltip "Potong">
+<!ENTITY copyButton.tooltip "Salin">
+<!ENTITY pasteButton.tooltip "Tampal">
 <!ENTITY printButton.tooltip "Cetak mesej ini">
-
-<!-- Headers -->
-<!-- Headers -->
+<!ENTITY headersSpace2.style "width: 8em;">
+<!ENTITY fromAddr2.label "From">
 <!ENTITY fromAddr.accesskey "r">
+<!ENTITY replyAddr2.label "Reply-To">
+<!ENTITY newsgroupsAddr2.label "Newsgroup">
+<!ENTITY followupAddr2.label "Followup-To">
+<!ENTITY subject2.label "Subject">
 <!ENTITY subject.accesskey "S">
 <!ENTITY attachmentBucketCloseButton.tooltip "Sorok anak tetingkap lampiran">
-
-<!-- Format Toolbar, imported from editorAppShell.xul -->
 <!ENTITY SmileButton.tooltip "Sisip wajah senyuman">
 <!ENTITY smiley1Cmd.label "Senyum">
 <!ENTITY smiley2Cmd.label "Berkerut">
@@ -228,8 +194,6 @@
 <!ENTITY smiley14Cmd.label "Polos">
 <!ENTITY smiley15Cmd.label "Menangis">
 <!ENTITY smiley16Cmd.label "Bibir-Terkatup">
-
-<!-- Message Pane Context Menu -->
 <!ENTITY spellCheckNoSuggestions.label "Tiada Cadangan Ditemui">
 <!ENTITY spellCheckIgnoreWord.label "Abaikan Perkataan">
 <!ENTITY spellCheckIgnoreWord.accesskey "A">
@@ -245,8 +209,6 @@
 <!ENTITY paste.accesskey "T">
 <!ENTITY pasteQuote.label "Tampal Sebagai Petikan">
 <!ENTITY pasteQuote.accesskey "P">
-
-<!-- Attachment Item and List Context Menus -->
 <!ENTITY openAttachment.label "Buka">
 <!ENTITY openAttachment.accesskey "B">
 <!ENTITY delete.label "Buang">
@@ -271,38 +233,13 @@
 <!ENTITY convertRegularAttachment.accesskey "L">
 <!ENTITY attachPage.label "Lampir Halaman Web…">
 <!ENTITY attachPage.accesskey "W">
-
-<!-- Attachment Pane Header Bar Context Menu -->
-<!-- LOCALIZATION NOTE (initiallyShowAttachmentPane.label):
-     Should use the same wording as startExpandedCmd.label
-     in msgHdrViewOverlay.dtd. -->
 <!ENTITY initiallyShowAttachmentPane.label "Papar Anak Tetingkap Lampiran Permulaan">
 <!ENTITY initiallyShowAttachmentPane.accesskey "P">
-
-<!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Tambah Kamus…">
 <!ENTITY spellAddDictionaries.accesskey "T">
-
-<!-- Title for the address picker panel -->
 <!ENTITY addressesSidebarTitle.label "Kenalan">
-
-<!-- Identity popup customize menuitem -->
 <!ENTITY customizeFromAddress.label "Sesuaikan Daripada Alamat…">
 <!ENTITY customizeFromAddress.accesskey "A">
-
-<!-- Accessibility name for the document -->
 <!ENTITY aria.message.bodyName "Kandungan mesej">
-
-<!-- Status Bar -->
 <!ENTITY languageStatusButton.tooltip "Bahasa semakan ejaan">
 <!ENTITY encodingStatusPanel.tooltip "Pengekodan teks">
-
-<!ENTITY newMessage.accesskey "M">
-<!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
-    Subject: rows. It should be larger than the largest Header label  -->
-<!ENTITY headersSpace2.style "width: 8em;">
-<!ENTITY fromAddr2.label "From">
-<!ENTITY replyAddr2.label "Reply-To">
-<!ENTITY newsgroupsAddr2.label "Newsgroup">
-<!ENTITY followupAddr2.label "Followup-To">
-<!ENTITY subject2.label "Subject">

@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- Window title -->
-
 <!ENTITY windowTitle.label "Livioù ha drekleur ar bajennad">
 <!ENTITY pageColors.label "Livioù ar bajennad">
 <!ENTITY defaultColorsRadio.label "Livioù dre ziouer al lenner (Na arventennañ al livioù war ar bajennad)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Arverañ al livioù personelaet :">
 <!ENTITY customColorsRadio.accessKey "v">
 <!ENTITY customColorsRadio.tooltip "An arventennoù liv-mañ a flastr arventennoù gweler ar merdeer">
-
 <!ENTITY normalText.label "Testenn reizh">
 <!ENTITY normalText.accessKey "n">
 <!ENTITY linkText.label " Testenn an ere">

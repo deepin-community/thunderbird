@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = เกี่ยวกับการบันทึก
 about-logging-page-title = ตัวจัดการการบันทึก
 about-logging-current-log-file = ไฟล์ปูมปัจจุบัน:
 about-logging-new-log-file = ไฟล์ปูมใหม่:
 about-logging-currently-enabled-log-modules = โมดูลบันทึกที่เปิดใช้งานในขณะนี้:
 about-logging-log-tutorial = ดู<a data-l10n-name="logging">การบันทึกปูม HTTP</a>สำหรับคำแนะนำเกี่ยวกับวิธีการใช้เครื่องมือนี้
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = เปิดไดเรกทอรี
 about-logging-set-log-file = ตั้งไฟล์ปูม
 about-logging-set-log-modules = ตั้งโมดูลบันทึก
@@ -27,9 +21,6 @@ about-logging-no-log-modules = ไม่มี
 about-logging-no-log-file = ไม่มี
 about-logging-logging-preset-selector-text = ค่าที่ตั้งไว้ล่วงหน้าของการบันทึก:
 about-logging-with-profiler-stacks-checkbox = เปิดใช้งานการตามรอยสแตกสำหรับข้อความในปูม
-
-## Logging presets
-
 about-logging-preset-networking-label = ระบบเครือข่าย
 about-logging-preset-networking-description = โมดูลบันทึกสำหรับวินิจฉัยปัญหาระบบเครือข่าย
 about-logging-preset-networking-cookie-label = คุกกี้
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = โมดูลบันทึกสำหรับวินิจฉัยปัญหา WebGPU
 about-logging-preset-gfx-label = กราฟิก
 about-logging-preset-gfx-description = โมดูลบันทึกสำหรับวินิจฉัยปัญหากราฟิก
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = โมดูลบันทึกสำหรับวินิจฉัยปัญหาของ Microsoft Windows โดยเฉพาะ
 about-logging-preset-custom-label = กำหนดเอง
 about-logging-preset-custom-description = โมดูลบันทึกที่เลือกด้วยตนเอง
-# Error handling
 about-logging-error = ข้อผิดพลาด:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = ค่า “{ $v }“ ไม่ถูกต้องสำหรับคีย์ “{ $k }“
 about-logging-unknown-logging-preset = ไม่รู้จักค่าที่ตั้งไว้ล่วงหน้าของการบันทึก “{ $v }“
 about-logging-unknown-profiler-preset = ไม่รู้จักค่าที่ตั้งไว้ล่วงหน้าของตัวสร้างโปรไฟล์ “{ $v }“

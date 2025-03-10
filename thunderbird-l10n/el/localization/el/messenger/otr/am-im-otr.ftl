@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Διατερματική κρυπτογράφηση
 account-otr-label = Μηνύματα εκτός εγγραφής (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     μηνύματα δεν θα εμφανίζονται ως μέρος της κανονικής συζήτησης και δεν θα καταγράφονται.
 otr-verify-nudge =
     .label = Υπενθύμιση πάντα για επαλήθευση μη επαληθευμένης επαφής
-
 otr-not-yet-available = μη διαθέσιμο ακόμα
-

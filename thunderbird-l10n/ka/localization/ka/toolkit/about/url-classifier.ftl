@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL-მახარისხებლის მონაცემები
 url-classifier-search-title = ძიება
 url-classifier-search-result-title = შედეგები
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = ცხრილის სია: { $list }
 url-classifier-search-input = URL
 url-classifier-search-error-invalid-url = არამართებული URL
@@ -53,9 +45,5 @@ url-classifier-disabled = გამორთულია
 url-classifier-updating = მიმდინარეობს განახლება
 url-classifier-cannot-update = განახლება ვერ ხერხდება
 url-classifier-success = წარმატებით შესრულდა
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = განახლების შეცდომა ({ $error })
 url-classifier-download-error = ჩამოტვირთვის შეცდომა ({ $error })

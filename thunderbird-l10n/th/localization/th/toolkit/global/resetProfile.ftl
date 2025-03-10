@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 refresh-profile-dialog-title = ต้องการล้าง { -brand-short-name } ใหม่ให้เป็นการตั้งค่าเริ่มต้นหรือไม่
 refresh-profile-dialog-button =
     .label = ล้าง { -brand-short-name } ใหม่

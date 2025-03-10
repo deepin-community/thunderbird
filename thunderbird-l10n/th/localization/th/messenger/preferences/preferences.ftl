@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = ปิด
 preferences-doc-title2 = การตั้งค่า
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sync
+pane-qr-export-title = ส่งออกสำหรับมือถือ
+category-qr-export =
+    .tooltiptext = ส่งออกสำหรับมือถือ
 general-language-and-appearance-header = ภาษาและรูปลักษณ์
 general-incoming-mail-header = จดหมายขาเข้า
 general-files-and-attachment-header = ไฟล์และสิ่งที่แนบมา
@@ -50,8 +49,6 @@ collection-health-report =
     .label = อนุญาตให้ { -brand-short-name } ส่งข้อมูลทางเทคนิคและการโต้ตอบไปยัง { -vendor-short-name }
     .accesskey = ญ
 collection-health-report-link = เรียนรู้เพิ่มเติม
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = การรายงานข้อมูลถูกปิดใช้งานสำหรับการกำหนดค่าการสร้างนี้
 collection-backlogged-crash-reports =
     .label = อนุญาตให้ { -brand-short-name } ส่งรายงานข้อขัดข้องที่ค้างอยู่ในนามของคุณ
@@ -71,38 +68,20 @@ manage-messenger-languages-button =
     .accesskey = ต
 confirm-messenger-language-change-description = เริ่มการทำงาน { -brand-short-name } ใหม่เพื่อใช้การเปลี่ยนแปลงเหล่านี้
 confirm-messenger-language-change-button = นำไปใช้แล้วเริ่มการทำงานใหม่
-update-setting-write-failure-title = เกิดข้อผิดพลาดในการบันทึกการกำหนดลักษณะการอัปเดต
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
+update-setting-write-failure-title = เกิดข้อผิดพลาดขณะบันทึกค่าปรับแต่งการอัปเดต
 update-setting-write-failure-message =
-    { -brand-short-name } พบข้อผิดพลาดและไม่ได้บันทึกการเปลี่ยนแปลงนี้ โปรดทราบว่าการตั้งค่าค่ากำหนดการอัปเดตนี้จำเป็นต้องได้รับสิทธิอนุญาตให้เขียนไปยังไฟล์ด้านล่าง คุณหรือผู้ดูแลระบบอาจสามารถแก้ไขข้อผิดพลาดได้ด้วยการมอบสิทธิ์ให้กับกลุ่มผู้ใช้เพื่อให้สามารถควบคุมไฟล์นี้ได้อย่างเต็มที่
+    { -brand-short-name } พบข้อผิดพลาดและไม่ได้บันทึกการเปลี่ยนแปลงนี้ โปรดทราบว่าการตั้งค่าปรับแต่งการอัปเดตนี้จำเป็นต้องได้รับสิทธิ์ให้เขียนไปยังไฟล์ด้านล่าง คุณหรือผู้ดูแลระบบอาจสามารถแก้ไขข้อผิดพลาดได้ด้วยการมอบสิทธิ์ให้กับกลุ่มผู้ใช้เพื่อให้สามารถควบคุมไฟล์นี้ได้อย่างเต็มที่
     
     ไม่สามารถเขียนไปยังไฟล์: { $path }
 update-in-progress-title = กำลังปรับปรุง
 update-in-progress-message = คุณต้องการให้ { -brand-short-name } ดำเนินการต่อกับการอัปเดตนี้หรือไม่?
 update-in-progress-ok-button = &ละทิ้ง
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &ดำเนินการต่อ
 account-button = การตั้งค่าบัญชี
-open-addons-sidebar-button = ส่วนเสริมและชุดรูปแบบ
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
+open-addons-sidebar-button = ส่วนเสริมและชุดตกแต่ง
 primary-password-os-auth-dialog-message-win = หากต้องการสร้างรหัสผ่านหลัก ให้ป้อนข้อมูลประจำตัวการเข้าสู่ระบบ Windows ของคุณ ซึ่งจะช่วยปกป้องความปลอดภัยให้กับบัญชีต่าง ๆ ของคุณ
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = สร้างรหัสผ่านหลัก
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = เพิ่มผู้ให้บริการ OpenSearch
 add-opensearch-provider-text = ป้อน URL ของผู้ให้บริการ OpenSearch ที่จะเพิ่ม โดยใช้ URL โดยตรงของไฟล์คำอธิบาย OpenSearch หรือ URL ที่สามารถค้นพบโดยอัตโนมัติ
 adding-opensearch-provider-failed-title = การเพิ่มผู้ให้บริการ OpenSearch ล้มเหลว
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = ไม่สามารถเพิ่มผู้ให้บริการ OpenSearch สำหรับ { $url }
 minimize-to-tray-label =
     .label = เมื่อย่อ { -brand-short-name } ให้เล็กสุดแล้ว ให้ย้ายไปที่ถาด
@@ -148,7 +125,7 @@ mail-play-sound-label =
 mail-play-button =
     .label = เล่น
     .accesskey = ล
-change-dock-icon = เปลี่ยนการตั้งค่าสำหรับไอคอนแอป
+change-dock-icon = เปลี่ยนค่าปรับแต่งสำหรับไอคอนแอป
 app-icon-options =
     .label = ตัวเลือกไอคอนแอป…
     .accesskey = ไ
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = ตรวจสอบตอนนี้…
     .accesskey = ต
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = การแจ้งเตือนการเปิดอ่าน…
     .accesskey = ก
 update-app-legend = การอัปเดต { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = รุ่น { $version }
 allow-description = อนุญาตให้ { -brand-short-name }
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = ถ
 compact-folder-size =
     .value = MB ของขนาดรวม
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = ใช้ถึง
     .accesskey = ช
 use-cache-after = MB ของพื้นที่สำหรับแคช
-
-##
-
 smart-cache-label =
     .label = เขียนทับการจัดการแคชอัตโนมัติ
     .accesskey = ข
@@ -304,7 +269,6 @@ color-options-button =
     .label = สี…
     .accesskey = ส
 display-width-legend = ข้อความตัวอักษรธรรมดา
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = แสดงไอคอนสื่ออารมณ์เป็นกราฟิก
     .accesskey = แ
@@ -369,17 +333,13 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = ทันทีที่แสดง
     .accesskey = แ
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
+view-attachments-inline =
+    .label = ดูไฟล์แนบแบบอินไลน์
+    .accesskey = ด
 mark-read-delay =
     .label = หลังจากแสดงไปแล้ว
     .accesskey = ล
 seconds-label = วินาที
-
-##
-
 open-msg-label =
     .value = เปิดข้อความใน:
 open-msg-tab =
@@ -394,14 +354,35 @@ open-msg-ex-window =
 close-move-delete =
     .label = ปิดหน้าต่าง/แท็บข้อความเมื่อย้ายหรือลบ
     .accesskey = ป
-display-name-label =
-    .value = ชื่อที่แสดง:
+address-display-legend = รายการข้อความ
+address-display-description = รูปแบบการแสดงผลที่อยู่ที่ต้องการ:
+address-display-full =
+    .label = ชื่อเต็มและที่อยู่อีเมล
+    .accesskey = ต
+address-display-email =
+    .label = อีเมลเท่านั้น
+    .accesskey = อ
+address-display-name =
+    .label = ชื่อเท่านั้น
+    .accesskey = ช
 condensed-addresses-label =
     .label = แสดงเฉพาะชื่อที่แสดงสำหรับผู้คนในสมุดรายชื่อของฉัน
     .accesskey = ส
-
-## Compose Tab
-
+table-layout-legend = มุมมองตาราง
+table-layout-horizontal-scroll-label =
+    .label = อนุญาตการเลื่อนในแนวนอน
+    .accesskey = แ
+conversation-view-legend = มุมมองการสนทนา
+conversation-view-checkbox-label =
+    .label = เปิดใช้งานมุมมองการสนทนา
+    .accesskey = ส
+conversation-view-checkbox-description = คุณลักษณะทดลองที่ทำงานบน Gloda โปรดใช้ด้วยความเสี่ยงของคุณเอง
+label-experiment = คุณลักษณะทดลอง
+account-hub-legend = ศูนย์กลางบัญชี
+account-hub-checkbox-label =
+    .label = สร้างบัญชีในศูนย์กลางบัญชีใหม่
+    .accesskey = ส
+account-hub-checkbox-description = โฟลว์สำหรับสร้างบัญชีจดหมายใหม่ระยะทดลอง
 forward-label =
     .value = ส่งต่อข้อความ:
     .accesskey = ส
@@ -412,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = เติมนามสกุลให้กับชื่อไฟล์
     .accesskey = ต
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = บันทึกอัตโนมัติทุก ๆ
     .accesskey = บ
 auto-save-end = นาที
-
-##
-
 warn-on-send-accel-key =
     .label = ยืนยันเมื่อใช้แป้นพิมพ์ลัดเพื่อส่งข้อความ
     .accesskey = ย
@@ -463,6 +437,7 @@ default-format-label =
 compose-send-format-title = รูปแบบการส่ง
 compose-send-automatic-option =
     .label = อัตโนมัติ
+compose-send-automatic-description = ถ้าไม่มีการใช้ลักษณะในข้อความ ให้ส่งเป็นข้อความธรรมดา แต่ถ้ามี ก็ให้ส่ง HTML พร้อมข้อความธรรมดาสำหรับสำรอง
 compose-send-both-option =
     .label = ทั้ง HTML และข้อความธรรมดา
 compose-send-both-description = แอปพลิเคชันอีเมลของผู้รับจะกำหนดเวอร์ชันที่จะแสดง
@@ -512,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = ค้นหาผู้ให้บริการเพิ่มเติม…
 cloud-account-description = เพิ่มบริการที่เก็บข้อมูล Filelink ใหม่
-
-## Privacy Tab
-
 mail-content = เนื้อหาจดหมาย
 remote-content-label =
     .label = อนุญาตเนื้อหาระยะไกลในข้อความ
@@ -543,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = แสดงคุกกี้…
     .accesskey = ส
-do-not-track-label =
-    .label = ส่งสัญญาณ “ไม่ติดตาม” ให้กับเว็บไซต์ว่าคุณไม่ต้องการถูกติดตาม
-    .accesskey = ง
-dnt-learn-more-button =
-    .value = เรียนรู้เพิ่มเติม
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = บอกเว็บไซต์ไม่ให้ขายหรือแบ่งปันข้อมูลของฉัน
+    .accesskey = ม
+do-not-track-removal = เราไม่รองรับสัญญาณ “Do Not Track” อีกต่อไป
 passwords-description = { -brand-short-name } สามารถจดจำรหัสผ่านสำหรับบัญชีทั้งหมดของคุณ
 passwords-button =
     .label = รหัสผ่านที่บันทึกไว้…
@@ -556,14 +528,16 @@ primary-password-description = รหัสผ่านหลักจะปก�
 primary-password-label =
     .label = ใช้รหัสผ่านหลัก
     .accesskey = ช
+forms-os-reauth =
+    .label = กำหนดให้ต้องลงชื่อเข้าในอุปกรณ์เพื่อกรอกและจัดการรหัสผ่าน
 primary-password-button =
     .label = เปลี่ยนรหัสผ่านหลัก…
     .accesskey = ป
 forms-primary-pw-fips-title = คุณกำลังอยู่ในโหมด FIPS ซึ่ง FIPS จำเป็นต้องมีรหัสผ่านหลักที่ไม่ว่างเปล่า
 forms-master-pw-fips-desc = การเปลี่ยนรหัสผ่านล้มเหลว
 junk-description = ตั้งค่าการตั้งค่าจดหมายขยะเริ่มต้นของคุณ สามารถกำหนดค่าการตั้งค่าจดหมายขยะเฉพาะบัญชีได้ในการตั้งค่าบัญชี
-junk-label =
-    .label = เมื่อฉันทำเครื่องหมายข้อความว่าเป็นขยะ:
+junk-marked-label =
+    .label = เมื่อทำเครื่องหมายข้อความว่าเป็นขยะ:
     .accesskey = ม
 junk-move-label =
     .label = ย้ายไปไว้ในโฟลเดอร์ "ขยะ" ของบัญชี
@@ -571,9 +545,13 @@ junk-move-label =
 junk-delete-label =
     .label = ลบออก
     .accesskey = ล
-junk-read-label =
-    .label = ทำเครื่องหมายข้อความที่ถูกพิจารณาว่าเป็นขยะว่าอ่านแล้ว
-    .accesskey = ท
+junk-read-description = ทำเครื่องหมายข้อความว่าอ่านแล้ว
+junk-read-manual-label =
+    .label = เมื่อทำเครื่องหมายด้วยตนเองว่าเป็นขยะ
+    .accesskey = ต
+junk-read-auto-label =
+    .label = เมื่อ { -brand-short-name } ระบุว่าข้อความเหล่านั้นเป็นขยะ
+    .accesskey = ร
 junk-log-label =
     .label = เปิดใช้งานการบันทึกตัวกรองขยะแบบปรับเปลี่ยนได้
     .accesskey = ป
@@ -607,15 +585,22 @@ certificate-button =
 security-devices-button =
     .label = อุปกรณ์ความปลอดภัย…
     .accesskey = อ
-email-e2ee-header = การเข้ารหัสอีเมลแบบครอบคลุม
+email-e2ee-header = การเข้ารหัสลับอีเมลจากต้นทางถึงปลายทาง
 account-settings = การตั้งค่าบัญชี
-email-e2ee-enable-info = ตั้งค่าบัญชีอีเมลและข้อมูลประจำตัวสำหรับการเข้ารหัสแบบครอบคลุมในการตั้งค่าบัญชี
-email-e2ee-automatism = การใช้การเข้ารหัสอัตโนมัติ
+email-e2ee-enable-info = ตั้งค่าบัญชีอีเมลและข้อมูลประจำตัวสำหรับการเข้ารหัสลับจากต้นทางถึงปลายทางในหน้าการตั้งค่าบัญชี
+email-e2ee-automatism = การใช้การเข้ารหัสลับแบบอัตโนมัติ
+email-e2ee-automatism-pre =
+    { -brand-short-name } สามารถช่วยเหลือได้ด้วยการเปิดหรือปิดใช้งานการเข้ารหัสลับโดยอัตโนมัติขณะที่เขียนอีเมล
+    การเปิด/ปิดใช้งานอัตโนมัติจะขึ้นอยู่กับความพร้อมใช้งานของคีย์หรือใบรับรองของผู้ติดต่อที่ใช้ได้และยอมรับแล้ว
 email-e2ee-auto-on =
-    .label = เปิดใช้งานการเข้ารหัสโดยอัตโนมัติเมื่อเป็นไปได้
-
-## Chat Tab
-
+    .label = เปิดใช้งานการเข้ารหัสลับโดยอัตโนมัติเมื่อทำได้
+email-e2ee-auto-off =
+    .label = ปิดใช้งานการเข้ารหัสลับโดยอัตโนมัติเมื่อผู้รับเปลี่ยนไปและการเข้ารหัสลับไม่สามารถทำได้อีกต่อไป
+email-e2ee-auto-off-notify =
+    .label = แสดงการแจ้งเตือนเมื่อการเข้ารหัสลับถูกปิดใช้งานโดยอัตโนมัติ
+email-e2ee-automatism-post =
+    การตัดสินใจโดยอัตโนมัติอาจถูกยกเลิกได้โดยการเปิดหรือปิดใช้งานการเข้ารหัสลับด้วยตนเองเมื่อเขียนข้อความ
+    หมายเหตุ: การเข้ารหัสลับจะเปิดใช้งานโดยอัตโนมัติเสมอเมื่อตอบกลับข้อความที่เข้ารหัสลับ
 startup-label =
     .value = เมื่อ { -brand-short-name } เริ่ม:
     .accesskey = ม
@@ -623,20 +608,10 @@ offline-label =
     .label = คงสถานะออฟไลน์ของบัญชีแชทของฉัน
 auto-connect-label =
     .label = เชื่อมต่อบัญชีแชทของฉันโดยอัตโนมัติ
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = แจ้งให้ผู้ติดต่อของฉันทราบว่าฉันไม่ได้ใช้งานหลังจาก
     .accesskey = จ
 idle-time-label = นาทีที่ไม่มีความเคลื่อนไหว
-
-##
-
 away-message-label =
     .label = และตั้งค่าสถานะของฉันว่าไม่อยู่ด้วยข้อความสถานะนี้:
     .accesskey = ล
@@ -698,28 +673,21 @@ no-preview-description = ชุดตกแต่งนี้ไม่ถูก�
 chat-variant-label =
     .value = รูปแบบอื่น:
     .accesskey = ป
-
-## Settings UI Search Results
-
+search-preferences-input2 =
+    .style = width: 15.4em
+    .placeholder = ค้นหาในหน้าการตั้งค่า
 search-results-header = ผลการค้นหา
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] ขออภัย! ไม่มีผลลัพธ์สำหรับ “<span data-l10n-name="query"></span>” ในตัวเลือก
        *[other] ขออภัย! ไม่มีผลลัพธ์สำหรับ “<span data-l10n-name="query"></span>” ในการตั้งค่า
     }
 search-results-help-link = ต้องการความช่วยเหลือ? เยี่ยมชม <a data-l10n-name="url">การสนับสนุนของ { -brand-short-name }</a>
-
-## Sync Tab
-
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-caption = นำเว็บไปกับคุณ
+sync-signedout-description = ประสานบัญชี สมุดรายชื่อ ปฏิทิน ส่วนเสริม และการตั้งค่าระหว่างอุปกรณ์ทั้งหมดของคุณ
 sync-signedout-account-signin-btn = ลงชื่อเข้า Sync…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” ยังไม่ได้รับการยืนยัน
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = โปรดลงชื่อเข้าเพื่อเชื่อมต่อ “{ $userEmail }” ใหม่อีกครั้ง
 sync-pane-resend-verification = ส่งการยืนยันใหม่
 sync-pane-sign-in = ลงชื่อเข้า
@@ -746,3 +714,36 @@ show-synced-item-passwords = รหัสผ่าน
 show-synced-change = เปลี่ยน…
 synced-acount-item-server-config = การกำหนดค่าเซิร์ฟเวอร์
 synced-acount-item-filters = ตัวกรอง
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = ประสานบัญชีอีเมล สมุดรายชื่อ ปฏิทิน และข้อมูลประจำตัวระหว่างอุปกรณ์ทั้งหมดของคุณ
+sync-disconnected-turn-on-sync = เปิดการซิงค์…
+qr-export-pane-header = ส่งออกบัญชีไปยัง { -brand-product-name } สำหรับมือถือ
+qr-export-description = ถ่ายโอนการตั้งค่าบัญชีของคุณจากเดสก์ท็อปไปยังมือถือได้ด้วยการสร้างคิวอาร์โค้ด ให้เลือกบัญชีที่จะรวมอยู่ด้วย รวมทั้งเลือกว่าต้องการถ่ายโอนรหัสผ่านของคุณด้วยหรือไม่ และสแกนโค้ดด้วยอุปกรณ์มือถือของคุณ รวดเร็ว ปลอดภัย และง่ายดาย
+qr-export-get-app = ยังไม่มี { -brand-product-name } บนมือถือใช่หรือไม่? <a data-l10n-name="app-link">ดาวน์โหลดจาก Google Play</a>
+qr-export-create = สร้างคิวอาร์โค้ดเพื่อส่งออกบัญชีของคุณ
+qr-export-select-accounts = เลือกบัญชีที่จะส่งออก:
+qr-export-no-accounts = เห็นบัญชีของคุณไม่ครบทั้งหมดใช่หรือไม่? บางบัญชีอาจถูกปิดใช้งานเนื่องจากไม่รองรับโดย { -brand-product-name } สำหรับ Android <a data-l10n-name="account-support-link">ฝ่ายสนับสนุน</a>
+qr-export-accounts-legend = บัญชีอีเมล
+qr-export-select-all-accounts = เลือกทั้งหมด
+qr-export-security-legend = ความปลอดภัย
+qr-export-include-passwords = รวมรหัสผ่านบัญชีทั้งหมดไว้ด้วย
+qr-export-oauth-warning = บางบัญชีของคุณใช้วิธีการยืนยันตัวตนซึ่งอาจต้องการให้ยืนยันตัวตนใหม่บนอุปกรณ์มือถือของคุณ คุณอาจจะต้องใส่รหัสผ่านของคุณอีกครั้งระหว่างกระบวนการนี้
+qr-export-security-hint = โดยการสแกนคิวอาร์โค้ดต่อไปนี้ การตั้งค่าบัญชีของคุณ รวมถึงอีเมลและรหัสผ่านของคุณ จะถูกถ่ายโอนอย่างปลอดภัย เราจะไม่รวบรวม เก็บ หรือแบ่งปันส่วนใดก็ตามของข้อมูลนี้ระหว่างกระบวนการนี้ การถ่ายโอนจะเกิดขึ้นโดยตรงระหว่างอุปกรณ์ของคุณ
+qr-export-security-warning = เพื่อความปลอดภัยของคุณ โปรดตรวจสอบให้แน่ใจว่าคุณอยู่ในสถานที่ที่เป็นส่วนตัวและให้สแกนคิวอาร์โค้ดจากแหล่งที่เชื่อถือได้เท่านั้น
+qr-export-start-export = ส่งออก
+qr-export-scan-progress = คิวอาร์โค้ด { $step } จาก { $count } อัน
+qr-export-scan-description = สแกนคิวอาร์โค้ดด้วย { -brand-product-name } บนอุปกรณ์มือถือของคุณ
+qr-export-scan-step1 = เปิด { -brand-product-name } บนอุปกรณ์มือถือของคุณ
+qr-export-scan-step2 = ไปยังการตั้งค่า
+qr-export-scan-step3 = เลือก <strong>นำเข้าการตั้งค่า</strong>
+qr-export-scan-step4-revision = แตะ <strong>สแกนคิวอาร์โค้ด</strong> และถือโทรศัพท์ของคุณเหนือโค้ดนี้
+qr-export-back = ย้อนกลับ
+qr-export-next = ถัดไป
+qr-export-done = เสร็จสิ้น
+qr-export-summary-description = ส่งออกบัญชีแล้ว โปรดดำเนินการต่อบนอุปกรณ์มือถือของคุณ
+qr-export-summary-title = สรุปการส่งออก:
+qr-export-summary-qr-count = สร้างคิวอาร์โค้ดแล้ว { $count } อัน
+qr-export-summary-accounts = ส่งออกบัญชีแล้ว { $count } บัญชี:
+qr-export-summary-passwords-included = รหัสผ่านที่รวมอยู่ด้วย
+qr-export-summary-passwords-excluded = รหัสผ่านที่ไม่รวมอยู่ด้วย
+qr-export-more-accounts = ส่งออกบัญชีเพิ่มเติม

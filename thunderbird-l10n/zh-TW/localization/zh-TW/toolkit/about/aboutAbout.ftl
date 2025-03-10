@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-about-title = 關於「about:」頁面
 about-about-note =
     為了您的方便，這是「about:」頁面的列表。<br/>

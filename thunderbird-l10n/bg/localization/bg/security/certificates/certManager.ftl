@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Управление на сертификати
 certmgr-tab-mine =
@@ -17,6 +13,7 @@ certmgr-tab-ca =
 certmgr-mine = Имате сертификати от тези организации, които ви идентифицират
 certmgr-remembered = Тези сертификати се използват, за да ви идентифицират пред уеб сайтове
 certmgr-people = Имате сертификати, които идентифицират следните хора
+certmgr-server = Тези елементи идентифицират изключения при грешка в сертификата на сървъра
 certmgr-ca = Имате сертификати, които идентифицират следните удостоверители на сертификати
 certmgr-edit-ca-cert2 =
     .title = Редактиране на настройките за доверие в сертификат на CA
@@ -45,6 +42,8 @@ certmgr-email =
     .label = Е-поща
 certmgr-serial =
     .label = Сериен номер
+certmgr-fingerprint-sha-256 =
+    .label = Отпечатък SHA-256
 certmgr-view =
     .label = Подробности…
     .accesskey = П
@@ -96,31 +95,21 @@ pkcs12-unknown-err-backup = Неуспешно създаване на резе�
 pkcs12-unknown-err = PKCS #12 операцията е неуспешна по неизвестни причини.
 pkcs12-info-no-smartcard-backup = Невъзможно е резервирането на сертификати от хардуерно сигурно устройство, каквото е смарт-картата.
 pkcs12-dup-data = Сертификатът и личният ключ вече съществуват в сигурното устройство.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Име на файл за резервно копие
 file-browse-pkcs12-spec = PKCS12 файлове
 choose-p12-restore-file-dialog = Сертификатен файл за внасяне
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Файлове със сертификати
 import-ca-certs-prompt = Изберете файл, съдържащ сертификат(и) на CA за внасяне
 import-email-cert-prompt = Изберете файл за внасяне, съдържащ нечий сертификат за е-поща
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Сертификатът „{ $certName }“ представя сертификатен удостоверител (CA).
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Изтриване на вашите сертификати
 delete-user-cert-confirm = Сигурни ли сте, че искате да изтриете тези сертификати?
 delete-user-cert-impact = Ако изтриете някой от вашите сертификати, няма да може да го използвате, за да се идентифицирате.
+delete-ssl-override-title =
+    .title = Изтриване на изключение за сертификат на сървър
+delete-ssl-override-confirm = Желаете ли изключението за сървър да бъде изтрито?
+delete-ssl-override-impact = Ако изключението за сървър бъде премахнато, възстановявате проверките по безопасността за сървъра и изискването за действителен сертификат.
 delete-ca-cert-title =
     .title = Изтриване или премахване на доверие от сертификати на CA
 delete-ca-cert-confirm = Поискахте да изтриете тези сертификати на CA. При вградените сертификати цялото доверие ще бъде премахнато, което има същият ефект. Сигурни ли сте, че искате да изтриете или премахнете доверието?
@@ -129,22 +118,13 @@ delete-email-cert-title =
     .title = Изтриване на сертификати за е-поща
 delete-email-cert-confirm = Сигурни ли сте, че искате да изтриете сертификатите за е-поща на тези хора?
 delete-email-cert-impact = Ако изтриете сертификат на е-поща на човек, няма да може да изпращате шифрована поща до този човек.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Сертификат със сериен номер: { $serialNumber }
-# Used when no cert is stored for an override
+send-no-client-certificate = Не е изпратен клиентски сертификат
 no-cert-stored-for-override = (Несъхраняван)
-
-## Used to show whether an override is temporary or permanent
-
+certificate-not-available = (Недостъпно)
 permanent-override = Постоянен
 temporary-override = Временен
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Променяте начина, по който { -brand-short-name } идентифицира този сайт.
 add-exception-invalid-header = Сайтът се опита да се представи с невалидна информация.
 add-exception-domain-mismatch-short = Сбъркана страница
@@ -159,9 +139,6 @@ add-exception-checking-short = Проверка на информация
 add-exception-checking-long = Опит за идентифициране на този сайт…
 add-exception-no-cert-short = Няма информация
 add-exception-no-cert-long = Не може да се провери идентификацията на този сайт.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Запазване на сертификат във файл
 cert-format-base64 = Сертификат X.509 (PEM)
 cert-format-base64-chain = Сертификат X.509 с поредица (PEM)

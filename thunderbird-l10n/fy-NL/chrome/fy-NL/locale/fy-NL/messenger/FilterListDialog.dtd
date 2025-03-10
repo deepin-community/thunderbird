@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "Berjochtefilters">
 <!ENTITY nameColumn.label "Filternamme">
 <!ENTITY activeColumn.label "Aktyf">
@@ -36,8 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "S">
 <!ENTITY helpButton.label "Help">
 <!ENTITY helpButton.accesskey "H">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Filters op namme sykje…">
-
-
-

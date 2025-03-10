@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 print-setup =
     .title = Postava stranice
 custom-prompt-title = Prilagođeno …
@@ -38,15 +34,15 @@ margin-group-label-inches =
 margin-group-label-metric =
     .value = Margine (milimetara)
 margin-top =
-    .value = Vrh:
-    .accesskey = V
+    .value = Gore:
+    .accesskey = G
 margin-top-invisible =
-    .value = Vrh:
+    .value = Gore:
 margin-bottom =
-    .value = Dno:
+    .value = Dolje:
     .accesskey = D
 margin-bottom-invisible =
-    .value = Dno:
+    .value = Dolje:
 margin-left =
     .value = Lijevo:
     .accesskey = L
@@ -74,7 +70,7 @@ header-right-tip =
 footer-left-tip =
     .tooltiptext = Podnožje lijevo
 footer-center-tip =
-    .tooltiptext = Podnožje sredina
+    .tooltiptext = Podnožje u sredini
 footer-right-tip =
     .tooltiptext = Podnožje desno
 hf-blank =
@@ -103,8 +99,6 @@ print-window =
     .title = Ispisivanje
 print-complete =
     .value = Ispisivanje je dovršeno.
-# Variables
-# $percent (integer) - Number of printed percentage
 print-percent =
     .value = { $percent }%
 dialog-cancel-label = Odustani

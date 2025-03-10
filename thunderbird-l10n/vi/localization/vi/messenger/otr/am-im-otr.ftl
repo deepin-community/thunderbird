@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Mã hóa đầu cuối
 account-otr-label = Nhắn tin ngoài luồng (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     sẽ không được hiển thị như một phần của cuộc trò chuyện thông thường và cũng không được ghi lại.
 otr-verify-nudge =
     .label = Luôn nhắc tôi xác minh một liên hệ chưa được xác minh
-
 otr-not-yet-available = chưa có sẵn
-

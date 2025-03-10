@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Odpravljanje težav
 page-subtitle =
     Ta stran vsebuje tehnične podatke, ki jih boste morda potrebovali pri odpravljanju
@@ -41,8 +37,6 @@ app-basics-version = Različica
 app-basics-build-id = ID gradnje
 app-basics-distribution-id = ID distribucije
 app-basics-update-channel = Posodobitveni kanal
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Mapa za posodobitve
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Zgodovina posodobitev
 app-basics-show-update-history = Prikaži zgodovino posodobitev
-# Represents the path to the binary used to start the application.
 app-basics-binary = Binarna datoteka aplikacije
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Mapa s profilom
        *[other] Mapa s profilom
     }
-app-basics-enabled-plugins = Omogočeni vtičniki
 app-basics-build-config = Nastavitev graditve
 app-basics-user-agent = Uporabniški agent
 app-basics-os = OS
 app-basics-os-theme = Tema operacijskega sistema
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Prevedeno z Rosetto
 app-basics-memory-use = Poraba pomnilnika
 app-basics-performance = Učinkovitost
@@ -82,9 +72,6 @@ app-basics-safe-mode = Varni način
 app-basics-memory-size = Velikost pomnilnika (RAM)
 app-basics-disk-available = Razpoložljiv prostor na disku
 app-basics-pointing-devices = Kazalne naprave
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Dnevnik odločitev
 graphics-crash-guards-title = Onemogočene možnosti zaščite pred sesutjem
 graphics-workarounds-title = Zaobidenja
 graphics-device-pixel-ratios = Razmerje slikovnih pik okna
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Okenski protokol
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Namizno okolje
 place-database-title = Podatkovna zbirka mest
 place-database-stats = Statistika
@@ -156,9 +141,6 @@ clear-startup-cache-label = Počisti predpomnilnik zagona …
 startup-cache-dialog-title2 = Ponovni zagon { -brand-short-name(sklon: "rodilnik") } za čiščenje zagonskega predpomnilnika?
 startup-cache-dialog-body2 = S tem ne boste spremenili svojih nastavitev ali odstranili razširitev.
 restart-button-label = Ponovno zaženi
-
-## Media titles
-
 audio-backend = Zvočno zaledje
 max-audio-channels = Največje število kanalov
 sample-rate = Prednostna hitrost vzorčenja
@@ -177,11 +159,7 @@ media-device-rate = Hitrost
 media-device-latency = Zakasnitev
 media-capabilities-title = Zmogljivosti večpredstavnosti
 media-codec-support-info = Podatki o podpori kodekov
-# List all the entries of the database.
 media-capabilities-enumerate = Oštevilči bazo podatkov
-
-## Codec support table
-
 media-codec-support-sw-decoding = Programsko dekodiranje
 media-codec-support-hw-decoding = Strojno dekodiranje
 media-codec-support-codec-name = Ime kodeka
@@ -189,19 +167,13 @@ media-codec-support-supported = Podprt
 media-codec-support-unsupported = Nepodprt
 media-codec-support-error = Podatki o podpori kodeka niso na voljo. Poskusite znova po predvajanju predstavnostne datoteke.
 media-codec-support-lack-of-extension = Namesti razširitev
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Podatki o modulih za dešifriranje vsebine
+media-key-system-name = Ime sistema ključev
+media-video-robustness = Robustnost videa
+media-audio-robustness = Robustnost zvoka
 media-cdm-capabilities = Zmogljivosti
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
+media-cdm-clear-lead = Čisti uvod
 media-hdcp-22-compatible = Združljiv s HDCP 2.2
-
-##
-
 intl-title = Jeziki in lokalizacija
 intl-app-title = Nastavitve programa
 intl-locales-requested = Zahtevani jeziki
@@ -211,24 +183,9 @@ intl-locales-default = Privzeti jezik
 intl-os-title = Operacijski sistem
 intl-os-prefs-system-locales = Sistemski jeziki
 intl-regional-prefs = Območne nastavitve
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Oddaljeno razhroščevanje (protokol Chromium)
 remote-debugging-accepting-connections = Sprejema povezave
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Poročila o sesutjih za zadnji dan
@@ -236,8 +193,6 @@ report-crash-for-days =
         [few] Poročila o sesutjih za zadnje { $days } dni
        *[other] Poročila o sesutjih za zadnjih { $days } dni
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] Pred { $minutes } minuto
@@ -245,8 +200,6 @@ crashes-time-minutes =
         [few] Pred { $minutes } minutami
        *[other] Pred { $minutes } minutami
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] Pred { $hours } uro
@@ -254,8 +207,6 @@ crashes-time-hours =
         [few] Pred { $hours } urami
        *[other] Pred { $hours } urami
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] Pred { $days } dnem
@@ -263,8 +214,6 @@ crashes-time-days =
         [few] Pred { $days } dnevi
        *[other] Pred { $days } dnevi
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Vsa poročila o sesutjih, vključno z { $reports } čakajočim sesutjem v danem časovnem obsegu
@@ -274,31 +223,20 @@ pending-reports =
     }
 raw-data-copied = Neobdelani podatki kopirani v odložišče
 text-copied = Besedilo kopirano v odložišče
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Onemogočeno za vaš grafični gonilnik.
 blocked-gfx-card = Onemogočeno za vašo grafično kartico zaradi težav z gonilnikom.
 blocked-os-version = Onemogočeno za vaš operacijski sistem.
 blocked-mismatched-version = Onemogočeno zaradi neujemanja različice grafičnega gonilnika v registru in DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Onemogočeno za vaš grafični gonilnik. Poskusite ga posodobiti na različico { $driverVersion } ali novejšo.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parametri ClearType
 compositing = Sestavljanje
+support-font-determination = Podatki za razvijalce o vidljivosti pisave
 hardware-h264 = Strojno dekodiranje H264
 main-thread-no-omtc = glavna nit, brez OMTC
 yes = Da
 no = Ne
 unknown = Neznano
 virtual-monitor-disp = Navidezni zaslon
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Najdeno
 missing = Manjka
 gpu-process-pid = GPUProcessPid
@@ -325,11 +263,7 @@ webgl2-driver-extensions = Razširitve gonilnika WebGL 2
 webgl2-extensions = Razširitve WebGL 2
 webgpu-default-adapter = Privzeta vmesniška kartica za WebGPU
 webgpu-fallback-adapter = Pomožna vmesniška kartica za WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Dodano na seznam zavrnjenih zaradi znanih težav: <a data-l10n-name="bug-link">hrošč { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Dodano na seznam zavrnjenih; koda napake { $failureCode }
 d3d11layers-crash-guard = Sestavljalnik D3D11
 glcontext-crash-guard = OpenGL
@@ -349,6 +283,7 @@ has-seccomp-bpf = Seccomp-BPF (Filtriranje sistemskih klicev)
 has-seccomp-tsync = Sinhronizacija niti Seccomp
 has-user-namespaces = Uporabniški imenski prostori
 has-privileged-user-namespaces = Uporabniški imenski prostori za privilegirane procese
+support-user-namespaces-unavailable = { $status } — te možnosti vaš sistem ne dovoljuje. To lahko omeji varnostne zmogljivosti { -brand-short-name(sklon: "rodilnik") }.
 can-sandbox-content = Peskovnik vsebinskih procesov
 can-sandbox-media = Peskovnik večpredstavnih vtičnikov
 content-sandbox-level = Raven peskovnika vsebinskih opravil
@@ -368,16 +303,8 @@ launcher-process-status-0 = Omogočeno
 launcher-process-status-1 = Onemogočeno zaradi napake
 launcher-process-status-2 = Prisilno onemogočeno
 launcher-process-status-unknown = Neznano stanje
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Onemogočeno zaradi poskusa
-fission-status-experiment-treatment = Omogočeno zaradi poskusa
 fission-status-disabled-by-e10s-env = Onemogočeno s strani okolja
 fission-status-enabled-by-env = Omogočeno s strani okolja
 fission-status-disabled-by-env = Onemogočeno s strani okolja
@@ -386,7 +313,6 @@ fission-status-disabled-by-default = Privzeto onemogočeno
 fission-status-enabled-by-user-pref = Omogočil uporabnik
 fission-status-disabled-by-user-pref = Onemogočil uporabnik
 fission-status-disabled-by-e10s-other = E10s Onemogočen
-fission-status-enabled-by-rollout = Omogoča izdajanje po korakih
 async-pan-zoom = Asinhrono pomikanje/povečava
 apz-none = brez
 wheel-enabled = vnos s koleščkom omogočen
@@ -395,34 +321,20 @@ drag-enabled = vlečenje drsnika omogočeno
 keyboard-enabled = tipkovnica omogočena
 autoscroll-enabled = samodrsenje omogočeno
 zooming-enabled = omogočeno gladko povečanje s približevanjem prstov
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = asinhroni vnos s koleščkom onemogočen zaradi nedpodprte nastavitve: { $preferenceKey }
 touch-warning = asinhroni vnos na dotik onemogočen zaradi nedpodprte nastavitve: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Nedejavno
 policies-active = Dejavno
 policies-error = Napaka
-
-## Printing section
-
 support-printing-title = Tiskanje
 support-printing-troubleshoot = Odpravljanje težav
 support-printing-clear-settings-button = Počistite shranjene nastavitve tiskanja
 support-printing-modified-settings = Spremenjene nastavitve tiskanja
 support-printing-prefs-name = Ime
 support-printing-prefs-value = Vrednost
-
-## Remote Settings sections
-
 support-remote-settings-title = Oddaljene nastavitve
 support-remote-settings-status = Stanje
 support-remote-settings-status-ok = V redu
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Ne deluje
 support-remote-settings-last-check = Zadnje preverjanje
 support-remote-settings-local-timestamp = Lokalni časovni žig
@@ -430,9 +342,6 @@ support-remote-settings-sync-history = Zgodovina
 support-remote-settings-sync-history-status = Stanje
 support-remote-settings-sync-history-datetime = Datum
 support-remote-settings-sync-history-infos = Informacije
-
-## Normandy sections
-
 support-remote-experiments-title = Oddaljeni poskusi
 support-remote-experiments-name = Ime
 support-remote-experiments-branch = Področje poskusa
@@ -440,19 +349,10 @@ support-remote-experiments-see-about-studies = Oglejte si <a data-l10n-name="sup
 support-remote-features-title = Oddaljene zmogljivosti
 support-remote-features-name = Ime
 support-remote-features-status = Stanje
-
-## Pointing devices
-
 pointing-device-mouse = Miška
 pointing-device-touchscreen = Zaslon na dotik
 pointing-device-pen-digitizer = Digitalno pisalo
 pointing-device-none = Ni kazalnih naprav
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Analiza vsebine (DLP)
 content-analysis-active = Aktivna
 content-analysis-connected-to-agent = Povezava z agentom

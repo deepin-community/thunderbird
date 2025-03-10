@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Տեքստ և խորապատկեր
 text-color-label =
     .value = Տեքստը.
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Այցելված հղումներ.
     .accesskey = V
-underline-link-checkbox =
-    .label = Հղաւմներն ընդգծել
-    .accesskey = U
 override-color-label =
     .value = Փոխարինել գույները ըստ բովանդակության նշվածներով՝
     .accesskey = Փ

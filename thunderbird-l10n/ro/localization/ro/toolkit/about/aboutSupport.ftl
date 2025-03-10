@@ -1,13 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Informații pentru depanare
 page-subtitle =
     Această pagină conține informații tehnice care ar putea fi utile atunci când
     încerci să rezolvi o problemă. Dacă cauți răspunsuri la întrebări comune despre
     { -brand-short-name }, verifică <a data-l10n-name="support-link">site-ul nostru de suport</a>.
-
 crashes-title = Rapoarte de defecțiuni
 crashes-id = ID-ul raportului
 crashes-send-date = Trimis
@@ -38,8 +33,6 @@ app-basics-version = Versiune
 app-basics-build-id = ID-ul versiunii compilate
 app-basics-distribution-id = ID de distribuție
 app-basics-update-channel = Canal de actualizare
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Directorul actualizărilor
@@ -47,20 +40,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Istoricul actualizărilor
 app-basics-show-update-history = Afișează istoricul actualizărilor
-# Represents the path to the binary used to start the application.
 app-basics-binary = Fișierul binar al aplicației
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Directorul profilurilor
        *[other] Dosarul profilurilor
     }
-app-basics-enabled-plugins = Pluginuri activate
 app-basics-build-config = Configurația versiunii compilate
 app-basics-user-agent = Agent utilizator
 app-basics-os = SO
 app-basics-os-theme = Tema SO-ului
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Tradus prin Rosetta
 app-basics-memory-use = Utilizarea memoriei
 app-basics-performance = Performanță
@@ -75,7 +64,6 @@ app-basics-location-service-key-google = Cheie de servicii Google pentru localiz
 app-basics-safebrowsing-key-google = Cheie Google pentru navigare în siguranță
 app-basics-key-mozilla = Cheie pentru serviciul de localizare Mozilla
 app-basics-safe-mode = Mod sigur
-
 show-dir-label =
     { PLATFORM() ->
         [macos] Afișează în Finder
@@ -105,9 +93,7 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Jurnal de decizii
 graphics-crash-guards-title = Funcții dezactivate de Crash Guard
 graphics-workarounds-title = Alternative
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protocol de ferestre
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Mediu desktop
 place-database-title = Bază de date cu locuri
 place-database-integrity = Integritate
@@ -136,9 +122,6 @@ clear-startup-cache-label = Golește cache-ul de pornire…
 startup-cache-dialog-title2 = Repornești { -brand-short-name } pentru a goli cache-ul de pornire?
 startup-cache-dialog-body2 = Acest lucru nu va modifica setările și nu va elimina extensiile.
 restart-button-label = Repornește
-
-## Media titles
-
 audio-backend = Backend audio
 max-audio-channels = Canale maxime
 sample-rate = Rată de eșantionare preferată
@@ -156,13 +139,7 @@ media-device-channels = Canale
 media-device-rate = Rată
 media-device-latency = Latență
 media-capabilities-title = Capabilități media
-# List all the entries of the database.
 media-capabilities-enumerate = Enumeră baza de date
-
-## Codec support table
-
-##
-
 intl-title = Internaționalizare și localizare
 intl-app-title = Setări privind aplicația
 intl-locales-requested = Limbile solicitate
@@ -172,84 +149,47 @@ intl-locales-default = Limba implicită
 intl-os-title = Sistem de operare
 intl-os-prefs-system-locales = Limbile sistemului
 intl-regional-prefs = Preferințe regionale
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Depanare la distanță (protocol Chromium)
 remote-debugging-accepting-connections = Acceptarea conexiunilor
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Rapoarte de defecțiuni pentru ultima zi
         [few] Rapoarte de defecțiuni pentru ultimele { $days } zile
        *[other] Rapoarte de defecțiuni pentru ultimele { $days } de zile
     }
-
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] acum { $minutes } minut
         [few] acum { $minutes } minute
        *[other] acum { $minutes } de minute
     }
-
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] acum { $hours } oră
         [few] acum { $hours } ore
        *[other] acum { $hours } de ore
     }
-
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] acum { $days } zi
         [few] acum { $days } zile
        *[other] acum { $days } de zile
     }
-
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Toate rapoartele de defecțiuni (inclusiv { $reports } raport în așteptare în intervalul de timp dat)
         [few] Toate rapoartele de defecțiuni (inclusiv { $reports } rapoarte în așteptare în intervalul de timp dat)
        *[other] Toate rapoartele de defecțiuni (inclusiv { $reports } de rapoarte în așteptare în intervalul de timp dat)
     }
-
 raw-data-copied = Date brute copiate în clipboard
 text-copied = Text copiat în clipboard
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Blocat pentru versiunea ta de driver pentru adaptorul grafic.
 blocked-gfx-card = Blocate pentru placa ta grafică din cauza unor probleme nerezolvate de driver.
 blocked-os-version = Blocate pentru versiunea sistemului tău de operare.
 blocked-mismatched-version = Blocat din cauza necorelării versiunilor driverelor grafice între registru și DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Blocat pentru versiunea ta de driver pentru adaptorul grafic. Încearcă să actualizezi driverul adaptorului grafic la versiunea { $driverVersion } sau mai nouă.
-
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parametrii ClearType
-
 compositing = Compunere
 hardware-h264 = Decodare H264 hardware
 main-thread-no-omtc = fir principal, fără OMTC
@@ -257,14 +197,8 @@ yes = Da
 no = Nu
 unknown = Necunoscut
 virtual-monitor-disp = Afișarea monitorului virtual
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Găsită
 missing = Lipsă
-
 gpu-process-pid = GPUProcessPid
 gpu-process = GPUProcess
 gpu-description = Descriere
@@ -287,19 +221,11 @@ webgl2-renderer = Renderul driverului WebGL 2
 webgl2-version = Versiunea driverului WebGL 2
 webgl2-driver-extensions = Extensiile driverului WebGL 2
 webgl2-extensions = Extensii WebGL 2
-
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Pus pe lista de blocare din cauza problemelor cunoscute: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Pus pe lista de blocări; cod de eroare { $failureCode }
-
 d3d11layers-crash-guard = Compozitor D3D11
 glcontext-crash-guard = OpenGL
 wmfvpxvideo-crash-guard = Decodor video WMF VPX
-
 reset-on-next-restart = Resetează la următoarea repornire
 gpu-process-kill-button = Termină procesul GPU
 gpu-device-reset = Resetarea dispozitivului
@@ -309,10 +235,8 @@ content-uses-tiling = Folosește Tiling (Conținut)
 off-main-thread-paint-enabled = Desenare în afara firului de execuție principal activată
 off-main-thread-paint-worker-count = Număr de workeri pentru desenare în afara firului de execuție principal
 target-frame-rate = Frecvență de cadre țintă
-
 min-lib-versions = Versiune minimă așteptată
 loaded-lib-versions = Versiune în uz
-
 has-seccomp-bpf = Seccomp-BPF (filtrarea apelurilor de sistem)
 has-seccomp-tsync = Sincronizarea firului de execuție seccomp
 has-user-namespaces = Spații de nume ale utilizatorului
@@ -325,23 +249,16 @@ sandbox-proc-type-content = conținut
 sandbox-proc-type-file = conținut fișier
 sandbox-proc-type-media-plugin = plugin media
 sandbox-proc-type-data-decoder = decodor de date
-
 startup-cache-title = Cache de pornire
 startup-cache-disk-cache-path = Cale de salvare locală pentru cache
 startup-cache-ignore-disk-cache = Ignoră cache-ul salvat local
 startup-cache-found-disk-cache-on-init = Cache local identificat la inițializare
 startup-cache-wrote-to-disk-cache = Cache salvat local
-
 launcher-process-status-0 = Activat
 launcher-process-status-1 = Dezactivat din cauza unei probleme
 launcher-process-status-2 = Dezactivat forțat
 launcher-process-status-unknown = Stare necunoscută
-
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-
 async-pan-zoom = Panoramare/zoom asincron(ă)
 apz-none = fără
 wheel-enabled = intrare pentru rotița mouse-ului activată
@@ -350,34 +267,20 @@ drag-enabled = tragerea barei de derulare activată
 keyboard-enabled = tastatură activată
 autoscroll-enabled = autoderulare activată
 zooming-enabled = Zoom lin prin gesturi tactile activat
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = intrarea pentru rotița asincronă a mouse-ului dezactivată datorită unei preferințe nesuportate: { $preferenceKey }
 touch-warning = intrarea tactilă asincronă dezactivată datorită unei preferințe nesuportate: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Inactiv
 policies-active = Activ
 policies-error = Eroare
-
-## Printing section
-
 support-printing-title = Tipărire
 support-printing-troubleshoot = Depanare
 support-printing-clear-settings-button = Golește setările de tipărire salvate
 support-printing-modified-settings = Setări de tipărire modificate
 support-printing-prefs-name = Nume
 support-printing-prefs-value = Valoare
-
-## Normandy sections
-
 support-remote-experiments-title = Experimente la distanță
 support-remote-experiments-name = Nume
 support-remote-experiments-see-about-studies = Consultă <a data-l10n-name="support-about-studies-link">about:studies</a> pentru mai multe informații, inclusiv cum să dezactivezi experimentele individuale sau cum să împiedici { -brand-short-name } să ruleze acest tip de experiment în viitor.
-
 support-remote-features-title = Funcții la distanță
 support-remote-features-name = Nume
 support-remote-features-status = Stare

@@ -1,8 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-recurrence-preview-label = Նախադիտում
 calendar-recurrence-next = Հաջորդ ամիս
 calendar-recurrence-previous = Նախորդ ամիս
 calendar-recurrence-today = Այսօր
+monthly-order = { $ordinal } { $day }
+yearly-order-day = { $day } { $article } { $month }
+yearly-order-ordinal = { $ordinal } { $day } { $article } { $month }
+event-recurrence-monthly-last-day-label =
+    .label = Վերջին օր

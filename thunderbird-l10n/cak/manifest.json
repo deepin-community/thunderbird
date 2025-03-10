@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-cak@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: Kaqchikel",
   "description": "Thunderbird Language Pack for Kaqchikel (cak)",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "cak": {
-      "version": "20240930174244",
+      "version": "20250227153613",
       "chrome_resources": {
         "alerts": "chrome/cak/locale/cak/alerts/",
         "autoconfig": "chrome/cak/locale/cak/autoconfig/",

@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Vítá vás { -brand-full-name }
 account-settings = Nastavení účtu
-#   $accounts (Number) - the number of configured accounts
 setup-title =
     { $accounts ->
         [0] Přidání účtu
@@ -53,7 +48,6 @@ import-label = Importovat
     .aria-label = Importovat data z jiného programu
 about-paragraph = Thunderbird je hlavní otevřený a multiplatformní e-mailový klient, který je zdarma pro osobní použití i pro firmy. Chceme, aby zůstal i nadále bezpečný a stále se zlepšoval. I díky vašim příspěvkům máme na platy vývojářů, údržbu infrastruktury a další vylepšování.
 about-paragraph-consider-donation = <b>Thunderbird je financován uživateli, jako jste vy! Pokud se vám Thunderbird líbí, zvažte prosím možnost poskytnutí daru.</b> Nejlepší způsob, jak můžete zajistit, aby byl Thunderbird stále k dispozici, je <a data-l10n-name="donation-link">věnování peněžního daru</a>.
-explore-link = Prozkoumejte všechny funkce
 support-link = Nápověda
 involved-link = Zapojit se
 developer-link = Dokumentace pro vývojáře

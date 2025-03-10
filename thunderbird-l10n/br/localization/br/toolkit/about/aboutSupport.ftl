@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Titouroù disac'hañ
 page-subtitle = Ar bajenn-mañ a endalc'h stlennoù teknikel hag a c'hallfe bezañ talvoudus pa glaskit  dirouestlañ ur gudenn. Mar klaskit respontoù da c'houlennoù boutin a-zivout  { -brand-short-name }, e c'hallit klask war hol <a data-l10n-name="support-link">lec'hienn skoazell</a>.
 crashes-title = Danevelloù sac'hadenn
@@ -35,8 +31,6 @@ app-basics-version = Handelv
 app-basics-build-id = Naoudi ar c'hempunañ
 app-basics-distribution-id = ID an dasparzh
 app-basics-update-channel = Sanell hizivadur
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Kavlec'h an hizivadennoù
@@ -49,13 +43,10 @@ app-basics-profile-dir =
         [linux] Kavlec'h an aelad
        *[other] Teuliad an aelad
     }
-app-basics-enabled-plugins = Enlugelladoù gweredekaet
 app-basics-build-config = Kefluniad kempunadur
 app-basics-user-agent = Gwezher arveriad
 app-basics-os = Reizhiad Korvoiñ
 app-basics-os-theme = Neuz ar Reizhiad Korvoiñ
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Troet gant Rosetta
 app-basics-memory-use = Arver ar vemor
 app-basics-performance = Digonusted
@@ -70,9 +61,6 @@ app-basics-safebrowsing-key-google = Alc'hwez Google Safebrowsing
 app-basics-key-mozilla = Alc'hwez Gwazerezh Lec'hiadur Mozilla
 app-basics-safe-mode = Mod diarvar
 app-basics-memory-size = Ment ar memor (RAM)
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -101,7 +89,6 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Kerzhlevr divizoù
 graphics-crash-guards-title = Keweriusterioù diweredekaet gant ar gwarez e-enep d'ar sac'hadennoù
 graphics-workarounds-title = Tremen e-biou
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Komenad ar prenestrañ
 place-database-title = Stlennvon "Places"
 place-database-stats = Stadegoù
@@ -132,9 +119,6 @@ sandbox-sys-call-proc-type = Doare argerzh
 sandbox-sys-call-number = Syscall
 sandbox-sys-call-args = Arguzennoù
 restart-button-label = Adloc’hañ
-
-## Media titles
-
 audio-backend = Drekva aodio
 max-audio-channels = Niver a sanelloù uc'hek
 sample-rate = Feur standilhon gwellañ karet
@@ -150,18 +134,7 @@ media-device-format = Mentrezh
 media-device-channels = Sanell
 media-device-rate = Feur
 media-device-latency = Dale
-
-## Codec support table
-
 media-codec-support-lack-of-extension = Staliañ an askouezh
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
-
-##
-
 intl-title = Etrevoradeladur & lec'hiadur
 intl-app-title = Arventennoù an arload
 intl-locales-requested = Yezhoù goulennet
@@ -171,24 +144,9 @@ intl-locales-default = Yezh dre ziouer
 intl-os-title = Reizhiad korvoiñ
 intl-os-prefs-system-locales = Yezhoù ar reizhiad
 intl-regional-prefs = Gwellvezioù rannvroel
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Diveugañ a-bell (Komenad Chromium)
 remote-debugging-accepting-connections = Oc'h asantiñ kennaskadennoù
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Danevelloù sac'hadenn evit an devezh diwezhañ
@@ -197,8 +155,6 @@ report-crash-for-days =
         [many] Danevelloù sac'hadenn evit ar { $days } a zeizioù diwezhañ
        *[other] Danevelloù sac'hadenn evit an { $days } devezh diwezhañ
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } vunutenn zo
@@ -207,8 +163,6 @@ crashes-time-minutes =
         [many] { $minutes } a vunutennoù zo
        *[other] { $minutes } munutenn zo
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } eur zo
@@ -217,8 +171,6 @@ crashes-time-hours =
         [many] { $hours } a eurioù zo
        *[other] { $hours } eur zo
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } deiz zo
@@ -227,8 +179,6 @@ crashes-time-days =
         [many] { $days } a zeizioù zo
        *[other] { $days } deiz zo
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] An holl zanevelloù sac'hadenn (enno { $reports } danevell war c'hortoz evit ur sac'hadenn bet degouezhet e-pad ar pennad)
@@ -239,18 +189,11 @@ pending-reports =
     }
 raw-data-copied = Eilet eo bet ar roadenn diaoz er golver
 text-copied = Eilet eo bet an destenn er golver
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Harzet evit handelv ho stur kevregat.
 blocked-gfx-card = Harzet evit ho kartenn gevregat en abeg da gudennoù nad int ket bet diskoulmet gant ar stur.
 blocked-os-version = Harzet evit handelv ho reizhiad korvoiñ.
 blocked-mismatched-version = Stanket eo bet dre ma ne glot ket handelv marilh ha levraoueg dialuskel ho sturier kevregad.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Harzet evit handelv ho stur kevregat. Klaskit hizivaat ho stur kevregat gant an handelv { $driverVersion } pe nevesoc'h.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Arventennoù ClearType
 compositing = Kenaozadur
 hardware-h264 = Ezvonegañ periant H264
@@ -259,11 +202,6 @@ yes = Ya
 no = Ket
 unknown = Dianav
 virtual-monitor-disp = Diskouez Skrammad galloudel
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Kavet
 missing = A vank
 gpu-process-pid = GPUProcessPid
@@ -287,8 +225,6 @@ webgl2-renderer = Deouezer WebGL 2 Driver
 webgl2-version = Handelv WebGL 2 Driver
 webgl2-driver-extensions = Askouezhioù WebGL 2 Driver
 webgl2-extensions = Askouezhioù WebGL 2
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Er roll stanket; boneg c'hwitadenn { $failureCode }
 d3d11layers-crash-guard = Kenaozer D3D11
 glcontext-crash-guard = OpenGL
@@ -319,13 +255,7 @@ launcher-process-status-0 = Gweredekaet
 launcher-process-status-1 = Diweredekaet abalamour d'ur c'hwitadenn
 launcher-process-status-2 = Rediet da ziweredekaat
 launcher-process-status-unknown = Stad dianav
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
 async-pan-zoom = Zoum ec'houbred
 apz-none = netra
@@ -334,32 +264,22 @@ touch-enabled = enankad stok gweredekaet
 drag-enabled = riklañ ar varrenn zibunañ gweredekaet
 keyboard-enabled = klavier gweredekaet
 autoscroll-enabled = dibunañ emgefreek gweredekaet
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = enankad rod angoubred diweredekaet abalamour d'ur wellvez anskor: { $preferenceKey }
 touch-warning = enankad stok angoubred diweredekaet abalamour d'ur wellvez anskor: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Dizoberiant
 policies-active = Oberiant
 policies-error = Fazi
-
-## Printing section
-
 support-printing-title = Moullerezh
 support-printing-troubleshoot = Disac’hañ
 support-printing-prefs-name = Anv
 support-printing-prefs-value = Talvoud
-
-## Normandy sections
-
+support-remote-settings-status-ok = Mat eo
+support-remote-settings-status-broken = N’ez a ket en-dro
+support-remote-settings-sync-history = Roll istor
+support-remote-settings-sync-history-status = Stad
+support-remote-settings-sync-history-datetime = Deiziad
+support-remote-settings-sync-history-infos = Titouroù
 support-remote-experiments-name = Anv
 support-remote-features-name = Anv
 support-remote-features-status = Statud
-
-## Pointing devices
-
 pointing-device-mouse = Logodenn

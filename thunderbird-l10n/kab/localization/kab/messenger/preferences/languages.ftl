@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Ali
     .accesskey = A
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Rnu
     .accesskey = R
-messenger-languages-window2 =
-    .title = { -brand-short-name } Iɣewwaṛen n Tutlayt
 messenger-languages-dialog-title = { -brand-short-name } Iɣewwaṛen n Tutlayt
 messenger-languages-description = { -brand-short-name } Ad d-yesken tutlayt tamezwarut d tutlayt-ik tamezwert, daɣen ad d-yesken tutlayin-nniḍen ma yessefk s usmizzwer akken i d-ttbanent.
 messenger-languages-search = Anadi n tutlayin-nniḍen...

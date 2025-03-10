@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Ychwanegu Allwedd OpenPGP Personol ar gyfer { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Parhau
-    .buttonlabelhelp = Mynd nôl
 key-wizard-dialog =
     .buttonlabelaccept = Parhau
     .buttonlabelextra1 = Mynd nôl
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Defnyddio'ch allwedd allanol trwy GnuPG (e.e. o gerdyn clyfar)
     .accesskey = D
-
-## Generate key section
-
 openpgp-generate-key-title = Cynhyrchu Allwedd OpenPGP
 openpgp-keygen-secret-protection = Diogelu Allwedd Cyfrinachol
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Rhaid i'ch allwedd fod yn ddilys am o leiaf un diw
 openpgp-keygen-ongoing = Eisoes wrthi'n cynhyrchu allwedd!
 openpgp-keygen-error-core = Methu cychwyn Gwasanaeth Craidd OpenPGP
 openpgp-keygen-error-failed = Yn annisgwyl, methwyd cynhyrchu allwedd OpenPGP
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Crëwyd Allwedd OpenPGP yn llwyddiannus, ond methodd â chael dirymiad ar gyfer allwedd { $key }
 openpgp-keygen-abort-title = Atal cynhyrchu allwedd?
 openpgp-keygen-abort = Mae cynhyrchu allwedd OpenPGP ar y gweill ar hyn o bryd, a ydych chi'n siŵr eich bod am ei ddiddymu?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Cynhyrchu allwedd gyhoeddus a chyfrinachol ar gyfer { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Mewnforio Allwedd OpenPGP personol sy'n bodoli eisoes
 openpgp-import-key-legend = Dewis ffeil a gadwyd wrth gefn.
 openpgp-import-key-description = Gallwch fewnforio allweddi personol a gafodd eu creu gyda meddalwedd OpenPGP arall.
 openpgp-import-key-info = Gall meddalwedd arall ddisgrifio allwedd bersonol gan ddefnyddio termau amgen fel eich allwedd eich hun, allwedd gyfrinachol, allwedd breifat neu bar o allweddi.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [zero] Daeth { -brand-short-name } o hyd i { $count } allweddi y mae modd eu mewnforio.
@@ -110,8 +93,6 @@ openpgp-import-key-list-caption = Bydd allweddi sydd wedi'u marcio i'w trin fel 
 openpgp-import-keep-passphrases =
     .label = Cadw diogelu cyfrinymadrodd ar gyfer allweddi cyfrinachol wedi'u mewnforio
 openpgp-passphrase-prompt-title = Mae angen cyfrinymadrodd
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Rhowch y cyfrinymadrodd i ddatgloi'r allwedd ganlynol: { $key }
 openpgp-import-key-button =
     .label = Dewis Ffeil i'w Mewnforio ...
     .accesskey = D
@@ -120,9 +101,7 @@ import-key-personal-checkbox =
     .label = Trin yr allwedd hon fel Allwedd Bersonol
 gnupg-file = Ffeiliau GnuPG
 import-error-file-size = <b>Gwall!</b> Nid yw ffeiliau mwy na 5MB yn cael eu cefnogi.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Gwall!</b> Wedi methu mewnforio ffeil. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Gwall!</b> Wedi methu mewnforio allweddi. { $error }
 openpgp-import-identity-label = Hunaniaeth
 openpgp-import-fingerprint-label = Bysbrint
@@ -131,9 +110,6 @@ openpgp-import-bits-label = Didau
 openpgp-import-key-props =
     .label = Priodweddau Allweddi
     .accesskey = P
-
-## External Key section
-
 openpgp-external-key-title = Allwedd GnuPG Allanol
 openpgp-external-key-description = Ffurfweddu allwedd GnuPG allanol trwy nodi ID yr Allwedd
 openpgp-external-key-info = Yn ogystal, rhaid i chi ddefnyddio'r Rheolwr Allweddi i fewnforio a derbyn yr Allwedd Gyhoeddus gyfatebol.

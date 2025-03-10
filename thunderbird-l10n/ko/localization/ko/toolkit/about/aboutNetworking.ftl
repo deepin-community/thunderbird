@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = 네트워크 정보
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = HTTP 캐시 지우기
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = 느린 캐시 횟수
 about-networking-rcwn-cache-not-slow = 느리지 않은 캐시 횟수
 about-networking-networkid = 네트워크 ID
 about-networking-networkid-id = 네트워크 ID
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = 이 페이지는 <a data-l10n-name="about-logging-url">about:logging</a>으로 이동되었습니다.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = 링크가 작동 중
 about-networking-networkid-status-known = 링크 상태가 알려져 있음
-
-##
-

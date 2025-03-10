@@ -1,11 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY titledefault.label "&brandFullName;">
 <!ENTITY titleSeparator.label " - ">
-
-<!-- File Menu -->
 <!ENTITY newFolderCmd.label "Dosje…">
 <!ENTITY newFolderCmd.accesskey "D">
 <!ENTITY closeTabCmd2.label "Mbylleni Skedën">
@@ -14,32 +8,23 @@
 <!ENTITY closeOtherTabsCmd2.accesskey "T">
 <!ENTITY recentlyClosedTabsCmd.label "Skeda të Mbyllura Së Fundi">
 <!ENTITY recentlyClosedTabsCmd.accesskey "F">
-
 <!ENTITY undoCloseTabCmd.commandkey "T">
-<!-- LOCALIZATION NOTE (moveToNewWindow.label):
-     Menu option to cause the current tab to be migrated to a new Thunderbird
-     window.
-     -->
 <!ENTITY moveToNewWindow.label "Kaloje në Dritare të Re">
 <!ENTITY moveToNewWindow.accesskey "K">
 <!ENTITY newVirtualFolderCmd.label "Kërkim i Ruajtur…">
 <!ENTITY newVirtualFolderCmd.accesskey "K">
-<!ENTITY newCreateEmailAccountCmd.label "Hapni një Llogari të Re Poste…">
-<!ENTITY newCreateEmailAccountCmd.accesskey "H">
-<!ENTITY newExistingEmailAccountCmd.label "Llogari Poste Ekzistuese…">
-<!ENTITY newExistingEmailAccountCmd.accesskey "E">
 <!ENTITY newIMAccountCmd.label "Llogari Fjalosjeje…">
 <!ENTITY newIMAccountCmd.accesskey "F">
 <!ENTITY newFeedAccountCmd.label "Llogari Prurjesh…">
 <!ENTITY newFeedAccountCmd.accesskey "P">
 <!ENTITY newIMContactCmd.label "Kontakt Fjalosjeje…">
 <!ENTITY newIMContactCmd.accesskey "K">
-<!ENTITY  newMessageCmd2.key "N">
-<!ENTITY  newMessageCmd.key "M">
-<!ENTITY  newMessageCmd.label "Mesazh">
-<!ENTITY  newMessageCmd.accesskey "m">
-<!ENTITY  newContactCmd.label "Kontakt Nga Libër Adresash…">
-<!ENTITY  newContactCmd.accesskey "K">
+<!ENTITY newMessageCmd2.key "N">
+<!ENTITY newMessageCmd.key "M">
+<!ENTITY newMessageCmd.label "Mesazh">
+<!ENTITY newMessageCmd.accesskey "m">
+<!ENTITY newContactCmd.label "Kontakt Nga Libër Adresash…">
+<!ENTITY newContactCmd.accesskey "K">
 <!ENTITY openMenuCmd.label "Hape">
 <!ENTITY openMenuCmd.accesskey "H">
 <!ENTITY openMessageFileCmd.label "Hapni Mesazh të Ruajtur…">
@@ -85,20 +70,6 @@
 <!ENTITY printCmd.label "Shtypni…">
 <!ENTITY printCmd.accesskey "y">
 <!ENTITY printCmd.key "p">
-
-<!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "Fshije Mesazhin">
-<!ENTITY deleteMsgCmd.accesskey "F">
-<!ENTITY undeleteMsgCmd.label "Çfshije Mesazhin">
-<!ENTITY undeleteMsgCmd.accesskey "Ç">
-<!ENTITY deleteMsgsCmd.label "Fshi Mesazhet e Përzgjedhur">
-<!ENTITY deleteMsgsCmd.accesskey "s">
-<!ENTITY undeleteMsgsCmd.label "Çfshiji Mesazhet e Përzgjedhur">
-<!ENTITY undeleteMsgsCmd.accesskey "i">
-<!ENTITY deleteFolderCmd.label "Fshije Dosjen">
-<!ENTITY deleteFolderCmd.accesskey "j">
-<!ENTITY unsubscribeNewsgroupCmd.label "Shpajtohuni">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "h">
 <!ENTITY selectMenu.label "Përzgjidhni">
 <!ENTITY selectMenu.accesskey "ë">
 <!ENTITY all.label "Krejt">
@@ -110,10 +81,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "M">
 <!ENTITY menuFavoriteFolder.label "Dosje të Parapëlqyerish">
 <!ENTITY menuFavoriteFolder.accesskey "D">
-<!ENTITY folderPropsCmd2.label "Veti">
-<!ENTITY folderPropsFolderCmd2.label "Veti Dosjeje">
-<!ENTITY folderPropsNewsgroupCmd2.label "Veti Grupi Lajmesh">
-<!ENTITY folderPropsCmd.accesskey "v">
 <!ENTITY undoDeleteMsgCmd.label "Zhbëje Fshirjen e Mesazhit">
 <!ENTITY redoDeleteMsgCmd.label "Ribëje Fshirjen e Mesazhit">
 <!ENTITY undoMoveMsgCmd.label "Zhbëje Lëvizjen e Mesazhit">
@@ -126,15 +93,12 @@
 <!ENTITY undoDefaultCmd.accesskey "Z">
 <!ENTITY redoDefaultCmd.label "Ribëje">
 <!ENTITY redoDefaultCmd.accesskey "b">
-
-<!-- View Menu -->
 <!ENTITY menubarCmd.label "Shtyllë Menush">
 <!ENTITY menubarCmd.accesskey "S">
 <!ENTITY showMessengerToolbarCmd.label "Panel Poste">
 <!ENTITY showMessengerToolbarCmd.accesskey "P">
 <!ENTITY customizeToolbar.label "Përshtateni…">
 <!ENTITY customizeToolbar.accesskey "N">
-
 <!ENTITY messagePaneLayoutStyle.label "Skemë">
 <!ENTITY messagePaneLayoutStyle.accesskey "S">
 <!ENTITY messagePaneClassic.label "Shfaqje Klasike">
@@ -145,11 +109,8 @@
 <!ENTITY messagePaneVertical.accesskey "V">
 <!ENTITY showFolderPaneCmd.label "Kuadrat Dosjesh">
 <!ENTITY showFolderPaneCmd.accesskey "u">
-<!ENTITY showFolderPaneColsCmd.label "Shtylla Kuadrati Dosjesh">
-<!ENTITY showFolderPaneColsCmd.accesskey "t">
 <!ENTITY showMessageCmd.label "Kuti Mesazhesh">
 <!ENTITY showMessageCmd.accesskey "M">
-
 <!ENTITY folderView.label "Dosje">
 <!ENTITY folderView.accesskey "D">
 <!ENTITY unifiedFolders.label "E njësuar">
@@ -164,8 +125,6 @@
 <!ENTITY recentFolders.accesskey "f">
 <!ENTITY compactVersion.label "Parje e Ngjeshur">
 <!ENTITY compactVersion.accesskey "P">
-
-<!-- Sort Menu -->
 <!ENTITY sortMenu.label "Renditi sipas">
 <!ENTITY sortMenu.accesskey "R">
 <!ENTITY sortByDateCmd.label "Datash">
@@ -228,7 +187,6 @@
 <!ENTITY watchedThreadsWithUnreadCmd.accesskey "M">
 <!ENTITY ignoredThreadsCmd.label "Rrjedha të Shpërfillura">
 <!ENTITY ignoredThreadsCmd.accesskey "S">
-
 <!ENTITY headersMenu.label "Tituj">
 <!ENTITY headersMenu.accesskey "u">
 <!ENTITY headersAllCmd.label "Krejt">
@@ -245,7 +203,6 @@
 <!ENTITY bodyAsPlaintext.accesskey "e">
 <!ENTITY bodyAllParts.label "Krejt Pjesët e Trupit">
 <!ENTITY bodyAllParts.accesskey "P">
-
 <!ENTITY bodyMenuFeed.label "Sille Lëndën e Mesazhit Si">
 <!ENTITY bodyMenuFeed.accesskey "S">
 <!ENTITY viewFeedWebPage.label "Faqe Web">
@@ -254,17 +211,13 @@
 <!ENTITY viewFeedSummary.accesskey "P">
 <!ENTITY viewFeedSummaryFeedPropsPref.label "Format Parazgjedhje">
 <!ENTITY viewFeedSummaryFeedPropsPref.accesskey "F">
-
 <!ENTITY viewAttachmentsInlineCmd.label "Shfaqi Bashkëngjitjet Brendazi">
 <!ENTITY viewAttachmentsInlineCmd.accesskey "B">
-
 <!ENTITY pageSourceCmd.label "Burim Mesazhi">
 <!ENTITY pageSourceCmd.accesskey "B">
 <!ENTITY pageSourceCmd.key "u">
 <!ENTITY getNewMessagesCmd.key "y">
 <!ENTITY getAllNewMessagesCmd.key "Y">
-
-<!-- Search Menu -->
 <!ENTITY findMenu.label "Gjej">
 <!ENTITY findMenu.accesskey "G">
 <!ENTITY findCmd.label "Gjeni Në Këtë Mesazh…">
@@ -283,8 +236,6 @@
 <!ENTITY glodaSearchCmd.accesskey "G">
 <!ENTITY searchAddressesCmd.label "Kërkoni te Adresat…">
 <!ENTITY searchAddressesCmd.accesskey "A">
-
-<!-- Go Menu -->
 <!ENTITY goMenu.label "Shko">
 <!ENTITY goMenu.accesskey "o">
 <!ENTITY nextMenu.label "Pasuesi">
@@ -324,8 +275,6 @@
 <!ENTITY goRecentlyClosedTabs.accesskey "S">
 <!ENTITY startPageCmd.label "Faqe Fillimi Poste">
 <!ENTITY startPageCmd.accesskey "F">
-
-<!-- Message Menu -->
 <!ENTITY msgMenu.label "Mesazh">
 <!ENTITY msgMenu.accesskey "e">
 <!ENTITY newMsgCmd.label "Mesazh i Ri">
@@ -367,7 +316,7 @@
 <!ENTITY editTemplateMsgCmd.label "Përpunoni Gjedhen">
 <!ENTITY editTemplateMsgCmd.accesskey "P">
 <!ENTITY newMsgFromTemplateCmd.label "Mesazh i Ri prej Gjedheje">
-<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN"><!-- do not change "VK_RETURN" -->
+<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN">
 <!ENTITY createFilter.label "Krijoni Filtër Prej Mesazhi…">
 <!ENTITY createFilter.accesskey "F">
 <!ENTITY moveMsgToMenu.label "Shpjere Te">
@@ -445,11 +394,7 @@
 <!ENTITY openFeedSummary.accesskey "P">
 <!ENTITY openFeedWebPageInMP.label "Këmbe Faqe Web me Përmbledhje te Kuti Mesazhesh">
 <!ENTITY openFeedWebPageInMP.accesskey "K">
-
-<!-- Windows Menu -->
 <!ENTITY windowMenu.label "Dritare">
-
-<!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Mjete">
 <!ENTITY tasksMenu.accesskey "M">
 <!ENTITY messengerCmd.label "Postë &amp; Grupe Lajmesh">
@@ -462,10 +407,10 @@
 <!ENTITY activitymanager.accesskey "P">
 <!ENTITY imAccountsStatus.label "Gjendje fjalosjeje">
 <!ENTITY imAccountsStatus.accesskey "G">
-<!ENTITY imStatus.available          "I gatshëm">
-<!ENTITY imStatus.unavailable        "Jo i gatshëm">
-<!ENTITY imStatus.offline            "Jo në linjë">
-<!ENTITY imStatus.showAccounts       "Shfaq Llogari…">
+<!ENTITY imStatus.available "I gatshëm">
+<!ENTITY imStatus.unavailable "Jo i gatshëm">
+<!ENTITY imStatus.offline "Jo në linjë">
+<!ENTITY imStatus.showAccounts "Shfaq Llogari…">
 <!ENTITY joinChatCmd.label "Hyni Në Fjalosje…">
 <!ENTITY joinChatCmd.accesskey "o">
 <!ENTITY savedFiles.label "Kartela të Ruajtura">
@@ -491,13 +436,7 @@
 <!ENTITY clearRecentHistory.accesskey "H">
 <!ENTITY accountManagerCmd2.label "Rregullime Llogarie">
 <!ENTITY accountManagerCmd2.accesskey "R">
-<!-- LOCALIZATION NOTE (accountManagerCmdUnix.accesskey):
-     Belongs to accountManagerCmd.label, which is placed under the Edit menu
-     on Unix systems
-  -->
 <!ENTITY accountManagerCmdUnix2.accesskey "A">
-
-<!-- Developer Tools Submenu -->
 <!ENTITY devtoolsMenu.label "Mjete Zhvilluesi">
 <!ENTITY devtoolsMenu.accesskey "e">
 <!ENTITY devToolboxCmd.label "Grup Mjetesh Zhvilluesi">
@@ -508,8 +447,6 @@
 <!ENTITY errorConsoleCmd.label "Konsol Gabimesh">
 <!ENTITY errorConsoleCmd.accesskey "K">
 <!ENTITY errorConsoleCmd.commandkey "j">
-
-<!-- Mail Toolbar -->
 <!ENTITY getMsgButton1.label "Merr Mesazhet">
 <!ENTITY newMsgButton.label "Shkruani">
 <!ENTITY replyButton.label "Përgjigju">
@@ -542,8 +479,6 @@
 <!ENTITY tagButton.label "Etiketë">
 <!ENTITY compactButton.label "Ngjeshe">
 <!ENTITY appmenuButton.label "Menu Aplikacionesh">
-
-<!-- Mail Toolbar Tooltips-->
 <!ENTITY advancedButton.tooltip "Kërkim i mëtejshëm në mesazhe">
 <!ENTITY getMsgButton.tooltip "Merrni mesazhe të rinj">
 <!ENTITY getAllNewMsgCmd.label "Merri Krejt Mesazhet">
@@ -572,48 +507,31 @@
 <!ENTITY tagButton.tooltip "Etiketoni mesazhe">
 <!ENTITY compactButton.tooltip "Hiqini mesazhet e fshirë prej dosjes së përzgjedhur">
 <!ENTITY appmenuButton1.tooltip "Shfaq Menunë e &brandShortName;-it">
-
-<!-- Toolbar Button Popup -->
 <!ENTITY buttonMenuForwardAsInline.label "Përcille Brendazi">
 <!ENTITY buttonMenuForwardAsAttachment.label "Përcille Si Bashkëngjitje">
-
-<!-- Remote Content Button Popup -->
 <!ENTITY remoteContentOptionsAllowForMsg.label "Shfaq lëndë të largët në këtë mesazh">
 <!ENTITY remoteContentOptionsAllowForMsg.accesskey "S">
 <!ENTITY editRemoteContentSettings.label "Përpunoni mundësi mbi lëndë të largët…">
 <!ENTITY editRemoteContentSettings.accesskey "m">
 <!ENTITY editRemoteContentSettingsUnix.label "Përpunoni parapëlqime mbi lëndë të largët…">
 <!ENTITY editRemoteContentSettingsUnix.accesskey "p">
-
-<!-- Phishing Button Popup -->
 <!ENTITY phishingOptionIgnore.label "Shpërfille sinjalizimin për këtë mesazh">
 <!ENTITY phishingOptionIgnore.accesskey "n">
 <!ENTITY phishingOptionSettings.label "Përpunoni mundësi zbulimi mashtrimesh…">
 <!ENTITY phishingOptionSettings.accesskey "a">
 <!ENTITY phishingOptionSettingsUnix.label "Përpunoni parapëlqime zbulimi mashtrimesh…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "p">
-
-<!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Mesazh i Ri">
 <!ENTITY appmenuNewContactCmd.label "Kontakt Nga Libër Adresash…">
-<!ENTITY appmenuEditMenu.label "Përpunoni">
 <!ENTITY appmenuToolbarLayout.label "Skemë Paneli…">
-<!ENTITY appmenuSelectThread.label "Përzgjidhni Prurje">
-<!ENTITY appmenuSelectFlagged.label "Përzgjidhni Mesazhe Me Yll">
-
-<!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Etiketë e Re…">
 <!ENTITY addNewTag.accesskey "E">
 <!ENTITY manageTags.label "Administroni Etiketa…">
 <!ENTITY manageTags.accesskey "A">
-
-<!-- Folder Pane -->
 <!ENTITY folderNameColumn.label "Emër">
 <!ENTITY folderUnreadColumn.label "Të palexuar">
 <!ENTITY folderTotalColumn.label "Gjithsej">
 <!ENTITY folderSizeColumn.label "Madhësi">
-
-<!-- Folder Pane Context Menu -->
 <!ENTITY folderContextGetMessages.label "Merr Mesazhet">
 <!ENTITY folderContextGetMessages.accesskey "M">
 <!ENTITY folderContextMarkAllFoldersRead.label "Vëru Shenjë Krejt Dosjeve Si të Lexuara">
@@ -642,8 +560,6 @@
 <!ENTITY folderContextUnsubscribe.accesskey "S">
 <!ENTITY folderContextMarkNewsgroupRead.label "Shënoje Grupin e Lajmeve si Të lexuar">
 <!ENTITY folderContextMarkNewsgroupRead.accesskey "L">
-<!ENTITY folderContextMarkMailFolderRead.label "Shënoje Dosjen si Të lexuar">
-<!ENTITY folderContextMarkMailFolderRead.accesskey "l">
 <!ENTITY folderContextSubscribe.label "Pajtohuni…">
 <!ENTITY folderContextSubscribe.accesskey "P">
 <!ENTITY folderContextSearchForMessages.label "Kërkoni Te Mesazhet…">
@@ -654,15 +570,9 @@
 <!ENTITY folderContextFavoriteFolder.accesskey "o">
 <!ENTITY folderContextSettings2.label "Rregullime">
 <!ENTITY folderContextSettings2.accesskey "R">
-
-<!-- Search Bar -->
 <!ENTITY SearchNameOrEmail.label "Emri ose Email-i përmban:">
 <!ENTITY SearchNameOrEmail.accesskey "E">
-
-<!-- Gloda Search Bar -->
 <!ENTITY glodaSearchBar.placeholder "Kërkoni te mesazhet…">
-
-<!-- Quick Search Menu Bar -->
 <!ENTITY searchSubjectMenu.label "Subjekt">
 <!ENTITY searchFromMenu.label "Nga">
 <!ENTITY searchSubjectOrFromMenu.label "Subjekt ose Prej">
@@ -670,8 +580,6 @@
 <!ENTITY searchSubjectOrRecipientMenu.label "Subjekt, Për ose Cc">
 <!ENTITY searchMessageBody.label "Tërë Mesazhin">
 <!ENTITY saveAsVirtualFolderMenu.label "Ruajeni Kërkimin si Dosje…">
-
-<!-- Thread Pane -->
 <!ENTITY selectColumn.label "Përzgjidhni Mesazhe">
 <!ENTITY threadColumn.label "Rrjedhë">
 <!ENTITY fromColumn.label "Nga">
@@ -694,8 +602,6 @@
 <!ENTITY idColumn.label "Radhë sipas Marrjes">
 <!ENTITY attachmentColumn.label "Bashkëngjitje">
 <!ENTITY deleteColumn.label "Fshije">
-
-<!-- Thread Pane Tooltips -->
 <!ENTITY columnChooser2.tooltip "Përzgjidhni shtylla që të shfaqen">
 <!ENTITY selectColumn.tooltip "Aktivizoni/çaktivizoni përzgjedhjen e krejt mesazheve">
 <!ENTITY threadColumn2.tooltip "Shfaq rrjedha mesazhesh">
@@ -719,15 +625,9 @@
 <!ENTITY idColumn2.tooltip "Renditi sipas radhe marrjeje">
 <!ENTITY attachmentColumn2.tooltip "Renditi sipas bashkëngjitjesh">
 <!ENTITY deleteColumn.tooltip "Fshini një mesazh">
-
-<!-- Thread Pane Context Menu -->
 <!ENTITY contextNewMsgFromTemplate.label "Mesazh i Ri prej Gjedheje">
 <!ENTITY contextOpenNewWindow.label "Hape Mesazhin në Dritare të Re">
 <!ENTITY contextOpenNewWindow.accesskey "D">
-<!-- The contextOpenNewTab.accesskey ("T") potentially conflicts with
-     cutCmd.accessKey which is defined in textcontext.dtd from toolkit. Right
-     now, both menu items can't be visible at the same time, but should someone
-     enable copy/paste of message, this key would probably need to be changed. -->
 <!ENTITY contextOpenNewTab.label "Hape Mesazhin në Skedë të Re">
 <!ENTITY contextOpenNewTab.accesskey "S">
 <!ENTITY contextOpenConversation.label "Hape Mesazhin si Bisedë">
@@ -749,20 +649,10 @@
 <!ENTITY contextReplyAll.accesskey "T">
 <!ENTITY contextReplyList.label "Përgjigjuni te Lista">
 <!ENTITY contextReplyList.accesskey "L">
-<!ENTITY contextForward.label "Përcille">
-<!ENTITY contextForward.accesskey "c">
-<!ENTITY contextForwardAsMenu.label "Përcille Si">
-<!ENTITY contextForwardAsMenu.accesskey "S">
-<!ENTITY contextForwardAsInline.label "Brendazi">
-<!ENTITY contextForwardAsInline.accesskey "I">
-<!ENTITY contextForwardAsAttachmentItem.label "Bashkëngjitje">
-<!ENTITY contextForwardAsAttachmentItem.accesskey "A">
-<!ENTITY contextMultiForwardAsAttachment.label "Përcille si Bashkëngjitje">
-<!ENTITY contextMultiForwardAsAttachment.accesskey "B">
 <!ENTITY contextMoveMsgMenu.label "Shpjere Te">
 <!ENTITY contextMoveMsgMenu.accesskey "e">
-<!ENTITY contextMoveCopyMsgRecentMenu.label "Së fundi">
-<!ENTITY contextMoveCopyMsgRecentMenu.accesskey "F">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.label "Recent Destinations">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.accesskey "R">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Më të pëlqyerit">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "p">
 <!ENTITY contextCopyMsgMenu.label "Kopjoje Te">
@@ -772,10 +662,6 @@
 <!ENTITY contextKillThreadMenu.accesskey "I">
 <!ENTITY contextKillSubthreadMenu.label "Shpërfille Nënrrjedhën">
 <!ENTITY contextWatchThreadMenu.label "Mbikëqyre Rrjedhën">
-<!-- LOCALIZATION NOTE (contextWatchThreadMenu.accesskey):
-     In the en-US locale we ran out of access keys, so there is an empty access key for
-     Watch Thread. Localizers can pick a suitable key
-  -->
 <!ENTITY contextWatchThreadMenu.accesskey "q">
 <!ENTITY contextSaveAs.label "Ruajeni Si…">
 <!ENTITY contextSaveAs.accesskey "R">
@@ -783,48 +669,10 @@
 <!ENTITY contextPrint.accesskey "Y">
 <!ENTITY contextPrintPreview.label "Paraparje e Shtypjes">
 <!ENTITY contextPrintPreview.accesskey "a">
-
-<!-- LOCALIZATION NOTE (columnPicker.applyTo.label):
-     This option in the thread pane column picker pops up a sub-menu containing
-     the "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" options. This item indicates
-     a desire to apply the currently displayed set of columns to some other
-     folder(s). The sub-menu items indicate whether we want to apply it to just
-     a folder or also its children.
-  -->
 <!ENTITY columnPicker.applyTo.label "Zbatojini shtyllat te…">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolder.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolderAndChildren.label". It indicates a desire to
-     apply the currently display thread pane column settings to a single folder
-     that the user selects using the same widget as the move to/copy to
-     mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolder.label "Dosje…">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolderAndChildren.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolder.label". It indicates a desire to
-     apply the currently display thread pane column settings to a folder and all
-     of its descendents. The user selects the folder using the same widget as the
-     move to/copy to mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolderAndChildren.label "Dosje dhe pjellat e saj…">
-<!-- LOCALIZATION NOTE (columnPicker.thisFolder.label):
-     This is used in the folder selection widget for the
-     "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" menu options. Whenever
-     a folder has children, it results in a menu popup; the first menu item
-     in that popup is given this label to indicate that that folder should be
-     selected. For example, if folder "A" has two children, "B" and "C", then
-     when the user hovers over "A", a new popup menu will be displayed whose
-     items are "This folder", "B", and "C". This is the equivalent of the
-     "File here" option for the move to/copy to widget.
-  -->
 <!ENTITY columnPicker.thisFolder.label "Këtë dosje">
-
-<!-- Media (video/audio) controls -->
 <!ENTITY contextPlay.label "Luaje">
 <!ENTITY contextPlay.accesskey "L">
 <!ENTITY contextPause.label "Ndale">
@@ -833,37 +681,10 @@
 <!ENTITY contextMute.accesskey "a">
 <!ENTITY contextUnmute.label "Me Zë">
 <!ENTITY contextUnmute.accesskey "m">
-
-<!-- Quick Search Bar -->
-<!-- LOCALIZATION NOTE (quickSearchCmd.key):
-     This is actually the key used for the global message search box; we have
-     not changed
-  -->
 <!ENTITY quickSearchCmd.key "k">
-<!-- LOCALIZATION NOTE (search.label.base1):
-     This is the base of the empty text for the global search box. We replace
-     #1 with the contents of the appropriate search.keyLabel.* value for the
-     platform.
-     The goal is to convey to the user that typing in the box will allow them
-     to search for messages globally and that there is a hotkey they can press
-     to get to the box faster. If the global indexer is disabled, the search
-     box will be collapsed and the user will never see this message.
-  -->
 <!ENTITY search.label.base1 "Kërkim #1">
-<!-- LOCALIZATION NOTE (search.keyLabel.nonmac):
-     The description of the key-binding to get into the global search box on
-     windows and linux (which use the control key). We use the key defined in
-     the quickSearchCmd.key entity defined above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.nonmac "&lt;Ctrl+K&gt;">
-<!-- LOCALIZATION NOTE (search.keyLabel.mac):
-     The description of the key-binding to get into the global search box on mac
-     systems. We use the key defined in the quickSearchCmd.key entity defined
-     above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.mac "&lt;&#x2318;K&gt;">
-
-<!-- Message Header Context Menu -->
 <!ENTITY AddToAddressBook.label "Shtoni te Libër Adresash…">
 <!ENTITY AddToAddressBook.accesskey "S">
 <!ENTITY AddDirectlyToAddressBook.label "Shto te Libër Adresash">
@@ -888,12 +709,8 @@
 <!ENTITY CreateFilterFrom.accesskey "F">
 <!ENTITY reportPhishingURL.label "Njoftoni për Email Mashtrues">
 <!ENTITY reportPhishingURL.accesskey "N">
-
-<!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Shtoni Fjalorë…">
 <!ENTITY spellAddDictionaries.accesskey "S">
-
-<!-- Content Pane Context Menu -->
 <!ENTITY saveLinkAsCmd.label "Ruajeni Lidhjen Si…">
 <!ENTITY saveLinkAsCmd.accesskey "L">
 <!ENTITY saveImageAsCmd.label "Ruajeni Figurën Si…">
@@ -904,42 +721,28 @@
 <!ENTITY copyImageAllCmd.accesskey "P">
 <!ENTITY copyEmailCmd.label "Kopjo Adresë Email">
 <!ENTITY copyEmailCmd.accesskey "E">
-<!ENTITY stopCmd.label "Ndale">
-<!ENTITY stopCmd.accesskey "N">
-<!ENTITY reloadCmd.label "Ringarkoje">
-<!ENTITY reloadCmd.accesskey "R">
 <!ENTITY openInBrowser.label "Hape Në Shfletues">
 <!ENTITY openInBrowser.accesskey "H">
 <!ENTITY openLinkInBrowser.label "Hape Lidhjen Në Shfletues">
 <!ENTITY openLinkInBrowser.accesskey "H">
-
-<!-- Statusbar -->
 <!ENTITY statusText.label "U bë">
-
-<!-- Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.label "Minimizoje">
 <!ENTITY minimizeWindow.key "m">
 <!ENTITY bringAllToFront.label "Bjeri të Tëra Para">
 <!ENTITY zoomWindow.label "Zoom">
-
-<!-- Mac OS X Application Menu (Cocoa widgets) -->
-<!ENTITY preferencesCmdMac2.label       "Parapëlqime">
-<!ENTITY preferencesCmdMac.commandkey   ",">
-<!ENTITY preferencesCmdMac.modifiers    "accel">
-<!ENTITY servicesMenuMac.label          "Shërbime">
-<!ENTITY hideThisAppCmdMac.label        "Fshihe &brandShortName;-in">
-<!ENTITY hideThisAppCmdMac.commandkey   "H">
-<!ENTITY hideThisAppCmdMac.modifiers    "accel">
-<!ENTITY hideOtherAppsCmdMac.label      "Fshihi të Tjerat">
+<!ENTITY preferencesCmdMac2.label "Parapëlqime">
+<!ENTITY preferencesCmdMac.commandkey ",">
+<!ENTITY preferencesCmdMac.modifiers "accel">
+<!ENTITY servicesMenuMac.label "Shërbime">
+<!ENTITY hideThisAppCmdMac.label "Fshihe &brandShortName;-in">
+<!ENTITY hideThisAppCmdMac.commandkey "H">
+<!ENTITY hideThisAppCmdMac.modifiers "accel">
+<!ENTITY hideOtherAppsCmdMac.label "Fshihi të Tjerat">
 <!ENTITY hideOtherAppsCmdMac.commandkey "H">
-<!ENTITY hideOtherAppsCmdMac.modifiers  "accel,alt">
-<!ENTITY showAllAppsCmdMac.label        "Shfaqi të Tëra">
-
-<!-- Mac OS X Dock Icon pop-up menu -->
-<!ENTITY dockOptions.label              "Mundësi Ikone Aplikacioni…">
-<!ENTITY writeNewMessageDock.label      "Shkruani Mesazh të Ri">
-<!ENTITY openAddressBookDock.label      "Hap Libër Adresash">
-
-<!-- Content tab Navigation buttons -->
-<!ENTITY browseBackButton.tooltip    "Shkoni mbrapsht një faqe">
+<!ENTITY hideOtherAppsCmdMac.modifiers "accel,alt">
+<!ENTITY showAllAppsCmdMac.label "Shfaqi të Tëra">
+<!ENTITY dockOptions.label "Mundësi Ikone Aplikacioni…">
+<!ENTITY writeNewMessageDock.label "Shkruani Mesazh të Ri">
+<!ENTITY openAddressBookDock.label "Hap Libër Adresash">
+<!ENTITY browseBackButton.tooltip "Shkoni mbrapsht një faqe">
 <!ENTITY browseForwardButton.tooltip "Shkoni përpara një faqe">

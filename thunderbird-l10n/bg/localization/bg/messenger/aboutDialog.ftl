@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-update-whats-new = Новото в това издание
 about-dialog-title = Относно { -brand-full-name }
 release-notes-link = Какво е новото
@@ -21,22 +17,13 @@ update-other-instance-handling-updates = Друг екземпляр на { -bra
 update-manual = Обновяванията са налични на <a data-l10n-name="manual-link"/>
 update-unsupported = Не може повече да обновявате тази система. <a data-l10n-name="unsupported-link">Научете повече</a>
 update-restarting = Рестартиране…
-# Variables:
-#   $channel (String): description of the update channel (e.g. "release", "beta", "nightly" etc.)
 channel-description = Канал за обновяване <span data-l10n-name="current-channel">{ $channel }</span> .
 warning-desc-version = Това е изпитателно издание на { -brand-short-name } и може да е нестабилно.
 warning-desc-telemetry = С цел подобряване, { -brand-short-name } автоматично изпраща информация за производителността, хардуера, начина на ползване и настройките към { -vendor-short-name }.
-# Example of resulting string: 66.0.1 (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 66.0.1
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version = { $version } ({ $bits }-бита)
-# Example of resulting string: 66.0a1 (2019-01-16) (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird for Daily builds, e.g. 66.0a1
-#   $isodate (String): date in ISO format, e.g. 2019-01-16
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version-nightly = { $version } ({ $isodate }) ({ $bits }-бита)
+aboutdialog-version-arch = { $version } ({ $arch })
+aboutdialog-version-arch-nightly = { $version } ({ $isodate }) ({ $arch })
 aboutdialog-update-checking-failed = Невъзможна проверка за обновявания.
 community-experimental = <a data-l10n-name="community-exp-mozilla-link">{ -vendor-short-name }</a> е <a data-l10n-name="community-exp-credits-link">глобална, сплотена общност</a>, работеща за една отворена и общодостъпна Мрежа.
 community-desc = { -brand-short-name } е разработен от <a data-l10n-name="community-mozilla-link">{ -vendor-short-name }</a>, <a data-l10n-name="community-credits-link">глобална, сплотена общност</a>, работеща за една отворена и общодостъпна Мрежа.

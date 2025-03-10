@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 text-action-undo =
     .label = Zhbëje
     .accesskey = Z
@@ -22,10 +18,8 @@ text-action-copy =
     .accesskey = K
 text-action-copy-shortcut =
     .key = C
-# This command copies the link, removing additional
-# query parameters used to track users across sites.
-text-action-strip-on-share =
-    .label = Kopjoje Pa Gjurmim Sajti
+text-action-copy-clean-link =
+    .label = Kopjo Lidhje të Pastër
     .accesskey = K
 text-action-paste =
     .label = Ngjite
@@ -38,6 +32,9 @@ text-action-paste-shortcut =
 text-action-delete =
     .label = Fshije
     .accesskey = F
+text-action-reveal-password =
+    .label = Shfaqe Fjalëkalimin
+    .accesskey = f
 text-action-select-all =
     .label = Përzgjidhe Krejt
     .accesskey = e

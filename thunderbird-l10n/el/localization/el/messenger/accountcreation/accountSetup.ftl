@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-setup-tab-title = Ρύθμιση λογαριασμού
-
-## Header
-
 account-setup-title = Ρύθμιση υπάρχουσας διεύθυνσης email
 account-setup-description = Για να χρησιμοποιήσετε την υπάρχουσα διεύθυνση email σας, συμπληρώστε τα διαπιστευτήριά σας.
 account-setup-secondary-description = Το { -brand-product-name } θα αναζητήσει αυτόματα για τις λειτουργικές και προτεινόμενες ρυθμίσεις διακομιστή.
 account-setup-success-title = Επιτυχής δημιουργία λογαριασμού
 account-setup-success-description = Μπορείτε πλέον να χρησιμοποιήσετε αυτόν τον λογαριασμό με το { -brand-short-name }.
 account-setup-success-secondary-description = Μπορείτε να βελτιώσετε την εμπειρία σας συνδέοντας σχετικές υπηρεσίες και διαμορφώνοντας τις σύνθετες ρυθμίσεις λογαριασμού.
-
-## Form fields
-
 account-setup-name-label = Το ονοματεπώνυμό σας
     .accesskey = ο
-# Note: "John Doe" is a multiple-use name that is used when the true name of a person is unknown. We use this fake name as an input placeholder. Translators should update this to reflect the placeholder name of their language/country.
 account-setup-name-input =
     .placeholder = Ονοματεπώνυμο
 account-setup-name-info-icon =
@@ -35,8 +24,6 @@ account-setup-email-warning-icon =
 account-setup-password-label = Κωδικός πρόσβασης
     .accesskey = Κ
     .title = Προαιρετικό, θα χρησιμοποιηθεί μόνο για την επαλήθευση του ονόματος χρήστη
-account-provisioner-button = Απόκτηση νέας διεύθυνσης email
-    .accesskey = Α
 account-setup-password-toggle-show =
     .title = Εμφάνιση κωδικού πρόσβασης σε κείμενο
 account-setup-password-toggle-hide =
@@ -45,15 +32,10 @@ account-setup-remember-password = Απομνημόνευση κωδικού πρ
     .accesskey = Α
 account-setup-exchange-label = Η σύνδεσή σας
     .accesskey = σ
-#   YOURDOMAIN refers to the Windows domain in ActiveDirectory. yourusername refers to the user's account name in Windows.
 account-setup-exchange-input =
     .placeholder = DOMAIN\όνομαχρήστη
-#   Domain refers to the Windows domain in ActiveDirectory. We mean the user's login in Windows at the local corporate network.
 account-setup-exchange-info-icon =
     .title = Σύνδεση σε τομέα
-
-## Action buttons
-
 account-setup-button-cancel = Ακύρωση
     .accesskey = Α
 account-setup-button-manual-config = Χειροκίνητη ρύθμιση
@@ -66,15 +48,11 @@ account-setup-button-continue = Συνέχεια
     .accesskey = Σ
 account-setup-button-done = Τέλος
     .accesskey = Τ
-
-## Notifications
-
 account-setup-looking-up-settings = Αναζήτηση ρυθμίσεων παραμέτρων…
 account-setup-looking-up-settings-guess = Αναζήτηση ρυθμίσεων: Δοκιμή κοινών ονομάτων διακομιστών…
 account-setup-looking-up-settings-half-manual = Αναζήτηση ρυθμίσεων: Έλεγχος διακομιστή…
 account-setup-looking-up-disk = Αναζήτηση ρυθμίσεων: εγκατάσταση του { -brand-short-name }…
 account-setup-looking-up-isp = Αναζήτηση ρυθμίσεων: Πάροχος ηλεκτρονικού ταχυδρομείου…
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-looking-up-db = Αναζήτηση ρυθμίσεων: Βάση δεδομένων Mozilla ISP…
 account-setup-looking-up-mx = Αναζήτηση ρυθμίσεων: Τομέας εισερχόμενης αλληλογραφίας…
 account-setup-looking-up-exchange = Αναζήτηση ρυθμίσεων: Διακομιστής Exchange…
@@ -85,15 +63,10 @@ account-setup-success-guess = Ρυθμίσεις που βρέθηκαν κατ�
 account-setup-success-guess-offline = Είστε εκτός σύνδεσης. Μαντέψαμε ορισμένες ρυθμίσεις αλλά θα χρειαστεί να εισαγάγετε τις σωστές.
 account-setup-success-password = Ο κωδικός πρόσβασης είναι εντάξει
 account-setup-success-addon = Το πρόσθετο εγκαταστάθηκε επιτυχώς
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-success-settings-db = Βρέθηκε ρύθμιση στην βάση δεδομένων του Mozilla ISP.
 account-setup-success-settings-disk = Βρέθηκε ρύθμιση στην εγκατάσταση του { -brand-short-name }.
 account-setup-success-settings-isp = Βρέθηκε ρύθμιση στον πάροχο ηλεκτρονικού ταχυδρομείου.
-# Note: Microsoft Exchange is a product name.
 account-setup-success-settings-exchange = Βρέθηκε ρύθμιση για τον διακομιστή Microsoft Exchange.
-
-## Illustrations
-
 account-setup-step1-image =
     .title = Αρχική ρύθμιση
 account-setup-step2-image =
@@ -112,11 +85,6 @@ account-setup-documentation-help = Τεκμηρίωση ρύθμισης
 account-setup-forum-help = Φόρουμ υποστήριξης
 account-setup-privacy-help = Πολιτική απορρήτου
 account-setup-getting-started = Ξεκινώντας
-
-## Results area
-
-# Variables:
-#  $count (Number) - Number of available protocols.
 account-setup-results-area-title =
     { $count ->
         [one] Διαθέσιμη ρύθμιση
@@ -124,7 +92,6 @@ account-setup-results-area-title =
     }
 account-setup-result-imap-description = Διατηρήστε συγχρονισμένους τους φακέλους και τα email σας με τον διακομιστή σας
 account-setup-result-pop-description = Διατηρήστε τους φακέλους και τα email σας στον υπολογιστή σας
-# Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Χρησιμοποιήστε τον διακομιστή Microsoft Exchange ή τις υπηρεσίες cloud του Office365
 account-setup-incoming-title = Εισερχόμενα
 account-setup-outgoing-title = Εξερχόμενα
@@ -134,54 +101,32 @@ account-setup-result-no-encryption = Χωρίς κρυπτογράφηση
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
 account-setup-result-outgoing-existing = Χρήση υπάρχοντος διακομιστή SMTP εξερχομένων
-# Variables:
-#  $incoming (String): The email/username used to log into the incoming server
-#  $outgoing (String): The email/username used to log into the outgoing server
 account-setup-result-username-different = Εισερχόμενα: { $incoming }, Εξερχόμενα: { $outgoing }
-
-## Error messages
-
-# Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
 account-setup-credentials-incomplete = Η ταυτοποίηση απέτυχε. Είτε τα διαπιστευτήρια που εισαγάγατε είναι εσφαλμένα είτε απαιτείται ξεχωριστό όνομα χρήστη για σύνδεση. Αυτό το όνομα χρήστη είναι συνήθως το όνομα χρήστη του τομέα σας στα Windows, με ή χωρίς το όνομα τομέα (για παράδειγμα, janedoe ή AD\\janedoe).
 account-setup-credentials-wrong = Η ταυτοποίηση απέτυχε. Παρακαλώ ελέγξτε το όνομα χρήστη και τον κωδικό πρόσβασης
 account-setup-find-settings-failed = Το { -brand-short-name } απέτυχε να εντοπίσει τις ρυθμίσεις του λογαριασμού ηλεκτρονικής αλληλογραφίας σας
 account-setup-exchange-config-unverifiable = Δεν ήταν δυνατή η επαλήθευση των ρυθμίσεων παραμέτρων. Αν το όνομα χρήστη και ο κωδικός πρόσβασής σας είναι σωστά, ο διαχειριστής του διακομιστή ενδέχεται να έχει απενεργοποιήσει τις επιλεγμένες ρυθμίσεις παραμέτρων για τον λογαριασμό σας. Δοκιμάστε να επιλέξετε άλλο πρωτόκολλο.
-account-setup-provisioner-error = Προέκυψε σφάλμα κατά τη ρύθμιση του νέου σας λογαριασμού στο { -brand-short-name }. Παρακαλώ δοκιμάστε να τον ρυθμίσετε χειροκίνητα με τα διαπιστευτήριά σας.
-
-## Manual configuration area
-
 account-setup-manual-config-title = Ρυθμίσεις διακομιστή
 account-setup-incoming-server-legend = Διακομιστής εισερχομένων
 account-setup-protocol-label = Πρωτόκολλο:
 account-setup-hostname-label = Όνομα υπολογιστή:
 account-setup-port-label = Θύρα:
     .title = Ορίστε τον αριθμό θύρας σε 0 για αυτόματη ανίχνευση
-account-setup-auto-description = Το { -brand-short-name } θα προσπαθήσει να εντοπίσει αυτόματα τα πεδία που παραμένουν κενά.
+account-setup-auto-description = Το { -brand-short-name } θα προσπαθήσει να εντοπίσει αυτόματα τα κενά πεδία.
 account-setup-ssl-label = Ασφάλεια σύνδεσης:
 account-setup-outgoing-server-legend = Διακομιστής εξερχομένων
-
-## Incoming/Outgoing SSL Authentication options
-
 ssl-autodetect-option = Αυτόματος εντοπισμός
 ssl-no-authentication-option = Χωρίς ταυτοποίηση
 ssl-cleartext-password-option = Κανονικός κωδικός πρόσβασης
 ssl-encrypted-password-option = Κρυπτογραφημένος κωδικός πρόσβασης
-
-## Incoming/Outgoing SSL options
-
 ssl-noencryption-option = Κανένα
 account-setup-auth-label = Μέθοδος ταυτοποίησης:
 account-setup-username-label = Όνομα χρήστη:
 account-setup-advanced-setup-button = Σύνθετη διαμόρφωση
     .accesskey = Σ
-
-## Warning insecure server dialog
-
 account-setup-insecure-title = Προειδοποίηση!
 account-setup-insecure-incoming-title = Ρυθμίσεις εισερχομένων:
 account-setup-insecure-outgoing-title = Ρυθμίσεις εξερχομένων:
-# Variables:
-#  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = Το <b>{ $server }</b> δεν χρησιμοποιεί κρυπτογράφηση.
 account-setup-warning-cleartext-details = Οι επισφαλείς διακομιστές αλληλογραφίας δεν χρησιμοποιούν κρυπτογραφημένες συνδέσεις για την προστασία των κωδικών πρόσβασης και των προσωπικών σας πληροφοριών. Αν συνδεθείτε σε αυτόν τον διακομιστή, οι κωδικοί πρόσβασης και οι προσωπικές σας πληροφορίες ενδέχεται να εκτεθούν.
 account-setup-insecure-server-checkbox = Κατανοώ τους κινδύνους
@@ -191,17 +136,9 @@ insecure-dialog-cancel-button = Αλλαγή ρυθμίσεων
     .accesskey = ρ
 insecure-dialog-confirm-button = Επιβεβαίωση
     .accesskey = Ε
-
-## Warning Exchange confirmation dialog
-
-# Variables:
-#  $domain (String): The name of the server where the configuration was found, e.g. rackspace.com.
 exchange-dialog-question = Το { -brand-short-name } βρήκε τις πληροφορίες ρύθμισης του λογαριασμού σας στο { $domain }. Θέλετε να συνεχίσετε και να υποβάλετε τα διαπιστευτήριά σας;
 exchange-dialog-confirm-button = Σύνδεση
 exchange-dialog-cancel-button = Ακύρωση
-
-## Dismiss account creation dialog
-
 exit-dialog-title = Δεν έχουν ρυθμιστεί λογαριασμοί email
 exit-dialog-description = Θέλετε σίγουρα να ακυρώσετε τη διαδικασία ρύθμισης; Το { -brand-short-name } μπορεί να χρησιμοποιηθεί ακόμα και χωρίς λογαριασμό email, αλλά πολλές λειτουργίες δεν θα είναι διαθέσιμες.
 account-setup-no-account-checkbox = Χρήση του { -brand-short-name } χωρίς λογαριασμό email
@@ -210,22 +147,13 @@ exit-dialog-cancel-button = Συνέχεια ρύθμισης
     .accesskey = Σ
 exit-dialog-confirm-button = Κλείσιμο ρύθμισης
     .accesskey = Κ
-
-## Alert dialogs
-
 account-setup-creation-error-title = Σφάλμα δημιουργίας λογαριασμού
 account-setup-error-server-exists = Ο διακομιστής εισερχομένων υπάρχει ήδη.
 account-setup-confirm-advanced-title = Επιβεβαίωση σύνθετων ρυθμίσεων
 account-setup-confirm-advanced-description = Αυτό το παράθυρο διαλόγου θα κλείσει και θα δημιουργηθεί ένας λογαριασμός με τις τρέχουσες ρυθμίσεις, ακόμη και αν η ρύθμιση παραμέτρων είναι εσφαλμένη. Θέλετε να συνεχίσετε;
-
-## Addon installation section
-
 account-setup-addon-install-title = Εγκατάσταση
 account-setup-addon-install-intro = Ένα τρίτο πρόσθετο μπορεί να σας επιτρέψει την πρόσβαση στον λογαριασμό email σας σε αυτόν τον διακομιστή:
 account-setup-addon-no-protocol = Αυτός ο διακομιστής email δυστυχώς δεν υποστηρίζει ανοικτά πρωτόκολλα. { account-setup-addon-install-intro }
-
-## Success view
-
 account-setup-settings-button = Ρυθμίσεις λογαριασμού
 account-setup-encryption-button = Διατερματική κρυπτογράφηση
 account-setup-signature-button = Προσθήκη υπογραφής
@@ -236,15 +164,11 @@ account-setup-calendar-button = Σύνδεση σε απομακρυσμένο �
 account-setup-linked-services-title = Σύνδεση σχετικών υπηρεσιών
 account-setup-linked-services-description = Το { -brand-short-name } ανίχνευσε άλλες συνδεδεμένες υπηρεσίες στον λογαριασμό email σας.
 account-setup-no-linked-description = Ρυθμίστε άλλες υπηρεσίες για να αξιοποιήσετε στο έπακρο το { -brand-short-name } σας.
-# Variables:
-# $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
     { $count ->
         [one] Το { -brand-short-name } βρήκε ένα συνδεδεμένο ευρετήριο στον λογαριασμό email σας.
        *[other] Το { -brand-short-name } βρήκε { $count } συνδεδεμένα ευρετήρια στον λογαριασμό email σας.
     }
-# Variables:
-# $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
     { $count ->
         [one] Το { -brand-short-name } βρήκε ένα συνδεδεμένο ημερολόγιο στον λογαριασμό email σας.
@@ -263,9 +187,6 @@ account-setup-existing-calendar = Συνδεδεμένο
     .title = Το ημερολόγιο έχει ήδη συνδεθεί
 account-setup-connect-all-calendars = Σύνδεση όλων των ημερολογίων
 account-setup-connect-all-address-books = Σύνδεση όλων των ευρετηρίων
-
-## Calendar synchronization dialog
-
 calendar-dialog-title = Σύνδεση ημερολογίου
 calendar-dialog-cancel-button = Ακύρωση
     .accesskey = Α
@@ -277,8 +198,6 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Χρώμα
 account-setup-calendar-refresh-label = Ανανέωση
 account-setup-calendar-refresh-manual = Χειροκίνητα
-# Variables:
-# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Κάθε λεπτό

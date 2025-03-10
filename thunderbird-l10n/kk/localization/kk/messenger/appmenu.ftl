@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Синхрондау
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Шығу…
     .accesskey = ы
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Жаңа тіркелгі
 appmenu-new-account-panel =
     .label = Жаңа тіркелгі
     .accesskey = Ж
-appmenu-create-new-mail-account =
-    .label = Жаңа эл. пошта адресін алу
-    .accesskey = л
-appmenu-new-mail-account =
-    .label = Бар болып тұрған эл. пошта адресі
-    .accesskey = е
 appmenu-new-email-account =
     .label = Эл. пошта
     .accesskey = Э
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Жаңалықтар тобы
     .accesskey = т
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Жаңа адрестік кітапша
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP адрестік кітапшасы
     .accesskey = п
-
-## Create
-
 appmenu-create-panel-title =
     .title = Жасау
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Контакт
     .accesskey = К
-
-## Open
-
 appmenu-open-file-panel =
     .label = Файлдан ашу
     .accesskey = ш
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Күнтізбе…
     .accesskey = К
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Түрі
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Қаріп өлшемін үлкейту
 appmenuitem-font-size-reduce =
     .tooltiptext = Қаріп өлшемін кішірейту
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }пикс
     .tooltiptext = Қаріп өлшемін қалпына келтіру
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Құралдар
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Экспорттау
     .accesskey = Э
+appmenu-export-for-mobile =
+    .label = Мобильді үшін экспорттау
+    .accesskey = п
 appmenu-tools-message-search =
     .label = Хабарламалардан іздеу
     .accesskey = з
@@ -163,16 +133,10 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Әзірлеуші құралдары
     .accesskey = ш
-
-## Help
-
 appmenu-help-panel-title =
     .title = Көмек
 appmenu-help-get-help =
     .label = Көмек алу
-    .accesskey = м
-appmenu-help-explore-features =
-    .label = Мүмкіндіктерді зерттеу
     .accesskey = м
 appmenu-help-get-release-help =
     .label = { -brand-short-name } бойынша көмек алу
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = { -brand-short-name } туралы
     .accesskey = а
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = { -brand-shorter-name } жаңартуы жүктелуде
 appmenuitem-banner-update-available =

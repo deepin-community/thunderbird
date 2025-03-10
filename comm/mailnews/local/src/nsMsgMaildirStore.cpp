@@ -19,6 +19,7 @@
 #include "nsIInputStreamPump.h"
 #include "nsCOMArray.h"
 #include "nsIFile.h"
+#include "nsLocalFile.h"
 #include "nsNetUtil.h"
 #include "nsIMsgDatabase.h"
 #include "nsMsgUtils.h"
@@ -32,7 +33,6 @@
 #include "nsIMessenger.h"
 #include "nsThreadUtils.h"
 #include "mozilla/Logging.h"
-#include "mozilla/SlicedInputStream.h"
 
 static mozilla::LazyLogModule MailDirLog("MailDirStore");
 
@@ -113,10 +113,17 @@ void MaildirScanner::NextFile() {
     mStatus = mDirEnumerator->GetNextFile(getter_AddRefs(f));
   }
   if (NS_SUCCEEDED(mStatus) && f) {
+    // Try and provide the listener a sensible(ish) envDate.
+    PRTime mtime;
+    nsresult rv = f->GetLastModifiedTime(&mtime);
+    if (NS_FAILED(rv)) {
+      mtime = 0;
+    }
+
     // Start streaming the next message.
     nsAutoCString storeToken;
     f->GetNativeLeafName(storeToken);
-    mStatus = mScanListener->OnStartMessage(storeToken);
+    mStatus = mScanListener->OnStartMessage(storeToken, ""_ns, mtime);
 
     nsCOMPtr<nsIInputStream> stream;
     if (NS_SUCCEEDED(mStatus)) {
@@ -284,10 +291,9 @@ nsresult nsMsgMaildirStore::CreateMaildir(nsIFile* path) {
   }
 
   // Create tmp, cur leaves
-  nsCOMPtr<nsIFile> leaf(do_CreateInstance(NS_LOCAL_FILE_CONTRACTID, &rv));
+  nsCOMPtr<nsIFile> leaf = new nsLocalFile();
+  rv = leaf->InitWithFile(path);
   NS_ENSURE_SUCCESS(rv, rv);
-
-  leaf->InitWithFile(path);
 
   leaf->AppendNative("tmp"_ns);
   rv = leaf->Create(nsIFile::DIRECTORY_TYPE, 0700);
@@ -477,8 +483,7 @@ NS_IMETHODIMP nsMsgMaildirStore::RenameFolder(nsIMsgFolder* aFolder,
   uint32_t numChildren;
   aFolder->GetNumSubFolders(&numChildren);
   if (numChildren > 0) {
-    sbdPathFile = do_CreateInstance(NS_LOCAL_FILE_CONTRACTID, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
+    sbdPathFile = new nsLocalFile();
     rv = sbdPathFile->InitWithFile(oldPathFile);
     NS_ENSURE_SUCCESS(rv, rv);
     GetDirectoryForFolder(sbdPathFile);
@@ -684,8 +689,6 @@ nsMsgMaildirStore::GetNewMsgOutputStream(nsIMsgFolder* aFolder,
     rv = db->CreateNewHdr(nsMsgKey_None, aNewMsgHdr);
     NS_ENSURE_SUCCESS(rv, rv);
   }
-  // With maildir, messages have whole file to themselves.
-  (*aNewMsgHdr)->SetMessageOffset(0);
 
   // We're going to save the new message into the maildir 'tmp' folder.
   // When the message is completed, it can be moved to 'cur'.
@@ -717,7 +720,7 @@ nsMsgMaildirStore::GetNewMsgOutputStream(nsIMsgFolder* aFolder,
   NS_ENSURE_SUCCESS(rv, rv);
   newFile->GetNativeLeafName(newName);
   // save the file name in the message header - otherwise no way to retrieve it
-  (*aNewMsgHdr)->SetStringProperty("storeToken", newName);
+  (*aNewMsgHdr)->SetStoreToken(newName);
 
   return MsgNewBufferedFileOutputStream(aResult, newFile,
                                         PR_WRONLY | PR_CREATE_FILE, 00600);
@@ -732,7 +735,7 @@ nsMsgMaildirStore::DiscardNewMessage(nsIOutputStream* aOutputStream,
   aOutputStream->Close();
   // file path is stored in message header property "storeToken"
   nsAutoCString fileName;
-  aNewHdr->GetStringProperty("storeToken", fileName);
+  aNewHdr->GetStoreToken(fileName);
   if (fileName.IsEmpty()) return NS_ERROR_FAILURE;
 
   nsCOMPtr<nsIFile> path;
@@ -767,7 +770,7 @@ nsMsgMaildirStore::FinishNewMessage(nsIOutputStream* aOutputStream,
   // tmp filename is stored in "storeToken".
   // By now we'll have the Message-ID, which we'll base the final filename on.
   nsAutoCString tmpName;
-  aNewHdr->GetStringProperty("storeToken", tmpName);
+  aNewHdr->GetStoreToken(tmpName);
   if (tmpName.IsEmpty()) {
     NS_ERROR("FinishNewMessage - no storeToken in msg hdr!!");
     return NS_ERROR_FAILURE;
@@ -861,7 +864,7 @@ nsMsgMaildirStore::FinishNewMessage(nsIOutputStream* aOutputStream,
   rv = fromPath->MoveToNative(curPath, toName);
   NS_ENSURE_SUCCESS(rv, rv);
   // Update the db to reflect the final filename.
-  aNewHdr->SetStringProperty("storeToken", toName);
+  aNewHdr->SetStoreToken(toName);
   return NS_OK;
 }
 
@@ -882,7 +885,7 @@ nsMsgMaildirStore::MoveNewlyDownloadedMessage(nsIMsgDBHdr* aHdr,
 
   // file path is stored in message header property
   nsAutoCString fileName;
-  aHdr->GetStringProperty("storeToken", fileName);
+  aHdr->GetStoreToken(fileName);
   if (fileName.IsEmpty()) {
     NS_ERROR("FinishNewMessage - no storeToken in msg hdr!!");
     return NS_ERROR_FAILURE;
@@ -941,7 +944,7 @@ nsMsgMaildirStore::MoveNewlyDownloadedMessage(nsIMsgDBHdr* aHdr,
     rv = existingPath->CreateUnique(nsIFile::NORMAL_FILE_TYPE, 0600);
     NS_ENSURE_SUCCESS(rv, rv);
     existingPath->GetNativeLeafName(fileName);
-    newHdr->SetStringProperty("storeToken", fileName);
+    newHdr->SetStoreToken(fileName);
   }
 
   rv = fromPath->MoveToNative(toPath, fileName);
@@ -997,9 +1000,12 @@ nsMsgMaildirStore::MoveNewlyDownloadedMessage(nsIMsgDBHdr* aHdr,
   return rv;
 }
 
+// aMaxAllowedSize is currently ignored, we always return the full
+// amount of data that we have available in the file.
 NS_IMETHODIMP
 nsMsgMaildirStore::GetMsgInputStream(nsIMsgFolder* aMsgFolder,
                                      const nsACString& aMsgToken,
+                                     uint32_t aMaxAllowedSize,
                                      nsIInputStream** aResult) {
   NS_ENSURE_ARG_POINTER(aMsgFolder);
   NS_ENSURE_ARG_POINTER(aResult);
@@ -1042,7 +1048,7 @@ NS_IMETHODIMP nsMsgMaildirStore::DeleteMessages(
     nsresult rv = folder->GetFilePath(getter_AddRefs(path));
     NS_ENSURE_SUCCESS(rv, rv);
     nsAutoCString fileName;
-    msgHdr->GetStringProperty("storeToken", fileName);
+    msgHdr->GetStoreToken(fileName);
 
     if (fileName.IsEmpty()) {
       MOZ_LOG(MailDirLog, mozilla::LogLevel::Info,
@@ -1143,7 +1149,7 @@ nsMsgMaildirStore::CopyMessages(bool aIsMove,
     srcHdr->GetMessageKey(&srcKey);
     msgTxn->AddSrcKey(srcKey);
     nsAutoCString fileName;
-    srcHdr->GetStringProperty("storeToken", fileName);
+    srcHdr->GetStoreToken(fileName);
     if (fileName.IsEmpty()) {
       MOZ_LOG(MailDirLog, mozilla::LogLevel::Info,
               ("GetMsgInputStream - empty storeToken!!"));
@@ -1176,7 +1182,7 @@ nsMsgMaildirStore::CopyMessages(bool aIsMove,
       rv = destDB->CopyHdrFromExistingHdr(nsMsgKey_None, srcHdr, true,
                                           getter_AddRefs(destHdr));
       NS_ENSURE_SUCCESS(rv, rv);
-      destHdr->SetStringProperty("storeToken", fileName);
+      destHdr->SetStoreToken(fileName);
       aDstHdrs.AppendElement(destHdr);
       nsMsgKey dstKey;
       destHdr->GetMessageKey(&dstKey);
@@ -1261,7 +1267,7 @@ nsresult nsMsgMaildirStore::GetOutputStream(
     nsIMsgDBHdr* aHdr, nsCOMPtr<nsIOutputStream>& aOutputStream) {
   // file name is stored in message header property "storeToken"
   nsAutoCString fileName;
-  aHdr->GetStringProperty("storeToken", fileName);
+  aHdr->GetStoreToken(fileName);
   if (fileName.IsEmpty()) return NS_ERROR_FAILURE;
 
   nsCOMPtr<nsIMsgFolder> folder;
@@ -1353,16 +1359,6 @@ nsresult nsMsgMaildirStore::CreateDirectoryForFolder(nsIFile* path,
                     : path->Create(nsIFile::DIRECTORY_TYPE, 0700);
   }
   return rv;
-}
-
-NS_IMETHODIMP
-nsMsgMaildirStore::SliceStream(nsIInputStream* inStream, uint64_t start,
-                               uint32_t length, nsIInputStream** result) {
-  nsCOMPtr<nsIInputStream> in(inStream);
-  RefPtr<mozilla::SlicedInputStream> slicedStream =
-      new mozilla::SlicedInputStream(in.forget(), start, uint64_t(length));
-  slicedStream.forget(result);
-  return NS_OK;
 }
 
 // For maildir store, our estimate is just the total of the file sizes.

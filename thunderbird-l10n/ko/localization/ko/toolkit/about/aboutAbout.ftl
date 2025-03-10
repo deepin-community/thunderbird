@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-about-title = About 정보
 about-about-note =
     다음은 편의를 위한 “about” 페이지 목록입니다.<br/>

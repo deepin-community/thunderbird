@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Lese og endre bokmerker
 webext-perms-description-browserSettings = Lese og endre nettleserinnstillinger
 webext-perms-description-browsingData = Fjern nylig nettlesingshistorikk, infokapsler og relaterte data
@@ -30,4 +21,6 @@ webext-perms-description-sessions = Tilgang til nylig lukkede faner
 webext-perms-description-tabs = Tilgang til faner
 webext-perms-description-tabHide = Skjul og vis nettleserfaner
 webext-perms-description-topSites = Tilgang til nettleserhistorikken
+webext-perms-description-trialML = Last ned og kjør AI-modeller på enheten din
+webext-perms-description-userScripts = Tillat at ubekreftede tredjepartsskript får tilgang til dine data
 webext-perms-description-webNavigation = Tilgang til nettleseraktivitet under navigasjon

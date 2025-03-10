@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Қаріптер
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Бастапқы ({ $name })
 fonts-label-default-unnamed =
     .label = Бастапқы
-fonts-encoding-dialog-title =
-    .title = Қаріптер және кодтаулар
 fonts-language-legend =
     .value = Келесі үшін қаріптер:
     .accesskey = п
 fonts-proportional-label =
     .value = Пропорционалды:
     .accesskey = П
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Латын
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Сингальдық
 font-language-group-tibetan =
     .label = Тибет
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = л
 min-size-none =
     .label = Жоқ
-
-## Fonts in message
-
 font-control-legend = Қаріпті басқару
 use-document-fonts-checkbox =
     .label = Хабарламаларға басқа қаріптерді қолдануды рұқсат ету
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Ашық мәтін хабарламалары үшін ені біркелкі қаріпті қолдану
     .accesskey = к
-
-## Language settings
-
 text-encoding-legend = Мәтін кодталуы
 text-encoding-description = Поштаны алу және жіберу үшін негізгі мәтін кодталуын орнатыңыз
 font-outgoing-email-label =

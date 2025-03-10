@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Calendar
 calendar-title-reminder = Mementouri
 calendar-title-notification = Notificări
@@ -9,10 +5,8 @@ calendar-title-category = Categorii
 dateformat-label =
     .value = Formatul datei:
     .accesskey = d
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Lung: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Scurt: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Întreabă înainte de a șterge evenimente și sarcini
     .accesskey = v
-accessibility-legend = Accesibilitate
-accessibility-colors-label =
-    .label = Optimizează culorile pentru accesibilitate
-    .accesskey = O
 reminder-legend = Când pornește un memento:
 reminder-play-checkbox =
     .label = Redă un sunet

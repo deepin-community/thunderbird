@@ -25,7 +25,6 @@ ChromeUtils.defineESModuleGetters(this, {
   EnigmailPersistentCrypto:
     "chrome://openpgp/content/modules/persistentCrypto.sys.mjs",
 
-  EnigmailURIs: "chrome://openpgp/content/modules/uris.sys.mjs",
   MailUtils: "resource:///modules/MailUtils.sys.mjs",
   MessageArchiver: "resource:///modules/MessageArchiver.sys.mjs",
   TreeSelection: "chrome://messenger/content/TreeSelection.mjs",
@@ -91,7 +90,11 @@ var commandController = {
       );
     },
     cmd_reply(event) {
-      if (gFolder?.flags & Ci.nsMsgFolderFlags.Newsgroup) {
+      if (
+        gFolder?.flags & Ci.nsMsgFolderFlags.Newsgroup ||
+        (window.messageBrowser?.contentWindow ?? window).currentHeaderData
+          ?.newsgroups
+      ) {
         commandController.doCommand("cmd_replyGroup", event);
       } else {
         commandController.doCommand("cmd_replySender", event);
@@ -285,26 +288,26 @@ var commandController = {
       }
     },
     cmd_deleteMessage() {
-      if (!MailUtils.confirmDelete(false, gDBView, gFolder)) {
-        return;
-      }
       if (parent.location.href == "about:3pane") {
         // If we're in about:message inside about:3pane, it's the parent
         // window that needs to advance to the next message.
         parent.commandController.doCommand("cmd_deleteMessage");
         return;
       }
+      if (!MailUtils.confirmDelete(false, gDBView, gFolder)) {
+        return;
+      }
       dbViewWrapperListener.threadPaneCommandUpdater.updateNextMessageAfterDelete();
       gViewWrapper.dbView.doCommand(Ci.nsMsgViewCommandType.deleteMsg);
     },
     cmd_shiftDeleteMessage() {
-      if (!MailUtils.confirmDelete(true, gDBView, gFolder)) {
-        return;
-      }
       if (parent.location.href == "about:3pane") {
         // If we're in about:message inside about:3pane, it's the parent
         // window that needs to advance to the next message.
         parent.commandController.doCommand("cmd_shiftDeleteMessage");
+        return;
+      }
+      if (!MailUtils.confirmDelete(true, gDBView, gFolder)) {
         return;
       }
       dbViewWrapperListener.threadPaneCommandUpdater.updateNextMessageAfterDelete();
@@ -537,8 +540,9 @@ var commandController = {
         }
         return false;
       case "cmd_viewPageSource":
-      case "cmd_saveAsTemplate":
         return numSelectedMessages == 1;
+      case "cmd_saveAsTemplate":
+        return numSelectedMessages == 1 && !isDummyMessage;
       case "cmd_reply":
       case "cmd_replySender":
       case "cmd_replyall":
@@ -586,9 +590,7 @@ var commandController = {
         if (numSelectedMessages == 1 && !isDummyMessage) {
           const msgURI = gDBView.URIForFirstSelectedMessage;
           if (msgURI) {
-            showDecrypt =
-              EnigmailURIs.isEncryptedUri(msgURI) ||
-              gEncryptedURIService.isEncrypted(msgURI);
+            showDecrypt = gEncryptedURIService.isEncrypted(msgURI);
           }
         }
         return showDecrypt;
@@ -605,7 +607,11 @@ var commandController = {
           folder()?.isSpecialFolder(Ci.nsMsgFolderFlags.Templates, true)
         );
       case "cmd_replyGroup":
-        return isNewsgroup();
+        return (
+          isNewsgroup() ||
+          (window.messageBrowser?.contentWindow ?? window).currentHeaderData
+            ?.newsgroups
+        );
       case "cmd_markAsRead":
         return (
           numSelectedMessages >= 1 &&
@@ -756,8 +762,8 @@ var commandController = {
    * Calls the ComposeMessage function with the desired type, and proper default
    * based on the event that fired it.
    *
-   * @param composeType  the nsIMsgCompType to pass to the function
-   * @param event (optional) the event that triggered the call
+   * @param {nsIMsgCompType} composeType - The nsIMsgCompType type to pass.
+   * @param {Event} [event] - The event that triggered the call.
    */
   _composeMsgByType(composeType, event) {
     // If we're the hidden window, then we're not going to have a gFolderDisplay
@@ -874,9 +880,7 @@ var commandController = {
       );
       addedRowsByViewNavigate = gViewWrapper.dbView.rowCount - countBefore;
       if (resultIndex.value == nsMsgViewIndex_None) {
-        if (CrossFolderNavigation(navigationType)) {
-          this._navigate(navigationType);
-        }
+        CrossFolderNavigation(navigationType, this._navigate);
         return;
       }
       if (resultKey.value == nsMsgKey_None) {
@@ -951,7 +955,6 @@ var dbViewWrapperListener = {
       "nsISupportsWeakReference",
     ]),
     updateCommandStatus() {},
-    displayMessageChanged() {},
     updateNextMessageAfterDelete() {
       dbViewWrapperListener._nextViewIndexAfterDelete = gDBView
         ? gDBView.msgToSelectAfterDelete
@@ -1088,6 +1091,9 @@ var dbViewWrapperListener = {
       window.threadTree.reset();
       if (!newMessageFound && !window.threadPane.scrollDetected) {
         window.threadPane.scrollToLatestRowIfNoSelection();
+      }
+      if (all) {
+        window.dispatchEvent(new CustomEvent("allMessagesLoaded"));
       }
     }
     // To be consistent with the behavior in saved searches, update the message

@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Trav da menu
     .accesskey = m
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Parameters
     .accesskey = e
 menu-addons-and-themes =
     .label = Supplements e designs
     .accesskey = S
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exportar per in apparat mobil…
+    .accesskey = p
 menu-help-help-title =
     .label = Agid
     .accesskey = g
 menu-help-get-help =
     .label = Ir per agid
     .accesskey = p
-menu-help-explore-features =
-    .label = Scuvrir las funcziuns
-    .accesskey = f
 menu-help-get-release-help =
     .label = Retschaiver agid per { -brand-short-name }
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Davart { -brand-short-name }
     .accesskey = a
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] T
            *[other] T
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Terminar { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Terminar { -brand-full-name }
            *[other] Terminar { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Nungiavischà
     .tooltiptext = Marcar ils messadis tschernids sco nungiavischads
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Revocar il stizzar
     .tooltiptext = Revocar l'eliminaziun dals messadis tschernids
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Reparar la codaziun dal text
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Titel da la panela dad ordinaturs
     .accesskey = T
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Chau da la glista da messadis
     .accesskey = m
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Trav d'utensils da locals
     .accesskey = s
-
-## File
-
 file-new-email-account =
     .label = Conto dad e-mail…
     .accesskey = E

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = 제3자 모듈 정보
 third-party-section-title = { -brand-short-name }의 제3자 모듈 목록
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = 시스템 정보 새로 고침
     .title = 시스템 정보 새로 고침
 third-party-button-open =
     .title = 파일 위치 열기…
-third-party-button-to-block =
-    .title = 이 모듈 차단
-    .aria-label = 이 모듈 차단
-third-party-button-to-unblock =
-    .title = 현재 차단되었습니다. 차단을 해제하려면 누르세요.
-    .aria-label = 현재 차단되었습니다. 차단을 해제하려면 누르세요.
-third-party-button-to-unblock-disabled =
-    .title =
-        이 { -brand-short-name } 실행에 대해 차단 목록이 비활성화되어 있지만 
-        현재 차단된 것으로 표시되어 있습니다. 차단을 해제하려면 누르세요.
-    .aria-label =
-        이 { -brand-short-name } 실행에 대해 차단 목록이 비활성화되어 있지만 
-        현재 차단된 것으로 표시되어 있습니다. 차단을 해제하려면 누르세요.
 third-party-button-to-block-module = 이 모듈 차단
     .title = 이 모듈 차단
     .aria-label = 이 모듈 차단

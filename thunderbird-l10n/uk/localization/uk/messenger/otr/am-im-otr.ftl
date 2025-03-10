@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Наскрізне шифрування
 account-otr-label = Повідомлення, які не записуються (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     не показуватимуться як частина звичайної розмови, а також не записуватимуться.
 otr-verify-nudge =
     .label = Завжди нагадувати мені перевіряти ще неперевірений контакт
-
 otr-not-yet-available = поки що недоступно
-

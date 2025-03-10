@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Синхронизация
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Выйти…
     .accesskey = й
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Создать учётную запись
 appmenu-new-account-panel =
     .label = Создать учётную запись
     .accesskey = з
-appmenu-create-new-mail-account =
-    .label = Получить новый адрес эл. почты
-    .accesskey = н
-appmenu-new-mail-account =
-    .label = Существующая электронная почта
-    .accesskey = в
 appmenu-new-email-account =
     .label = Эл. почта
     .accesskey = У
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Группа новостей
     .accesskey = п
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Новая адресная книга
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Адресная книга LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Создать
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Контакт
     .accesskey = к
-
-## Open
-
 appmenu-open-file-panel =
     .label = Открыть из файла
     .accesskey = а
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Календарь…
     .accesskey = н
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Вид
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Увеличить размер шрифта
 appmenuitem-font-size-reduce =
     .tooltiptext = Уменьшить размер шрифта
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } пикселей
     .tooltiptext = Восстановить размер шрифта
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Инструменты
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Экспорт
     .accesskey = с
+appmenu-export-for-mobile =
+    .label = Экспорт для мобильного
+    .accesskey = з
 appmenu-tools-message-search =
     .label = Поиск сообщений
     .accesskey = и
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Инструменты разработчика
     .accesskey = ы
-
-## Help
-
 appmenu-help-panel-title =
     .title = Справка
 appmenu-help-get-help =
     .label = Получить помощь
     .accesskey = ч
-appmenu-help-explore-features =
-    .label = Узнать о возможностях
-    .accesskey = в
 appmenu-help-get-release-help =
     .label = Получить помощь по { -brand-short-name }
     .accesskey = К
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = О { -brand-short-name }
     .accesskey = О
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Загрузка обновления { -brand-shorter-name }
 appmenuitem-banner-update-available =

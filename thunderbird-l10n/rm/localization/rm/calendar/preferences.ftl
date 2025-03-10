@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Chalender
 calendar-title-reminder = Promemorias
 calendar-title-notification = Avis
@@ -9,10 +5,8 @@ calendar-title-category = Categorias
 dateformat-label =
     .value = Format per data e temp:
     .accesskey = d
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Lung: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Curt: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Dumandar avant che stizzar eveniments ed incumbensas.
     .accesskey = D
-accessibility-legend = Accessibladad
-accessibility-colors-label =
-    .label = Optimar colurs per l'accessibladad
-    .accesskey = c
 reminder-legend = Sche ina propemoria scada:
 reminder-play-checkbox =
     .label = Far ir in tun

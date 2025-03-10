@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Read and modify bookmarks
 webext-perms-description-browserSettings = Read and modify browser settings
 webext-perms-description-browsingData = Clear recent browsing history, cookies, and related data
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Access recently closed tabs
 webext-perms-description-tabs = Access browser tabs
 webext-perms-description-tabHide = Hide and show browser tabs
 webext-perms-description-topSites = Access browsing history
+webext-perms-description-trialML = Download and run AI models on your device
+webext-perms-description-userScripts = Allow unverified third-party scripts to access your data
 webext-perms-description-webNavigation = Access browser activity during navigation
+webext-perms-extra-warning-userScripts-long = Unverified scripts can pose security and privacy risks, such as running harmful code or tracking website activity. Only run scripts from extensions or sources you trust.
+webext-perms-extra-warning-userScripts-short = Unverified scripts can pose security and privacy risks. Only run scripts from extensions or sources you trust.

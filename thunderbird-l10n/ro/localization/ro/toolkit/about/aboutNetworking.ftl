@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Despre rețea
 about-networking-http = HTTP
 about-networking-sockets = Socketuri
@@ -51,11 +47,5 @@ about-networking-rcwn-cache-slow = De câte ori memoria cache este lentă
 about-networking-rcwn-cache-not-slow = De câte ori memoria cache nu este lentă
 about-networking-networkid = ID rețea
 about-networking-networkid-id = ID rețea
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Link stabilit
 about-networking-networkid-status-known = Starea linkului este necunoscută
-
-##
-

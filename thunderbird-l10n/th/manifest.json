@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-th@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: ไทย (Thai)",
   "description": "Thunderbird Language Pack for ไทย (th) – Thai",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "th": {
-      "version": "20240930174641",
+      "version": "20250227154022",
       "chrome_resources": {
         "alerts": "chrome/th/locale/th/alerts/",
         "autoconfig": "chrome/th/locale/th/autoconfig/",

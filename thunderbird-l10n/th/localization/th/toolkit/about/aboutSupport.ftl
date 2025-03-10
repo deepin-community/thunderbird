@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = ข้อมูลการแก้ไขปัญหา
 page-subtitle = หน้านี้มีข้อมูลทางเทคนิคที่อาจเป็นประโยชน์เมื่อคุณกำลังพยายามแก้ไขปัญหา หากคุณกำลังมองหาคำตอบสำหรับคำถามที่พบบ่อยเกี่ยวกับ { -brand-short-name } ตรวจสอบ <a data-l10n-name="support-link">เว็บไซต์สนับสนุน</a> ของเรา
 crashes-title = รายงานข้อขัดข้อง
@@ -38,8 +34,6 @@ app-basics-version = รุ่น
 app-basics-build-id = Build ID
 app-basics-distribution-id = ID การแจกจ่าย
 app-basics-update-channel = ช่องทางการอัปเดต
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] อัปเดตไดเรกทอรี
@@ -47,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = ประวัติการอัปเดต
 app-basics-show-update-history = แสดงประวัติการอัปเดต
-# Represents the path to the binary used to start the application.
 app-basics-binary = ไบนารีแอปพลิเคชัน
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] ไดเรกทอรีโปรไฟล์
        *[other] โฟลเดอร์โปรไฟล์
     }
-app-basics-enabled-plugins = ปลั๊กอินที่เปิดใช้งาน
 app-basics-build-config = การกำหนดค่าการสร้าง
 app-basics-user-agent = ตัวแทนผู้ใช้
 app-basics-os = ระบบปฏิบัติการ
 app-basics-os-theme = ชุดตกแต่งของระบบปฏิบัติการ
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = แปลด้วย Rosetta
 app-basics-memory-use = หน่วยความจำที่ใช้
 app-basics-performance = ประสิทธิภาพ
@@ -79,9 +69,6 @@ app-basics-safe-mode = โหมดปลอดภัย
 app-basics-memory-size = ขนาดหน่วยความจำ (RAM)
 app-basics-disk-available = พื้นที่ที่เหลือในดิสก์:
 app-basics-pointing-devices = อุปกรณ์ชี้ตำแหน่ง
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -98,7 +85,7 @@ experimental-features-value = ค่า
 modified-key-prefs-title = ค่าปรับแต่งสำคัญที่ถูกปรับเปลี่ยน
 modified-prefs-name = ชื่อ
 modified-prefs-value = ค่า
-user-js-title = การกำหนดลักษณะ user.js
+user-js-title = ค่าปรับแต่ง user.js
 user-js-description = โฟลเดอร์โปรไฟล์ของคุณมี <a data-l10n-name="user-js-link">ไฟล์ user.js</a> ซึ่งมีค่าปรับแต่งที่ไม่ได้ถูกสร้างโดย { -brand-short-name }
 locked-key-prefs-title = ค่าปรับแต่งสำคัญที่ถูกล็อก
 locked-prefs-name = ชื่อ
@@ -113,9 +100,7 @@ graphics-decision-log-title = รายการบันทึกการต�
 graphics-crash-guards-title = คุณสมบัติที่ถูกปิดใช้งานโดย Crash Guard
 graphics-workarounds-title = วิธีการแก้ไข
 graphics-device-pixel-ratios = อัตราส่วนพิกเซลของอุปกรณ์ในหน้าต่าง
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = โพรโทคอลหน้าต่าง
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = สภาพแวดล้อมเดสก์ท็อป
 place-database-title = ฐานข้อมูลสถานที่
 place-database-stats = สถิติ
@@ -153,9 +138,6 @@ clear-startup-cache-label = ล้างแคชเมื่อเริ่ม�
 startup-cache-dialog-title2 = ต้องการเริ่มการทำงาน { -brand-short-name } ใหม่เพื่อล้างแคชการเริ่มการทำงานหรือไม่
 startup-cache-dialog-body2 = การกระทำนี้จะไม่เปลี่ยนการตั้งค่าของคุณหรือเอาส่วนขยายของคุณออก
 restart-button-label = เริ่มการทำงานใหม่
-
-## Media titles
-
 audio-backend = แบ็กเอนด์เสียง
 max-audio-channels = จำนวนแชนเนลสูงสุด
 sample-rate = อัตราการสุ่มตัวอย่างที่ต้องการ
@@ -174,11 +156,7 @@ media-device-rate = อัตรา
 media-device-latency = เวลาแฝง
 media-capabilities-title = ความสามารถของสื่อ
 media-codec-support-info = ข้อมูลการสนับสนุนตัวแปลงสัญญาณ
-# List all the entries of the database.
 media-capabilities-enumerate = แจงนับฐานข้อมูล
-
-## Codec support table
-
 media-codec-support-sw-decoding = การถอดรหัสด้วยซอฟต์แวร์
 media-codec-support-hw-decoding = การถอดรหัสด้วยฮาร์ดแวร์
 media-codec-support-codec-name = ชื่อตัวแปลงสัญญาณ
@@ -186,26 +164,13 @@ media-codec-support-supported = รองรับ
 media-codec-support-unsupported = ไม่รองรับ
 media-codec-support-error = ข้อมูลการรองรับโคเดกไม่พร้อมใช้ โปรดลองอีกครั้งหลังจากเล่นไฟล์สื่อแล้ว
 media-codec-support-lack-of-extension = ติดตั้งส่วนขยาย
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = ข้อมูลโมดูลถอดรหัสเนื้อหา
 media-key-system-name = ชื่อระบบคีย์
 media-video-robustness = ความคงทนของข้อมูลภาพ
 media-audio-robustness = ความคงทนของข้อมูลเสียง
 media-cdm-capabilities = ความสามารถ
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = ส่วนนำที่ไม่เข้ารหัส (Clear Lead)
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = รองรับ HDCP 2.2
-
-##
-
 intl-title = การทำให้เป็นสากลและการแปลเป็นภาษาท้องถิ่น
 intl-app-title = การตั้งค่าแอปพลิเคชัน
 intl-locales-requested = ภาษาที่ขอ
@@ -214,52 +179,22 @@ intl-locales-supported = ภาษาของแอป
 intl-locales-default = ภาษาเริ่มต้น
 intl-os-title = ระบบปฏิบัติการ
 intl-os-prefs-system-locales = ภาษาของระบบ
-intl-regional-prefs = การกำหนดลักษณะภูมิภาค
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
+intl-regional-prefs = ค่าปรับแต่งภูมิภาค
 remote-debugging-title = การดีบั๊กระยะไกล (โพรโทคอล Chromium)
 remote-debugging-accepting-connections = การยอมรับการเชื่อมต่อ
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days = รายงานข้อขัดข้องของ { $days } วันที่ผ่านมา
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes = { $minutes } นาทีที่แล้ว
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours = { $hours } ชั่วโมงที่แล้ว
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days = { $days } วันที่แล้ว
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports = รายงานข้อขัดข้องทั้งหมด (รวม { $reports } ข้อขัดข้องที่ยังไม่ได้รายงานในช่วงเวลาที่กำหนด)
 raw-data-copied = คัดลอกข้อมูลดิบไปยังคลิปบอร์ดแล้ว
 text-copied = คัดลอกข้อความไปยังคลิปบอร์ดแล้ว
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = ถูกปิดกั้นจากรุ่นไดรเวอร์กราฟิกของคุณ
 blocked-gfx-card = ถูกปิดกั้นจากการ์ดกราฟิกของคุณเนื่องจากปัญหาไดรเวอร์ที่ยังไม่ได้รับการแก้ไข
 blocked-os-version = ถูกปิดกั้นจากรุ่นระบบปฏิบัติการของคุณ
 blocked-mismatched-version = ถูกปิดกั้นจากรุ่นไดรเวอร์กราฟิกของคุณไม่ตรงกันระหว่าง registry และ DLL
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = ถูกปิดกั้นจากรุ่นไดรเวอร์กราฟิกของคุณ ลองปรับปรุงไดรเวอร์กราฟิกของคุณเป็นรุ่น { $driverVersion } หรือใหม่กว่า
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = พารามิเตอร์ ClearType
 compositing = การจัดองค์ประกอบ
 support-font-determination = ข้อมูลดีบั๊กการมองเห็นแบบอักษร
@@ -269,11 +204,6 @@ yes = ใช่
 no = ไม่
 unknown = ไม่ทราบ
 virtual-monitor-disp = จอแสดงผลเสมือนจริง
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = พบ
 missing = หายไป
 gpu-process-pid = GPUProcessPid
@@ -300,11 +230,7 @@ webgl2-driver-extensions = ส่วนขยายไดรเวอร์ WebG
 webgl2-extensions = ส่วนขยาย WebGL 2
 webgpu-default-adapter = อะแดปเตอร์เริ่มต้นของ WebGPU
 webgpu-fallback-adapter = อะแดปเตอร์สำรองของ WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = ถูกเพิ่มในรายการปิดกั้นเนื่องจากมีปัญหาที่ทราบสาเหตุ: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = ถูกเพิ่มในรายการปิดกั้นแล้ว; รหัสความล้มเหลว { $failureCode }
 d3d11layers-crash-guard = คอมโพสิเตอร์ D3D11
 glcontext-crash-guard = OpenGL
@@ -324,8 +250,6 @@ has-seccomp-bpf = Seccomp-BPF (System Call Filtering)
 has-seccomp-tsync = Seccomp Thread Synchronization
 has-user-namespaces = เนมสเปซผู้ใช้
 has-privileged-user-namespaces = เนมสเปซผู้ใช้สำหรับโพรเซสที่ได้รับสิทธิ์
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — คุณลักษณะนี้ไม่ได้รับอนุญาตให้ใช้งานในระบบของคุณ ซึ่งอาจจำกัดคุณลักษณะด้านความปลอดภัยของ { -brand-short-name }
 can-sandbox-content = Content Process Sandboxing
 can-sandbox-media = Media Plugin Sandboxing
@@ -346,16 +270,8 @@ launcher-process-status-0 = เปิดใช้งานอยู่
 launcher-process-status-1 = ถูกปิดใช้งานเนื่องจากความล้มเหลว
 launcher-process-status-2 = ถูกปิดใช้งานโดยการบังคับ
 launcher-process-status-unknown = ไม่ทราบสถานะ
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = ถูกปิดใช้งานโดยการทดสอบ
-fission-status-experiment-treatment = ถูกเปิดใช้งานโดยการทดสอบ
 fission-status-disabled-by-e10s-env = ถูกปิดใช้งานโดยสภาพแวดล้อม
 fission-status-enabled-by-env = ถูกเปิดใช้งานโดยสภาพแวดล้อม
 fission-status-disabled-by-env = ถูกปิดใช้งานโดยสภาพแวดล้อม
@@ -364,7 +280,6 @@ fission-status-disabled-by-default = ถูกปิดใช้งานตา�
 fission-status-enabled-by-user-pref = ถูกเปิดใช้งานโดยผู้ใช้
 fission-status-disabled-by-user-pref = ถูกปิดใช้งานโดยผู้ใช้
 fission-status-disabled-by-e10s-other = ปิดใช้งาน E10s แล้ว
-fission-status-enabled-by-rollout = เปิดใช้งานโดย phased rollout
 async-pan-zoom = การเลื่อน/ซูมแบบอะซิงโครนัส
 apz-none = ไม่มี
 wheel-enabled = เปิดใช้งานการป้อนข้อมูลด้วยล้อแล้ว
@@ -373,34 +288,20 @@ drag-enabled = เปิดใช้งานการลากแถบเล�
 keyboard-enabled = เปิดใช้งานแป้นพิมพ์แล้ว
 autoscroll-enabled = เปิดใช้งานการเลื่อนอัตโนมัติแล้ว
 zooming-enabled = เปิดใช้งานการซูมโดยการหุบ/กางนิ้วแบบราบรื่นแล้ว
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = การป้อนข้อมูลด้วยล้อแบบไม่เข้าจังหวะถูกปิดใช้งานเนื่องจากไม่รองรับค่าปรับแต่ง: { $preferenceKey }
 touch-warning = การป้อนข้อมูลด้วยการสัมผัสแบบไม่เข้าจังหวะถูกปิดใช้งานเนื่องจากไม่รองรับค่าปรับแต่ง: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = ไม่มีการใช้งานอยู่
 policies-active = ใช้งานอยู่
 policies-error = ข้อผิดพลาด
-
-## Printing section
-
 support-printing-title = การพิมพ์
 support-printing-troubleshoot = การแก้ไขปัญหา
 support-printing-clear-settings-button = ล้างการตั้งค่าการพิมพ์ที่บันทึกไว้
 support-printing-modified-settings = การตั้งค่าการพิมพ์ที่ถูกปรับเปลี่ยน
 support-printing-prefs-name = ชื่อ
 support-printing-prefs-value = ค่า
-
-## Remote Settings sections
-
 support-remote-settings-title = ตั้งค่าระยะไกล
 support-remote-settings-status = สถานะ
 support-remote-settings-status-ok = ตกลง
-# Status when synchronization is not working.
 support-remote-settings-status-broken = ไม่ทำงาน
 support-remote-settings-last-check = ตรวจสอบครั้งล่าสุด
 support-remote-settings-local-timestamp = การลงบันทึกเวลาเฉพาะที่
@@ -408,9 +309,6 @@ support-remote-settings-sync-history = ประวัติ
 support-remote-settings-sync-history-status = สถานะ
 support-remote-settings-sync-history-datetime = วันที่
 support-remote-settings-sync-history-infos = ข้อมูล
-
-## Normandy sections
-
 support-remote-experiments-title = คุณลักษณะทดลองระยะไกล
 support-remote-experiments-name = ชื่อ
 support-remote-experiments-branch = สาขาการทดลอง
@@ -418,19 +316,10 @@ support-remote-experiments-see-about-studies = ดูที่ <a data-l10n-name
 support-remote-features-title = คุณลักษณะระยะไกล
 support-remote-features-name = ชื่อ
 support-remote-features-status = สถานะ
-
-## Pointing devices
-
 pointing-device-mouse = เมาส์
 pointing-device-touchscreen = หน้าจอสัมผัส
 pointing-device-pen-digitizer = ปากกาดิจิตอล
 pointing-device-none = ไม่มีอุปกรณ์ชี้ตำแหน่ง
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = การวิเคราะห์เนื้อหา (DLP)
 content-analysis-active = ทำงานอยู่
 content-analysis-connected-to-agent = เชื่อมต่อกับตัวแทนแล้ว

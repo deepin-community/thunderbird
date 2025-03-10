@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Brug udbyder
     .accesskey = u
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (standard)
     .tooltiptext = Brug standard-URL'en til DNS-opslag over HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = e
     .tooltiptext = Angiv den URL, du foretrækker til DNS-opslag over HTTPS
 connection-dns-over-https-custom-label = Tilpasset
-connection-dialog-window2 =
-    .title = Forbindelsesindstillinger
 connection-dialog-title = Forbindelsesindstillinger
 disable-extension-button = Deaktiver udvidelse
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Udvidelsen <img data-l10n-name="extension-icon" alt="" /> { $name } kontrollerer, hvordan { -brand-short-name } opretter forbindelse til internettet.
 connection-proxy-legend = Konfigurer proxy til at tilgå internettet
 proxy-type-no =
@@ -74,14 +61,13 @@ no-proxy-label =
     .value = Ingen proxy for:
     .accesskey = n
 no-proxy-example = Fx .mozilla.org, .net.dk, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Forbindelser til localhost, 127.0.0.1/8 og ::1 er aldrig forbundet via en proxy.
 proxy-password-prompt =
     .label = Spørg ikke efter godkendelse, hvis adgangskoden er gemt
     .accesskey = g
     .tooltiptext = Denne indstilling godkender dig automatisk overfor proxy-servere, når du har gemt login-informationer til dem. Du bliver spurgt, hvis godkendelsen slår fejl.
 proxy-remote-dns =
-    .label = Proxy-DNS ved brug af SOCKS v5
+    .label = Brug en proxy til DNS-forespørgsler, når SOCKS v5 anvendes
     .accesskey = D
 proxy-enable-doh =
     .label = Aktiver DNS via HTTPS

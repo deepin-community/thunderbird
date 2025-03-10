@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = 証明書マネージャー
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = 原因不明の問題により PKCS #12 バックア
 pkcs12-unknown-err = 原因不明の問題により PKCS #12 の操作に失敗しました。
 pkcs12-info-no-smartcard-backup = スマートカードなどのハードウェアセキュリティデバイスからは証明書をバックアップできません。
 pkcs12-dup-data = 証明書と秘密鍵はすでにセキュリティデバイスに存在します。
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = バックアップファイル名
 file-browse-pkcs12-spec = PKCS12 ファイル
 choose-p12-restore-file-dialog = インポートする証明書ファイル
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = 証明書ファイル
 import-ca-certs-prompt = 認証局証明書を含むファイルを選択してください
 import-email-cert-prompt = メール証明書を含むファイルを選択してください
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = 証明書 “{ $certName }” は認証局の証明書です
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = あなたの証明書を削除
 delete-user-cert-confirm = 本当にこの証明書を削除してもよろしいですか？
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = メール証明書を削除
 delete-email-cert-confirm = 本当にこの人たちのメール証明書を削除してもよろしいですか？
 delete-email-cert-impact = メール証明書を削除すると、その人たちにメールを暗号化して送信できなくなります。
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = シリアル番号付きの証明書: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = 送信するクライアント証明書がありません。
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (保存されていません)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (利用できません)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = 永続
 temporary-override = 一時的
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = { -brand-short-name } が例外的に信頼する証明書としてこのサイトの証明書を登録しようとしています。
 add-exception-invalid-header = このサイトでは不正な証明書が使用されており、サイトの識別情報を確認できません。
 add-exception-domain-mismatch-short = 他のサイトの証明書です
@@ -170,9 +139,6 @@ add-exception-checking-short = 証明書を確認中
 add-exception-checking-long = このサイトの識別情報を確認しています...
 add-exception-no-cert-short = 証明書がありません
 add-exception-no-cert-long = このサイトを識別するための証明書を取得できませんでした
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = 証明書をファイルに保存
 cert-format-base64 = X.509 証明書 (PEM)
 cert-format-base64-chain = 証明書パスを含む X.509 証明書 (PEM)

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Затвори
 preferences-doc-title2 = Подешавања
@@ -50,8 +46,6 @@ collection-health-report =
     .label = Дозволи програму { -brand-short-name } слање техничких података и података о коришћењу ка организацији { -vendor-short-name }
     .accesskey = о
 collection-health-report-link = Сазнајте више
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Слање података је онемогућено за ову конфигурацију верзије
 collection-backlogged-crash-reports =
     .label = Дозволи програму { -brand-short-name } самостално слање сачуваних извештаја о падању програма
@@ -72,10 +66,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Поново покрени { -brand-short-name } за примену ових измена
 confirm-messenger-language-change-button = Примени и поново покрени
 update-setting-write-failure-title = Грешка приликом чувања подешавања ажурирања
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } је наишао на грешку и промена није сачувана. Напомена: да бисте подесили ово подешавање ажурирања, потребна вам је дозвола за писање у следеће датотеке. Ви или администратор система можда можете исправити грешку тако што ћете групи корисника одобрити потпун приступ овој датотеци.
     
@@ -83,26 +73,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Ажурирање је у току
 update-in-progress-message = Желите ли да { -brand-short-name } настави са овим ажурирањем?
 update-in-progress-ok-button = &Одбаци
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Настави
 account-button = Подешавања налога
 open-addons-sidebar-button = Додаци и теме
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Из безбедносних разлога потребно је да унесете податке за пријаву на Windows да бисте направили главну лозинку.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = направите главну лозинку
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +103,6 @@ remove-search-engine =
 add-opensearch-provider-title = Додајте OpenSearch добављача
 add-opensearch-provider-text = Унесите URL адресу OpenSearch добављача који желите да додате. Користите директни URL OpenSearch датотеке описа или URL где се може аутоматски открити.
 adding-opensearch-provider-failed-title = Додавање OpenSearch добављача није успело
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Није могуће додати OpenSearch добављача за { $url }.
 minimize-to-tray-label =
     .label = Када је { -brand-short-name } минимизиран, помери исти у алатну траку
@@ -209,8 +183,6 @@ always-check-default =
 check-default-button =
     .label = Провери сада…
     .accesskey = с
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -228,8 +200,6 @@ return-receipts-button =
     .label = Потврде о пријему…
     .accesskey = П
 update-app-legend = { -brand-short-name } ажурирања
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Верзија { $version }
 allow-description = Дозволите програму { -brand-short-name } да
 automatic-updates-label =
@@ -264,18 +234,10 @@ offline-compact-folder-automatically =
     .accesskey = и
 compact-folder-size =
     .value = мегабајта укупно
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Користи до
     .accesskey = К
 use-cache-after = мегабајта простора за кеш
-
-##
-
 smart-cache-label =
     .label = Премости аутоматско управљање кешом
     .accesskey = м
@@ -299,7 +261,6 @@ color-options-button =
     .label = Боје…
     .accesskey = Б
 display-width-legend = Обичне текстуалне поруке
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Прикажи емотиконе као сличице
     .accesskey = е
@@ -367,17 +328,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Прегледај прилоге у истом прозору
     .accesskey = л
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Након приказивања од
     .accesskey = з
 seconds-label = секунди
-
-##
-
 open-msg-label =
     .value = Отвори поруке у:
 open-msg-tab =
@@ -392,14 +346,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Затвори прозор/језичак поруке при померању или брисању
     .accesskey = З
-display-name-label =
-    .value = Име за приказ:
 condensed-addresses-label =
     .label = Прикажи само име за приказ за људе у мом именику
     .accesskey = П
-
-## Compose Tab
-
 forward-label =
     .value = Прослеђивање порука:
     .accesskey = л
@@ -410,17 +359,10 @@ as-attachment-label =
 extension-label =
     .label = додај екстензију на име датотеке
     .accesskey = е
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Самостално чувај на
     .accesskey = а
 auto-save-end = минута
-
-##
-
 warn-on-send-accel-key =
     .label = Тражи потврду када се порука шаље са пречицом на тастатури
     .accesskey = Т
@@ -511,9 +453,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Пронађите више добављача…
 cloud-account-description = Додај нову Filelink услугу складиштења
-
-## Privacy Tab
-
 mail-content = Садржај поште
 remote-content-label =
     .label = Дозволи удаљени садржај у порукама
@@ -542,11 +481,6 @@ third-party-visited =
 cookies-button =
     .label = Прикажи колачиће…
     .accesskey = р
-do-not-track-label =
-    .label = Пошаљите веб страници сигнал “Не прати” који показује да не желите да вас прате
-    .accesskey = н
-dnt-learn-more-button =
-    .value = Сазнајте више
 passwords-description = { -brand-short-name } може памтити лозинке за све ваше налоге.
 passwords-button =
     .label = Сачуване лозинке…
@@ -560,18 +494,12 @@ primary-password-button =
     .accesskey = з
 forms-master-pw-fips-desc = Промена лозинке није успела
 junk-description = Поставите ваша подразумевана подешавања непожељне поште. Специфична подешавања за сваки налог понаособ можете поставити у подешавањима тог налога.
-junk-label =
-    .label = Када означим поруке као непожељне:
-    .accesskey = К
 junk-move-label =
     .label = Помери их у фасциклу "Непожељно" тог налога
     .accesskey = о
 junk-delete-label =
     .label = Обриши их
     .accesskey = б
-junk-read-label =
-    .label = Означи поруке за које је утврђено да су непожељне као прочитане
-    .accesskey = О
 junk-read-description = Означи поруке као прочитане
 junk-log-label =
     .label = Омогући записивање адаптивног филтрирања непожељног
@@ -620,9 +548,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Самосталне одлуке је могуће прегласати ручним омогућавањем или онемогућавањем шифровања приликом писања поруке.
     Напомена: шифровање је увек самостално омогућено када се одговара на шифровану поруку.
-
-## Chat Tab
-
 startup-label =
     .value = Када се { -brand-short-name } покрене:
     .accesskey = п
@@ -630,20 +555,10 @@ offline-label =
     .label = Остави моје налоге ћаскања ван мреже
 auto-connect-label =
     .label = Повежи моје налоге ћаскања аутоматски
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Покажи мојим контактима да сам у мировању након
     .accesskey = к
 idle-time-label = минута неактивности
-
-##
-
 away-message-label =
     .label = и подеси моје стање у „Ван рачунара“ са овом поруком стања:
     .accesskey = д
@@ -705,41 +620,21 @@ no-preview-description = Ова тема није исправна или ниј
 chat-variant-label =
     .value = Варијанта:
     .accesskey = В
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Пронађи у подешавањима
-
-## Settings UI Search Results
-
 search-results-header = Резултати претраге
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Жао нам је! У опцијама нема разултата за „<span data-l10n-name="query"></span>”.
        *[other] Жао нам је! У подешавањима нема резултата за „<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Треба вам помоћ? Посетите <a data-l10n-name="url">{ -brand-short-name } подршку</a>
-
-## Sync Tab
-
 sync-signedout-caption = Понесите веб са собом
 sync-signedout-description = Синхронизујте налоге, именике, календаре, додатке и подешавања на свим вашим уређајима.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Пријавите се на Sync…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = „{ $userEmail }” није потврђен.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Пријавите се да поново повежете „{ $userEmail }”
 sync-pane-resend-verification = Поново пошаљи верификацију
 sync-pane-sign-in = Пријави се

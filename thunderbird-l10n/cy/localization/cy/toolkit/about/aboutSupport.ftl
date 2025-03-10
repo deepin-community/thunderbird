@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Gwybodaeth am Ddatrys Problemau
 page-subtitle = Mae'r dudalen hon yn cynnwys gwybodaeth dechnegol a allai fod yn ddefnyddiol pan fyddwch yn ceisio datrys problem. Os ydych yn chwilio am atebion i gwestiynau cyffredin am { -brand-short-name }, edrychwch ar ein <a data-l10n-name="support-link">gwefan cefnogaeth</a>.
 crashes-title = Adroddiadau Chwalu
@@ -38,8 +34,6 @@ app-basics-version = Fersiwn
 app-basics-build-id = Cyfeirnod Adeiladu
 app-basics-distribution-id = ID Dosbarthu
 app-basics-update-channel = Sianel Diweddaru
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Diweddaru Cyfeiriadur
@@ -47,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Hanes Diweddaru
 app-basics-show-update-history = Dangos Hanes Diweddaru
-# Represents the path to the binary used to start the application.
 app-basics-binary = Deuaidd y Rhaglen
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Cyfeiriadur Proffil
        *[other] Ffolder Proffil
     }
-app-basics-enabled-plugins = Ategion Galluogwyd
 app-basics-build-config = Ffurfweddiad Adeiladu
 app-basics-user-agent = Asiant Defnyddiwr
 app-basics-os = SW
 app-basics-os-theme = Thema OS
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Cyfieithu gan Rosetta
 app-basics-memory-use = Defnydd o'r cof
 app-basics-performance = Perfformiad
@@ -79,9 +69,6 @@ app-basics-safe-mode = Modd Diogel
 app-basics-memory-size = Maint Cof (RAM)
 app-basics-disk-available = Lle ar Ddisg ar Gael
 app-basics-pointing-devices = Dyfeisiau Pwyntio
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -113,9 +100,7 @@ graphics-decision-log-title = Cofnod Penderfynnu
 graphics-crash-guards-title = Nodweddion Crash Guard wedi ei Analluogi
 graphics-workarounds-title = Dulliau Datrys
 graphics-device-pixel-ratios = Cymarebau Picsel Dyfais Ffenestr
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protocol Ffenestr
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Amgylchedd Bwrdd Gwaith
 place-database-title = Cronfa Ddata Mannau
 place-database-stats = Ystadegau
@@ -153,9 +138,6 @@ clear-startup-cache-label = Clirio'r storfa gychwyn…
 startup-cache-dialog-title2 = Ailgychwyn { -brand-short-name } i glirio'r storfa cychwyn?
 startup-cache-dialog-body2 = Ni fydd hyn yn newid eich gosodiadau nac yn dileu estyniadau.
 restart-button-label = Ailgychwyn
-
-## Media titles
-
 audio-backend = Cefn Sain
 max-audio-channels = Mwyaf o Sianeli
 sample-rate = Graddfa Samplo Amgen
@@ -174,11 +156,7 @@ media-device-rate = Cyfradd
 media-device-latency = Cuddni
 media-capabilities-title = Gallu Cyfryngol
 media-codec-support-info = Gwybodaeth Gymorth Codec
-# List all the entries of the database.
 media-capabilities-enumerate = Cyfrifo'r gronfa ddata
-
-## Codec support table
-
 media-codec-support-sw-decoding = Datgodio Meddalwedd
 media-codec-support-hw-decoding = Datgodio Caledwedd
 media-codec-support-codec-name = Enw Codec
@@ -186,26 +164,13 @@ media-codec-support-supported = Cefnogaeth
 media-codec-support-unsupported = Heb eu Cynnal
 media-codec-support-error = Nid yw manylion cymorth codec ar gael. Ceisiwch eto ar ôl chwarae ffeil cyfryngau.
 media-codec-support-lack-of-extension = Gosod estyniad
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Manylion Modiwlau Dadgryptio Cynnwys
 media-key-system-name = Enw System Allwedd
 media-video-robustness = Cadernid Fideo
 media-audio-robustness = Cadernid Sain
 media-cdm-capabilities = Galluoedd
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Cychwyn Clir (Clear Lead)
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Yn gydnaws â HDCP 2.2
-
-##
-
 intl-title = Rhyngwladoli a Lleoleiddio
 intl-app-title = Gosodiadau'r Rhaglen
 intl-locales-requested = Locales Gofynnwyd Amdanynt
@@ -215,24 +180,9 @@ intl-locales-default = Locale Rhagosodedig
 intl-os-title = System Weithredu
 intl-os-prefs-system-locales = Locales y System
 intl-regional-prefs = Dewisiadau Rhanbarthol
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Dadfygio o Bell (Protocol Cromiwm)
 remote-debugging-accepting-connections = Derbyn Cysylltiadau
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [zero] Ni fu Adroddiadau Chwalu
@@ -242,8 +192,6 @@ report-crash-for-days =
         [many] Adroddiadau chwalu'r { $days } Diwrnod Diwethaf
        *[other] Adroddiadau chwalu'r { $days } Diwrnod Diwethaf
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [zero] Dim munudau yn ôl
@@ -253,8 +201,6 @@ crashes-time-minutes =
         [many] { $minutes } munud yn ôl
        *[other] { $minutes } munud yn ôl
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [zero] Dim oriau yn ôl
@@ -264,8 +210,6 @@ crashes-time-hours =
         [many] { $hours } awr yn ôl
        *[other] { $hours } awr yn ôl
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [zero] Dim dyddiau yn ôl
@@ -275,8 +219,6 @@ crashes-time-days =
         [many] { $days } diwrnod yn ôl
        *[other] { $days } diwrnod yn ôl
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [zero] Dim Adroddiadau Chwalu
@@ -288,18 +230,11 @@ pending-reports =
     }
 raw-data-copied = Copïwyd data bras i'r clipfwrdd
 text-copied = Copïwyd testun i'r clipfwrdd
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Wedi ei rwystro ar gyfer y fersiwn o'ch gyrrwr graffigol chi.
 blocked-gfx-card = Wedi ei rwystro ar gyfer eich cerdyn graffigol oherwydd pryderon gyrrwr heb eu datrys.
 blocked-os-version = Wedi ei rwystro ar gyfer eich fersiwn chi o'r system weithredu.
 blocked-mismatched-version = Rhwystro ar gyfer gwrthdaro fersiwn gyrrwr graffig y gofrestrfa a'r DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Wedi ei rwystro ar gyfer eich gyrrwr graffigol chi. Ceisiwch ddiweddaru'r gyrrwr i fersiwn { $driverVersion } neu ddiweddarach.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Paramedrau ClearType
 compositing = Cyfosod
 support-font-determination = Manylion Dadfygio Gwelededd Ffont
@@ -309,11 +244,6 @@ yes = Iawn
 no = Na
 unknown = Anhysbys
 virtual-monitor-disp = Dangosiad Monitor Rhithwir
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Wedi Canfod
 missing = Coll
 gpu-process-pid = GPUProcessPid
@@ -340,11 +270,7 @@ webgl2-driver-extensions = Estyniadau Gyrrwr WebGL 2
 webgl2-extensions = Estyniadau WebGL 2
 webgpu-default-adapter = Addasydd Rhagosodedig WebGPU
 webgpu-fallback-adapter = Addasydd wrth Gefn WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Ar y Rhestr Rhwystro oherwydd materion hysbys: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Wedi ei rwystro; gwall cod { $failureCode }
 d3d11layers-crash-guard = Cyfosodwr D3D11
 glcontext-crash-guard = OpenGL
@@ -364,8 +290,6 @@ has-seccomp-bpf = Seccomp-BPF (Hidlo Galw System)
 has-seccomp-tsync = Cydweddiad Edafedd Seccomp
 has-user-namespaces = Bylchau Enwau Defnyddiwr
 has-privileged-user-namespaces = Bylchau Enw Defnyddiwr fel prosesau breintiedig
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Nid yw eich system yn caniatáu'r nodwedd hon. Gall hyn gyfyngu ar nodweddion diogelwch { -brand-short-name }.
 can-sandbox-content = Blwch Tywod Proses Cynnwys
 can-sandbox-media = Blwch Tywod Ategyn Cyfrwng
@@ -386,16 +310,8 @@ launcher-process-status-0 = Galluogwyd
 launcher-process-status-1 = Analluogwyd oherwydd methiant
 launcher-process-status-2 = Analluogwyd yn orfodol
 launcher-process-status-unknown = Statws anhysbys
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Analluogwyd trwy arbrawf
-fission-status-experiment-treatment = Galluogwyd trwy arbrawf
 fission-status-disabled-by-e10s-env = Analluogwyd gan yr amgylchedd
 fission-status-enabled-by-env = Galluogwyd gan yr amgylchedd
 fission-status-disabled-by-env = Analluogwyd gan yr amgylchedd
@@ -404,7 +320,6 @@ fission-status-disabled-by-default = Analluogwyd drwy ragosodiad
 fission-status-enabled-by-user-pref = Galluogwyd gan y defnyddiwr
 fission-status-disabled-by-user-pref = Analluogwyd gan y defnyddiwr
 fission-status-disabled-by-e10s-other = E10s wedi ei analluogi
-fission-status-enabled-by-rollout = Wedi'i alluogi trwy ei gyflwyno fesul cam
 async-pan-zoom = Chwyddo a Thremio Anghydamseredig
 apz-none = dim
 wheel-enabled = mewnbwn olwyn wedi ei alluogi
@@ -413,34 +328,20 @@ drag-enabled = wedi galluogu llusgo bar sgrolio
 keyboard-enabled = bysellfwrdd wedi ei anlluogi
 autoscroll-enabled = galluogwyd awtosgrolio
 zooming-enabled = pinsio chwyddo llyfn wedi'i alluogi
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = Mae mewnbwn olwyn async wedi ei analluogi oherwydd diffyg cefnogaeth pref: { $preferenceKey }
 touch-warning = Mae mewnbwn cyffwrdd async wedi ei analluogi oherwydd diffyg cefnogaeth pref: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Anweithredol
 policies-active = Gweithredol
 policies-error = Gwall
-
-## Printing section
-
 support-printing-title = Yn argraffu
 support-printing-troubleshoot = Datrys Anawsterau
 support-printing-clear-settings-button = Clirio gosodiadau argraffu wedi'u cadw
 support-printing-modified-settings = Gosodiadau argraffu wedi'u haddasu
 support-printing-prefs-name = Enw
 support-printing-prefs-value = Gwerth
-
-## Remote Settings sections
-
 support-remote-settings-title = Gosodiadau Pell
 support-remote-settings-status = Statws
 support-remote-settings-status-ok = Iawn
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Ddim yn gweithio
 support-remote-settings-last-check = Gwiriad olaf
 support-remote-settings-local-timestamp = Stamp amser lleol
@@ -448,9 +349,6 @@ support-remote-settings-sync-history = Hanes
 support-remote-settings-sync-history-status = Statws
 support-remote-settings-sync-history-datetime = Dyddiad
 support-remote-settings-sync-history-infos = Gwybodaeth
-
-## Normandy sections
-
 support-remote-experiments-title = Arbrofion Pell
 support-remote-experiments-name = Enw
 support-remote-experiments-branch = Cangen Arbrofi
@@ -458,19 +356,10 @@ support-remote-experiments-see-about-studies = Gweler <a data-l10n-name="support
 support-remote-features-title = Nodweddion Pell
 support-remote-features-name = Enw
 support-remote-features-status = Statws
-
-## Pointing devices
-
 pointing-device-mouse = Llygoden
 pointing-device-touchscreen = Sgrin Cyffwrdd
 pointing-device-pen-digitizer = Digidydd Pen
 pointing-device-none = Dim dyfeisiau pwyntio
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Dadansoddi Cynnwys (DLP)
 content-analysis-active = Gweithredol
 content-analysis-connected-to-agent = Wedi'i gysylltu â'r Asiant

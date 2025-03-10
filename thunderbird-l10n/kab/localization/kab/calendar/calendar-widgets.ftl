@@ -1,26 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Imitayen meṛṛa nsan akka tura, Rmed awitay illan neɣ rnu amaynut akken ad ternuḍ neɣ ad tesnifleḍ tidyanin.
 calendar-deactivated-notification-tasks = Imitayen meṛṛa nsan akka tura, Rmed awitay illan neɣ rnu amaynut akken ad ternuḍ neɣ ad tesnifleḍ tiwuriwin.
 calendar-notifications-label = Sken ilɣa n tedyanin i d-iteddun
 calendar-add-notification-button =
     .label = Rnu alɣu
-
-## Side panel
-
 calendar-list-header = Iwitayen
 calendar-enable-button = Rmed
+calendar-list-item-context-button =
+    .title = Tixtiṛiyin n uwitay { $calendarName }
 calendar-import-new-calendar = Awitay amaynut…
     .title = Rnu neɣ multeɣ ɣer uwitay amaynut
 calendar-refresh-calendars =
     .title = Sal-id tikkelt niḍen akk iwitayen u mtawi isnifal
 calendar-new-event-primary-button = Rnu tadyant
 calendar-new-task-primary-button = Tawuri tamaynut
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Ass yezrin
     .accesskey = s
@@ -61,18 +53,12 @@ calendar-view-toggle-multiweek = Deqs n dduṛtat
     .title = Ddu ɣer tmeẓri n deqs n dduṛtat
 calendar-view-toggle-month = Aggur
     .title = Ddu ɣer tmeẓri n waggur
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Tixtiṛiyin n tneɣruft n uwitay
 calendar-hide-weekends-option =
     .label = Ussan n dduṛt kan
 calendar-show-tasks-calendar-option =
     .label = Sken Tiwuriwin deg uwitay
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Ass yezrin
     .accesskey = z

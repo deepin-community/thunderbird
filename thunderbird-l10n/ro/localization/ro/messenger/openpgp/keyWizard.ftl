@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Adaugă o cheie personală OpenPGP pentru { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Continuare
-    .buttonlabelhelp = Înapoi
 key-wizard-dialog =
     .buttonlabelaccept = Continuă
     .buttonlabelextra1 = Înapoi
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Folosește cheia externă prin GnuPG (de ex., de pe o cartelă inteligentă)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Generează o cheie OpenPGP
 openpgp-keygen-secret-protection = Protecția cheii secrete
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Cheia trebuie să fie valabilă pentru cel puțin 
 openpgp-keygen-ongoing = Generarea cheii este deja în curs!
 openpgp-keygen-error-core = Serviciul OpenPGP Core nu poate fi inițializat
 openpgp-keygen-error-failed = Generarea cheii OpenPGP a eșuat în mod neașteptat
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Cheia OpenPGP a fost creată cu succes, dar nu s-a reușit obținerea revocării pentru cheia { $key }
 openpgp-keygen-abort-title = Renunți la generarea cheii?
 openpgp-keygen-abort = Generare cheie OpenPGP în curs. Sigur vrei să o anulezi?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Generezi o cheie publică și secretă pentru { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Importă o cheie personală OpenPGP existentă
 openpgp-import-key-legend = Selectează un fișier de rezervă salvat anterior.
 openpgp-import-key-description = Poți importa chei personale create cu alte softuri OpenPGP.
 openpgp-import-key-info = Alte softuri pot descrie o cheie personală folosind termeni alternativi, precum cheie proprie, cheie secretă, cheie privată sau pereche de chei.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } a găsit o cheie ce poate fi importată.
@@ -107,8 +90,6 @@ openpgp-import-key-list-caption = Cheile marcate să fie tratate drept chei pers
 openpgp-import-keep-passphrases =
     .label = Păstrează protecția cu parolă pentru cheile secrete importate
 openpgp-passphrase-prompt-title = Necesită parolă
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Introdu parola pentru deblocarea cheii: { $key }
 openpgp-import-key-button =
     .label = Selectează fișierul de importat…
     .accesskey = S
@@ -117,9 +98,7 @@ import-key-personal-checkbox =
     .label = Tratează această cheie drept cheie personală
 gnupg-file = Fișiere GnuPG
 import-error-file-size = <b>Eroare!</b> Nu se acceptă fișiere mai mari de 5MB.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Eroare!</b> Importul fișierului a eșuat. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Eroare!</b> Importul cheilor a eșuat. { $error }
 openpgp-import-identity-label = Identitate
 openpgp-import-fingerprint-label = Amprentă
@@ -128,9 +107,6 @@ openpgp-import-bits-label = Biți
 openpgp-import-key-props =
     .label = Proprietăți cheie
     .accesskey = K
-
-## External Key section
-
 openpgp-external-key-title = Cheie GnuPG externă
 openpgp-external-key-description = Configurează o cheie GnuPG externă prin introducerea ID-ului cheii
 openpgp-external-key-info = În plus, trebuie să folosești managerul de chei ca să imporți și să accepți cheia publică aferentă.

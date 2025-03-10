@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (no definida)
 failed-pp-change = No es pot canviar la contrasenya principal.
@@ -21,7 +17,6 @@ set-password-new-password = Introduïu una contrasenya nova:
 set-password-reenter-password = Torneu a introduir la contrasenya:
 set-password-meter = Mesura de la qualitat de la contrasenya
 set-password-meter-loading = S'està carregant
-primary-password-admin = El vostre administrador sol·licita que definiu una contrasenya principal per desar els inicis de sessió i les contrasenyes.
 primary-password-description = Una contrasenya principal s'utilitza per protegir informació confidencial, com ara els inicis de sessió i les contrasenyes, en aquest dispositiu. Si creeu una contrasenya principal, se us demanarà que la introduïu una vegada en cada sessió quan el { -brand-short-name } recuperi informació desada protegida per contrasenya.
 primary-password-warning = Assegureu-vos que recordeu la contrasenya principal que heu definit. Si l'oblideu, no podreu accedir a cap informació protegida en aquest dispositiu.
 remove-primary-password =

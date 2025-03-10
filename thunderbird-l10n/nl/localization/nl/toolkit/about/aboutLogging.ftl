@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Over logging
 about-logging-page-title = Loggingbeheerder
 about-logging-current-log-file = Huidige logbestand:
@@ -11,7 +6,6 @@ about-logging-currently-enabled-log-modules = Momenteel ingeschakelde logboekmod
 about-logging-log-tutorial =
     Zie <a data-l10n-name="logging">HTTP logging</a>
     voor instructies over het gebruik van dit hulpmiddel.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Map openen
 about-logging-set-log-file = Logbestand instellen
 about-logging-set-log-modules = Logmodules instellen
@@ -29,9 +23,6 @@ about-logging-no-log-modules = Geen
 about-logging-no-log-file = Geen
 about-logging-logging-preset-selector-text = Voorinstelling logging:
 about-logging-with-profiler-stacks-checkbox = Stacktraces voor logboekberichten inschakelen
-
-## Logging presets
-
 about-logging-preset-networking-label = Netwerk
 about-logging-preset-networking-description = Logboekmodules om netwerkproblemen te diagnosticeren
 about-logging-preset-networking-cookie-label = Cookies
@@ -50,18 +41,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Logboekmodules om WebGPU te diagnosticeren
 about-logging-preset-gfx-label = Grafisch
 about-logging-preset-gfx-description = Logboekmodules om grafische problemen te diagnosticeren
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Logboekmodules om problemen te diagnosticeren die specifiek zijn voor Microsoft Windows
 about-logging-preset-custom-label = Aangepast
 about-logging-preset-custom-description = Logboekmodules handmatig geselecteerd
-# Error handling
 about-logging-error = Fout:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Ongeldige waarde ‘{ $v }’ voor sleutel ‘{ $k }’
 about-logging-unknown-logging-preset = Onbekende voorinstelling logging ‘{ $v }’
 about-logging-unknown-profiler-preset = Onbekende voorinstelling voor profiler ‘{ $v }’

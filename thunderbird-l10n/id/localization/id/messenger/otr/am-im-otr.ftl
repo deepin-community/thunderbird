@@ -1,10 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Enkripsi Ujung ke Ujung
 account-otr-label = Pesan Tanpa Rekaman (OTR)
+account-otr-description2 = { -brand-short-name } mendukung enkripsi ujung-ke-ujung dari percakapan satu-lawan-satu berbasis OTR. Ini mencegah pihak ketiga menguping pembicaraan. Enkripsi ujung-ke-ujung hanya dapat digunakan ketika orang lain juga menggunakan perangkat lunak yang mendukung OTR.
 otr-encryption-title = Enkripsi Terverifikasi
 otr-encryption-caption = Untuk memungkinkan orang lain memverifikasi identitas Anda dalam obrolan OTR, bagikan sidik jari OTR Anda sendiri menggunakan kanal komunikasi luar (out-of-band).
 otr-fingerprint-label = Sidik Jari Anda:
@@ -20,6 +17,4 @@ otr-require-encryption-info =
     tidak akan ditampilkan sebagai bagian dari percakapan reguler, dan tidak dicatat.
 otr-verify-nudge =
     .label = Selalu ingatkan saya untuk memverifikasi kontak yang belum diverifikasi
-
 otr-not-yet-available = belum tersedia
-

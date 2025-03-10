@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Vytvoří nový stylopis a připojí ho k dokumentu
     .accesskey = N
@@ -21,8 +17,6 @@ styleeditor-save-button = Uložit
 styleeditor-options-button =
     .tooltiptext = Možnosti Editoru stylů
 styleeditor-at-rules = @-pravidla
-styleeditor-editor-textbox =
-    .data-placeholder = Zde vložte CSS.
 styleeditor-no-stylesheet = Tato stránka nemá připojený stylopis.
 styleeditor-no-stylesheet-tip = Můžete <a data-l10n-name="append-new-stylesheet">připojit nový stylopis</a>.
 styleeditor-open-link-new-tab =
@@ -38,20 +32,14 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Přejít na řádek…
     .accesskey = n
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Nebyly nalezeny žádná odpovídající kaskádové styly.
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } pravidlo.
         [few] { $ruleCount } pravidla..
        *[other] { $ruleCount } pravidel.
     }
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Naformátuje soubor stylů
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = Dokáže naformátovat pouze soubory CSS

@@ -1,21 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-fonts-encoding-dialog-title =
-    .title = Shriftlar va kodlash
-
 fonts-language-legend =
     .value = Shriftlar:
     .accesskey = S
-
 fonts-proportional-label =
     .value = Proportional:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Lotin
 font-language-group-japanese =
@@ -72,64 +60,42 @@ font-language-group-sinhala =
     .label = Sinhala
 font-language-group-tibetan =
     .label = Tibet
-
-## Default font type
-
 default-font-serif =
     .label = Serif
-
 default-font-sans-serif =
     .label = Sans Serif
-
 font-size-monospace-label =
     .value = Hajmi:
     .accesskey = i
-
 font-serif-label =
     .value = Serif:
     .accesskey = S
-
 font-sans-serif-label =
     .value = Sans-serif:
     .accesskey = n
-
 font-monospace-label =
     .value = Monospace:
     .accesskey = M
-
 font-min-size-label =
     .value = Eng kichik shrift hajmi:
     .accesskey = h
-
 min-size-none =
     .label = Yo‘q
-
-## Fonts in message
-
 font-control-legend = Shrift boshqaruvi
-
 use-document-fonts-checkbox =
     .label = Boshqa shriftlardan xabarlarda foydalanish uchun ruxsat berish
     .accesskey = r
-
 use-fixed-width-plain-checkbox =
     .label = Oddiy matn xabarlari uchun moslangan kenglikdagi shriftdan foydalanish
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Matnni kodlash
-
 text-encoding-description = Joriy matnni kodlashni xat jo‘natish va qabul qilish uchun standart sifatida o‘rnatish
-
 font-outgoing-email-label =
     .value = Chiquvchi xat:
     .accesskey = C
-
 font-incoming-email-label =
     .value = Kiruvchi xat:
     .accesskey = K
-
 default-font-reply-checkbox =
     .label = Imkon bo‘lganda, standart matnni kodlashdan javoblarda foydalaning
     .accesskey = h

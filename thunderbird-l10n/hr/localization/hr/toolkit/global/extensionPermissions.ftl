@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Čitanje i uređivanje zabilješki
 webext-perms-description-browserSettings = Čitanje i mijenjanje postavki preglednika
 webext-perms-description-browsingData = Izbriši nedavnu povijest pregledavanja, kolačića i povezanih podataka
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Pristup nedavno zatvorenim karticama
 webext-perms-description-tabs = Pristup karticama preglednika
 webext-perms-description-tabHide = Sakrij i prikaži kartice preglednika
 webext-perms-description-topSites = Pristupi povijesti pregledavanja
+webext-perms-description-trialML = Preuzmi i pokreni UI modele na tvom uređaju
+webext-perms-description-userScripts = Dozvoli neprovjerenim skriptama trećih strana pristup tvojim podacima
 webext-perms-description-webNavigation = Pristup aktivnostima preglednika tijekom korištenja navigacije
+webext-perms-extra-warning-userScripts-long = Neprovjerena skripta mogu predstavljati rizike za sigurnost i privatnost, poput pokretanja štetnog koda ili praćenja aktivnosti na web stranicama. Pokreći samo skripta iz proširenja ili izvora kojima vjeruješ.
+webext-perms-extra-warning-userScripts-short = Neprovjerena skripta mogu predstavljati rizike za sigurnost i privatnost. Pokreći samo skripta iz proširenja ili izvora kojima vjeruješ.

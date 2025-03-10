@@ -2,10 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.importESModule(
-  "resource://gre/modules/XPCOMUtils.sys.mjs"
-);
-
 var { MailServices } = ChromeUtils.importESModule(
   "resource:///modules/MailServices.sys.mjs"
 );
@@ -18,6 +14,11 @@ ChromeUtils.defineESModuleGetters(this, {
 var { getFolder } = ChromeUtils.importESModule(
   "resource:///modules/ExtensionAccounts.sys.mjs"
 );
+var {
+  getActualSelectedFolders,
+  getActualSelectedMessages,
+  getMsgHdrsForIndex,
+} = ChromeUtils.importESModule("resource:///modules/ExtensionMailTabs.sys.mjs");
 var { ThreadPaneColumns } = ChromeUtils.importESModule(
   "chrome://messenger/content/ThreadPaneColumns.mjs"
 );
@@ -102,56 +103,6 @@ function convertMailTab(tab, context) {
     );
   }
   return mailTabObject;
-}
-
-/**
- * Returns the actual selected messages. This is different from the menus API,
- * which returns the selection with respect to the context action, which could be
- * just the message being clicked, if that message is *not* part of the actually
- * selected messages.
- *
- * @param {Window} about3PaneWindow
- * @returns {nsIMsgDBHdr[]} The selected messages.
- */
-function getActualSelectedMessages(about3PaneWindow) {
-  const dbView = about3PaneWindow?.gDBView;
-  if (!dbView) {
-    return [];
-  }
-
-  // Get the indicies which are considered to be selected by the UI, which
-  // could be the ones we are *not* interested in, if a context menu is
-  // opened and the UI is supressing the selection.
-  const selectedIndices = about3PaneWindow.threadTree.selectedIndices;
-
-  if (!about3PaneWindow.threadTree._selection._selectEventsSuppressed) {
-    return selectedIndices.map(idx => dbView.getMsgHdrAt(idx));
-  }
-
-  // Get the indicies, which are considered to be invalid by the UI, which
-  // includes *all* selected indices, if the UI is supressing the selection.
-  // Filter out the indicies we are not interested in.
-  const invalidIndices = [
-    ...about3PaneWindow.threadTree._selection._invalidIndices,
-  ];
-  return invalidIndices
-    .filter(idx => !selectedIndices.includes(idx))
-    .map(idx => dbView.getMsgHdrAt(idx));
-}
-
-/**
- * Returns the actual selected folders. This is different from the menus API,
- * which returns the selection with respect to the context action, which could be
- * just the folder being clicked, if that folder is *not* part of the actually
- * selected folder.
- *
- * @param {Window} about3PaneWindow
- * @returns {nsIMsgFolder[]} The selected folders.
- */
-function getActualSelectedFolders(about3PaneWindow) {
-  return [...about3PaneWindow.folderTree.selection.values()].map(row =>
-    MailServices.folderLookup.getFolderForURL(row.uri)
-  );
 }
 
 /**
@@ -608,6 +559,9 @@ this.mailTabs = class extends ExtensionAPIPersistent {
           const window = await getNormalWindowReady();
           const nativeTab = window.gTabmail.openTab("mail3PaneTab", tabParams);
           await waitForMailTabReady(nativeTab);
+          // Be sure that about:3pane's DOMContentLoaded handler has finished,
+          // or we might not have a selected folder yet.
+          await new Promise(resolve => setTimeout(resolve));
           return updateMailTab(nativeTab, properties);
         },
 

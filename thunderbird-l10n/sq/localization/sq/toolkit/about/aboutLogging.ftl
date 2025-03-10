@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Mbi Regjistrimin
 about-logging-page-title = Përgjegjës regjistrimi
 about-logging-current-log-file = Kartela Regjistër e Tanishme:
 about-logging-new-log-file = Kartelë e re regjistër:
 about-logging-currently-enabled-log-modules = Module regjistrimi aktualisht të aktivizuar:
 about-logging-log-tutorial = Për udhëzime se si të përdoret ky mjet, shihni <a data-l10n-name="logging">HTTP Logging</a>.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Hape drejtorinë
 about-logging-set-log-file = Caktoni Kartelë Regjistër
 about-logging-set-log-modules = Caktoni Module Regjistrimi
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Asnjë
 about-logging-no-log-file = Asnjë
 about-logging-logging-preset-selector-text = Paracaktim regjistrimi:
 about-logging-with-profiler-stacks-checkbox = Aktivizo “stack traces” pëer mesazhe regjistrimi
-
-## Logging presets
-
 about-logging-preset-networking-label = Punim në rrjet
 about-logging-preset-networking-description = Module regjistrimi për diagnostikim problemesh rrjeti
 about-logging-preset-networking-cookie-label = “Cookies”
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Module regjistrimi për diagnostikim problemesh WebGPU
 about-logging-preset-gfx-label = Grafikë
 about-logging-preset-gfx-description = Module regjistrimi për diagnostikim problemesh kartash grafike
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Module regjistrimi për diagnostikim problemesh specifike të Microsoft Windows-it
 about-logging-preset-custom-label = Vetjake
 about-logging-preset-custom-description = Module regjistrimi të përzgjedhur dorazi
-# Error handling
 about-logging-error = Gabim:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Vlerë e pavlefshme “{ $v }“ për kyçin “{ $k }“
 about-logging-unknown-logging-preset = Paracaktim i panjohur regjistrimi “{ $v }“
 about-logging-unknown-profiler-preset = Paracaktim i panjohur profilizuesi “{ $v }“

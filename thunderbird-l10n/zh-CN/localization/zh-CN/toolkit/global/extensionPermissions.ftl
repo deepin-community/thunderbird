@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = 读取和修改书签
 webext-perms-description-browserSettings = 读取和修改浏览器设置
 webext-perms-description-browsingData = 清除最近的浏览历史、Cookie 及有关数据
@@ -30,4 +21,8 @@ webext-perms-description-sessions = 访问最近关闭的标签页
 webext-perms-description-tabs = 访问浏览器标签页
 webext-perms-description-tabHide = 隐藏和显示浏览器标签页
 webext-perms-description-topSites = 访问浏览历史
+webext-perms-description-trialML = 下载 AI 模型到您的设备并运行
+webext-perms-description-userScripts = 允许未经验证的第三方脚本获取您的数据
 webext-perms-description-webNavigation = 在您上网时了解浏览器的行为状态
+webext-perms-extra-warning-userScripts-long = 未经验证的脚本可能会带来安全和隐私风险，例如会运行有害代码或跟踪网站活动。请确保只运行来自可信扩展或来源的脚本。
+webext-perms-extra-warning-userScripts-short = 未经验证的脚本可能带来安全和隐私风险。请确保只运行来自可信扩展或来源的脚本。

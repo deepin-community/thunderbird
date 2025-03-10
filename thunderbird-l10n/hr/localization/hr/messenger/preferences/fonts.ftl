@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Fontovi
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Zadani ({ $name })
 fonts-label-default-unnamed =
     .label = Zadani
-fonts-encoding-dialog-title =
-    .title = Fontovi i kodiranja
 fonts-language-legend =
     .value = Fontovi za:
     .accesskey = F
 fonts-proportional-label =
     .value = Proporcionalan:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latinicu
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Sinhala
 font-language-group-tibetan =
     .label = Tibetanski
-
-## Default font type
-
 default-font-serif =
     .label = Serifni
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = a
 min-size-none =
     .label = Ništa
-
-## Fonts in message
-
 font-control-legend = Upravljanje fontovima
 use-document-fonts-checkbox =
     .label = Dopusti porukama korištenje drugih fontova
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Koristi font fiksne širine za poruke s običnim tekstom
     .accesskey = K
-
-## Language settings
-
 text-encoding-legend = Kôdna stranica
 text-encoding-description = Postavite zadane kôdne stranice za slanje i primanje pošte
 font-outgoing-email-label =

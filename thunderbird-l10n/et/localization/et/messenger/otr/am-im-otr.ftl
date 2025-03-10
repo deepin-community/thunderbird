@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Otspunktkrüptimine
 account-otr-label = Salvestusväline sõnumside (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     osana tavalisest vestlusest ja samuti neid ei logita.
 otr-verify-nudge =
     .label = Alati tuletatakse meelde, et verifitseerimata kontakt tuleb verifitseerida
-
 otr-not-yet-available = pole veel saadaval
-

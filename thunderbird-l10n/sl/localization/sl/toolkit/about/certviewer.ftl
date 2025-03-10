@@ -1,25 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = Digitalno potrdilo
-
-## Error messages
-
 certificate-viewer-error-message = Podatkov o digitalnem potrdilu ni bilo mogoče najti ali pa je potrdilo poškodovano. Poskusite znova.
 certificate-viewer-error-title = Prišlo je do napake.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = Algoritem
 certificate-viewer-certificate-authority = Uradna oseba za digitalna potrdila
 certificate-viewer-cipher-suite = Zbirka šifre
 certificate-viewer-common-name = Skupno ime
 certificate-viewer-email-address = E-poštni naslov
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = Digitalno potrdilo za { $firstCertName }
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-country = Država ustanovitve
 certificate-viewer-country = Država
 certificate-viewer-curve = Krivulja
@@ -32,7 +19,6 @@ certificate-viewer-id = ID
 certificate-viewer-key-exchange-group = Skupina izmenjave ključev
 certificate-viewer-key-id = ID ključa
 certificate-viewer-key-size = Velikost ključa
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-locality = Kraj registracije
 certificate-viewer-locality = Kraj
 certificate-viewer-location = Lokacija
@@ -52,7 +38,6 @@ certificate-viewer-qualifier = Kvalifikator
 certificate-viewer-qualifiers = Kvalifikatorji
 certificate-viewer-required = Zahtevano
 certificate-viewer-unsupported = &lt;nepodprto&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = Država/območje registracije
 certificate-viewer-state-province = Država/območje
 certificate-viewer-sha-1 = SHA-1
@@ -81,40 +66,21 @@ certificate-viewer-authority-info-aia = Podatki o uradni osebi (AIA)
 certificate-viewer-certificate-policies = Politika digitalnih potrdil
 certificate-viewer-embedded-scts = Vgrajeni SCT-ji
 certificate-viewer-crl-endpoints = Končne točke CRL
-
-# This message is used as a row header in the Miscellaneous section.
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = Prenesi
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] Da
        *[false] Ne
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (potrdilo)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (veriga)
     .download = { $fileName }-veriga.pem
-
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = Ta razširitev je bila označena kot kritična, kar pomeni, da morajo uporabniki zavrniti potrdilo, če ga ne razumejo.
 certificate-viewer-export = Izvozi
     .download = { $fileName }.pem
-
-##
-
-# Label for a tab where we haven't found a better label:
 certificate-viewer-unknown-group-label = (neznano)
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = Vaša digitalna potrdila
 certificate-viewer-tab-people = Ljudje
 certificate-viewer-tab-servers = Strežniki

@@ -107,14 +107,18 @@ nsMsgComposeService::OpenComposeWindowWithParams(const char* chrome,
 
   nsresult rv;
 
-  NS_ENSURE_ARG_POINTER(params);
-
   // Use default identity if no identity has been specified
   nsCOMPtr<nsIMsgIdentity> identity;
   params->GetIdentity(getter_AddRefs(identity));
   if (!identity) {
     GetDefaultIdentity(getter_AddRefs(identity));
     params->SetIdentity(identity);
+  }
+  if (!identity) {
+    // Failed to get even a default identity.
+    // Can't compose without identity (need to set up account first).
+    // If we don't have an account, the 3pane will already be showing setup.
+    return GetTo3PaneWindow();
   }
 
   // Create a new window.
@@ -184,8 +188,7 @@ nsMsgComposeService::DetermineComposeHTML(nsIMsgIdentity* aIdentity,
 }
 
 MOZ_CAN_RUN_SCRIPT_FOR_DEFINITION nsresult
-nsMsgComposeService::GetOrigWindowSelection(MSG_ComposeType type,
-                                            mozilla::dom::Selection* selection,
+nsMsgComposeService::GetOrigWindowSelection(mozilla::dom::Selection* selection,
                                             nsACString& aSelHTML) {
   nsresult rv;
 
@@ -271,6 +274,23 @@ nsMsgComposeService::GetOrigWindowSelection(MSG_ComposeType type,
   return rv;
 }
 
+nsresult nsMsgComposeService::GetTo3PaneWindow() {
+  nsresult rv;
+  nsCOMPtr<nsIWindowMediator> windowMediator =
+      do_GetService(NS_WINDOWMEDIATOR_CONTRACTID, &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  nsCOMPtr<mozIDOMWindowProxy> domWindow;
+  rv = windowMediator->GetMostRecentBrowserWindow(getter_AddRefs(domWindow));
+  NS_ENSURE_SUCCESS(rv, NS_ERROR_ABORT);
+  nsCOMPtr<nsPIDOMWindowOuter> outerWin = nsPIDOMWindowOuter::From(domWindow);
+  if (outerWin) {
+    outerWin->Focus(mozilla::dom::CallerType::System);
+    return NS_OK;
+  }
+  return NS_ERROR_ABORT;
+}
+
 MOZ_CAN_RUN_SCRIPT_FOR_DEFINITION NS_IMETHODIMP
 nsMsgComposeService::OpenComposeWindow(
     const nsACString& msgComposeWindowURL, nsIMsgDBHdr* origMsgHdr,
@@ -282,6 +302,12 @@ nsMsgComposeService::OpenComposeWindow(
 
   nsCOMPtr<nsIMsgIdentity> identity = aIdentity;
   if (!identity) GetDefaultIdentity(getter_AddRefs(identity));
+  if (!identity) {
+    // Failed to get even a default identity.
+    // Can't compose without identity (need to set up account first).
+    // If we don't have an account, the 3pane will already be showing setup.
+    return GetTo3PaneWindow();
+  }
 
   /* Actually, the only way to implement forward inline is to simulate a
      template message. Maybe one day when we will have more time we can change
@@ -339,7 +365,7 @@ nsMsgComposeService::OpenComposeWindow(
            type == nsIMsgCompType::ReplyToSenderAndGroup ||
            type == nsIMsgCompType::ReplyToList)) {
         nsAutoCString selHTML;
-        if (NS_SUCCEEDED(GetOrigWindowSelection(type, selection, selHTML))) {
+        if (NS_SUCCEEDED(GetOrigWindowSelection(selection, selHTML))) {
           nsCOMPtr<nsINode> node = selection->GetFocusNode();
           NS_ENSURE_TRUE(node, NS_ERROR_FAILURE);
           IgnoredErrorResult er;
@@ -399,7 +425,7 @@ nsMsgComposeService::OpenComposeWindow(
 }
 
 NS_IMETHODIMP nsMsgComposeService::GetParamsForMailto(
-    nsIURI* aURI, nsIMsgComposeParams** aParams) {
+    nsIURI* aURI, nsIMsgIdentity* aIdentity, nsIMsgComposeParams** aParams) {
   nsresult rv = NS_OK;
   if (aURI) {
     nsCString spec;
@@ -428,7 +454,8 @@ NS_IMETHODIMP nsMsgComposeService::GetParamsForMailto(
       nsAutoString sanitizedBody;
 
       bool composeHTMLFormat;
-      DetermineComposeHTML(NULL, requestedComposeFormat, &composeHTMLFormat);
+      DetermineComposeHTML(aIdentity, requestedComposeFormat,
+                           &composeHTMLFormat);
 
       // If there was an 'html-body' param, finding it will have requested
       // HTML format in GetMessageContents, so we try to use it first. If it's
@@ -467,6 +494,9 @@ NS_IMETHODIMP nsMsgComposeService::GetParamsForMailto(
         pMsgComposeParams->SetFormat(composeHTMLFormat
                                          ? nsIMsgCompFormat::HTML
                                          : nsIMsgCompFormat::PlainText);
+        if (aIdentity) {
+          pMsgComposeParams->SetIdentity(aIdentity);
+        }
 
         nsCOMPtr<nsIMsgCompFields> pMsgCompFields(do_CreateInstance(
             "@mozilla.org/messengercompose/composefields;1", &rv));
@@ -496,12 +526,10 @@ NS_IMETHODIMP nsMsgComposeService::GetParamsForMailto(
 NS_IMETHODIMP nsMsgComposeService::OpenComposeWindowWithURI(
     const char* aMsgComposeWindowURL, nsIURI* aURI, nsIMsgIdentity* identity) {
   nsCOMPtr<nsIMsgComposeParams> pMsgComposeParams;
-  nsresult rv = GetParamsForMailto(aURI, getter_AddRefs(pMsgComposeParams));
-  if (NS_SUCCEEDED(rv)) {
-    pMsgComposeParams->SetIdentity(identity);
-    rv = OpenComposeWindowWithParams(aMsgComposeWindowURL, pMsgComposeParams);
-  }
-  return rv;
+  nsresult rv =
+      GetParamsForMailto(aURI, identity, getter_AddRefs(pMsgComposeParams));
+  NS_ENSURE_SUCCESS(rv, rv);
+  return OpenComposeWindowWithParams(aMsgComposeWindowURL, pMsgComposeParams);
 }
 
 NS_IMETHODIMP nsMsgComposeService::InitCompose(nsIMsgComposeParams* aParams,
@@ -1170,16 +1198,12 @@ nsresult nsMsgComposeService::RunMessageThroughMimeDraft(
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgMailNewsUrl> mailnewsurl = do_QueryInterface(url);
-  if (!mailnewsurl) {
-    NS_WARNING(
-        "Trying to run a message through MIME which doesn't have a "
-        "nsIMsgMailNewsUrl?");
-    return NS_ERROR_UNEXPECTED;
+  if (mailnewsurl) {
+    // If the current protocol uses `nsIMsgMailNewsUrl`, call `SetSpecInternal`
+    // so the base URL is parsed as the message service will expect.
+    rv = mailnewsurl->SetSpecInternal(mailboxUri);
+    NS_ENSURE_SUCCESS(rv, rv);
   }
-  // SetSpecInternal must not fail, or else the URL won't have a base URL and
-  // we'll crash later.
-  rv = mailnewsurl->SetSpecInternal(mailboxUri);
-  NS_ENSURE_SUCCESS(rv, rv);
 
   // if we are forwarding a message and that message used a charset override
   // then forward that as auto-detect flag, too.
@@ -1272,6 +1296,13 @@ nsMsgComposeService::Handle(nsICommandLine* aCmdLine) {
     }
   }
   if (composeShouldHandle) {
+    nsCOMPtr<nsIMsgIdentity> identity;
+    GetDefaultIdentity(getter_AddRefs(identity));
+    if (!identity) {
+      // No account yet; can't compose.
+      return NS_OK;
+    }
+
     aCmdLine->RemoveArguments(found, end);
 
     nsCOMPtr<nsIWindowWatcher> wwatch(

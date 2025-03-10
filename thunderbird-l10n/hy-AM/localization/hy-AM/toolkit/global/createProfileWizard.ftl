@@ -1,13 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 create-profile-window2 =
     .title = Ստեղծել պրոֆիլի Օգնական
     .style = min-width: 45em; min-height: 32em;
-
-## First wizard page
-
 create-profile-first-page-header2 =
     { PLATFORM() ->
         [macos] Ներածություն
@@ -21,9 +14,6 @@ profile-creation-explanation-4 =
         [macos] Ձեր պրոֆիլի ստեղծման համար սեղմեք Շարունակել։
        *[other] Հաշվի ստեղծման գործնթացը սկսելու համար սեղմեք Հաջորդ կոճակը։
     }
-
-## Second wizard page
-
 create-profile-last-page-header2 =
     { PLATFORM() ->
         [macos] Վերջաբան

@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Pytanje podawkow a lisćinu podawkow začinić
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Mjeno protyki
     .tooltiptext = Po protykowym mjenje sortěrować
 calendar-event-listing-column-category =
     .label = Kategorija
     .tooltiptext = Po kategoriji sortěrować
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Dokónčene
     .tooltiptext = Po dokónčenju sortěrować
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Titul
     .tooltiptext = Po titulu sortěrować
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Podawki w zańdźenosći
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Podawki přichodnych 6 měsacow
 calendar-event-listing-interval-next-12-months =
     .label = Podawki přichodnych 12 měsacow
+calendar-event-listing-interval-future =
+    .label = Wšě přichodne podawki
 calendar-event-listing-interval-all =
     .label = Wšě podawki
 calendar-event-listing-interval-selected-day =

@@ -1,88 +1,53 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Window controls
-
 messenger-window-minimize-button =
     .tooltiptext = Ελαχιστοποίηση
 messenger-window-maximize-button =
     .tooltiptext = Μεγιστοποίηση
 messenger-window-restore-down-button =
-    .tooltiptext = Επαναφορά κάτω
+    .tooltiptext = Επαναφορά μεγέθους
 messenger-window-close-button =
     .tooltiptext = Κλείσιμο
-# Variables:
-# $count (Number) - Number of unread messages.
 unread-messages-os-tooltip =
     { $count ->
         [one] 1 μη αναγνωσμένο μήνυμα
        *[other] { $count } μη αναγνωσμένα μηνύματα
     }
 about-rights-notification-text = Το { -brand-short-name } είναι δωρεάν λογισμικό ανοικτού κώδικα, που δημιουργήθηκε από μια κοινότητα χιλιάδων ατόμων από όλο τον κόσμο.
-
-## Content tabs
-
 content-tab-page-loading-icon =
     .alt = Η σελίδα φορτώνεται
 content-tab-security-high-icon =
     .alt = Η σύνδεση είναι ασφαλής
 content-tab-security-broken-icon =
     .alt = Η σύνδεση δεν είναι ασφαλής
-
-# Back
-
-# Variables
-#   $shortcut (String) - A keyboard shortcut for the Go Back command.
 content-tab-menu-back =
     .tooltiptext = Μετάβαση πίσω κατά μία σελίδα ({ $shortcut })
     .aria-label = Πίσω
     .accesskey = Π
-# This menuitem is only visible on macOS
 content-tab-menu-back-mac =
     .label = Πίσω
     .accesskey = Π
-
-# Forward
-
-# Variables
-#   $shortcut (String) - A keyboard shortcut for the Go Forward command.
 content-tab-menu-forward =
     .tooltiptext = Μετάβαση εμπρός κατά μία σελίδα ({ $shortcut })
     .aria-label = Εμπρός
     .accesskey = Ε
-# This menuitem is only visible on macOS
 content-tab-menu-forward-mac =
     .label = Εμπρός
     .accesskey = Ε
-
-# Reload
-
 content-tab-menu-reload =
     .tooltiptext = Επαναφόρτωση σελίδας
     .aria-label = Επαναφόρτωση
     .accesskey = π
-# This menuitem is only visible on macOS
 content-tab-menu-reload-mac =
     .tooltiptext = Επαναφόρτωση σελίδας
     .label = Επαναφόρτωση
     .accesskey = π
-
-# Stop
-
 content-tab-menu-stop =
     .tooltiptext = Διακοπή φόρτωσης σελίδας
     .aria-label = Διακοπή
     .accesskey = Δ
-# This menuitem is only visible on macOS
 content-tab-menu-stop-mac =
     .tooltiptext = Διακοπή φόρτωσης σελίδας
     .label = Διακοπή
     .accesskey = Δ
-
-## Toolbar
-
 addons-and-themes-toolbarbutton =
     .label = Πρόσθετα και θέματα
     .tooltiptext = Διαχείριση των προσθέτων σας
@@ -92,18 +57,12 @@ quick-filter-toolbarbutton =
 redirect-msg-button =
     .label = Ανακατεύθυνση
     .tooltiptext = Ανακατεύθυνση επιλεγμένου μηνύματος
-
-## Folder Pane
-
 folder-pane-toolbar =
     .toolbarname = Γραμμή περιοχής φακέλων
     .accesskey = Γ
 folder-pane-toolbar-options-button =
     .tooltiptext = Επιλογές περιοχής φακέλων
 folder-pane-header-label = Φάκελοι
-
-## Folder Toolbar Header Popup
-
 folder-toolbar-hide-toolbar-toolbarbutton =
     .label = Απόκρυψη γραμμής εργαλείων
     .accesskey = Α
@@ -128,23 +87,15 @@ show-tags-folders-label =
 folder-toolbar-toggle-folder-compact-view =
     .label = Συμπτυγμένη προβολή
     .accesskey = Σ
-
-## File Menu
-
 menu-file-save-as-file =
     .label = Αρχείο…
     .accesskey = Α
-
-## Edit Menu
-
 menu-edit-delete-folder =
     .label = Διαγραφή φακέλου
     .accesskey = Δ
 menu-edit-unsubscribe-newsgroup =
     .label = Κατάργηση συνδρομής στην ομάδα συζήτησης
     .accesskey = ρ
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-delete-messages =
     .label =
         { $count ->
@@ -152,8 +103,6 @@ menu-edit-delete-messages =
            *[other] Διαγραφή επιλεγμένων μηνυμάτων
         }
     .accesskey = Δ
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-undelete-messages =
     .label =
         { $count ->
@@ -170,24 +119,15 @@ menu-edit-folder-properties =
 menu-edit-newsgroup-properties =
     .label = Ιδιότητες ομάδας συζητήσεων
     .accesskey = δ
-
-## Message Menu
-
 redirect-msg-menuitem =
     .label = Ανακατεύθυνση
     .accesskey = κ
-
-## AppMenu
-
 appmenu-save-as-file =
     .label = Αρχείο…
 appmenu-settings =
     .label = Ρυθμίσεις
 appmenu-addons-and-themes =
     .label = Πρόσθετα και θέματα
-
-## Context menu
-
 context-menu-mark-read =
     .aria-label = Επισήμανση ως αναγνωσμένο
     .tooltiptext = Επισήμανση ως αναγνωσμένο
@@ -203,6 +143,9 @@ context-menu-archive =
 context-menu-mark-junk =
     .aria-label = Επισήμανση ως ανεπιθύμητο
     .tooltiptext = Επισήμανση ως ανεπιθύμητο
+context-menu-mark-not-junk =
+    .aria-label = Επισήμανση ως επιθύμητο
+    .tooltiptext = Επισήμανση ως επιθύμητο
 mail-context-menu-open =
     .label = Άνοιγμα
     .accesskey = ν
@@ -218,8 +161,6 @@ mail-context-menu-forward-forward =
 mail-context-menu-forward-inline =
     .label = Ενσωμάτωση
     .accesskey = Ε
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-menu-forward-as-attachment =
     .label =
         { $count ->
@@ -235,27 +176,8 @@ mail-context-menu-threads =
     .accesskey = Ν
 context-menu-redirect-msg =
     .label = Ανακατεύθυνση
-# This menu item is for canceling an NNTP message
 context-menu-cancel-msg =
     .label = Ακύρωση μηνύματος
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-delete-messages =
-    .label =
-        { $count ->
-            [one] Διαγραφή μηνύματος
-           *[other] Διαγραφή επιλεγμένων μηνυμάτων
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-undelete-messages =
-    .label =
-        { $count ->
-            [one] Αναίρεση διαγραφής μηνύματος
-           *[other] Αναίρεση διαγραφής επιλεγμένων μηνυμάτων
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-messages-delete =
     .label =
         { $count ->
@@ -263,8 +185,6 @@ mail-context-messages-delete =
            *[other] Διαγραφή επιλεγμένων μηνυμάτων
         }
     .tooltiptext = { mail-context-messages-delete.label }
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-messages-undelete =
     .label =
         { $count ->
@@ -275,24 +195,13 @@ mail-context-messages-undelete =
 context-menu-decrypt-to-folder2 =
     .label = Δημιουργία αποκρυπτογραφημένου αντιγράφου σε
     .accesskey = γ
-
-## Message header pane
-
 other-action-redirect-msg =
     .label = Ανακατεύθυνση
 message-header-msg-flagged =
     .title = Με αστέρι
     .aria-label = Με αστέρι
-# Variables:
-# $address (String) - The email address of the recipient this picture belongs to.
 message-header-recipient-avatar =
     .alt = Εικόνα προφίλ του { $address }.
-
-## Message header cutomize panel
-
-
-## Message header customize panel
-
 message-header-customize-panel-title = Ρυθμίσεις κεφαλίδας μηνυμάτων
 message-header-customize-button-style =
     .value = Στυλ κουμπιών
@@ -322,24 +231,14 @@ message-header-large-subject =
 message-header-all-headers =
     .label = Εμφάνιση όλων των κεφαλίδων
     .accesskey = Ε
-
-## Action Button Context Menu
-
 toolbar-context-menu-manage-extension =
     .label = Διαχείριση επέκτασης
     .accesskey = ε
 toolbar-context-menu-remove-extension =
     .label = Αφαίρεση επέκτασης
     .accesskey = φ
-
-## Add-on removal warning
-
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
-addon-removal-title = Αφαίρεση του { $name };
+addon-removal-title = Αφαίρεση του «{ $name }»;
 addon-removal-confirmation-button = Αφαίρεση
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
 addon-removal-confirmation-message = Αφαίρεση του { $name }, των ρυθμίσεων και των δεδομένων του από το { -brand-short-name };
 caret-browsing-prompt-title = Περιήγηση με κέρσορα
 caret-browsing-prompt-text = Πατώντας το F7 (απ)ενεργοποιείται η περιήγηση με κέρσορα. Αυτή η λειτουργία τοποθετεί έναν κινούμενο κέρσορα σε ορισμένο περιεχόμενο και σας επιτρέπει να επιλέγετε κείμενο με το πληκτρολόγιο. Θέλετε να ενεργοποιήσετε τη λειτουργία;
@@ -347,28 +246,14 @@ caret-browsing-prompt-check-text = Να μη γίνει ξανά ερώτηση.
 repair-text-encoding-button =
     .label = Επιδιόρθωση κωδικοποίησης κειμένου
     .tooltiptext = Υπόθεση σωστής κωδικοποίησης κειμένου από το περιεχόμενο του μηνύματος
-
-## no-reply handling
-
 no-reply-title = Δεν υποστηρίζεται απάντηση
-# Variables:
-# $email (String) - Email address the reply will be sent to. Example: "noreply@example.com"
-no-reply-message = Η διεύθυνση απάντησης ({ $email }) δεν φαίνεται να είναι εποπτεύεται. Τα μηνύματα σε αυτήν τη διεύθυνση πιθανότατα δεν θα διαβαστούν από κανέναν.
+no-reply-message = Η διεύθυνση απάντησης ({ $email }) δεν φαίνεται να είναι εποπτευόμενη διεύθυνση. Τα μηνύματα προς αυτή την διεύθυνση πιθανότατα δε θα διαβαστούν από κανέναν.
 no-reply-reply-anyway-button = Απάντηση ούτως ή άλλως
-
-## error messages
-
-# Variables:
-# $failures (Number) - Number of messages that could not be decrypted.
-# $total (Number) - Total number of messages that were attempted to be decrypted.
 decrypt-and-copy-failures-multiple =
     { $failures ->
         [one] { $failures } από { $total } μήνυμα δεν ήταν δυνατή η αποκρυπτογράφησή του και δεν αντιγράφηκε.
        *[other] { $failures } από { $total } μηνύματα δεν ήταν δυνατή η αποκρυπτογράφησή τους και δεν αντιγράφηκαν.
     }
-
-## Spaces toolbar
-
 spaces-toolbar-element =
     .toolbarname = Γραμμή χώρων
     .aria-label = Γραμμή χώρων
@@ -395,8 +280,6 @@ spaces-context-new-tab-item =
     .label = Άνοιγμα σε νέα καρτέλα
 spaces-context-new-window-item =
     .label = Άνοιγμα σε νέο παράθυρο
-# Variables:
-# $tabName (String) - The name of the tab this item will switch to.
 spaces-context-switch-tab-item =
     .label = Εναλλαγή σε { $tabName }
 settings-context-open-settings-item2 =
@@ -405,9 +288,6 @@ settings-context-open-account-settings-item2 =
     .label = Ρυθμίσεις λογαριασμού
 settings-context-open-addons-item2 =
     .label = Πρόσθετα και θέματα
-
-## Spaces toolbar pinned tab menupopup
-
 spaces-toolbar-pinned-tab-button =
     .tooltiptext = Άνοιγμα μενού χώρων
 spaces-pinned-button-menuitem-mail2 =
@@ -424,54 +304,28 @@ spaces-pinned-button-menuitem-settings2 =
     .label = { spaces-toolbar-button-settings2.title }
 spaces-pinned-button-menuitem-show =
     .label = { spaces-toolbar-button-show.title }
-# Variables:
-# $count (Number) - Number of unread messages.
 chat-button-unread-messages = { $count }
     .title =
         { $count ->
             [one] Ένα μη αναγνωσμένο μήνυμα
            *[other] { $count } μη αναγνωσμένα μηνύματα
         }
-
-## Spaces toolbar customize panel
-
 menuitem-customize-label =
     .label = Προσαρμογή…
 spaces-customize-panel-title = Ρυθμίσεις γραμμής χώρων
 spaces-customize-background-color = Χρώμα φόντου
 spaces-customize-icon-color = Χρώμα κουμπιού
-# The background color used on the buttons of the spaces toolbar when they are
-# `current`, meaning the related space/tab is active and visible.
 spaces-customize-accent-background-color = Επιλεγμένο χρώμα φόντου κουμπιού
-# The icon color used on the buttons of the spaces toolbar when they are
-# `current`, meaning the related space/tab is active and visible.
 spaces-customize-accent-text-color = Επιλεγμένο χρώμα κουμπιού
 spaces-customize-button-restore = Επαναφορά προεπιλογών
     .accesskey = φ
 customize-panel-button-save = Τέλος
     .accesskey = Τ
-
-## Quick Filter Bar
-
-# The label to display for the "View... Toolbars..." menu item that controls
-# whether the quick filter bar is visible.
 quick-filter-bar-toggle =
     .label = Γραμμή γρήγορου φιλτραρίσματος
     .accesskey = γ
-# This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-search-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
-
-## OpenPGP
-
 openpgp-forget = Ξεχάστε τις φράσεις πρόσβασης OpenPGP
-
-## Quota panel.
-
-# Variables:
-#   $percent (Number) - Usage percentage of the assigned IMAP quota.
-#   $usage (String) - Current quota usage (may include unit)
-#   $limit (String) - Current quota limit (may include unit)
 quota-panel-percent-used = { $percent }% πλήρες
     .title = Ποσοστό IMAP: { $usage } σε χρήση από συνολικά { $limit }

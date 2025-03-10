@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Jelelőmező a jelenlegi sor kiválasztásához
     .title = A jelenlegi sor kiválasztása
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = A jelenlegi sor helyreállítása
 tree-list-view-column-picker =
     .title = Jelölje ki a megjelenítendő oszlopokat
-tree-list-view-column-picker-restore =
-    .label = Oszlopsorrend visszaállítása
 tree-list-view-column-picker-restore-default-columns =
     .label = Alapértelmezett oszlopok visszaállítása
 tree-list-view-row-thread-button =

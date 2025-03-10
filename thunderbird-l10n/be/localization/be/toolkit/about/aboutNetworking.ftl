@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Пра сетку
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = Ачысціць кэш HTTP
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Лік маруднага кэша
 about-networking-rcwn-cache-not-slow = Лік не-маруднага кэша
 about-networking-networkid = Сеткавы ID
 about-networking-networkid-id = Сеткавы ID
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Гэта старонка была перанесена ў <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Злучэнне актыўнае
 about-networking-networkid-status-known = Стан злучэння вядомы
-
-##
-

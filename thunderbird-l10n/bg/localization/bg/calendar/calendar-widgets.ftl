@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Всички календари в момента са деактивирани. Активирайте съществуващ календар или добавете нов, за да създавате и редактирате събития.
 calendar-deactivated-notification-tasks = Всички календари в момента са деактивирани. Активирайте съществуващ календар или добавете нов, за да създавате и редактирате задачи.
 calendar-notifications-label = Показване на известия за предстоящи събития
 calendar-add-notification-button =
     .label = Добавяне на известие
-
-## Side panel
-
 calendar-list-header = Календари
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Календарът { $calendarName } е заглушен
 calendar-enable-button = Включване
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Опции за календар { $calendarName }
 calendar-import-new-calendar = Нов календар…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Презареждане на календарите и синхронизиране на промените
 calendar-new-event-primary-button = Ново събитие
 calendar-new-task-primary-button = Нова задача
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Предишен ден
     .accesskey = д
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Многоседмично
     .title = Превключване към многоседмичен изглед
 calendar-view-toggle-month = Месец
     .title = Превключване към месечен изглед
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Опции за оформление на календара
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Задаване на дните на работната седмица
 calendar-show-tasks-calendar-option =
     .label = Показване на задачите в календара
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Предишен ден
     .accesskey = р

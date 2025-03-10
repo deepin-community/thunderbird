@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Podatki o razvrščevalniku URL
 url-classifier-search-title = Iskanje
 url-classifier-search-result-title = Rezultati
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Dnevniški moduli varnega brskanja
 url-classifier-debug-modules = Trenutni dnevniški moduli
 url-classifier-debug-sbjs-modules = Dnevnik JS varnega brskanja
 url-classifier-debug-file = Trenutna dnevniška datoteka
-
 url-classifier-trigger-update = Sproži posodobitev
 url-classifier-not-available = Ni določeno
 url-classifier-disable-sbjs-log = Onemogoči dnevnik JS varnega brskanja
@@ -50,9 +45,5 @@ url-classifier-disabled = Onemogočeno
 url-classifier-updating = posodabljanje
 url-classifier-cannot-update = ni mogoče posodobiti
 url-classifier-success = uspeh
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = napaka pri posodobitvi ({ $error })
 url-classifier-download-error = napaka pri prenosu ({ $error })

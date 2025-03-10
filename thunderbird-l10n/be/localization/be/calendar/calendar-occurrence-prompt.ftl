@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 header-isrepeating-event =
     .label = серыя падзей
 header-isrepeating-task =
@@ -12,17 +8,17 @@ header-containsrepeating-task =
     .label = змяшчае серыю задач
 header-containsrepeating-mixed =
     .label = змяшчае серыю элементаў рознага тыпу
-windowtitle-event-copy = Капіяваць падзею, якая паўтараецца
-windowtitle-task-copy = Капіяваць задачу, якая паўтараецца
+windowtitle-event-copy = Капіяваць серыю падзей
+windowtitle-task-copy = Капіяваць серыю задач
 windowtitle-mixed-copy = Капіяваць элементы, якія паўтараюцца
-windowtitle-event-cut = Выразаць падзею, якая паўтараецца
-windowtitle-task-cut = Выразаць задачу, якая паўтараецца
+windowtitle-event-cut = Выразаць серыю падзей
+windowtitle-task-cut = Выразаць серыю задач
 windowtitle-mixed-cut = Выразаць элементы, якія паўтараюцца
-windowtitle-event-delete = Выдаліць падзею, якая паўтараецца
-windowtitle-task-delete = Выдаліць задачу, якая паўтараецца
+windowtitle-event-delete = Выдаліць серыю падзей
+windowtitle-task-delete = Выдаліць серыю задач
 windowtitle-mixed-delete = Выдаліць элементы, якая паўтараюцца
-windowtitle-event-edit = Рэдагаваць падзею, якая паўтараецца
-windowtitle-task-edit = Рэдагаваць задачу, якая паўтараецца
+windowtitle-event-edit = Рэдагаваць серыю падзей
+windowtitle-task-edit = Рэдагаваць серыю задач
 windowtitle-mixed-edit = Рэдагаваць элементы, якія паўтараюцца
 windowtitle-multipleitems =
     .value = Выбраныя элементы

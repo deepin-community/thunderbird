@@ -73,6 +73,16 @@ description {
 .loading-status {
   width: 16px;
   height: 16px;
+  -moz-context-properties: fill;
+  fill: var(--selected-item-color);
+}
+
+#wizardCreateKey.in-subdialog {
+  /*
+   * Prevent the subdialog from growing too tall if the section doesn't have
+   * an initial height.
+   */
+  height: 1px;
 }
 
 /* Import key list */
@@ -98,7 +108,7 @@ description {
   margin-bottom: 6px;
 
   &.selected {
-    border: 1px solid #45A1FF;
+    border: 1px solid #45a1ff;
     background-color: rgba(69, 161, 255, 0.2);
     margin-bottom: 0;
   }
@@ -159,4 +169,8 @@ description {
   & input:not([type="number"],[type="color"]) {
     flex: 1;
   }
+}
+
+menupopup[needsgutter] > :is(menu, menuitem)::before {
+  display: none;
 }

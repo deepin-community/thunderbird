@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Kalendaŕ
 calendar-title-reminder = Dopomnjeśa
 calendar-title-notification = Powěźeńki
@@ -9,10 +5,8 @@ calendar-title-category = Kategorije
 dateformat-label =
     .value = Datumowy tekstowy format:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Dłujki: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Krotki: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Pšašaś se, nježli až se tšojenja a nadawki wulašuju.
     .accesskey = P
-accessibility-legend = Bźezbariernosć
-accessibility-colors-label =
-    .label = Barwy za bźezbariernosć optiměrowaś
-    .accesskey = B
 reminder-legend = Gaž dopomnjeśe jo na rěźe:
 reminder-play-checkbox =
     .label = Zuk wótgraś

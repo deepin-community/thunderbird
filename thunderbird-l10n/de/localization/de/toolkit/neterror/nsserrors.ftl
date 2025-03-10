@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Eine sichere Verbindung konnte nicht aufgebaut werden, weil das SSL-Protokoll deaktiviert wurde.
 psmerr-ssl2-disabled = Eine sichere Verbindung konnte nicht aufgebaut werden, weil die Website eine ältere, unsichere Version des SSL-Protokolls verwendet.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Sie haben ein ungültiges Zertifikat erhalten. Bitte kontaktieren Sie den Server-Administrator oder E-Mail-Korrespondenten und geben Sie diesen die folgenden Informationen:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Der Server hat ein Zertifikat mit 
 mozilla-pkix-error-empty-issuer-name = Der Server hat ein Zertifikat vorgezeigt, dessen eindeutiger Ausstellername leer ist.
 mozilla-pkix-error-additional-policy-constraint-failed = Eine zusätzliche Regelbeschränkung ist beim Validieren dieses Zertifikats fehlgeschlagen.
 mozilla-pkix-error-self-signed-cert = Dem Zertifikat wird nicht vertraut, weil es vom Aussteller selbst signiert wurde.
+mozilla-pkix-error-issuer-no-longer-trusted = Der Zertifizierungsstelle, die das Zertifikat ausgestellt hat, wurde das Vertrauen entzogen, bevor das Zertifikat ausgestellt wurde.
 xp-java-remove-principal-error = Principal konnte nicht entfernt werden
 xp-java-delete-privilege-error = Privileg konnte nicht gelöscht werden
 xp-java-cert-not-exists-error = Dieser Principal hat kein Zertifikat

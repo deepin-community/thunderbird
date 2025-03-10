@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Lapas krāsas un fons">
 <!ENTITY pageColors.label "Lapas krāsas">
 <!ENTITY defaultColorsRadio.label "Lasītāja noklusētās krāsas (lapā krāsas neiestatīt)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Lietot pielāgotas krāsas:">
 <!ENTITY customColorsRadio.accessKey "p">
 <!ENTITY customColorsRadio.tooltip "Šie krāsu iestatījumi ignorē skatītāja pārlūka iestatījumus">
-
 <!ENTITY normalText.label "Parasts teksts">
 <!ENTITY normalText.accessKey "P">
 <!ENTITY linkText.label "Saites teksts">

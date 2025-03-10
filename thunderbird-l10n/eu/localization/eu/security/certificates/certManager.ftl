@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Ziurtagiri-kudeatzailea
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Huts egin du PKCS #12 fitxategiaren babeskopia sortz
 pkcs12-unknown-err = PKCS #12 eragiketak huts egin du, arrazoi ezezagunengatik.
 pkcs12-info-no-smartcard-backup = Ezin da hardwarearen segurtasun-gailu bateko ziurtagirien babeskopia egin, txip txartel batekoena adibidez.
 pkcs12-dup-data = Ziurtagiria eta gako pribatua badaude jadanik segurtasun-gailuan.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Babeskopia egiteko fitxategi izena
 file-browse-pkcs12-spec = PKCS12 fitxategiak
 choose-p12-restore-file-dialog = Inportatzeko ziurtagiri-fitxategia
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Ziurtagiri fitxategiak
 import-ca-certs-prompt = Aukeratu inportatuko diren AZ ziurtagiriak dituen fitxategia
 import-email-cert-prompt = Aukeratu inportatuko den e-posta ziurtagiria duen fitxategia
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = "{ $certName }" ziurtagiriak autoritate ziurtagiri emaile bat adierazten du.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Ezabatu zure ziurtagiriak
 delete-user-cert-confirm = Ziur zaude ziurtagiri hauek ezabatu nahi dituzula?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Ezabatu e-posta ziurtagiriak
 delete-email-cert-confirm = Ziur zaude pertsona hauen e-posta ziurtagiriak ezabatu nahi dituzula?
 delete-email-cert-impact = Pertsona baten e-posta ziurtagiria ezabatzen baduzu, ez zara pertsona horri zifratutako mezuak bidaltzeko gai izango.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Serie-zenbakidun ziurtagiria: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Ez bidali bezero-ziurtagiririk
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (Ez gordea)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (Ez dago erabilgarri)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Iraunkorra
 temporary-override = Behin-behinekoa
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = { -brand-short-name }(e)k guneak nola identifikatzen dituen gainidaztera zoaz.
 add-exception-invalid-header = Gune hau bere burua informazio baliogabeaz identifikatzen saiatzen ari da.
 add-exception-domain-mismatch-short = Gune okerra
@@ -170,9 +139,6 @@ add-exception-checking-short = Informazioa egiaztatzen
 add-exception-checking-long = Gunea identifikatzen saiatzen…
 add-exception-no-cert-short = Ez dago informaziorik eskuragarri
 add-exception-no-cert-long = Ezin da eskuratu gune honetarako identifikazio-egoera.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Gorde ziurtagiria fitxategi batean
 cert-format-base64 = X.509 Ziurtagiria (PEM)
 cert-format-base64-chain = X.509 Ziurtagiria kateaz (PEM)

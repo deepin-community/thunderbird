@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Lagra innloggingar
 saved-logins-title = Lagra innloggingar
-window-close =
-    .key = w
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -69,15 +61,11 @@ remove-all-shown =
 remove-all-passwords-prompt = Er du sikker på at du vil slette alle passorda?
 remove-all-passwords-title = Slett alle passorda
 no-master-password-prompt = Er du sikker på at du vil vise passorda?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Stadfest identiteten din for å vise dei lagra passorda.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = vis dei lagra passorda
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
+password-os-auth-change-dialog-message =
+    { PLATFORM() ->
+        [macos] endre innstillingar for passord
+       *[other] { -brand-short-name } prøver å endre innstillingane for passord. Bruk pålogginga i eininga for å tillate dette.
+    }

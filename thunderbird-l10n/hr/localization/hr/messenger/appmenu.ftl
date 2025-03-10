@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sinkronizacija
 appmenu-signin-panel =
@@ -27,20 +20,14 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Odjavi se…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Novi račun
 appmenu-new-account-panel =
     .label = Novi račun
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Stvorite novi račun e-pošte
-    .accesskey = t
-appmenu-new-mail-account =
-    .label = Postojeći račun e-pošte
-    .accesskey = e
+appmenu-new-email-account =
+    .label = E-mail adresa
+    .accesskey = E
 appmenu-new-calendar =
     .label = Kalendar
     .accesskey = K
@@ -53,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Interesna grupa
     .accesskey = n
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Novi adresar
 appmenu-newab-panel =
@@ -70,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP adresar
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Stvori
 appmenu-create-panel =
@@ -90,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Otvori iz datoteke
     .accesskey = O
@@ -104,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalendar…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Prikaži
 appmenu-view-panel =
@@ -126,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Povećaj veličinu fonta
 appmenuitem-font-size-reduce =
     .tooltiptext = Smanji veličinu fonta
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Vrati veličinu fonta na početno
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Alati
 appmenu-tools-panel =
@@ -144,6 +114,9 @@ appmenu-tools-import =
     .accesskey = U
 appmenu-tools-export =
     .label = Izvoz
+    .accesskey = I
+appmenu-export-for-mobile =
+    .label = Izvoz za mobilne uređaje
     .accesskey = I
 appmenu-tools-message-search =
     .label = Traži poruke
@@ -160,17 +133,14 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Programerski alati
     .accesskey = t
-
-## Help
-
 appmenu-help-panel-title =
     .title = Pomoć
 appmenu-help-get-help =
     .label = Potraži pomoć
     .accesskey = r
-appmenu-help-explore-features =
-    .label = Istraži funkcije
-    .accesskey = f
+appmenu-help-get-release-help =
+    .label = Zatraži pomoć s aplikacijom { -brand-short-name }
+    .accesskey = P
 appmenu-help-shortcuts =
     .label = Tipkovnički prečaci
     .accesskey = k
@@ -195,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = O { -brand-short-name }u
     .accesskey = O
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Preuzimanje nadogradnje za { -brand-shorter-name }
 appmenuitem-banner-update-available =

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = O spojeniach
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = Vymazať vyrovnávaciu pamäť HTTP
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Počet pomalých prístupov do vyrovnávacej 
 about-networking-rcwn-cache-not-slow = Počet rýchlych prístupov do vyrovnávacej pamäte
 about-networking-networkid = ID siete
 about-networking-networkid-id = ID siete
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Táto stránka bola presunutá na stránku <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Spojenie je aktívne
 about-networking-networkid-status-known = Stav spojenia je známy
-
-##
-

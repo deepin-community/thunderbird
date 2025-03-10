@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Wo syćowych zwiskach
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = HTTP-pufrowak wuprózdnić
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Pomałe ličenje pufrować
 about-networking-rcwn-cache-not-slow = Pomałe ličenje njepufrować
 about-networking-networkid = Syćowy ID
 about-networking-networkid-id = Syćowy ID
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Tuta strona je so do <a data-l10n-name="about-logging-url">about:logging</a> přesunyła.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Wotkaz je spadnjeny
 about-networking-networkid-status-known = Wotkazowy status je znaty
-
-##
-

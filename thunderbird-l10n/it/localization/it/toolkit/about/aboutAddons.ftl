@@ -1,21 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = Gestione componenti aggiuntivi
 search-header =
     .placeholder = Cerca in addons.mozilla.org
     .searchbuttonlabel = Cerca
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
 list-empty-get-extensions-message = Visita <a data-l10n-name="get-extensions">{ $domain }</a> per installare estensioni e temi
 list-empty-get-dictionaries-message = Visita <a data-l10n-name="get-extensions">{ $domain }</a> per installare dizionari
 list-empty-get-language-packs-message = Visita <a data-l10n-name="get-extensions">{ $domain }</a> per installare pacchetti per la lingua
-
-##
-
 list-empty-installed =
     .value = Non risulta installato alcun componente aggiuntivo di questo tipo
 list-empty-available-updates =
@@ -146,22 +135,13 @@ addon-category-recent-updates-title =
 addon-category-sitepermission = Permessi siti
 addon-category-sitepermission-title =
     .title = Permessi siti
-# String displayed in about:addons in the Site Permissions section
-# Variables:
-#  $host (string): DNS host name for which the webextension enables permissions
 addon-sitepermission-host = Permessi siti per { $host }
-
-## These are global warnings
-
-extensions-warning-safe-mode = Tutti i componenti aggiuntivi sono stati disattivati dalla modalità provvisoria.
-extensions-warning-check-compatibility = Il controllo di compatibilità dei componenti aggiuntivi è disattivato. Potrebbero essere presenti dei componenti aggiuntivi non compatibili.
 extensions-warning-safe-mode2 =
     .message = Tutti i componenti aggiuntivi sono stati disattivati dalla modalità provvisoria.
 extensions-warning-check-compatibility2 =
     .message = Il controllo di compatibilità dei componenti aggiuntivi è disattivato. Potrebbero essere presenti dei componenti aggiuntivi non compatibili.
 extensions-warning-check-compatibility-button = Attiva
     .title = Attiva il controllo di compatibilità dei componenti aggiuntivi
-extensions-warning-update-security = Il controllo sulla sicurezza degli aggiornamenti dei componenti aggiuntivi è disattivato. Il sistema potrebbe essere danneggiato da un aggiornamento.
 extensions-warning-update-security2 =
     .message = Il controllo sulla sicurezza degli aggiornamenti dei componenti aggiuntivi è disattivato. Il sistema potrebbe essere danneggiato da un aggiornamento.
 extensions-warning-update-security-button = Attiva
@@ -169,60 +149,34 @@ extensions-warning-update-security-button = Attiva
 extensions-warning-imported-addons2 =
     .message = Completa l’installazione delle estensioni importate in { -brand-short-name }.
 extensions-warning-imported-addons-button = Installa estensioni
-
-## Strings connected to add-on updates
-
 addon-updates-check-for-updates = Controlla aggiornamenti
     .accesskey = C
 addon-updates-view-updates = Visualizza aggiornamenti recenti
     .accesskey = V
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = Aggiorna automaticamente i componenti aggiuntivi
     .accesskey = A
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = Ripristina l’aggiornamento automatico per tutti i componenti aggiuntivi
     .accesskey = R
 addon-updates-reset-updates-to-manual = Ripristina l’aggiornamento manuale per tutti i componenti aggiuntivi
     .accesskey = R
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = Aggiornamento dei componenti aggiuntivi in corso
 addon-updates-installed = I componenti aggiuntivi sono stati aggiornati.
 addon-updates-none-found = Nessun aggiornamento disponibile
 addon-updates-manual-updates-found = Visualizza aggiornamenti disponibili
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = Installa componente aggiuntivo da file…
     .accesskey = I
 addon-install-from-file-dialog-title = Selezionare i componenti aggiuntivi da installare
 addon-install-from-file-filter-name = Componenti aggiuntivi
 addon-open-about-debugging = Debug componenti aggiuntivi
     .accesskey = D
-
-## Extension shortcut management
-
-# This is displayed in the page options menu
 addon-manage-extensions-shortcuts = Gestisci scorciatoie da tastiera
     .accesskey = G
 shortcuts-no-addons = Non ci sono estensioni attive.
 shortcuts-no-commands = Le seguenti estensioni non hanno scorciatoie da tastiera:
 shortcuts-input =
     .placeholder = Inserisci una scorciatoia
-# Accessible name for a trashcan icon button that removes an existent shortcut
 shortcuts-remove-button =
-  .aria-label = Rimuovi scorciatoia
-
+    .aria-label = Rimuovi scorciatoia
 shortcuts-browserAction2 = Attiva pulsante nella barra degli strumenti
 shortcuts-pageAction = Attiva azione pagina
 shortcuts-sidebarAction = Attiva/disattiva barra laterale
@@ -231,15 +185,7 @@ shortcuts-modifier-other = Includi Ctrl o Alt
 shortcuts-invalid = Combinazione non valida
 shortcuts-letter = Inserisci una lettera
 shortcuts-system = Non è possibile sostituire una scorciatoia da tastiera di { -brand-short-name }
-# String displayed in warning label when there is a duplicate shortcut
 shortcuts-duplicate = Scorciatoia da tastiera duplicata
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
-shortcuts-duplicate-warning-message = La combinazione { $shortcut } è utilizzata come scorciatoia da tastiera per più comandi. Scorciatoie duplicate possono causare comportamenti imprevisti.
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message2 =
     .message = La combinazione { $shortcut } è utilizzata come scorciatoia da tastiera per più comandi. Scorciatoie duplicate possono causare comportamenti imprevisti.
 shortcuts-exists = Già utilizzata da { $addon }
@@ -247,24 +193,7 @@ shortcuts-card-expand-button = Visualizza altre { $numberToShow }
 shortcuts-card-collapse-button = Mostra meno scorciatoie
 header-back-button =
     .title = Torna indietro
-
-## Recommended add-ons page
-
-# Explanatory introduction to the list of recommended add-ons. The action word
-# ("recommends") in the final sentence is a link to external documentation.
-discopane-intro =
-    Estensioni e temi sono come app per il tuo browser;
-    permettono di proteggere password, scaricare video, risparmiare negli
-    acquisti online, bloccare pubblicità fastidiose, cambiare l’aspetto del
-    browser, e molto altro ancora. Questi software sono spesso sviluppati da
-    terze parti. Ecco una selezione <a data-l10n-name="learn-more-trigger">
-    consigliata</a> da { -brand-product-name }, con la garanzia di sicurezza,
-    prestazioni e funzionalità al massimo livello.
-discopane-notice-recommendations =
-    Alcuni consigli in questa pagina sono personalizzati. Sono basati sulle
-    estensioni già installate, le impostazioni del profilo e statistiche
-    d’utilizzo.
-# Notice to make user aware that the recommendations are personalized.
+discopane-intro2 = Estensioni e temi ti consentono di personalizzare { -brand-product-name }. Possono aiutarti a potenziare la tua privacy, incrementare la produttività, migliorare l’esperienza con i contenuti multimediali, cambiare l’aspetto di { -brand-product-name } e molto altro ancora. Queste piccole applicazioni software sono spesso sviluppate da terze parti. Qui trovi una selezione di elementi <a data-l10n-name="learn-more-trigger">consigliati</a> da { -brand-product-name } per sicurezza, prestazioni e funzionalità eccezionali.
 discopane-notice-recommendations2 =
     .message =
         Alcuni consigli in questa pagina sono personalizzati. Sono basati sulle
@@ -272,25 +201,15 @@ discopane-notice-recommendations2 =
         d’utilizzo.
 discopane-notice-learn-more = Ulteriori informazioni
 privacy-policy = Informativa sulla privacy
-# Refers to the author of an add-on, shown below the name of the add-on.
-# Variables:
-#   $author (string) - The name of the add-on developer.
 created-by-author = di <a data-l10n-name="author">{ $author }</a>
 user-count = Utenti: { $dailyUsers }
 install-extension-button = Aggiungi a { -brand-product-name }
 install-theme-button = Installa tema
-# The label of the button that appears after installing an add-on. Upon click,
-# the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = Gestisci
 find-more-addons = Trova altri componenti aggiuntivi
 find-more-themes = Trova altri temi
-# This is a label for the button to open the "more options" menu, it is only
-# used for screen readers.
 addon-options-button =
     .aria-label = Altre opzioni
-
-## Add-on actions
-
 report-addon-button = Segnala
 remove-addon-button = Rimuovi
 remove-addon-disabled-button = Impossibile rimuovere <a data-l10n-name="link">Perché?</a>
@@ -325,29 +244,15 @@ addon-detail-version-label = Versione
 addon-detail-last-updated-label = Ultimo aggiornamento
 addon-detail-homepage-label = Sito web
 addon-detail-rating-label = Voto
-# Message for add-ons with a staged pending update.
-install-postponed-message = Questa estensione verrà aggiornata al riavvio di { -brand-short-name }.
-# Message for add-ons with a staged pending update.
 install-postponed-message2 =
     .message = Questa estensione verrà aggiornata al riavvio di { -brand-short-name }.
 install-postponed-button = Aggiorna adesso
-# The average rating that the add-on has received.
-# Variables:
-#   $rating (number) - A number between 0 and 5. The translation should show at most one digit after the comma.
-five-star-rating =
-    .title = Voto: { NUMBER($rating, maximumFractionDigits: 1) } su 5
 addon-name-disabled = { $name } (disattivato)
 addon-detail-reviews-link =
     { $numberOfReviews ->
         [one] { $numberOfReviews } recensione
        *[other] { $numberOfReviews } recensioni
     }
-
-## Pending uninstall message bar
-
-pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> è stato rimosso.
-# Variables:
-#   $addon (string) - Name of the add-on
 pending-uninstall-description2 =
     .message = { $addon } è stato rimosso.
 pending-uninstall-undo-button = Annulla
@@ -359,49 +264,30 @@ addon-detail-update-check-label = Controlla aggiornamenti
 install-update-button = Aggiorna
 addon-detail-group-label-updates =
     .aria-label = { addon-detail-updates-label }
-addon-badge-private-browsing-allowed2 =
+addon-badge-private-browsing-allowed3 =
     .title = Attiva in finestre anonime
-    .aria-label = { addon-badge-private-browsing-allowed2.title }
 addon-detail-private-browsing-help = Se viene garantito il permesso, l’estensione potrà accedere alle tue attività online nelle finestre anonime. <a data-l10n-name="learn-more">Ulteriori informazioni</a>
 addon-detail-private-browsing-allow = Consenti
 addon-detail-private-browsing-disallow = Non consentire
 addon-detail-group-label-private-browsing =
     .aria-label = { detail-private-browsing-label }
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-# Used as a description for the option to allow or block an add-on on quarantined domains.
 addon-detail-quarantined-domains-label = Funzionamento in siti con restrizioni
-# Used as help text part of the quarantined domains UI controls row.
 addon-detail-quarantined-domains-help = Se viene garantito il permesso, l’estensione avrà accesso a siti con restrizioni identificati da { -vendor-short-name }. Consentire solo se si considera l’estensione affidabile.
-# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
 addon-detail-quarantined-domains-allow = Consenti
 addon-detail-quarantined-domains-disallow = Non consentire
-# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
 addon-detail-group-label-quarantined-domains =
     .aria-label = { addon-detail-quarantined-domains-label }
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-addon-badge-recommended2 =
+addon-badge-recommended3 =
     .title = Vengono consigliate solo estensioni che soddisfano i requisiti di sicurezza e prestazioni di { -brand-product-name }
-    .aria-label = { addon-badge-recommended2.title }
-addon-badge-line3 =
+addon-badge-line4 =
     .title = Estensione ufficiale realizzata da Mozilla. Rispetta gli standard in materia di sicurezza e prestazioni
-    .aria-label = { addon-badge-line3.title }
-addon-badge-verified2 =
+addon-badge-verified3 =
     .title = Questa estensione è stata verificata per garantire il rispetto dei nostri standard in materia di sicurezza e prestazioni
-    .aria-label = { addon-badge-verified2.title }
-
-##
-
 available-updates-heading = Aggiornamenti disponibili
 recent-updates-heading = Aggiornamenti recenti
 release-notes-loading = Caricamento in corso…
 release-notes-error = Siamo spiacenti, si è verificato un errore durante il caricamento delle note di versione.
-addon-permissions-empty = Questa estensione non richiede alcun permesso
+addon-permissions-empty2 = Questa estensione non richiede alcun permesso.
 addon-permissions-required = Permessi obbligatori per funzionalità principali:
 addon-permissions-optional = Permessi facoltativi per funzionalità aggiuntive:
 addon-permissions-learnmore = Ulteriori informazioni sui permessi
@@ -409,9 +295,6 @@ recommended-extensions-heading = Estensioni consigliate
 recommended-themes-heading = Temi consigliati
 addon-sitepermissions-required = Consente a <span data-l10n-name="hostname">{ $hostname }</span> di utilizzare le seguenti funzioni:
 recommended-theme-1 = Ti senti creativo? <a data-l10n-name="link">Disegna il tuo tema con Firefox Color</a>.
-
-## Page headings
-
 extension-heading = Gestione estensioni
 theme-heading = Gestione temi
 plugin-heading = Gestione plugin
@@ -426,46 +309,31 @@ addons-heading-search-input =
     .placeholder = Cerca in addons.mozilla.org
 addon-page-options-button =
     .title = Strumenti per tutti i componenti aggiuntivi
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (String): application version.
-details-notification-incompatible = { $name } non è compatibile con { -brand-short-name } { $version }.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } non è compatibile con { -brand-short-name } { $version }.
-details-notification-incompatible-link = Ulteriori informazioni
-details-notification-unsigned-and-disabled = { $name } è stato disattivato in quanto non è verificato per l’utilizzo in { -brand-short-name }.
 details-notification-unsigned-and-disabled2 =
     .message = { $name } è stato disattivato in quanto non è verificato per l’utilizzo in { -brand-short-name }.
-details-notification-unsigned-and-disabled-link = Ulteriori informazioni
-details-notification-unsigned = { $name } non è verificato per l’utilizzo in { -brand-short-name }. Procedere con cautela.
 details-notification-unsigned2 =
     .message = { $name } non è verificato per l’utilizzo in { -brand-short-name }. Procedere con cautela.
-details-notification-unsigned-link = Ulteriori informazioni
-details-notification-blocked = { $name } è stato disattivato in quanto comporta rischi per la stabilità o la sicurezza.
-details-notification-blocked2 =
-    .message = { $name } è stato disattivato in quanto comporta rischi per la stabilità o la sicurezza.
-details-notification-blocked-link = Ulteriori informazioni
-details-notification-softblocked = { $name } è riconosciuto come causa di problemi per la stabilità o la sicurezza.
-details-notification-softblocked2 =
-    .message = { $name } è riconosciuto come causa di problemi per la stabilità o la sicurezza.
-details-notification-softblocked-link = Ulteriori informazioni
-details-notification-gmp-pending = { $name } verrà installato tra qualche istante.
+details-notification-hard-blocked-extension =
+    .message = Questa estensione è bloccata in quanto viola i criteri di Mozilla ed è stata disattivata.
+details-notification-hard-blocked-other =
+    .message = Questo componente aggiuntivo è bloccato in quanto viola i criteri di Mozilla ed è stato disattivato.
+details-notification-blocked-link2 = Mostra dettagli
+details-notification-soft-blocked-extension-disabled =
+    .message = Questa estensione è soggetta a limitazioni in quanto viola i criteri di Mozilla ed è stata disattivata. È possibile attivarla, ma il suo utilizzo potrebbe comportare dei rischi.
+details-notification-soft-blocked-extension-enabled =
+    .message = Questa estensione viola i criteri di Mozilla. Il suo utilizzo potrebbe comportare dei rischi.
+details-notification-soft-blocked-other-disabled =
+    .message = Questo componente aggiuntivo è soggetto a limitazioni in quanto viola i criteri di Mozilla ed è stata disattivato. È possibile attivarlo, ma il suo utilizzo potrebbe comportare dei rischi.
+details-notification-soft-blocked-other-enabled =
+    .message = Questo componente aggiuntivo viola i criteri di Mozilla. Il suo utilizzo potrebbe comportare dei rischi.
+details-notification-softblocked-link2 = Mostra dettagli
 details-notification-gmp-pending2 =
     .message = { $name } verrà installato tra qualche istante.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = Informazioni sulla licenza
 plugins-gmp-privacy-info = Informativa sulla privacy
 plugins-openh264-name = Codec video OpenH264 realizzato da Cisco Systems, Inc.
 plugins-openh264-description = Questo plugin viene installato automaticamente da Mozilla, in conformità con le specifiche WebRTC, per consentire chiamate con dispositivi che richiedono un codec video H.264. Visitare https://www.openh264.org/ per visualizzare il codice sorgente e scoprire ulteriori informazioni sull’implementazione.
 plugins-widevine-name = Modulo Widevine Content Decryption fornito da Google Inc.
 plugins-widevine-description = Questo plugin consente la riproduzione di file multimediali crittati, nel rispetto delle specifiche Encrypted Media Extensions. Questo tipo di file è normalmente utilizzato dai siti per proteggere contenuti di alta qualità contro la copia. Consultare https://www.w3.org/TR/encrypted-media/ per ulteriori informazioni relative a Encrypted Media Extensions.
-
-

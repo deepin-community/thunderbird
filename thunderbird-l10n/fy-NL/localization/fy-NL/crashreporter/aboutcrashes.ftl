@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 crash-reports-title = Ungelokrapporten
 submit-all-button-label = Alles yntsjinje
 delete-button-label = Alles wiskje
@@ -12,8 +8,6 @@ crashes-unsubmitted-label = Net ynstjoerde ûngelokrapporten
 id-heading = Rapport-ID
 date-crashed-heading = Ungelokdatum
 submit-crash-button-label = Ferstjoere
-# This text is used to replace the label of the crash submit button
-# if the crash submission fails.
 submit-crash-button-failure-label = Mislearre
 crashes-submitted-label = Ynstjoerde ûngelokrapporten
 date-submitted-heading = Ynstjoerdatum

@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-colors-dialog-window2 =
-    .title = Boje
 colors-dialog-title = Boje
 colors-dialog-legend = Tekst i pozadina
 text-color-label =
@@ -22,9 +16,6 @@ link-color-label =
 visited-link-color-label =
     .value = Posjećene poveznice:
     .accesskey = v
-underline-link-checkbox =
-    .label = Podvuci poveznice
-    .accesskey = u
 always-underline-links =
     .label = Uvijek podcrtaj poveznice
     .accesskey = U

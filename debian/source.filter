@@ -394,8 +394,8 @@ toolkit/components/formautofill/addressmetadata/*.js
 toolkit/components/maintenanceservice/maintenanceservice.rc
 toolkit/components/maintenanceservice/resource.h
 toolkit/components/mediasniffer/test/unit/data/*.exe
-toolkit/components/ml/vendor/ort*.js
-toolkit/components/ml/vendor/transformers*.js
+# toolkit/components/ml/vendor/ort*.js
+# toolkit/components/ml/vendor/transformers*.js
 # toolkit/components/resistfingerprinting/content/gl-matrix.js
 # toolkit/components/resistfingerprinting/content/usercharacteristics.js
 toolkit/components/normandy/vendor/*.js

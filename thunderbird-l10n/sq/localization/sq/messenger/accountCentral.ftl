@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Mirë se vini te { -brand-full-name }
 account-settings = Rregullime Llogarie
-#   $accounts (Number) - the number of configured accounts
 setup-title = Zgjidhni Ç’të Ujdiset
 about-title = Rreth { -brand-full-name }-it
 resources-title = Burime
@@ -37,7 +32,6 @@ import-label = Importo
     .aria-label = Importoni të dhëna nga programe të tjerë
 about-paragraph = Thunderbird-i është klienti udhëheqës për email dhe kalendar, me burim të hapët, ndërplatformësh, i lirë për përdorim personal apo nga biznesi. Dëshirojmë të mbetet i sigurt dhe të bëhet edhe më i mirë. Dhurimet do të na lejojnë të punësojmë programues, të paguajmë për infrastrukturën dhe të vazhdojmë ta përmirësojmë.
 about-paragraph-consider-donation = <b>Thunderbird-i financohet nga përdorues si ju! Nëse Thunderbird-i ju pëlqen, ju lutemi, shihni mundësinë e bërjes së një dhurimi.</b> Rruga më e mirë për ju që të siguroni ruajtjen e ofrimit të Thunderbird-it është <a data-l10n-name="donation-link">bërja e një dhurimi.</a>
-explore-link = Eksploroni Veçori
 support-link = Asistencë
 involved-link = Përfshihuni
 developer-link = Dokumentim Për Zhvilluesit

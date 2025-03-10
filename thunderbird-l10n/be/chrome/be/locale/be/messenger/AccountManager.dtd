@@ -1,24 +1,2 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- extracted from AccountManager.xhtml -->
-
 <!ENTITY accountManagerTitle.label "Налады ўліковага запісу">
-<!ENTITY  accountManagerCloseButton.label "Закрыць">
-
-<!ENTITY accountActionsButton.label "Дзеянні з уліковым запісам">
-<!ENTITY accountActionsButton.accesskey "р">
-<!ENTITY addMailAccountButton.label "Дадаць уліковы запіс пошты…">
-<!ENTITY addMailAccountButton.accesskey "Д">
-<!ENTITY addIMAccountButton.label "Дадаць уліковы запіс чата…">
-<!ENTITY addIMAccountButton.accesskey "г">
-<!ENTITY addFeedAccountButton.label "Дадаць уліковы запіс стужкі навін…">
-<!ENTITY addFeedAccountButton.accesskey "ж">
-<!ENTITY removeButton.label "Выдаліць уліковы запіс">
-<!ENTITY removeButton.accesskey "д">
-
-<!ENTITY addonsButton.label "Пашырэнні і тэмы">
-
-<!ENTITY setDefaultButton.label "Set as Default">
-<!ENTITY setDefaultButton.accesskey "D">
+<!ENTITY accountManagerCloseButton.label "Закрыць">

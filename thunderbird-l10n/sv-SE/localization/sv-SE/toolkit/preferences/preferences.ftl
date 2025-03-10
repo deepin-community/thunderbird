@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ej angivet)
 failed-pp-change = Det går inte att ändra det huvudlösenordet.
@@ -21,7 +17,6 @@ set-password-new-password = Ange nytt lösenord:
 set-password-reenter-password = Bekräfta lösenordet:
 set-password-meter = Kvalitetsmätare för lösenord
 set-password-meter-loading = Laddar
-primary-password-admin = Din administratör kräver att du har ett huvudlösenord för att spara inloggningar och lösenord.
 primary-password-required-by-policy = Din organisation kräver att du har ett huvudlösenord för att spara inloggningar och lösenord.
 primary-password-description = Ett huvudlösenord används för att skydda känslig information, som inloggningar och lösenord, på den här enheten. Om du skapar ett huvudlösenord blir du ombedd att ange det en gång per session när { -brand-short-name } hämtar sparad information skyddad av lösenordet.
 primary-password-warning = Se till att du kommer ihåg huvudlösenordet du har angett. Om du glömmer ditt huvudlösenord kan du inte få åtkomst till någon av de uppgifter som skyddas av det på den här enheten.

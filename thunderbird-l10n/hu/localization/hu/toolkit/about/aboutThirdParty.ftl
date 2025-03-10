@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Harmadik féltől származó modul információi
 third-party-section-title = Harmadik féltől származó modulok a { -brand-short-name }ban
 third-party-intro =
@@ -47,19 +43,6 @@ third-party-button-reload = Újratöltés rendszer-információkkal
     .title = Újratöltés rendszer-információkkal
 third-party-button-open =
     .title = A fájl helyének megnyitása…
-third-party-button-to-block =
-    .title = Ezen modul blokkolása
-    .aria-label = Ezen modul blokkolása
-third-party-button-to-unblock =
-    .title = Jelenleg blokkolva. Kattintson a blokkolás feloldásához.
-    .aria-label = Jelenleg blokkolva. Kattintson a blokkolás feloldásához.
-third-party-button-to-unblock-disabled =
-    .title =
-        Jelenleg tiltottként van megjelölve, bár a tiltólista le van tiltva a { -brand-short-name }
-        jelenlegi futásánál. Kattintson a feloldásához.
-    .aria-label =
-        Jelenleg tiltottként van megjelölve, bár a tiltólista le van tiltva a { -brand-short-name }
-        jelenlegi futásánál. Kattintson a feloldásához.
 third-party-button-to-block-module = Ezen modul blokkolása
     .title = Ezen modul blokkolása
     .aria-label = Ezen modul blokkolása

@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Um Speicherplatz zu sparen, nicht herunterladen:">
 <!ENTITY doNotDownloadNntp.label "Um Speicherplatz zu sparen, nicht zum Offline-Lesen herunterladen:">
 <!ENTITY doNotDownloadImap.label "Um Speicherplatz zu sparen, kann das Herunterladen der Nachrichten vom IMAP-Server und das Bereithalten lokaler Kopien zum Offline-Lesen nach Alter und Größe begrenzt werden.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "w">
 <!ENTITY syncGroupTitle.label "Nachrichten-Synchronisation">
 <!ENTITY diskspaceGroupTitle.label "Speicherplatz">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Nachrichten unabhängig vom Alter herunterladen">
-<!ENTITY allAutosync.accesskey           "c">
-<!ENTITY ageAutosyncBefore.label         "Nur Nachrichten der letzten">
-<!ENTITY ageAutosync.accesskey           "z">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Tage">
-<!ENTITY weekAgeInterval.label           "Wochen">
-<!ENTITY monthAgeInterval.label          "Monate">
-<!ENTITY yearAgeInterval.label           "Jahre">
-<!ENTITY ageAutosyncAfter.label          "herunterladen">
+<!ENTITY allAutosync.label "Nachrichten unabhängig vom Alter herunterladen">
+<!ENTITY allAutosync.accesskey "c">
+<!ENTITY ageAutosyncBefore.label "Nur Nachrichten der letzten">
+<!ENTITY ageAutosync.accesskey "z">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Tage">
+<!ENTITY weekAgeInterval.label "Wochen">
+<!ENTITY monthAgeInterval.label "Monate">
+<!ENTITY yearAgeInterval.label "Jahre">
+<!ENTITY ageAutosyncAfter.label "herunterladen">

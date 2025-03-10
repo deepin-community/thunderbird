@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Thanh menu
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Cài đặt
     .accesskey = e
 menu-addons-and-themes =
     .label = Tiện ích mở rộng và chủ đề
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Xuất sang di động…
+    .accesskey = p
 menu-help-help-title =
     .label = Trợ giúp
     .accesskey = H
 menu-help-get-help =
     .label = Nhận trợ giúp
     .accesskey = H
-menu-help-explore-features =
-    .label = Khám phá tính năng
-    .accesskey = F
 menu-help-get-release-help =
     .label = Nhận trợ giúp với { -brand-short-name }
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Về { -brand-short-name }
     .accesskey = A
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] x
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Thoát { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Thoát { -brand-full-name }
            *[other] Thoát { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Thư rác
     .tooltiptext = Đánh dấu các thư đã chọn là thư rác
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Hoàn tác xóa
     .tooltiptext = Phục hồi các thư đã chọn
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Sửa chữa mã hóa văn bản
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Header ngăn thư mục
     .accesskey = F
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Header danh sách thư
     .accesskey = H
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Thanh công cụ Spaces
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = Tài khoản email…
     .accesskey = E

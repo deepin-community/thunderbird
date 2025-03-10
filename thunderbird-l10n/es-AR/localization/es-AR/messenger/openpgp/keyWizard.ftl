@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Agregar una clave personal de OpenPGP para { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Continuar
-    .buttonlabelhelp = Atrás
 key-wizard-dialog =
     .buttonlabelaccept = Continuar
     .buttonlabelextra1 = Volver
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Use la clave externa a través de GnuPG (por ejemplo, desde una tarjeta inteligente)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Generar clave OpenPGP
 openpgp-keygen-secret-protection = Protección de clave secreta
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = La clave debe ser válida por al menos un día.
 openpgp-keygen-ongoing = ¡Generación de claves ya en proceso!
 openpgp-keygen-error-core = No se puede inicializar el servicio principal de OpenPGP
 openpgp-keygen-error-failed = La generación de clave OpenPGP falló inesperadamente
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = La clave OpenPGP se creó ccorrectamente pero no se pudo obtener la revocación de la clave { $key }
 openpgp-keygen-abort-title = ¿Abortar generación de clave?
 openpgp-keygen-abort = OpenPGP La generación de claves está en progreso, ¿está seguro de que quiere cancelarla?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = ¿Generar clave pública y secreta para { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Importar una clave OpenPGP existente
 openpgp-import-key-legend = Seleccione un archivo respaldado previamente.
 openpgp-import-key-description = Puede importar claves personales que se crearon con otro software OpenPGP.
 openpgp-import-key-info = Otro software podría describir una clave personal utilizando términos alternativos como su propia clave, clave secreta, clave privada o par de claves.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } encontró una clave que puede ser importada.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Las claves marcadas para ser consideradas como
 openpgp-import-keep-passphrases =
     .label = Mantener la protección de frase de contraseña para claves secretas importadas
 openpgp-passphrase-prompt-title = Se requiere frase de contraseña
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Ingrese la frase de contraseña para desbloquear la siguiente clave: { $key }
 openpgp-import-key-button =
     .label = Seleccionar archivo para importar…
     .accesskey = S
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Tratar esta clave como clave personal
 gnupg-file = Archivos GnuPG
 import-error-file-size = <b>¡Error!</b> Los archivos de más de 5MB no están soportados.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b> ¡Error! </b> Falló al importar el archivo. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Error!</b> Falló al importar las claves. { $error }
 openpgp-import-identity-label = Identidad
 openpgp-import-fingerprint-label = Huella digital
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bits
 openpgp-import-key-props =
     .label = Propiedades de la clave
     .accesskey = v
-
-## External Key section
-
 openpgp-external-key-title = Clave externa de GnuPG
 openpgp-external-key-description = Configure una clave GnuPG externa ingresando la ID clave
 openpgp-external-key-info = Además, debe usar el Administrador de claves para importar y aceptar la clave pública correspondiente.

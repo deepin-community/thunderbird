@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Meldingslagring">
 <!ENTITY securitySettings.label "Sikkerhetsinnstillinger">
 <!ENTITY serverSettings.label "Serverinnstillinger">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Std:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Se etter nye meldinger hvert">
 <!ENTITY biffStart.accesskey "e">
 <!ENTITY biffEnd.label "minutt">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Tilkoblingssikkerhet:">
 <!ENTITY connectionSecurity.accesskey "o">
 <!ENTITY connectionSecurityType-0.label "Ingen">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, dersom tilgjengelig">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Autentiseringsmetode:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "k">
 <!ENTITY modelDeleteImmediately.label "Slett umiddelbart">
 <!ENTITY modelDeleteImmediately.accesskey "u">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Tøm (slett) Innboks ved avslutning">
 <!ENTITY expungeOnExit.accesskey "a">
 <!ENTITY emptyTrashOnExit.label "Tøm søppelkassen ved avslutning">
 <!ENTITY emptyTrashOnExit.accesskey "ø">
 <!ENTITY loginAtStartup.label "Se etter nye meldinger ved oppstart">
 <!ENTITY loginAtStartup.accesskey "S">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Spør meg før nedlasting av mer enn">
 <!ENTITY maxMessagesStart.accesskey "m">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "meldinger">
 <!ENTITY alwaysAuthenticate.label "Alltid spør etter autentisering ved tilkobling til denne serveren">
 <!ENTITY alwaysAuthenticate.accesskey "A">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "B">
 <!ENTITY browseNewsrc.label "Bla gjennom …">
 <!ENTITY browseNewsrc.accesskey "l">
-
 <!ENTITY accountTitle.label "Kontoinnstillinger">
 <!ENTITY accountSettingsDesc.label "Dette er en spesiell konto.  Ingen identiteter er tilknyttet den.">
 <!ENTITY storeType.label "Meldingslagertype:">

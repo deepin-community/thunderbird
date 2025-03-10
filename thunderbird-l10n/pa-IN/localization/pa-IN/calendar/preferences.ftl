@@ -1,14 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 dateformat-label =
     .value = ਤਾਰੀਖ ਲਿਖਤ ਰੂਪ:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = ਲੰਮੀ: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = ਛੋਟੀ: { $date }
 weekstart-label =

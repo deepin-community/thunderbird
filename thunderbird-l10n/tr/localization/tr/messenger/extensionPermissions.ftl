@@ -1,19 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-## All localized permissions have to be added to the `PERMISSIONS_WITH_MESSAGE`
-## map. Both maps are populated in mail/modules/ExtensionsUI.sys.mjs.
-
 webext-perms-description-accountsFolders = Posta hesabı klasörleri oluşturma, yeniden adlandırma ve silme
 webext-perms-description-accountsIdentities = Posta hesabı kimlileri oluşturma, değiştirme ve silme
 webext-perms-description-accountsRead = Posta hesaplarınızı, hesap kimliklerini ve klasörlerini görüntüleme
@@ -27,7 +11,6 @@ webext-perms-description-messagesModify = Size gösterilen e-posta iletilerini o
 webext-perms-description-messagesModifyPermanent = İletilerinizin kaynağını (üst bilgiler, gövde ve ekler dahil) kalıcı olarak değiştirme
 webext-perms-description-messagesMove = E-posta iletilerinizi kopyalama ve taşıma (çöp kutusuna taşıma dahil)
 webext-perms-description-messagesDelete = E-posta iletilerinizi kalıcı olarak silme
-webext-perms-description-messagesRead = E-posta iletilerinizi okuma, işaretleme ve etiketleme
 webext-perms-description-messagesRead2 = E-posta iletilerinizi okuma
 webext-perms-description-messagesUpdate = E-posta iletilerinizin özelliklerini ve etiketlerini değiştirme
 webext-perms-description-messagesTags = İleti etiketleri oluşturma, değiştirme ve silme

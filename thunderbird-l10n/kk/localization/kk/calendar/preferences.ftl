@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Күнтізбе
 calendar-title-reminder = Еске салулар
 calendar-title-notification = Ескертулер
@@ -9,10 +5,8 @@ calendar-title-category = Санаттар
 dateformat-label =
     .value = Күнді көрсету пішімі:
     .accesskey = К
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Ұзақ: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Қысқа: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Оқиғалар мен тапсырмаларды өшіру алдындағы сұрау.
     .accesskey = и
-accessibility-legend = Қолжетерлілік
-accessibility-colors-label =
-    .label = Түстерді қолжетерлігігі үшін ыңғайлату
-    .accesskey = с
 reminder-legend = Еске салудың уақыты келіп қалса:
 reminder-play-checkbox =
     .label = Дыбысты ойнату

@@ -1,15 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## The Enterprise Policies feature is aimed at system administrators
-## who want to deploy these settings across several Thunderbird installations
-## all at once. This is traditionally done through the Windows Group Policy
-## feature, but the system also supports other forms of deployment.
-## These are short descriptions for individual policies, to be displayed
-## in the documentation section in about:policies.
-
 policy-3rdparty = Встановити політики, за якими WebExtensions можуть отримувати доступ через chrome.storage.managed.
 policy-AppAutoUpdate = Увімкнути або вимкнути автоматичне оновлення програми.
 policy-AppUpdatePin = Не дозволяти оновлення { -brand-short-name } після вказаної версії.
@@ -43,13 +31,8 @@ policy-DisplayMenuBar = Типово показувати рядок меню.
 policy-DNSOverHTTPS = Налаштувати DNS через HTTPS.
 policy-DontCheckDefaultClient = Вимкнути перевірку типового клієнта під час запуску.
 policy-DownloadDirectory = Встановити та заборонити зміну каталогу завантаження.
-# “lock” means that the user won’t be able to change this setting
 policy-EnableTrackingProtection = Увімкнути чи вимкнути Блокування вмісту та, за бажанням, заблокувати зміну стану.
-# “lock” means that the user won’t be able to change this setting
 policy-EncryptedMediaExtensions = Увімкнути або вимкнути зашифровані розширення для медіа та блокувати їх за бажанням.
-# A “locked” extension can’t be disabled or removed by the user. This policy
-# takes 3 keys (“Install”, ”Uninstall”, ”Locked”), you can either keep them in
-# English or translate them as verbs.
 policy-Extensions = Встановити, видалити чи блокувати встановлення/видалення розширення. Функція Встановлення використовує в якості параметрів URL-адреси або шляхи. Функції Видалення та Блокування використовують ID розширення.
 policy-ExtensionSettings = Керувати всіма аспектами встановлення розширень.
 policy-ExtensionUpdate = Увімкнути або вимкнути автоматичне оновлення розширень.
@@ -57,14 +40,8 @@ policy-Handlers = Налаштувати стандартні обробники
 policy-HardwareAcceleration = Якщо значення false, апаратне прискорення буде вимкнено.
 policy-InstallAddonsPermission = Дозволити певним вебсайтам встановлювати додатки.
 policy-LegacyProfiles = Вимкнути функцію, що застосовує окремий профіль для кожного встановлення.
-
-## Do not translate "SameSite", it's the name of a cookie attribute.
-
 policy-LegacySameSiteCookieBehaviorEnabled = Увімкнути застаріле налаштування поведінки SameSite для файлів cookie.
 policy-LegacySameSiteCookieBehaviorEnabledForDomainList = Повернутися до застарілої поведінки SameSite для файлів cookie на вказаних сайтах.
-
-##
-
 policy-LocalFileLinks = Дозволити певним вебсайтам посилатися на локальні файли.
 policy-ManualAppUpdateOnly = Дозволити оновлення лише вручну та не повідомляти користувача про оновлення.
 policy-NetworkPrediction = Ввімкнути чи вимкнути прогнозування мережі (попереднє отримання DNS).
@@ -73,7 +50,6 @@ policy-OfferToSaveLoginsDefault = Встановити типове значен
 policy-OverrideFirstRunPage = Перевизначити сторінку першого запуску. Установіть цю політику порожньою, якщо ви хочете вимкнути сторінку першого запуску.
 policy-OverridePostUpdatePage = Перевизначити сторінку "Що нового", яка відкривається після оновлення. Для вимкнення цієї сторінки залиште значення для цього правила порожнім.
 policy-PasswordManagerEnabled = Увімкнути збереження паролів у менеджері паролів.
-# PDF.js and PDF should not be translated
 policy-PDFjs = Вимкнути або налаштувати PDF.js, вбудований засіб перегляду файлів PDF у { -brand-short-name }.
 policy-Permissions2 = Налаштувати дозволи для камери, мікрофона, розташування, сповіщень та автовідтворення.
 policy-Preferences = Встановити і зафіксувати значення для набору налаштувань.
@@ -84,11 +60,9 @@ policy-RequestedLocales = Встановити перелік запитуван
 policy-SanitizeOnShutdown2 = Очищати дані навігації при виході з програми.
 policy-SearchEngines = Налаштувати параметри пошукової системи. Ця політика доступна лише у версії Extended Support Release (ESR).
 policy-SearchSuggestEnabled = Увімкнути чи вимкнути пропозиції пошуку.
-# For more information, see https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/PKCS11/Module_Installation
 policy-SecurityDevices = Встановити модулі PKCS #11.
 policy-SSLVersionMax = Встановити максимальну версію SSL.
 policy-SSLVersionMin = Встановити мінімальну версію SSL.
 policy-SupportMenu = Додати власний елемент меню підтримки в меню довідки.
 policy-UserMessaging = Не показувати певні повідомлення користувачу.
-# “format” refers to the format used for the value of this policy.
 policy-WebsiteFilter = Блокувати відвідування вебсайтів. Для отримання подробиць щодо формату, ознайомтеся з документацією.

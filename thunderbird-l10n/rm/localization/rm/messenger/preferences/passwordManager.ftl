@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Infurmaziuns d'annunzia memorisadas
-window-close =
-    .key = w
 saved-logins-title = Infurmaziuns d'annunzia memorisadas
 focus-search-primary-shortcut =
     .key = f
@@ -69,20 +61,9 @@ remove-all-shown =
 remove-all-passwords-prompt = Vuls ti propi stizzar tut ils pleds-clav?
 remove-all-passwords-title = Stizzar tut ils pleds-clav
 no-master-password-prompt = Vuls ti propi laschar mussar tes pleds-clav?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Verifitgescha tia identitad per laschar mussar ils pleds-clav memorisads.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = mussar ils pleds-clav memorisads
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
-# This message can be seen when attempting to disable osauth in about:preferences.
 password-os-auth-change-dialog-message =
     { PLATFORM() ->
         [macos] midar ils parameters per pleds-clav

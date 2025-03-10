@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 archive-options-title = Tùy chọn lưu trữ
 archive-granularity-prefix-label = Khi lưu trữ thư, xếp nó vào trong:
 archive-flat =
@@ -20,10 +16,8 @@ recreate-inbox =
     .label = Tạo lại thư mục hộp thư đến
     .accesskey = R
 archive-example-label = Ví dụ
-# This should match the default name for the "Archives" folder.
 archive-folder-name =
     .label = Lưu trữ
-# This should match the default name for the "Inbox" folder.
 inbox-folder-name =
     .label = Hộp thư
 child-folder-name =

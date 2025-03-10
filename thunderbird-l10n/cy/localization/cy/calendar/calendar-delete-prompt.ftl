@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Variables:
-## $count (Number) - Number of events selected for deletion.
-
 calendar-delete-event-prompt-title =
     { $count ->
         [zero] Dileu Digwyddiadau
@@ -24,10 +16,6 @@ calendar-delete-event-prompt-message =
         [many] Ydych chi wir eisiau dileu'r { $count } digwyddiad yma?
        *[other] Ydych chi wir eisiau dileu'r { $count } digwyddiad yma?
     }
-
-## Variables:
-## $count (Number) - Number of tasks selected for deletion.
-
 calendar-delete-task-prompt-title =
     { $count ->
         [zero] Dileu Tasgau
@@ -46,10 +34,6 @@ calendar-delete-task-prompt-message =
         [many] Ydych chi wir eisiau dileu'r { $count } thasg hyn?
        *[other] Ydych chi wir eisiau dileu'r { $count } tasg hyn?
     }
-
-## Variables:
-## $count (Number) - Number of items selected for deletion.
-
 calendar-delete-item-prompt-title =
     { $count ->
         [zero] Dileu Eitemau
@@ -68,7 +52,4 @@ calendar-delete-item-prompt-message =
         [many] Ydych chi wir eisiau dileu'r { $count } eitem yma?
        *[other] Ydych chi wir eisiau dileu'r { $count } eitem yma?
     }
-
-##
-
 calendar-delete-prompt-disable-message = Peidiwch gofyn i mi eto

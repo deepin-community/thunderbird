@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sr@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
-  "name": "Language: Cрпски (Serbian)",
-  "description": "Thunderbird Language Pack for Cрпски (sr) – Serbian",
-  "version": "128.3.20240930.164946",
+  "name": "Language: Српски (Serbian)",
+  "description": "Thunderbird Language Pack for Српски (sr) – Serbian",
+  "version": "136.0.20250227.143050",
   "languages": {
     "sr": {
-      "version": "20240930174515",
+      "version": "20250227153551",
       "chrome_resources": {
         "alerts": "chrome/sr/locale/sr/alerts/",
         "autoconfig": "chrome/sr/locale/sr/autoconfig/",

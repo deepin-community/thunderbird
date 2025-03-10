@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-colors-dialog-window2 =
-    .title = Colores
 colors-dialog-title = Colores
 colors-dialog-legend = Texto y fondo
 text-color-label =
@@ -22,9 +16,6 @@ link-color-label =
 visited-link-color-label =
     .value = Enlaces visitados:
     .accesskey = v
-underline-link-checkbox =
-    .label = Enlaces subrayados
-    .accesskey = u
 always-underline-links =
     .label = Siempre subrayar los enlaces
     .accesskey = u

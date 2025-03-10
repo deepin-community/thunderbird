@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Sulje
 preferences-doc-title2 = Asetukset
@@ -22,6 +18,9 @@ category-chat =
 pane-calendar-title = Kalenteri
 category-calendar =
     .tooltiptext = Kalenteri
+pane-qr-export-title = Vie mobiililaitteelle
+category-qr-export =
+    .tooltiptext = Vie mobiililaitteelle
 general-language-and-appearance-header = Kieli ja ulkoasu
 general-incoming-mail-header = Saapuva sähköposti
 general-files-and-attachment-header = Tiedostot ja liitteet
@@ -47,8 +46,6 @@ collection-health-report =
     .label = Salli, että { -brand-short-name } lähettää teknisiä ja käyttötilastoja { -vendor-short-name }lle
     .accesskey = a
 collection-health-report-link = Lue lisää
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Tietojen kerääminen ei ole käytössä tässä koostamiskokoonpanossa
 collection-backlogged-crash-reports =
     .label = Salli, että { -brand-short-name } lähettää lähettämättömät kaatumisilmoitukset puolestasi
@@ -62,17 +59,13 @@ chat-pane-header = Keskustelu
 chat-status-title = Tila
 chat-notifications-title = Ilmoitukset
 chat-pane-styling-header = Tyyli
-choose-messenger-language-description = Valitse kieli, jolla näytetään sovelluksen { -brand-short-name } valikot, viestit ja ilmoitukset.
+choose-messenger-language-description = Valitse kieli, jolla { -brand-short-name }in valikot, viestit ja ilmoitukset näytetään.
 manage-messenger-languages-button =
     .label = Aseta vaihtoehdot...
     .accesskey = v
 confirm-messenger-language-change-description = Toteuta nämä muutokset käynnistämällä { -brand-short-name } uudelleen
 confirm-messenger-language-change-button = Toteuta ja käynnistä uudelleen
 update-setting-write-failure-title = Virhe päivitysasetusten päivittämisessä
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } törmäsi virheeseen, eikä voinut tallentaa tätä muutosta. Huomaa, että tämän päivitysasetuksen muuttaminen edellyttää kirjoitusoikeutta alla mainittuun tiedostoon. Järjestelmänvalvojasi saattaa pystyä ratkaisemaan tämän virheen antamalla ryhmälle "Users" täydet oikeudet tähän tiedostoon
     
@@ -80,26 +73,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Päivitys käynnissä
 update-in-progress-message = Haluatko, että { -brand-short-name } jatkaa tätä päivitystä?
 update-in-progress-ok-button = &Hylkää
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Jatka
 account-button = Tilin asetukset
 open-addons-sidebar-button = Lisäosat ja teemat
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Luo pääsalasana kirjoittamalla Windows-kirjautumistietosi. Tämä auttaa suojaamaan tilejäsi.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = Luo pääsalasana
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -207,8 +186,6 @@ always-check-default =
 check-default-button =
     .label = Tarkista heti…
     .accesskey = h
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -226,8 +203,6 @@ return-receipts-button =
     .label = Vastaanottokuittaukset…
     .accesskey = V
 update-app-legend = { -brand-short-name }-päivitykset
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versio { $version }
 allow-description = Anna sovellukselle { -brand-short-name } lupa
 automatic-updates-label =
@@ -262,18 +237,10 @@ offline-compact-folder-automatically =
     .accesskey = y
 compact-folder-size =
     .value = Mt
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Käytä enintään
     .accesskey = K
 use-cache-after = Mt:a levytilaa väliaikaistiedostoille
-
-##
-
 smart-cache-label =
     .label = Ohita automaattinen välimuistin hallinta
     .accesskey = O
@@ -297,7 +264,6 @@ color-options-button =
     .label = Värit…
     .accesskey = V
 display-width-legend = Pelkkä teksti -viestit
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Näytä hymiöt kuvina
     .accesskey = N
@@ -365,17 +331,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Näytä liitteet sisennettynä
     .accesskey = y
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Kun ne ovat olleet avattuna
     .accesskey = u
 seconds-label = sekuntia
-
-##
-
 open-msg-label =
     .value = Avaa viestit:
 open-msg-tab =
@@ -390,8 +349,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Sulje viesti-ikkuna kun viesti siirretään tai poistetaan
     .accesskey = v
-display-name-label =
-    .value = Näyttönimi:
 address-display-legend = Viestiluettelo
 address-display-description = Ensisijainen osoitteen näyttömuoto:
 address-display-full =
@@ -406,9 +363,20 @@ address-display-name =
 condensed-addresses-label =
     .label = Näytä osoitekirjassa olevien nimet ilman sähköpostiosoitetta
     .accesskey = N
-
-## Compose Tab
-
+table-layout-horizontal-scroll-label =
+    .label = Salli vaakasuuntainen vieritys
+    .accesskey = v
+conversation-view-legend = Keskustelunäkymä
+conversation-view-checkbox-label =
+    .label = Ota keskustelunäkymä käyttöön
+    .accesskey = k
+conversation-view-checkbox-description = Glodaan perustuva kokeellinen ominaisuus, käytä omalla vastuullasi
+label-experiment = Kokeellinen
+account-hub-legend = Tilikeskus
+account-hub-checkbox-label =
+    .label = Luo tilit uudessa tilikeskuksessa
+    .accesskey = L
+account-hub-checkbox-description = Kokeellinen uuden sähköpostitilin luomisprosessi
 forward-label =
     .value = Välitä viestit:
     .accesskey = V
@@ -419,17 +387,10 @@ as-attachment-label =
 extension-label =
     .label = lisää tiedostonimeen pääte
     .accesskey = s
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Tallenna viestit automaattisesti
     .accesskey = T
 auto-save-end = minuutin välein
-
-##
-
 warn-on-send-accel-key =
     .label = Pyydä vahvistus kun viesti lähetetään pikanäppäimillä
     .accesskey = y
@@ -520,9 +481,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Etsi lisää palveluntarjoajia…
 cloud-account-description = Lisää uusi tiedostoja linkittävä tallennuspalvelu
-
-## Privacy Tab
-
 mail-content = Sähköpostin sisältö
 remote-content-label =
     .label = Salli etäsisältö sähköposteissa
@@ -551,11 +509,7 @@ third-party-visited =
 cookies-button =
     .label = Näytä evästeet…
     .accesskey = N
-do-not-track-label =
-    .label = Lähetä sivustoille ”Do Not Track”-signaali, joka kertoo ettet halua sinua seurattavan
-    .accesskey = s
-dnt-learn-more-button =
-    .value = Lue lisää
+do-not-track-removal = "Älä seuraa"-signaali ei ole enää tuettu
 passwords-description = Voit tallentaa { -brand-short-name }iin kaikkien sähköpostitiliesi salasanat.
 passwords-button =
     .label = Tallennetut salasanat…
@@ -564,7 +518,6 @@ primary-password-description = Pääsalasana suojaa kaikkien sähköpostitiliesi
 primary-password-label =
     .label = Käytä pääsalasanaa
     .accesskey = K
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Vaadi laitteen sisäänkirjautuminen salasanojen täyttämistä ja hallintaa varten
 primary-password-button =
@@ -573,9 +526,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Olet parhaillaan FIPS-tilassa. FIPS edellyttää, että pääsalasana ei ole tyhjä.
 forms-master-pw-fips-desc = Salasanan vaihto epäonnistui
 junk-description = Muokkaa alta roskapostisuodattimen oletusasetuksia. Tilikohtaisia asetuksia voi muokata Tilien asetuksista.
-junk-label =
-    .label = Kun merkitsen viestin roskapostiksi:
-    .accesskey = K
 junk-marked-label =
     .label = Kun viestit merkitään roskapostiksi:
     .accesskey = K
@@ -585,9 +535,6 @@ junk-move-label =
 junk-delete-label =
     .label = Poista se
     .accesskey = P
-junk-read-label =
-    .label = Merkitse roskapostiviestit luetuiksi
-    .accesskey = M
 junk-read-description = Merkitse viestit luetuiksi
 junk-read-manual-label =
     .label = Kun minä itse merkitsen sen roskapostiksi
@@ -644,9 +591,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Automaattiset päätökset voidaan ohittaa ottamalla salaus manuaalisesti käyttöön tai poistamalla se käytöstä viestiä kirjoitettaessa.
     Huomautus: salaus on aina automaattisesti käytössä, kun vastaat salattuun viestiin.
-
-## Chat Tab
-
 startup-label =
     .value = Kun { -brand-short-name } käynnistyy:
     .accesskey = T
@@ -654,20 +598,10 @@ offline-label =
     .label = Älä yhdistä pikaviestitilejäni
 auto-connect-label =
     .label = Yhdistä automaattisesti pikaviestitilit
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Näytä tuttaville kun tietokoneellani ei tapahdu mitään
     .accesskey = A
 idle-time-label = minuuttiin
-
-##
-
 away-message-label =
     .label = ja aseta minut poissaolevaksi tämän viestin kera:
     .accesskey = A
@@ -729,40 +663,20 @@ no-preview-description = Tämä teema ei ole kelvollinen tai sitä ei tilapäise
 chat-variant-label =
     .value = Muunnelma:
     .accesskey = M
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Etsi asetuksista
-
-## Settings UI Search Results
-
 search-results-header = Hakutulokset
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Valitettavasti asetuksista ei löytynyt tuloksia haulla “<span data-l10n-name="query"></span>”.
        *[other] Valitettavasti asetuksista ei löytynyt tuloksia haulla “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Tarvitsetko apua? Vieraile <a data-l10n-name="url">{ -brand-short-name }-tuessa</a>
-
-## Sync Tab
-
 sync-signedout-caption = Ota verkko mukaasi
 sync-signedout-description = Synkronoi tilit, osoitekirjat, kalenterit, lisäosat ja asetukset kaikilla laitteillasi.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Kirjaudu synkronoidaksesi…
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = Sähköpostiosoitetta “{ $userEmail }” ei ole vahistettu.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Kirjaudu sisään palauttaaksesi osoitteen { $userEmail } yhteyden
 sync-pane-resend-verification = Lähetä vahvistus uudestaan
 sync-pane-sign-in = Kirjaudu sisään
@@ -791,3 +705,49 @@ synced-acount-item-filters = Suodattimet
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Synkronoi sähköpostitilisi, osoitekirjasi, kalenterisi ja henkilöllisyytesi kaikilla laitteillasi.
 sync-disconnected-turn-on-sync = Ota synkronointi käyttöön…
+qr-export-pane-header = Vie tilit { -brand-product-name }in mobiilisovellukseen
+qr-export-description = Siirrä tilisi asetukset nopeasti tietokoneelta mobiililaitteelle luomalla QR-koodi. Valitse sisällytettävät tilit, päätä, haluatko siirtää salasanasi ja skannaa koodi mobiililaitteellasi. Nopeaa, turvallista ja yksinkertaista.
+qr-export-get-app = Eikö sinulla ole vielä { -brand-product-name }ia mobiililaitteella? <a data-l10n-name="app-link">Hanki se Google Playsta</a>
+qr-export-create = Luo QR-koodi tilien viemistä varten
+qr-export-select-accounts = Valitse vietävät tilit:
+qr-export-no-accounts = Etkö näe kaikkia tilejäsi? Jotkin tilit on mahdollisesti poistettu käytöstä, koska { -brand-product-name }in Android-versio ei tue niitä. <a data-l10n-name="account-support-link">Tuki</a>
+qr-export-accounts-legend = Sähköpostitilit
+qr-export-select-all-accounts = Valitse kaikki
+qr-export-security-legend = Turvallisuus
+qr-export-include-passwords = Sisällytä kaikkien tilien salasanat
+qr-export-oauth-warning = Jotkin tilisi käyttävät todennusmenetelmää, joka saattaa vaatia uudelleentodennuksen mobiililaitteellasi. Saatat joutua syöttämään salasanasi uudelleen tämän prosessin aikana.
+qr-export-security-hint = Kun skannaat seuraavat QR-koodit, tilisi asetukset, mukaan lukien sähköpostiosoitteesi ja salasanasi, siirretään turvallisesti. Emme kerää, tallenna tai jaa näitä tietoja toimenpiteen aikana. Siirto tapahtuu suoraan laitteidesi välillä.
+qr-export-security-warning = Varmista turvallisuutesi vuoksi, että olet yksityisessä ympäristössä ja skannaa vain luotetuista lähteistä peräisin olevia QR-koodeja.
+qr-export-start-export = Vie
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step }/{ $count } QR-koodi
+       *[other] { $step }/{ $count } QR-koodia
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skannaa QR-koodi { -brand-product-name }in mobiilisovelluksella
+       *[other] Skannaa QR-koodit { -brand-product-name }in mobiilisovelluksella
+    }
+qr-export-scan-step1 = Avaa { -brand-product-name } mobiililaitteellasi
+qr-export-scan-step2 = Siirry asetuksiin
+qr-export-scan-step3 = Valitse <strong>Tuo asetukset</strong>
+qr-export-scan-step4-revision = Napauta <strong>Skannaa QR-koodi</strong> ja pidä puhelintasi tämän koodin päällä
+qr-export-back = Edellinen
+qr-export-next = Seuraava
+qr-export-done = Valmis
+qr-export-summary-description = Tilit viety. Jatka mobiililaitteellasi.
+qr-export-summary-title = Viennin yhteenveto:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-koodi luotu
+       *[other] { $count } QR-koodia luotu
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } tili viety:
+       *[other] { $count } tiliä viety:
+    }
+qr-export-summary-passwords-included = Salasanat mukana
+qr-export-summary-passwords-excluded = Salasanat eivät mukana
+qr-export-more-accounts = Vie lisää tilejä

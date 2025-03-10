@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Testenn ha drekleur
 text-color-label =
     .value = Testenn :
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Ereoù gweladennet :
     .accesskey = E
-underline-link-checkbox =
-    .label = Islinennañ an ereoù
-    .accesskey = I
 override-color-label =
     .value = Implijout ar pezh am eus diuzet dindan e plas al livioù erspizet gant an endalc'h :
     .accesskey = I

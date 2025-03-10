@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Administrador de claves OpenPGP
     .accesskey = O
@@ -26,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Este mensaje se firmó con una clave que aún no tienes.
 openpgp-search-signature-key =
     .label = Descubrir…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Este es un mensaje de OpenPGP que aparentemente fue dañado por MS-Exchange y no se puede reparar porque se abrió desde un archivo local. Copie el mensaje en una carpeta de correo para intentar una reparación automática.
 openpgp-broken-exchange-info = Este es un mensaje de OpenPGP que aparentemente fue dañado por MS-Exchange. Si el contenido del mensaje no se muestra como se esperaba, puedes intentar una reparación automática.
 openpgp-broken-exchange-repair =

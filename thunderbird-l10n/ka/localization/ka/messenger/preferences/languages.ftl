@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = აწევა
     .accesskey = ა
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = დამატება
     .accesskey = დ
-messenger-languages-window2 =
-    .title = { -brand-short-name } – ენის პარამეტრები
 messenger-languages-dialog-title = { -brand-short-name } – ენის პარამეტრები
 messenger-languages-description = { -brand-short-name } აჩვენებს თქვენ მიერ მითითებულ პირველ ენას ნაგულისხმევად, ხოლო საჭიროების შემთხვევაში დამატებითს, რიგითობის შესაბამისად.
 messenger-languages-search = სხვა ენების მოძიება...

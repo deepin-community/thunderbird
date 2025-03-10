@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Acerca del tráfico de red
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = Limpiar Caché HTTP
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Cuenta de caché lenta
 about-networking-rcwn-cache-not-slow = Cuenta de caché no lenta
 about-networking-networkid = ID de red
 about-networking-networkid-id = ID de red
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Esta página se ha movido a <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = La conexión está activa
 about-networking-networkid-status-known = Se conoce el estado del enlace
-
-##
-

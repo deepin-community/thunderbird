@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Použiť poskytovateľa
     .accesskey = s
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (predvolený)
     .tooltiptext = Použiť predvolenú URL pre DNS cez HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = V
     .tooltiptext = Zadajte svoju preferovanú URL pre DNS cez HTTPS
 connection-dns-over-https-custom-label = Vlastný
-connection-dialog-window2 =
-    .title = Nastavenia pripojenia
 connection-dialog-title = Nastavenia pripojenia
 disable-extension-button = Zakázať rozšírenie
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Rozšírenie <img data-l10n-name="extension-icon" alt="" /> { $name } kontroluje pripojenie aplikácie { -brand-short-name } k internetu.
 connection-proxy-legend = Nastavenie serverov proxy pre prístup k sieti Internet
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Nepoužívať proxy pre:
     .accesskey = N
 no-proxy-example = Príklad: .mozilla.org, .net.nz
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Pripojenie na localhost, 127.0.0.1/8, a ::1 nikdy nepoužíva proxy server.
 proxy-password-prompt =
     .label = Nevyžadovať zadanie autorizačných údajov, ak ich má prehliadač uložené

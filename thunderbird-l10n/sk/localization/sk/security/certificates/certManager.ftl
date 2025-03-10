@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Správca certifikátov
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Nepodarilo sa vytvoriť záložný súbor PKCS #12 z
 pkcs12-unknown-err = Operácia PKCS #12 zlyhala z neznámych príčin.
 pkcs12-info-no-smartcard-backup = Nie je možné zálohovať certifikáty s hardvérového bezpečnostného zariadenia, ako napríklad Smart Card.
 pkcs12-dup-data = Tento certifikát a privátny kľúč už na tomto bezpečnostnom zariadení existuje.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Názov súboru, ktorý sa má zálohovať
 file-browse-pkcs12-spec = Súbory PKCS12
 choose-p12-restore-file-dialog = Súbor s certifikátom, ktorý sa má importovať
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Súbory certifikátov
 import-ca-certs-prompt = Vyberte súbor s certifikátom autority, ktorý sa má naimportovať
 import-email-cert-prompt = Vyberte súbor s e‑mailovým certifikátom, ktorý sa má naimportovať
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Certifikát "{ $certName }" reprezentuje certifikačnú autoritu.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Odstránenie vašich certifikátov
 delete-user-cert-confirm = Naozaj chcete odstrániť tieto certifikáty?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Odstránenie e‑mailových certifikátov
 delete-email-cert-confirm = Naozaj chcete odstrániť e‑mailové certifikáty týchto ľudí?
 delete-email-cert-impact = Ak odstránite e‑mailový certifikát osoby, nebudete môcť tomuto adresátovi odoslať zašifrovanú e‑mailovú správu.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Certifikát so sériovým číslom: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Neposielať klientsky certifikát
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (neuložený)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (nedostupný)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Natrvalo
 temporary-override = Dočasne
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Chystáte sa potlačiť spôsob, akým { -brand-short-name } identifikuje túto stránku.
 add-exception-invalid-header = Táto stránka sa pokúša identifikovať neplatnými údajmi.
 add-exception-domain-mismatch-short = Nesprávna stránka
@@ -170,9 +139,6 @@ add-exception-checking-short = Kontrola informácií
 add-exception-checking-long = Pokus o identifikovanie tejto stránky…
 add-exception-no-cert-short = Informácie nie sú dostupné
 add-exception-no-cert-long = Nie je možné získať stav identifikácie pre túto stránku.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Uložiť certifikát ako súbor
 cert-format-base64 = Certifikát X.509 (PEM)
 cert-format-base64-chain = Certifikát X.509 s reťazcom (PEM)

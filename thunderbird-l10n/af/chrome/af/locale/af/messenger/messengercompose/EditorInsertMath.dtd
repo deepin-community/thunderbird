@@ -1,25 +1,6 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- Window title -->
-
-
-<!ENTITY options.label "Opsies">
-
-
-
-
-
-
-
-
-
-<!ENTITY insertButton.label "Invoeg">
-<!ENTITY insertButton.accesskey "I">
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Insert Math">
 <!ENTITY sourceEditField.label "Enter LaTeX source code:">
+<!ENTITY options.label "Opsies">
 <!ENTITY optionInline.label "Inline mode">
 <!ENTITY optionInline.accesskey "N">
 <!ENTITY optionDisplay.label "Display mode">
@@ -28,3 +9,5 @@
 <!ENTITY optionLTR.accesskey "L">
 <!ENTITY optionRTL.label "Right-to-left direction">
 <!ENTITY optionRTL.accesskey "R">
+<!ENTITY insertButton.label "Invoeg">
+<!ENTITY insertButton.accesskey "I">

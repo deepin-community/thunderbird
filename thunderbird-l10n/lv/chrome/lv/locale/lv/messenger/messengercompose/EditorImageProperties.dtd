@@ -1,15 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- These strings are for use specifically in the editor's image and form image dialogs. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Attēla īpašības">
-
 <!ENTITY pixelsPopup.value "punkti">
-
-<!-- These are in the Location tab panel -->
 <!ENTITY locationEditField.label "Attēla vieta:">
 <!ENTITY locationEditField.accessKey "v">
 <!ENTITY locationEditField.tooltip "Ievadiet attēla faila nosaukumu vai atrašanās vietu">
@@ -22,11 +12,7 @@
 <!ENTITY altTextEditField.tooltip "Ievadiet tekstu, kas norāda attēla vietu">
 <!ENTITY noAltText.label "Neizmantot alternatīvo tekstu">
 <!ENTITY noAltText.accessKey "N">
-
 <!ENTITY previewBox.label "Attēla priekšskats">
-
-<!-- These controls are in the Dimensions tab panel -->
-<!-- actualSize.label should be same as actualSizeRadio.label + ":" -->
 <!ENTITY actualSize.label "Patiesais izmērs:">
 <!ENTITY actualSizeRadio.label "Patiesais izmērs">
 <!ENTITY actualSizeRadio.accessKey "P">
@@ -41,21 +27,15 @@
 <!ENTITY constrainCheckbox.label "Ierobežot">
 <!ENTITY constrainCheckbox.accessKey "I">
 <!ENTITY constrainCheckbox.tooltip "Saglabāt attēla malu attiecību">
-
-<!-- These controls are in the Image Map box of the expanded area -->
 <!ENTITY imagemapBox.label "Attēlu karte">
 <!ENTITY removeImageMapButton.label "Noņemt">
 <!ENTITY removeImageMapButton.accessKey "N">
-
-<!-- These are the options for image alignment -->
 <!ENTITY alignment.label "Pielīdzināt tekstu attēlam">
 <!ENTITY bottomPopup.value "Apakšā">
 <!ENTITY topPopup.value "Augšā">
 <!ENTITY centerPopup.value "Centrā">
 <!ENTITY wrapRightPopup.value "Aptīt pa labi">
 <!ENTITY wrapLeftPopup.value "Aptīt pa kreisi">
-
-<!-- These controls are in the Spacing Box -->
 <!ENTITY spacingBox.label "Atstatums">
 <!ENTITY leftRightEditField.label "Pa kreisi un pa labi:">
 <!ENTITY leftRightEditField.accessKey "k">
@@ -63,15 +43,11 @@
 <!ENTITY topBottomEditField.accessKey "A">
 <!ENTITY borderEditField.label "Nepārtraukta apmale:">
 <!ENTITY borderEditField.accessKey "N">
-
-<!-- These controls are in the Link Box -->
 <!ENTITY showImageLinkBorder.label "Rādīt saistītam attēlam apmali">
 <!ENTITY showImageLinkBorder.accessKey "R">
 <!ENTITY LinkAdvancedEditButton.label "Saistīt papildu rediģēšanu…">
 <!ENTITY LinkAdvancedEditButton.accessKey "S">
 <!ENTITY LinkAdvancedEditButton.tooltip "Pievienot vai mainīt HTML atribūtus, stila atribūtus un JavaScript">
-
-<!-- These tabs are currently used in the image input dialog -->
 <!ENTITY imageInputTab.label "Forma">
 <!ENTITY imageLocationTab.label "Atrašanās vieta">
 <!ENTITY imageDimensionsTab.label "Izmēri">

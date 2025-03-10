@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Aggiungi una chiave personale OpenPGP per { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Continua
-    .buttonlabelhelp = Torna indietro
 key-wizard-dialog =
     .buttonlabelaccept = Continua
     .buttonlabelextra1 = Torna indietro
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Utilizza la chiave esterna tramite GnuPG (ad es. da una smartcard)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Genera chiave OpenPGP
 openpgp-keygen-secret-protection = Protezione con chiave segreta
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = La chiave deve essere valida per almeno un giorno.
 openpgp-keygen-ongoing = Generazione della chiave già in corso.
 openpgp-keygen-error-core = Impossibile inizializzare il servizio principale OpenPGP
 openpgp-keygen-error-failed = Un errore imprevisto ha impedito di generare la chiave OpenPGP
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = La chiave OpenPGP è stata creata correttamente, ma non è stato possibile ottenere la revoca per la chiave { $key }
 openpgp-keygen-abort-title = Interrompere la generazione della chiave?
 openpgp-keygen-abort = Processo di generazione della chiave OpenPGP attualmente in corso, annullarlo comunque?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Generare chiave pubblica e segreta per { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Importazione chiave personale OpenPGP esistente
 openpgp-import-key-legend = Seleziona un file di backup precedentemente creato.
 openpgp-import-key-description = È possibile importare chiavi personali create con altri software OpenPGP.
 openpgp-import-key-info = Altri software potrebbero descrivere una chiave personale usando termini alternativi come chiave propria, chiave segreta, chiave privata o coppia di chiavi.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } ha trovato una chiave che può essere importata.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Le chiavi contrassegnate per essere trattate c
 openpgp-import-keep-passphrases =
     .label = Mantieni la protezione tramite passphrase per le chiavi segrete importate
 openpgp-passphrase-prompt-title = Passphrase obbligatoria
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Inserire la passphrase per sbloccare la chiave seguente: { $key }
 openpgp-import-key-button =
     .label = Seleziona il file da importare...
     .accesskey = f
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Considera questa chiave come chiave personale
 gnupg-file = File GnuPG
 import-error-file-size = <b>Errore:</b> non sono supportati file di dimensioni superiori a 5 MB.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Errore:</b> impossibile importare il file. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Errore:</b> impossibile importare le chiavi. { $error }
 openpgp-import-identity-label = Identità
 openpgp-import-fingerprint-label = Impronta digitale
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bit
 openpgp-import-key-props =
     .label = Proprietà chiave
     .accesskey = P
-
-## External Key section
-
 openpgp-external-key-title = Chiave GnuPG esterna
 openpgp-external-key-description = Configurare una chiave GnuPG esterna inserendo l’ID della chiave
 openpgp-external-key-info = Inoltre, è necessario utilizzare il Gestore delle chiavi per importare e accettare la chiave pubblica corrispondente.

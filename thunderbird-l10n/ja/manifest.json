@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ja@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: 日本語 (Japanese)",
   "description": "Thunderbird Language Pack for 日本語 (ja) – Japanese",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "ja": {
-      "version": "20240930174445",
+      "version": "20250227153324",
       "chrome_resources": {
         "alerts": "chrome/ja/locale/ja/alerts/",
         "autoconfig": "chrome/ja/locale/ja/autoconfig/",

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Mtawi
 appmenu-signin-panel =
@@ -24,9 +17,6 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Ffeɣ…
     .accesskey = F
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Amiḍan amaynut
 appmenu-new-account-panel =
@@ -47,14 +37,8 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Agraw amaynut
     .accesskey = A
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Imedlis n tensa amaynut
-
-## Create
-
 appmenu-create-panel-title =
     .title = Rnu
 appmenu-create-panel =
@@ -72,18 +56,12 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Anermis
     .accesskey = A
-
-## Open
-
 appmenu-open-message =
     .label = Izen…
     .accesskey = I
 appmenu-open-calendar =
     .label = Awitay…
     .accesskey = A
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Sken
 appmenu-view-panel =
@@ -97,14 +75,11 @@ appmenu-uidensity-default =
     .tooltiptext = Amezwer
 appmenuitem-font-size-enlarge =
     .tooltiptext = Semɣer teɣzi n tsefsit
-# Variables:
-# $size (String) - The current font size.
+appmenuitem-font-size-reduce =
+    .tooltiptext = Senqes seg teɣzi n tsefsit
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Wennez teɣzi n tsefsit
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Ifecka
 appmenu-tools-panel =
@@ -131,9 +106,6 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Ifecka n tneflit
     .accesskey = I
-
-## Help
-
 appmenu-help-panel-title =
     .title = Tallalt
 appmenu-help-get-help =
@@ -151,9 +123,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Ɣef { -brand-short-name }
     .accesskey = Ɣ
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Asader n lqem { -brand-shorter-name }
 appmenuitem-banner-update-available =

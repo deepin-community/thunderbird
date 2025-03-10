@@ -70,6 +70,10 @@ add_setup(
       _testFolder,
       do_get_file("messages/sample08.eml").path
     );
+    await createMessageFromFile(
+      _testFolder,
+      do_get_file("messages/nestedMessageNoContentDispositionHeader.eml").path
+    );
   }
 );
 
@@ -84,7 +88,7 @@ add_task(
           const [account] = await browser.accounts.list();
           const testFolder = account.folders.find(f => f.name == "test1");
           const { messages } = await browser.messages.list(testFolder.id);
-          browser.test.assertEq(8, messages.length);
+          browser.test.assertEq(9, messages.length);
 
           let attachments, attachment, file;
 
@@ -168,46 +172,63 @@ add_task(
           // "2 attachments" message.
 
           attachments = await browser.messages.listAttachments(messages[3].id);
-          browser.test.assertEq("2 attachments", messages[3].subject);
-          browser.test.assertEq(2, attachments.length);
-
-          attachment = attachments[0];
-          browser.test.assertEq(
-            attachment.contentType,
-            "application/octet-stream"
+          window.assertDeepEqual(
+            [
+              {
+                contentDisposition: "attachment",
+                contentType: "application/octet-stream",
+                headers: {
+                  "content-type": [
+                    'application/octet-stream; charset=ISO-8859-1; format=flowed; name="test"',
+                  ],
+                  "content-transfer-encoding": ["base64"],
+                  "content-disposition": ['attachment; filename="test"'],
+                },
+                name: "test",
+                partName: "1.2",
+                size: 16,
+              },
+              {
+                contentDisposition: "attachment",
+                contentType: "text/plain",
+                headers: {
+                  "content-type": [
+                    'text/plain; charset=ISO-8859-1; format=flowed; name="test.txt"',
+                  ],
+                  "content-transfer-encoding": ["7bit"],
+                  "content-disposition": ['attachment; filename="test.txt"'],
+                },
+                name: "test.txt",
+                partName: "1.3",
+                size: 14,
+              },
+            ],
+            attachments,
+            "Should find the correct attachments for message #3",
+            { strict: true }
           );
-          browser.test.assertEq("test", attachment.name);
-          browser.test.assertEq("1.2", attachment.partName);
-          browser.test.assertEq(16, attachment.size);
 
           file = await browser.messages.getAttachmentFile(
             messages[3].id,
-            attachment.partName
+            attachments[0].partName
           );
           // eslint-disable-next-line mozilla/use-isInstance
           browser.test.assertTrue(file instanceof File);
           browser.test.assertEq("test", file.name);
           browser.test.assertEq(16, file.size);
-
           browser.test.assertEq("binaryAttachment", await file.text());
-
-          attachment = attachments[1];
-          browser.test.assertEq("text/plain", attachment.contentType);
-          browser.test.assertEq("test.txt", attachment.name);
-          browser.test.assertEq("1.3", attachment.partName);
-          browser.test.assertEq(14, attachment.size);
 
           file = await browser.messages.getAttachmentFile(
             messages[3].id,
-            attachment.partName
+            attachments[1].partName
           );
           // eslint-disable-next-line mozilla/use-isInstance
           browser.test.assertTrue(file instanceof File);
           browser.test.assertEq("test.txt", file.name);
           browser.test.assertEq(14, file.size);
-
           browser.test.assertEq("textAttachment", await file.text());
 
+          // Test invalid function calls.
           await browser.test.assertRejects(
             browser.messages.listAttachments(100),
             /^Message not found: \d+\.$/,
@@ -263,11 +284,20 @@ add_task(
           window.assertDeepEqual(
             [
               {
+                contentDisposition: "inline",
                 contentType: "image/png",
                 name: "blue_pixel_1x1.png",
                 size: 179,
                 partName: "1.2",
                 contentId: "part1.FxEY2Ivx.xSFtCdX4@example.com",
+                headers: {
+                  "content-type": ['image/png; name="blue_pixel_1x1.png"'],
+                  "content-disposition": [
+                    'inline; filename="blue_pixel_1x1.png"',
+                  ],
+                  "content-id": ["<part1.FxEY2Ivx.xSFtCdX4@example.com>"],
+                  "content-transfer-encoding": ["base64"],
+                },
               },
             ],
             attachments,
@@ -311,7 +341,7 @@ add_task(
           const [account] = await browser.accounts.list();
           const testFolder = account.folders.find(f => f.name == "test1");
           const { messages } = await browser.messages.list(testFolder.id);
-          browser.test.assertEq(8, messages.length);
+          browser.test.assertEq(9, messages.length);
           const message = messages[4];
 
           function validateMessage(msg, expectedValues) {
@@ -470,13 +500,16 @@ add_task(
           });
 
           // Test getAttachmentFile().
-          // Note: X-Ray vision is an undocumented artefact. The parts of nested
-          //       messages are not returned by listAttachments() and one has to
-          //       guess the correct part name to be able to retrieve the part.
-          //       But it *is* possible to get any part inside the message, even
-          //       if the attachments belong to subMessages. Example: Requesting
-          //       part 1.2.1.3 from the main message returns the same part as
-          //       requesting part 1.3. from message1.eml (which is part 1.2).
+          // Note: X-ray vision is an undocumented feature, which is used internally
+          //       to retrieve attachments of attached messages. The parts of nested
+          //       messages are not returned by listAttachments(), but one could
+          //       guess the correct x-ray partName to be able to retrieve nested
+          //       parts. Example: Requesting part 1.2$.3 from the main message
+          //       returns the same part as requesting part 1.3. from message1.eml
+          //       (which is part 1.2).
+          //       The schema definition for getAttachmentFile() could prevent
+          //       x-ray vision by rejecting partNames which include a $, but this
+          //       would also not allow the following test to verify x-ray vision.
           const fileTests = [
             {
               partName: "1.2",
@@ -485,31 +518,31 @@ add_task(
               text: "Message-ID: <sample-attached.eml@mime.sample>",
             },
             {
-              partName: "1.2.1.2",
+              partName: "1.2$.2",
               name: "whitePixel.png",
               size: 69,
               data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4//8/AAX+Av7czFnnAAAAAElFTkSuQmCC",
             },
             {
-              partName: "1.2.1.3",
+              partName: "1.2$.3",
               name: "greenPixel.png",
               size: 119,
               data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAMSURBVBhXY+C76AoAAhUBJel4xsMAAAAASUVORK5CYII=",
             },
             {
-              partName: "1.2.1.4",
+              partName: "1.2$.4",
               name: "redPixel.png",
               size: 119,
               data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAMSURBVBhXY+hgkAYAAbcApOp/9LEAAAAASUVORK5CYII=",
             },
             {
-              partName: "1.2.1.5",
+              partName: "1.2$.5",
               name: "message2.eml",
               size: account.type == "none" ? 838 : 867,
               text: "Message-ID: <sample-nested-attached.eml@mime.sample>",
             },
             {
-              partName: "1.2.1.5.1.2",
+              partName: "1.2$.5$.2",
               name: "whitePixel.png",
               size: 69,
               data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4//8/AAX+Av7czFnnAAAAAElFTkSuQmCC",
@@ -528,12 +561,12 @@ add_task(
             },
             {
               id: subMessage.id,
-              subPart: "1.2.",
+              subPart: "1.2$.",
               expectedFileCounts: 5,
             },
             {
               id: subSubMessage.id,
-              subPart: "1.2.1.5.",
+              subPart: "1.2$.5$.",
               expectedFileCounts: 1,
             },
           ];
@@ -548,7 +581,12 @@ add_task(
               }
 
               fileCounts++;
-              const partName = test.partName.slice(msg.subPart?.length ?? 0);
+              // 1.2$.4    from message1.eml (1.2$.)    should result in requesting 1.4
+              // 1.2$.5$.2 from message1.eml (1.2$.)    should result in requesting 1.5$2
+              // 1.2$.5$.2 from message2.eml (1.2$.5$.) should result in requesting 1.2
+              const partName = msg.subPart
+                ? `1.${test.partName.slice(msg.subPart.length)}`
+                : test.partName;
               const file = await browser.messages.getAttachmentFile(
                 msg.id,
                 partName
@@ -611,8 +649,149 @@ add_task(
           const [account] = await browser.accounts.list();
           const testFolder = account.folders.find(f => f.name == "test1");
           const { messages } = await browser.messages.list(testFolder.id);
-          browser.test.assertEq(8, messages.length);
+          browser.test.assertEq(9, messages.length);
           const message = messages[6];
+
+          function validateMessage(msg, expectedValues) {
+            for (const expectedValueName in expectedValues) {
+              const value = msg[expectedValueName];
+              const expected = expectedValues[expectedValueName];
+              if (Array.isArray(expected)) {
+                browser.test.assertTrue(
+                  Array.isArray(value),
+                  `Value for ${expectedValueName} should be an Array.`
+                );
+                browser.test.assertEq(
+                  expected.length,
+                  value.length,
+                  `Value for ${expectedValueName} should have the correct Array size.`
+                );
+                for (let i = 0; i < expected.length; i++) {
+                  browser.test.assertEq(
+                    expected[i],
+                    value[i],
+                    `Value for ${expectedValueName}[${i}] should be correct.`
+                  );
+                }
+              } else if (expected instanceof Date) {
+                browser.test.assertTrue(
+                  value instanceof Date,
+                  `Value for ${expectedValueName} should be a Date.`
+                );
+                browser.test.assertEq(
+                  expected.getTime(),
+                  value.getTime(),
+                  `Date value for ${expectedValueName} should be correct.`
+                );
+              } else {
+                browser.test.assertEq(
+                  expected,
+                  value,
+                  `Value for ${expectedValueName} should be correct.`
+                );
+              }
+            }
+          }
+
+          // Request attachments.
+          const attachments = await browser.messages.listAttachments(
+            message.id
+          );
+          browser.test.assertEq(2, attachments.length);
+          browser.test.assertEq("1.2", attachments[0].partName);
+          browser.test.assertEq("1.3", attachments[1].partName);
+
+          browser.test.assertEq("ForwardedMessage.eml", attachments[0].name);
+          browser.test.assertEq("yellowPixel.png", attachments[1].name);
+
+          // Validate the returned MessageHeader for attached ForwardedMessage.eml.
+          const subMessage = attachments[0].message;
+          browser.test.assertTrue(
+            subMessage.id != message.id,
+            `Id of attached SubMessage (${subMessage.id}) should be different from the id of the outer message (${message.id})`
+          );
+          validateMessage(subMessage, {
+            date: new Date(958606367000),
+            author: "Superman <clark.kent@dailyplanet.com>",
+            recipients: ["Jimmy <jimmy.olsen@dailyplanet.com>"],
+            ccList: [],
+            bccList: [],
+            subject: "Test message 1",
+            new: false,
+            headersOnly: false,
+            flagged: false,
+            junk: false,
+            junkScore: 0,
+            headerMessageId: "sample-attached.eml@mime.sample",
+            size: account.type == "none" ? 342 : 343,
+            tags: [],
+            external: true,
+          });
+
+          // Make sure we can use getFull() on the subMessage.
+          const subFull = await browser.messages.getFull(subMessage.id);
+          browser.test.assertEq(
+            subFull.headers["message-id"][0],
+            "<sample-attached.eml@mime.sample>",
+            "Message Id returned by getFull() for the attached message should be correct."
+          );
+
+          // Make sure we can use getRaw() on the subMessage.
+          const subRaw = await browser.messages.getRaw(subMessage.id);
+          browser.test.assertTrue(
+            subRaw.startsWith("Message-ID: <sample-attached.eml@mime.sample>"),
+            "Content returned by getRaw() for the attached message should be correct."
+          );
+
+          // Get attachments of sub-message ForwardedMessage.eml.
+          const subAttachments = await browser.messages.listAttachments(
+            subMessage.id
+          );
+          browser.test.assertEq(3, subAttachments.length);
+          browser.test.assertEq("1.2", subAttachments[0].partName);
+          browser.test.assertEq("1.3", subAttachments[1].partName);
+          browser.test.assertEq("1.4", subAttachments[2].partName);
+
+          browser.test.assertEq("whitePixel.png", subAttachments[0].name);
+          browser.test.assertEq("greenPixel.png", subAttachments[1].name);
+          browser.test.assertEq("redPixel.png", subAttachments[2].name);
+
+          // Make sure we can get an attachment from the subMessage
+          const att1 = await browser.messages.getAttachmentFile(
+            subMessage.id,
+            "1.2"
+          );
+          browser.test.assertTrue(att1.size);
+
+          browser.test.notifyPass("finished");
+        },
+        "utils.js": await getUtilsJS(),
+      },
+      manifest: {
+        background: { scripts: ["utils.js", "background.js"] },
+        permissions: ["accountsRead", "messagesRead"],
+      },
+    });
+
+    await extension.startup();
+    await extension.awaitFinish("finished");
+    await extension.unload();
+  }
+);
+
+add_task(
+  {
+    skip_if: () => IS_IMAP,
+  },
+  async function test_messages_as_inline_attachment_without_contentDisposition_header() {
+    const extension = ExtensionTestUtils.loadExtension({
+      files: {
+        "background.js": async () => {
+          const [account] = await browser.accounts.list();
+          const testFolder = account.folders.find(f => f.name == "test1");
+          const { messages } = await browser.messages.list(testFolder.id);
+          browser.test.assertEq(9, messages.length);
+          const message = messages[8];
 
           function validateMessage(msg, expectedValues) {
             for (const expectedValueName in expectedValues) {
@@ -753,7 +932,7 @@ add_task(
           const [account] = await browser.accounts.list();
           const testFolder = account.folders.find(f => f.name == "test1");
           const { messages } = await browser.messages.list(testFolder.id);
-          browser.test.assertEq(8, messages.length);
+          browser.test.assertEq(9, messages.length);
 
           async function checkAttachments(id, expected) {
             const attachments = await browser.messages.listAttachments(id);

@@ -1,10 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "檢查拼字">
-
 <!ENTITY misspelledWord.label "拼錯的字:">
 <!ENTITY wordEditField.label "取代為:">
 <!ENTITY wordEditField.accessKey "w">
@@ -36,4 +30,3 @@
 <!ENTITY sendButton.accessKey "S">
 <!ENTITY languagePopup.label "語言:">
 <!ENTITY languagePopup.accessKey "L">
-

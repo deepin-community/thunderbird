@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-colors-dialog-window2 =
-    .title = Farver
 colors-dialog-title = Farver
 colors-dialog-legend = Tekst og baggrund
 text-color-label =
@@ -22,9 +16,6 @@ link-color-label =
 visited-link-color-label =
     .value = Besøgte links:
     .accesskey = e
-underline-link-checkbox =
-    .label = Understreg links
-    .accesskey = n
 always-underline-links =
     .label = Understreg altid links
     .accesskey = n

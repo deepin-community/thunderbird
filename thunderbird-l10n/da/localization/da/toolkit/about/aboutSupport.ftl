@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Teknisk information
 page-subtitle =
     Denne side indeholder teknisk information som måske kan være brugbar når du forsøger 
@@ -41,8 +37,6 @@ app-basics-version = Version
 app-basics-build-id = Build-ID
 app-basics-distribution-id = Distributions-ID
 app-basics-update-channel = Opdateringskanal
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Opdateringsmappe
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Opdateringshistorik
 app-basics-show-update-history = Vis opdateringshistorik
-# Represents the path to the binary used to start the application.
 app-basics-binary = Programfil
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Profilmappe
        *[other] Profilmappe
     }
-app-basics-enabled-plugins = Aktive plugins
 app-basics-build-config = Byggekonfiguration
 app-basics-user-agent = User Agent
 app-basics-os = Styresystem
 app-basics-os-theme = Operativsystemets tema
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Hukommelsesforbrug
 app-basics-performance = Ydelse
@@ -82,9 +72,6 @@ app-basics-safe-mode = Fejlsikret tilstand
 app-basics-memory-size = Hukommelsesstørrelse (RAM)
 app-basics-disk-available = Ledig diskplads
 app-basics-pointing-devices = Pegeredskaber
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Beslutnings-log
 graphics-crash-guards-title = Funktioner deaktiveret af Crash guard
 graphics-workarounds-title = Løsninger
 graphics-device-pixel-ratios = Vinduets enheds-pixelforhold (Device Pixel Ratios)
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protokol for vinduer
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Skrivebordsmiljø
 place-database-title = Databasen Places
 place-database-stats = Statistik
@@ -156,9 +141,6 @@ clear-startup-cache-label = Ryd opstarts-cachen…
 startup-cache-dialog-title2 = Genstart { -brand-short-name } for at rydde opstarts-cachen?
 startup-cache-dialog-body2 = Dette vil ikke ændre dine indstillinger eller fjerne dine udvidelser.
 restart-button-label = Genstart
-
-## Media titles
-
 audio-backend = Audio-backend
 max-audio-channels = Max antal kanaler
 sample-rate = Foretrukken sample-rate
@@ -177,11 +159,7 @@ media-device-rate = Rate
 media-device-latency = Latenstid
 media-capabilities-title = Media-evner
 media-codec-support-info = Information om codec-support
-# List all the entries of the database.
 media-capabilities-enumerate = Vis database-poster
-
-## Codec support table
-
 media-codec-support-sw-decoding = Software-afkodning
 media-codec-support-hw-decoding = Hardware-afkodning
 media-codec-support-codec-name = Codec-navn
@@ -189,26 +167,13 @@ media-codec-support-supported = Understøttet
 media-codec-support-unsupported = Ikke understøttet
 media-codec-support-error = Information om understøttelse af codec er ikke tilgængelig. Afspil en mediefil og prøv igen.
 media-codec-support-lack-of-extension = Installer udvidelse
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Informationer om moduler til indholdskryptering (Content Decryption Modules (CDM))
 media-key-system-name = Navn på nøglesystem
 media-video-robustness = Video-robusthed
 media-audio-robustness = Lyd-robusthed
 media-cdm-capabilities = Funktioner
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Ikke-krypteret start
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = HDCP 2.2-kompatibel
-
-##
-
 intl-title = Tilpasning til andre sprog og lande
 intl-app-title = Indstillinger for applikation
 intl-locales-requested = Forespurgte sprog
@@ -218,52 +183,29 @@ intl-locales-default = Standard-sprog
 intl-os-title = Operativsystem
 intl-os-prefs-system-locales = System-sprog
 intl-regional-prefs = Regionale indstillinger
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Remote debugging (Chromium-protokol)
 remote-debugging-accepting-connections = Accepterer forbindelser
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Fejlrapporter for det seneste døgn
        *[other] Fejlrapporter for de seneste { $days } døgn
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } minut siden
        *[other] { $minutes } minutter siden
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } time siden
        *[other] { $hours } timer siden
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } dag siden
        *[other] { $days } dage siden
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Alle fejlrapporter (inklusive { $reports } afventende fejl i den angivne tidsramme)
@@ -271,18 +213,11 @@ pending-reports =
     }
 raw-data-copied = Rå data blev kopieret til udklipsholderen
 text-copied = Tekst blev kopieret til udklipsholderen
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Ikke understøttet i denne grafik-driver-version.
 blocked-gfx-card = Ikke understøttet i denne grafik-driver-version grundet uløste driver-forhold.
 blocked-os-version = Ikke understøttet i denne version af dit operativsystem.
 blocked-mismatched-version = Ikke understøttet af driveren til dit grafikkort på grund af en uoverensstemmelse mellem registret og DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Ikke understøttet i denne grafik-driver-version. Prøv at opgradere din grafik-driver til version { $driverVersion } eller nyere.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType parametre
 compositing = Komposition
 support-font-determination = Info til at fejlsøge synlighed af skrifttyper
@@ -292,11 +227,6 @@ yes = Ja
 no = Nej
 unknown = Ukendt
 virtual-monitor-disp = Virtual Monitor Display
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Fundet
 missing = Mangler
 gpu-process-pid = GPUProcessPid
@@ -323,11 +253,7 @@ webgl2-driver-extensions = WebGL 2 Driver-udvidelser
 webgl2-extensions = WebGL 2-udvidelser
 webgpu-default-adapter = Standard-adapter for WebGPU
 webgpu-fallback-adapter = Reserve-adapter for WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Blokeret på grund af kendte problemer: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Blokeret; fejlkode { $failureCode }
 d3d11layers-crash-guard = D3D11-kompositoren
 glcontext-crash-guard = OpenGL
@@ -347,8 +273,6 @@ has-seccomp-bpf = Seccomp-BPF (filtrering af systemkald)
 has-seccomp-tsync = Seccomp tråd-synkronisering
 has-user-namespaces = Navneområder
 has-privileged-user-namespaces = Navneområder for priviligerede processer
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } - Denne funktion tillades ikke af dit system. Det kan begrænse sikkerhedsfunktionerne i { -brand-short-name }.
 can-sandbox-content = Sandboxning indholdsprocesser
 can-sandbox-media = Sandboxning af medie-plugin
@@ -369,16 +293,8 @@ launcher-process-status-0 = Aktiveret
 launcher-process-status-1 = Deaktiveret på grund af en fejl
 launcher-process-status-2 = Deaktiveret
 launcher-process-status-unknown = Ukendt status
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Deaktiveret af et eksperiment
-fission-status-experiment-treatment = Aktiveret af et eksperiment
 fission-status-disabled-by-e10s-env = Deaktiveret af miljøet
 fission-status-enabled-by-env = Aktiveret af miljøet
 fission-status-disabled-by-env = Deaktiveret af miljøet
@@ -387,7 +303,6 @@ fission-status-disabled-by-default = Deaktiveret som standard
 fission-status-enabled-by-user-pref = Aktiveret af bruger
 fission-status-disabled-by-user-pref = Deaktiveret af bruger
 fission-status-disabled-by-e10s-other = E10s deaktiveret
-fission-status-enabled-by-rollout = Aktiveret af trinvis udrulning
 async-pan-zoom = Asynkron panorering/zoom
 apz-none = ingen
 wheel-enabled = input fra rullehjul
@@ -396,34 +311,20 @@ drag-enabled = træk i rullebjælke
 keyboard-enabled = tastatur
 autoscroll-enabled = autoscroll
 zooming-enabled = smooth pinch-zoom
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = asynkront input fra rullehjul er deaktiveret på grund af en ikke understøttet indstilling: { $preferenceKey }
 touch-warning = asynkront input fra trykfølsom skærm er deaktiveret på grund af en ikke understøttet indstilling: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Inaktiv
 policies-active = Aktiv
 policies-error = Fejl
-
-## Printing section
-
 support-printing-title = Udskrivning
 support-printing-troubleshoot = Fejlsøgning
 support-printing-clear-settings-button = Ryd gemte indstillinger for udskrivning
 support-printing-modified-settings = Ændrede indstillinger for udskrivning
 support-printing-prefs-name = Navn
 support-printing-prefs-value = Værdi
-
-## Remote Settings sections
-
 support-remote-settings-title = Fjernindstillinger
 support-remote-settings-status = Status
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Virker ikke
 support-remote-settings-last-check = Seneste tjek
 support-remote-settings-local-timestamp = Lokalt tidsstempel
@@ -431,9 +332,6 @@ support-remote-settings-sync-history = Historik
 support-remote-settings-sync-history-status = Status
 support-remote-settings-sync-history-datetime = Dato
 support-remote-settings-sync-history-infos = Oplysninger
-
-## Normandy sections
-
 support-remote-experiments-title = Fjern-eksperimenter
 support-remote-experiments-name = Navn
 support-remote-experiments-branch = Eksperimental-gren
@@ -441,19 +339,10 @@ support-remote-experiments-see-about-studies = Få mere information på siden <a
 support-remote-features-title = Fjern-funktioner
 support-remote-features-name = Navn
 support-remote-features-status = Status
-
-## Pointing devices
-
 pointing-device-mouse = Mus
 pointing-device-touchscreen = Touchscreen
 pointing-device-pen-digitizer = Digital pen
 pointing-device-none = Ingen pegeredskaber
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Indholdsanalyse (DLP)
 content-analysis-active = Aktiv
 content-analysis-connected-to-agent = Forbundet til agent

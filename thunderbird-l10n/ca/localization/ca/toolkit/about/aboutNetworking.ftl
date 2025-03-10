@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Quant al trànsit de xarxa
 about-networking-http = HTTP
 about-networking-sockets = Sòcols
@@ -35,9 +31,3 @@ about-networking-rcwn-operation = Operació de memòria cau
 about-networking-rcwn-perf-open = Obre
 about-networking-networkid = ID de xarxa
 about-networking-networkid-id = ID de xarxa
-
-## Link is intended as "network link"
-
-
-##
-

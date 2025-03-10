@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = טקסט ורקע
 text-color-label =
     .value = טקסט:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = קישורים שביקרת בהם:
     .accesskey = ב
-underline-link-checkbox =
-    .label = קו מתחת לקישורים
-    .accesskey = ת
 override-color-label =
     .value = דריסת הצבעים שהוקצו על ידי התוכן עם בחירותי שלהלן:
     .accesskey = ד

@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "为节省磁盘空间，不下载：">
 <!ENTITY doNotDownloadNntp.label "为节省磁盘空间，不下载下列邮件供脱机阅读：">
 <!ENTITY doNotDownloadImap.label "要节省磁盘空间，可对从服务器下载并保存到本地供离线使用的消息进行大小或时间上的限制。">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "v">
 <!ENTITY syncGroupTitle.label "消息同步">
 <!ENTITY diskspaceGroupTitle.label "磁盘空间">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "同步所有消息至本地，忽略消息的时间">
-<!ENTITY allAutosync.accesskey           "c">
-<!ENTITY ageAutosyncBefore.label         "同步过去此时段内消息">
-<!ENTITY ageAutosync.accesskey           "z">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "天">
-<!ENTITY weekAgeInterval.label           "星期">
-<!ENTITY monthAgeInterval.label          "个月">
-<!ENTITY yearAgeInterval.label           "年">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "同步所有消息至本地，忽略消息的时间">
+<!ENTITY allAutosync.accesskey "c">
+<!ENTITY ageAutosyncBefore.label "同步过去此时段内消息">
+<!ENTITY ageAutosync.accesskey "z">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "天">
+<!ENTITY weekAgeInterval.label "星期">
+<!ENTITY monthAgeInterval.label "个月">
+<!ENTITY yearAgeInterval.label "年">
+<!ENTITY ageAutosyncAfter.label "">

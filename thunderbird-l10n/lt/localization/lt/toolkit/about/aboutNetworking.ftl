@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Tinklo ryšiai
 about-networking-http = HTTP
 about-networking-sockets = Sujungimai
@@ -56,11 +52,5 @@ about-networking-rcwn-cache-slow = Podėlio lėto kiekis
 about-networking-rcwn-cache-not-slow = Podėlio ne lėto kiekis
 about-networking-networkid = Tinklo ID
 about-networking-networkid-id = Tinklo ID
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Ryšys veikia
 about-networking-networkid-status-known = Ryšio būsena žinoma
-
-##
-

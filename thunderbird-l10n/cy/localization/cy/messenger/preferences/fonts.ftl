@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Ffontiau
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Rhagosodiad ({ $name })
 fonts-label-default-unnamed =
     .label = Rhagosodiad
-fonts-encoding-dialog-title =
-    .title = Ffontiau ac Amgodio
 fonts-language-legend =
     .value = Ffontiau ar gyfer:
     .accesskey = F
 fonts-proportional-label =
     .value = Cyfrannol:
     .accesskey = y
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Lladin
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Sinhala
 font-language-group-tibetan =
     .label = Tibeteg
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = L
 min-size-none =
     .label = Dim
-
-## Fonts in message
-
 font-control-legend = Rheoli Ffontiau
 use-document-fonts-checkbox =
     .label = Caniatáu i negeseuon ddefnyddio ffontiau eraill
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Defnyddio ffont lled sefydlog ar gyfer negeseuon testun plaen
     .accesskey = D
-
-## Language settings
-
 text-encoding-legend = Amgodiad Testun
 text-encoding-description = Gosod yr amgodiad testun rhagosodedig ar gyfer anfon a derbyn e-bost
 font-outgoing-email-label =

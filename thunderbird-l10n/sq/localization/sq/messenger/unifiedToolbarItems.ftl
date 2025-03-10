@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Hapësirë e Lakueshme
 search-bar-label = Kërko
 toolbar-write-message-label = Shkruani
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Importo
 toolbar-import-contacts =
     .title = Importoni kontakte prej një kartele
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Shtoni Libër Vendor Adresash
 toolbar-new-address-book-popup-add-carddav-address-book =

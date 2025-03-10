@@ -1,27 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-sync-account =
     .value = example@example.com
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = K'ak'a' Rub'i' Taqoya'l
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = K'ak'a' Kiwujil Ochochib'äl
-
-## Create
-
 appmenu-create-panel-title =
     .title = Titz'uk
 appmenu-create-panel =
@@ -39,18 +23,12 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Rub'i' achib'il
     .accesskey = b
-
-## Open
-
 appmenu-open-message =
     .label = Tzijol…
     .accesskey = T
 appmenu-open-calendar =
     .label = Cholb'äl Q'ij…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Titz'et
 appmenu-view-panel =
@@ -64,9 +42,6 @@ appmenu-uidensity-default =
     .tooltiptext = K'o wi
 appmenuitem-font-size-enlarge =
     .tooltiptext = Tinimirisäx Rupalem Tz'ib'
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Samajib'äl
 appmenu-tools-panel =
@@ -93,17 +68,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Taq Rusamajib'al B'anonel
     .accesskey = s
-
-## Help
-
 appmenu-help-panel-title =
     .title = To'ïk
 appmenu-help-get-help =
     .label = Tk'ul To'ïk
     .accesskey = o
-appmenu-help-explore-features =
-    .label = Ke'anik'oj ri taq Rub'anikil
-    .accesskey = R
 appmenu-help-shortcuts =
     .label = Ruq'a' rub'ey Keyboard
     .accesskey = q
@@ -128,9 +97,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Chi rij ri { -brand-short-name }
     .accesskey = r
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Niqasäx ruk'exoj { -brand-shorter-name }
 appmenuitem-banner-update-available =

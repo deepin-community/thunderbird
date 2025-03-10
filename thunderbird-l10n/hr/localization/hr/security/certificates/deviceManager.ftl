@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Strings used for device manager
-
 devmgr-window =
     .title = Upravljač uređaja
     .style = min-width: 67em; min-height: 32em;
@@ -30,14 +23,11 @@ devmgr-button-unload =
     .label = Izbaci
     .accesskey = I
 devmgr-button-enable-fips =
-    .label = Omogući FIPS
+    .label = Aktiviraj FIPS
     .accesskey = F
 devmgr-button-disable-fips =
     .label = Onemogući FIPS
     .accesskey = F
-
-## Strings used for load device
-
 load-device =
     .title = Učitaj PKCS#11 upravljački program uređaja
 load-device-info = Upiši podatke modula koji želiš dodati.
@@ -52,9 +42,6 @@ load-device-filename =
 load-device-browse =
     .label = Pregledaj …
     .accesskey = P
-
-## Token Manager
-
 devinfo-status =
     .label = Stanje
 devinfo-status-disabled =
@@ -74,9 +61,9 @@ devinfo-desc =
 devinfo-man-id =
     .label = Proizvođač
 devinfo-hwversion =
-    .label = HW inačica
+    .label = HW verzija
 devinfo-fwversion =
-    .label = FW inačica
+    .label = FW verzija
 devinfo-modname =
     .label = Modul
 devinfo-modpath =
@@ -86,12 +73,11 @@ devinfo-label =
     .label = Oznaka
 devinfo-serialnum =
     .label = Serijski broj
-unable-to-toggle-fips = Promjena FIPS načina rada za sigurnosni uređaj nije moguća. Preporuka je da zatvoriš ili ponovo pokreneš ovu aplikaciju.
+fips-nonempty-primary-password-required = FIPS modus zahtijeva da imaš postavljenu primarnu lozinku za svaki sigurnosni uređaj. Postavi lozinku prije nego što pokušaš aktivirati FIPS modus.
+unable-to-toggle-fips = Promjena FIPS modusa za sigurnosni uređaj nije moguća. Preporučujemo da zatvoriš ili ponovo pokreneš ovu aplikaciju.
 load-pk11-module-file-picker-title = Odaberi upravljački program PKCS#11 uređaja za učitavanje
-# Load Module Dialog
 load-module-help-empty-module-name =
     .value = Ime modula ne može biti prazno.
-# Do not translate 'Root Certs'
 load-module-help-root-certs-module-name =
     .value = ‘Root Certs‘ je rezerviran i ne može se koristiti kao ime modula.
 add-module-failure = Modul nije moguće dodati

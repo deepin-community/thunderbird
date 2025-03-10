@@ -1,25 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = Certifikát
-
-## Error messages
-
 certificate-viewer-error-message = Informácie o certifikáte sa nám nepodarilo nájsť alebo je certifikát poškodený. Skúste to znova.
 certificate-viewer-error-title = Nastala chyba.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = Algoritmus
 certificate-viewer-certificate-authority = Certifikačná autorita
 certificate-viewer-cipher-suite = Šifrovacia množina
 certificate-viewer-common-name = Bežný názov
 certificate-viewer-email-address = E‑mailová adresa
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = Certifikát pre { $firstCertName }
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-country = Krajina
 certificate-viewer-country = Krajina
 certificate-viewer-curve = Krivka
@@ -32,7 +19,6 @@ certificate-viewer-id = ID
 certificate-viewer-key-exchange-group = Skupina pre výmenu kľúčov
 certificate-viewer-key-id = ID kľúča
 certificate-viewer-key-size = Veľkosť kľúča
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-locality = Sídlo spoločnosti
 certificate-viewer-locality = Lokalita
 certificate-viewer-location = Umiestnenie
@@ -52,7 +38,6 @@ certificate-viewer-qualifier = Kvalifikátor
 certificate-viewer-qualifiers = Kvalifikátory
 certificate-viewer-required = Vyžadované
 certificate-viewer-unsupported = &lt;nepodporované&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = Štát/kraj
 certificate-viewer-state-province = Štát/provincia
 certificate-viewer-sha-1 = SHA-1
@@ -81,38 +66,21 @@ certificate-viewer-authority-info-aia = Informácie o autorite
 certificate-viewer-certificate-policies = Pravidlá certifikátu
 certificate-viewer-embedded-scts = Vstavané SCTs
 certificate-viewer-crl-endpoints = CRL koncové body
-# This message is used as a row header in the Miscellaneous section.
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = Stiahnuť
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] Áno
        *[false] Nie
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (certifikát)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (reťazec)
     .download = { $fileName }-chain.pem
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = Toto rozšírenie certifikátu bolo označené ako kritické, čo znamená, že klienti musia certifikát odmietnuť, ak mu nerozumejú.
 certificate-viewer-export = Exportovať
     .download = { $fileName }.pem
-
-##
-
-# Label for a tab where we haven't found a better label:
 certificate-viewer-unknown-group-label = (neznáme)
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = Vaše certifikáty
 certificate-viewer-tab-people = Ľudia
 certificate-viewer-tab-servers = Servery

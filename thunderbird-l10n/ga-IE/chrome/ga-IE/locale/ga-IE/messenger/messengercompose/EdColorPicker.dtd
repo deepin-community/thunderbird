@@ -1,10 +1,9 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY windowTitle.label "Dath">
 <!ENTITY lastPickedColor.label "An dath roghnaithe roimhe seo">
 <!ENTITY lastPickedColor.accessKey "r">
+<!ENTITY chooseColor1.label "Choose a color:">
+<!ENTITY chooseColor2.label "Enter an HTML color string">
+<!ENTITY chooseColor2.accessKey "H">
 <!ENTITY setColorExample.label "(m.sh.: &quot;#0000ff&quot; nó &quot;blue&quot;):">
 <!ENTITY default.label "Réamhshocrú">
 <!ENTITY default.accessKey "R">
@@ -17,7 +16,3 @@
 <!ENTITY table.accessKey "T">
 <!ENTITY cell.label "Cill/Cealla">
 <!ENTITY cell.accessKey "C">
-
-<!ENTITY chooseColor1.label "Choose a color:">
-<!ENTITY chooseColor2.label "Enter an HTML color string">
-<!ENTITY chooseColor2.accessKey "H">

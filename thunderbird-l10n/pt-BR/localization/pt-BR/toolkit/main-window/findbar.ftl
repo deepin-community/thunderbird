@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### This file contains the entities needed to use the Find Bar.
-
 findbar-next =
     .tooltiptext = Procurar a próxima ocorrência da busca
 findbar-previous =
@@ -46,17 +39,12 @@ findbar-match-diacritics-status =
     .value = (considera acentuação)
 findbar-entire-word-status =
     .value = (só palavras inteiras)
-# Variables:
-#   $current (Number): Index of the currently selected match
-#   $total (Number): Total count of matches
 findbar-found-matches =
     .value =
         { $total ->
             [one] Ocorrência { $current } de { $total }
            *[other] Ocorrência { $current } de { $total }
         }
-# Variables:
-#   $limit (Number): Total count of matches allowed before counting stops
 findbar-found-matches-count-limit =
     .value =
         { $limit ->

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Talγut γef usefrek n tansiwin URL
 url-classifier-search-title = Nadi
 url-classifier-search-result-title = Igmaḍ
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Izegrar n uγmis i iminig aγelsan
 url-classifier-debug-modules = Izegrar iɣmisen imiranen
 url-classifier-debug-sbjs-modules = Aγmis n tunigin taɣelsant
 url-classifier-debug-file = Afaylu aɣmis amiran
-
 url-classifier-trigger-update = Sker aleqem
 url-classifier-not-available = N/A
 url-classifier-disable-sbjs-log = Sens aγmis n tunigin taɣelsant
@@ -50,9 +45,5 @@ url-classifier-disabled = Arurmid
 url-classifier-updating = Aleqqem
 url-classifier-cannot-update = Ur leqqem ara
 url-classifier-success = yedda
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = tucḍa deg ulqem ({ $error })
 url-classifier-download-error = tuccḍa deg usader ({ $error })

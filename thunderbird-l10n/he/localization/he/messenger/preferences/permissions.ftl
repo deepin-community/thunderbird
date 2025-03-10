@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 website-address-label =
     .value = כתובת אתר:
     .accesskey = d
@@ -34,5 +30,5 @@ permission-can-label = אפשר
 permission-can-access-first-party-label = לאפשר לגוף ראשון בלבד
 permission-can-session-label = אפשר להפעלה
 permission-cannot-label = חסום
-invalid-uri-message = אנא הכנס שם מארח חוקי
+invalid-uri-message = נא להכניס שם מארח חוקי
 invalid-uri-title = הוכנס שם מארח לא חוקי

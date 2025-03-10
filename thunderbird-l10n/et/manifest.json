@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-et@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: Eesti (Estonian)",
   "description": "Thunderbird Language Pack for Eesti (et) – Estonian",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "et": {
-      "version": "20240930174430",
+      "version": "20250227154203",
       "chrome_resources": {
         "alerts": "chrome/et/locale/et/alerts/",
         "autoconfig": "chrome/et/locale/et/autoconfig/",

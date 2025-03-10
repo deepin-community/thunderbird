@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "For at spare diskplads, hentes følgende ikke:">
 <!ENTITY doNotDownloadNntp.label "For at spare plads, hent ikke til offline-brug:">
 <!ENTITY doNotDownloadImap.label "Du kan spare plads ved at begrænse hentning af meddelelser til offline-brug ud fra alder eller størrelse.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "v">
 <!ENTITY syncGroupTitle.label "Synkronisering af meddelelser">
 <!ENTITY diskspaceGroupTitle.label "Diskplads">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Synkroniser alle meddelelser lokalt, uanset alder">
-<!ENTITY allAutosync.accesskey           "A">
-<!ENTITY ageAutosyncBefore.label         "Synkroniser de seneste">
-<!ENTITY ageAutosync.accesskey           "r">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Dage">
-<!ENTITY weekAgeInterval.label           "Uger">
-<!ENTITY monthAgeInterval.label          "Måneder">
-<!ENTITY yearAgeInterval.label           "År">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Synkroniser alle meddelelser lokalt, uanset alder">
+<!ENTITY allAutosync.accesskey "A">
+<!ENTITY ageAutosyncBefore.label "Synkroniser de seneste">
+<!ENTITY ageAutosync.accesskey "r">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Dage">
+<!ENTITY weekAgeInterval.label "Uger">
+<!ENTITY monthAgeInterval.label "Måneder">
+<!ENTITY yearAgeInterval.label "År">
+<!ENTITY ageAutosyncAfter.label "">

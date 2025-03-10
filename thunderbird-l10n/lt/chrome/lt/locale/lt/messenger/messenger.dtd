@@ -1,11 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY titledefault.label "&brandFullName;">
 <!ENTITY titleSeparator.label " - ">
-
-<!-- File Menu -->
 <!ENTITY newFolderCmd.label "Aplankas…">
 <!ENTITY newFolderCmd.accesskey "n">
 <!ENTITY closeTabCmd2.label "Užverti kortelę">
@@ -14,32 +8,23 @@
 <!ENTITY closeOtherTabsCmd2.accesskey "k">
 <!ENTITY recentlyClosedTabsCmd.label "Paskiausiai užvertos kortelės">
 <!ENTITY recentlyClosedTabsCmd.accesskey "P">
-
 <!ENTITY undoCloseTabCmd.commandkey "T">
-<!-- LOCALIZATION NOTE (moveToNewWindow.label):
-     Menu option to cause the current tab to be migrated to a new Thunderbird
-     window.
-     -->
 <!ENTITY moveToNewWindow.label "Perkelti į naują langą">
 <!ENTITY moveToNewWindow.accesskey "l">
 <!ENTITY newVirtualFolderCmd.label "Paieška įrašant radinius…">
 <!ENTITY newVirtualFolderCmd.accesskey "P">
-<!ENTITY newCreateEmailAccountCmd.label "Kurti naują el. pašto paskyrą…">
-<!ENTITY newCreateEmailAccountCmd.accesskey "e">
-<!ENTITY newExistingEmailAccountCmd.label "Registruoti turimą el. pašto paskyrą…">
-<!ENTITY newExistingEmailAccountCmd.accesskey "R">
 <!ENTITY newIMAccountCmd.label "Pokalbių paskyra…">
 <!ENTITY newIMAccountCmd.accesskey "o">
 <!ENTITY newFeedAccountCmd.label "Sklaidos kanalų paskyra…">
 <!ENTITY newFeedAccountCmd.accesskey "S">
 <!ENTITY newIMContactCmd.label "Pašnekovas…">
 <!ENTITY newIMContactCmd.accesskey "š">
-<!ENTITY  newMessageCmd2.key "N">
-<!ENTITY  newMessageCmd.key "M">
-<!ENTITY  newMessageCmd.label "Laiškas">
-<!ENTITY  newMessageCmd.accesskey "m">
-<!ENTITY  newContactCmd.label "Adresatas…">
-<!ENTITY  newContactCmd.accesskey "C">
+<!ENTITY newMessageCmd2.key "N">
+<!ENTITY newMessageCmd.key "M">
+<!ENTITY newMessageCmd.label "Laiškas">
+<!ENTITY newMessageCmd.accesskey "m">
+<!ENTITY newContactCmd.label "Adresatas…">
+<!ENTITY newContactCmd.accesskey "C">
 <!ENTITY openMenuCmd.label "Atverti">
 <!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY openMessageFileCmd.label "Atverti įrašytą laišką…">
@@ -85,20 +70,6 @@
 <!ENTITY printCmd.label "Spausdinti">
 <!ENTITY printCmd.accesskey "S">
 <!ENTITY printCmd.key "p">
-
-<!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "Pašalinti laišką">
-<!ENTITY deleteMsgCmd.accesskey "š">
-<!ENTITY undeleteMsgCmd.label "Atšaukti laiško šalinimą">
-<!ENTITY undeleteMsgCmd.accesskey "t">
-<!ENTITY deleteMsgsCmd.label "Pašalinti pažymėtus laiškus">
-<!ENTITY deleteMsgsCmd.accesskey "ž">
-<!ENTITY undeleteMsgsCmd.label "Atšaukti pažymėtų laiškų šalinimą">
-<!ENTITY undeleteMsgsCmd.accesskey "u">
-<!ENTITY deleteFolderCmd.label "Pašalinti aplanką">
-<!ENTITY deleteFolderCmd.accesskey "p">
-<!ENTITY unsubscribeNewsgroupCmd.label "Atsisakyti prenumeratos">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "t">
 <!ENTITY selectMenu.label "Pažymėti">
 <!ENTITY selectMenu.accesskey "ž">
 <!ENTITY all.label "Viską">
@@ -110,10 +81,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "Ž">
 <!ENTITY menuFavoriteFolder.label "Parankinis aplankas">
 <!ENTITY menuFavoriteFolder.accesskey "P">
-<!ENTITY folderPropsCmd2.label "Savybės">
-<!ENTITY folderPropsFolderCmd2.label "Aplanko savybės">
-<!ENTITY folderPropsNewsgroupCmd2.label "Naujienų grupės savybės">
-<!ENTITY folderPropsCmd.accesskey "v">
 <!ENTITY undoDeleteMsgCmd.label "Atšaukti laiško šalinimą">
 <!ENTITY redoDeleteMsgCmd.label "Atstatyti laiško šalinimą">
 <!ENTITY undoMoveMsgCmd.label "Atšaukti laiško perkėlimą">
@@ -126,15 +93,12 @@
 <!ENTITY undoDefaultCmd.accesskey "A">
 <!ENTITY redoDefaultCmd.label "Atstatyti">
 <!ENTITY redoDefaultCmd.accesskey "t">
-
-<!-- View Menu -->
 <!ENTITY menubarCmd.label "Meniu juosta">
 <!ENTITY menubarCmd.accesskey "M">
 <!ENTITY showMessengerToolbarCmd.label "Pašto priemonių juosta">
 <!ENTITY showMessengerToolbarCmd.accesskey "P">
 <!ENTITY customizeToolbar.label "Tvarkyti…">
 <!ENTITY customizeToolbar.accesskey "T">
-
 <!ENTITY messagePaneLayoutStyle.label "Polangių išdėstymas">
 <!ENTITY messagePaneLayoutStyle.accesskey "P">
 <!ENTITY messagePaneClassic.label "Numatytasis">
@@ -145,11 +109,8 @@
 <!ENTITY messagePaneVertical.accesskey "V">
 <!ENTITY showFolderPaneCmd.label "Aplankų sąrašas">
 <!ENTITY showFolderPaneCmd.accesskey "A">
-<!ENTITY showFolderPaneColsCmd.label "Aplankų sąrašo stulpeliai">
-<!ENTITY showFolderPaneColsCmd.accesskey "s">
 <!ENTITY showMessageCmd.label "Laiško teksto polangis">
 <!ENTITY showMessageCmd.accesskey "L">
-
 <!ENTITY folderView.label "Aplankai">
 <!ENTITY folderView.accesskey "A">
 <!ENTITY unifiedFolders.label "Suvestiniai">
@@ -164,8 +125,6 @@
 <!ENTITY recentFolders.accesskey "N">
 <!ENTITY compactVersion.label "Rodyti glaustai">
 <!ENTITY compactVersion.accesskey "R">
-
-<!-- Sort Menu -->
 <!ENTITY sortMenu.label "Rikiavimas ir grupavimas">
 <!ENTITY sortMenu.accesskey "R">
 <!ENTITY sortByDateCmd.label "Data ir laikas">
@@ -228,7 +187,6 @@
 <!ENTITY watchedThreadsWithUnreadCmd.accesskey "k">
 <!ENTITY ignoredThreadsCmd.label "Nepaisomos gijos">
 <!ENTITY ignoredThreadsCmd.accesskey "a">
-
 <!ENTITY headersMenu.label "Laiško antraštė">
 <!ENTITY headersMenu.accesskey "L">
 <!ENTITY headersAllCmd.label "Visa">
@@ -245,7 +203,6 @@
 <!ENTITY bodyAsPlaintext.accesskey "G">
 <!ENTITY bodyAllParts.label "Visos laiško dalys">
 <!ENTITY bodyAllParts.accesskey "V">
-
 <!ENTITY bodyMenuFeed.label "Sklaidos kanalo pranešimo tekstas">
 <!ENTITY bodyMenuFeed.accesskey "t">
 <!ENTITY viewFeedWebPage.label "Tinklalapis">
@@ -254,17 +211,13 @@
 <!ENTITY viewFeedSummary.accesskey "S">
 <!ENTITY viewFeedSummaryFeedPropsPref.label "Numatytasis formatas">
 <!ENTITY viewFeedSummaryFeedPropsPref.accesskey "N">
-
 <!ENTITY viewAttachmentsInlineCmd.label "Rodyti priedus tiesiogiai">
 <!ENTITY viewAttachmentsInlineCmd.accesskey "o">
-
 <!ENTITY pageSourceCmd.label "Laiško pirminis tekstas">
 <!ENTITY pageSourceCmd.accesskey "š">
 <!ENTITY pageSourceCmd.key "u">
 <!ENTITY getNewMessagesCmd.key "y">
 <!ENTITY getAllNewMessagesCmd.key "Y">
-
-<!-- Search Menu -->
 <!ENTITY findMenu.label "Ieškoti">
 <!ENTITY findMenu.accesskey "e">
 <!ENTITY findCmd.label "Ieškoti šiame laiške…">
@@ -283,8 +236,6 @@
 <!ENTITY glodaSearchCmd.accesskey "G">
 <!ENTITY searchAddressesCmd.label "Adresų paieška…">
 <!ENTITY searchAddressesCmd.accesskey "d">
-
-<!-- Go Menu -->
 <!ENTITY goMenu.label "Eiti">
 <!ENTITY goMenu.accesskey "E">
 <!ENTITY nextMenu.label "Į tolesnį">
@@ -324,8 +275,6 @@
 <!ENTITY goRecentlyClosedTabs.accesskey "u">
 <!ENTITY startPageCmd.label "Į pašto pradžios tinklalapį">
 <!ENTITY startPageCmd.accesskey "r">
-
-<!-- Message Menu -->
 <!ENTITY msgMenu.label "Laiškas">
 <!ENTITY msgMenu.accesskey "L">
 <!ENTITY newMsgCmd.label "Naujas laiškas…">
@@ -367,7 +316,7 @@
 <!ENTITY editTemplateMsgCmd.label "Redaguoti šabloną">
 <!ENTITY editTemplateMsgCmd.accesskey "T">
 <!ENTITY newMsgFromTemplateCmd.label "Nauja žinutė pagal šabloną">
-<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN"><!-- do not change "VK_RETURN" -->
+<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN">
 <!ENTITY createFilter.label "Sukurti filtrą pagal laišką…">
 <!ENTITY createFilter.accesskey "f">
 <!ENTITY moveMsgToMenu.label "Perkelti į aplanką">
@@ -445,11 +394,7 @@
 <!ENTITY openFeedSummary.accesskey "s">
 <!ENTITY openFeedWebPageInMP.label "keisti tinklalapio/santraukos rodinį pranešimo polangyje">
 <!ENTITY openFeedWebPageInMP.accesskey "p">
-
-<!-- Windows Menu -->
 <!ENTITY windowMenu.label "Langas">
-
-<!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Priemonės">
 <!ENTITY tasksMenu.accesskey "P">
 <!ENTITY messengerCmd.label "Paštas ir naujienų grupės">
@@ -462,10 +407,10 @@
 <!ENTITY activitymanager.accesskey "V">
 <!ENTITY imAccountsStatus.label "Pokalbių būsena">
 <!ENTITY imAccountsStatus.accesskey "k">
-<!ENTITY imStatus.available          "Esu">
-<!ENTITY imStatus.unavailable        "Užsiėmęs (-usi)">
-<!ENTITY imStatus.offline            "Neprisijungęs (-usi)">
-<!ENTITY imStatus.showAccounts       "Rodyti paskyras…">
+<!ENTITY imStatus.available "Esu">
+<!ENTITY imStatus.unavailable "Užsiėmęs (-usi)">
+<!ENTITY imStatus.offline "Neprisijungęs (-usi)">
+<!ENTITY imStatus.showAccounts "Rodyti paskyras…">
 <!ENTITY joinChatCmd.label "Jungtis į pokalbį…">
 <!ENTITY joinChatCmd.accesskey "J">
 <!ENTITY savedFiles.label "Įrašyti failai">
@@ -485,17 +430,13 @@
 <!ENTITY deleteJunk.accesskey "š">
 <!ENTITY importCmd.label "Importuoti…">
 <!ENTITY importCmd.accesskey "I">
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY clearRecentHistory.label "Valyti žurnalą…">
 <!ENTITY clearRecentHistory.accesskey "ž">
 <!ENTITY accountManagerCmd2.label "Paskyrų nuostatos">
 <!ENTITY accountManagerCmd2.accesskey "P">
-<!-- LOCALIZATION NOTE (accountManagerCmdUnix.accesskey):
-     Belongs to accountManagerCmd.label, which is placed under the Edit menu
-     on Unix systems
-  -->
 <!ENTITY accountManagerCmdUnix2.accesskey "P">
-
-<!-- Developer Tools Submenu -->
 <!ENTITY devtoolsMenu.label "Programuotojo priemonės">
 <!ENTITY devtoolsMenu.accesskey "o">
 <!ENTITY devToolboxCmd.label "Programuotojo juosta">
@@ -506,8 +447,6 @@
 <!ENTITY errorConsoleCmd.label "Klaidų pultas">
 <!ENTITY errorConsoleCmd.accesskey "u">
 <!ENTITY errorConsoleCmd.commandkey "j">
-
-<!-- Mail Toolbar -->
 <!ENTITY getMsgButton1.label "Atsiųsti laiškus">
 <!ENTITY newMsgButton.label "Rašyti">
 <!ENTITY replyButton.label "Atsakyti">
@@ -540,8 +479,6 @@
 <!ENTITY tagButton.label "Gairės">
 <!ENTITY compactButton.label "Suglaudinti">
 <!ENTITY appmenuButton.label "Programos meniu">
-
-<!-- Mail Toolbar Tooltips-->
 <!ENTITY advancedButton.tooltip "Ieškoti laiškų…">
 <!ENTITY getMsgButton.tooltip "Atsiųsti laiškus">
 <!ENTITY getAllNewMsgCmd.label "Atsiųsti visus laiškus">
@@ -570,48 +507,31 @@
 <!ENTITY tagButton.tooltip "Priskirti gaires pažymėtiems laiškams">
 <!ENTITY compactButton.tooltip "Sunaikinti pašalintus laiškus iš pažymėto aplanko">
 <!ENTITY appmenuButton1.tooltip "Atverti programos „&brandShortName;“ meniu">
-
-<!-- Toolbar Button Popup -->
 <!ENTITY buttonMenuForwardAsInline.label "Persiųsti tiesiogiai">
 <!ENTITY buttonMenuForwardAsAttachment.label "Persiųsti priedu">
-
-<!-- Remote Content Button Popup -->
 <!ENTITY remoteContentOptionsAllowForMsg.label "Rodyti intarpus iš tinklo šiame laiške">
 <!ENTITY remoteContentOptionsAllowForMsg.accesskey "R">
 <!ENTITY editRemoteContentSettings.label "Intarpų iš tinklo nuostatos…">
 <!ENTITY editRemoteContentSettings.accesskey "n">
 <!ENTITY editRemoteContentSettingsUnix.label "Intarpų iš tinklo nuostatos…">
 <!ENTITY editRemoteContentSettingsUnix.accesskey "n">
-
-<!-- Phishing Button Popup -->
 <!ENTITY phishingOptionIgnore.label "Nepaisyti įspėjimo apie šį laišką">
 <!ENTITY phishingOptionIgnore.accesskey "N">
 <!ENTITY phishingOptionSettings.label "Keisti apgaulės laiškuose aptikimo nuostatas…">
 <!ENTITY phishingOptionSettings.accesskey "K">
 <!ENTITY phishingOptionSettingsUnix.label "Keisti apgaulės laiškuose aptikimo nuostatas…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "K">
-
-<!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Naujas laiškas">
 <!ENTITY appmenuNewContactCmd.label "Adresatas…">
-<!ENTITY appmenuEditMenu.label "Taisa">
 <!ENTITY appmenuToolbarLayout.label "Tvarkyti priemonių juostas…">
-<!ENTITY appmenuSelectThread.label "Pažymėti giją">
-<!ENTITY appmenuSelectFlagged.label "Pažymėti laiškus su žvaigždute">
-
-<!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Nauja gairė…">
 <!ENTITY addNewTag.accesskey "N">
 <!ENTITY manageTags.label "Tvarkyti gaires…">
 <!ENTITY manageTags.accesskey "T">
-
-<!-- Folder Pane -->
 <!ENTITY folderNameColumn.label "Vardas">
 <!ENTITY folderUnreadColumn.label "Neskaitytas">
 <!ENTITY folderTotalColumn.label "Iš viso">
 <!ENTITY folderSizeColumn.label "Dydis">
-
-<!-- Folder Pane Context Menu -->
 <!ENTITY folderContextGetMessages.label "Atsiųsti laiškus">
 <!ENTITY folderContextGetMessages.accesskey "l">
 <!ENTITY folderContextMarkAllFoldersRead.label "Pažymėti visus aplankus kaip perskaitytus">
@@ -640,8 +560,6 @@
 <!ENTITY folderContextUnsubscribe.accesskey "t">
 <!ENTITY folderContextMarkNewsgroupRead.label "Pažymėti naujienų laiškus kaip skaitytus">
 <!ENTITY folderContextMarkNewsgroupRead.accesskey "ž">
-<!ENTITY folderContextMarkMailFolderRead.label "Pažymėti aplanko laiškus kaip skaitytus">
-<!ENTITY folderContextMarkMailFolderRead.accesskey "k">
 <!ENTITY folderContextSubscribe.label "Prenumeruoti…">
 <!ENTITY folderContextSubscribe.accesskey "P">
 <!ENTITY folderContextSearchForMessages.label "Ieškoti laiškų…">
@@ -652,15 +570,9 @@
 <!ENTITY folderContextFavoriteFolder.accesskey "a">
 <!ENTITY folderContextSettings2.label "Nuostatos">
 <!ENTITY folderContextSettings2.accesskey "o">
-
-<!-- Search Bar -->
 <!ENTITY SearchNameOrEmail.label "Ieškoti: asmenvardyje arba el. p. adrese yra:">
 <!ENTITY SearchNameOrEmail.accesskey "I">
-
-<!-- Gloda Search Bar -->
 <!ENTITY glodaSearchBar.placeholder "Ieškoti laiškų…">
-
-<!-- Quick Search Menu Bar -->
 <!ENTITY searchSubjectMenu.label "Tema">
 <!ENTITY searchFromMenu.label "Siuntėjas">
 <!ENTITY searchSubjectOrFromMenu.label "Tema ar siuntėjas">
@@ -668,8 +580,6 @@
 <!ENTITY searchSubjectOrRecipientMenu.label "Tema ar gavėjas">
 <!ENTITY searchMessageBody.label "Laiško tekstas">
 <!ENTITY saveAsVirtualFolderMenu.label "Radinius įrašyti į aplanką…">
-
-<!-- Thread Pane -->
 <!ENTITY selectColumn.label "Pažymėti laiškus">
 <!ENTITY threadColumn.label "Gija">
 <!ENTITY fromColumn.label "Siuntėjas">
@@ -692,8 +602,6 @@
 <!ENTITY idColumn.label "Gavimo eilė">
 <!ENTITY attachmentColumn.label "Priedai">
 <!ENTITY deleteColumn.label "Pašalinti">
-
-<!-- Thread Pane Tooltips -->
 <!ENTITY columnChooser2.tooltip "Rinktis rodomus stulpelius">
 <!ENTITY selectColumn.tooltip "Perjungti visų laiškų pažymėjimą">
 <!ENTITY threadColumn2.tooltip "Rodyti laiškų gijas">
@@ -717,15 +625,9 @@
 <!ENTITY idColumn2.tooltip "Rikiuoti pagal gavimo eilę">
 <!ENTITY attachmentColumn2.tooltip "Rikiuoti pagal priedus">
 <!ENTITY deleteColumn.tooltip "Pašalinti laišką">
-
-<!-- Thread Pane Context Menu -->
 <!ENTITY contextNewMsgFromTemplate.label "Nauja žinutė pagal šabloną">
 <!ENTITY contextOpenNewWindow.label "Atverti laišką naujame lange">
 <!ENTITY contextOpenNewWindow.accesskey "n">
-<!-- The contextOpenNewTab.accesskey ("T") potentially conflicts with
-     cutCmd.accessKey which is defined in textcontext.dtd from toolkit. Right
-     now, both menu items can't be visible at the same time, but should someone
-     enable copy/paste of message, this key would probably need to be changed. -->
 <!ENTITY contextOpenNewTab.label "Atverti laišką naujoje kortelėje">
 <!ENTITY contextOpenNewTab.accesskey "t">
 <!ENTITY contextOpenConversation.label "Atverti laišką diskusijoje">
@@ -747,20 +649,10 @@
 <!ENTITY contextReplyAll.accesskey "v">
 <!ENTITY contextReplyList.label "Atsakyti el. pašto grupei">
 <!ENTITY contextReplyList.accesskey "g">
-<!ENTITY contextForward.label "Persiųsti">
-<!ENTITY contextForward.accesskey "P">
-<!ENTITY contextForwardAsMenu.label "Persiųsti kitaip">
-<!ENTITY contextForwardAsMenu.accesskey "i">
-<!ENTITY contextForwardAsInline.label "Tiesiogiai">
-<!ENTITY contextForwardAsInline.accesskey "T">
-<!ENTITY contextForwardAsAttachmentItem.label "Priedu">
-<!ENTITY contextForwardAsAttachmentItem.accesskey "P">
-<!ENTITY contextMultiForwardAsAttachment.label "Persiųsti kaip priedus">
-<!ENTITY contextMultiForwardAsAttachment.accesskey "P">
 <!ENTITY contextMoveMsgMenu.label "Perkelti į">
 <!ENTITY contextMoveMsgMenu.accesskey "e">
-<!ENTITY contextMoveCopyMsgRecentMenu.label "Paskiausi">
-<!ENTITY contextMoveCopyMsgRecentMenu.accesskey "P">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.label "Recent Destinations">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.accesskey "R">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Dažniausi">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "F">
 <!ENTITY contextCopyMsgMenu.label "Kopijuoti į">
@@ -770,10 +662,6 @@
 <!ENTITY contextKillThreadMenu.accesskey "j">
 <!ENTITY contextKillSubthreadMenu.label "Nepaisyti gijos atšakos">
 <!ENTITY contextWatchThreadMenu.label "Stebėti giją">
-<!-- LOCALIZATION NOTE (contextWatchThreadMenu.accesskey):
-     In the en-US locale we ran out of access keys, so there is an empty access key for
-     Watch Thread. Localizers can pick a suitable key
-  -->
 <!ENTITY contextWatchThreadMenu.accesskey "b">
 <!ENTITY contextSaveAs.label "Įrašyti kaip…">
 <!ENTITY contextSaveAs.accesskey "r">
@@ -781,48 +669,10 @@
 <!ENTITY contextPrint.accesskey "S">
 <!ENTITY contextPrintPreview.label "Spaudinio peržiūra">
 <!ENTITY contextPrintPreview.accesskey "ž">
-
-<!-- LOCALIZATION NOTE (columnPicker.applyTo.label):
-     This option in the thread pane column picker pops up a sub-menu containing
-     the "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" options. This item indicates
-     a desire to apply the currently displayed set of columns to some other
-     folder(s). The sub-menu items indicate whether we want to apply it to just
-     a folder or also its children.
-  -->
 <!ENTITY columnPicker.applyTo.label "Pritaikyti šį išdėstymą…">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolder.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolderAndChildren.label". It indicates a desire to
-     apply the currently display thread pane column settings to a single folder
-     that the user selects using the same widget as the move to/copy to
-     mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolder.label "Aplankui…">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolderAndChildren.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolder.label". It indicates a desire to
-     apply the currently display thread pane column settings to a folder and all
-     of its descendents. The user selects the folder using the same widget as the
-     move to/copy to mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolderAndChildren.label "Aplankui ir jo poaplankiams…">
-<!-- LOCALIZATION NOTE (columnPicker.thisFolder.label):
-     This is used in the folder selection widget for the
-     "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" menu options. Whenever
-     a folder has children, it results in a menu popup; the first menu item
-     in that popup is given this label to indicate that that folder should be
-     selected. For example, if folder "A" has two children, "B" and "C", then
-     when the user hovers over "A", a new popup menu will be displayed whose
-     items are "This folder", "B", and "C". This is the equivalent of the
-     "File here" option for the move to/copy to widget.
-  -->
 <!ENTITY columnPicker.thisFolder.label "Šiam aplankui">
-
-<!-- Media (video/audio) controls -->
 <!ENTITY contextPlay.label "Groti">
 <!ENTITY contextPlay.accesskey "G">
 <!ENTITY contextPause.label "Pristabdyti">
@@ -831,37 +681,10 @@
 <!ENTITY contextMute.accesskey "r">
 <!ENTITY contextUnmute.label "Įjungti garsą">
 <!ENTITY contextUnmute.accesskey "r">
-
-<!-- Quick Search Bar -->
-<!-- LOCALIZATION NOTE (quickSearchCmd.key):
-     This is actually the key used for the global message search box; we have
-     not changed
-  -->
 <!ENTITY quickSearchCmd.key "k">
-<!-- LOCALIZATION NOTE (search.label.base1):
-     This is the base of the empty text for the global search box. We replace
-     #1 with the contents of the appropriate search.keyLabel.* value for the
-     platform.
-     The goal is to convey to the user that typing in the box will allow them
-     to search for messages globally and that there is a hotkey they can press
-     to get to the box faster. If the global indexer is disabled, the search
-     box will be collapsed and the user will never see this message.
-  -->
 <!ENTITY search.label.base1 "Ieškoti #1">
-<!-- LOCALIZATION NOTE (search.keyLabel.nonmac):
-     The description of the key-binding to get into the global search box on
-     windows and linux (which use the control key). We use the key defined in
-     the quickSearchCmd.key entity defined above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.nonmac "&lt;Vald+K&gt;">
-<!-- LOCALIZATION NOTE (search.keyLabel.mac):
-     The description of the key-binding to get into the global search box on mac
-     systems. We use the key defined in the quickSearchCmd.key entity defined
-     above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.mac "&lt;&#x2318;K&gt;">
-
-<!-- Message Header Context Menu -->
 <!ENTITY AddToAddressBook.label "Įtraukti į adresų knygą…">
 <!ENTITY AddToAddressBook.accesskey "t">
 <!ENTITY AddDirectlyToAddressBook.label "Įtraukti į adresų knygą">
@@ -886,12 +709,8 @@
 <!ENTITY CreateFilterFrom.accesskey "f">
 <!ENTITY reportPhishingURL.label "Pranešti apie apgaulingą laišką">
 <!ENTITY reportPhishingURL.accesskey "P">
-
-<!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Daugiau žodynų…">
 <!ENTITY spellAddDictionaries.accesskey "D">
-
-<!-- Content Pane Context Menu -->
 <!ENTITY saveLinkAsCmd.label "Įrašyti saistomą objektą kaip…">
 <!ENTITY saveLinkAsCmd.accesskey "Į">
 <!ENTITY saveImageAsCmd.label "Įrašyti paveikslą kaip…">
@@ -902,45 +721,28 @@
 <!ENTITY copyImageAllCmd.accesskey "p">
 <!ENTITY copyEmailCmd.label "Kopijuoti el. pašto adresą">
 <!ENTITY copyEmailCmd.accesskey "e">
-<!ENTITY stopCmd.label "Stabdyti">
-<!ENTITY stopCmd.accesskey "S">
-<!ENTITY reloadCmd.label "Atsiųsti iš naujo">
-<!ENTITY reloadCmd.accesskey "n">
 <!ENTITY openInBrowser.label "Atverti naršyklėje">
 <!ENTITY openInBrowser.accesskey "a">
 <!ENTITY openLinkInBrowser.label "Atverti saistomą objektą naršyklėje">
 <!ENTITY openLinkInBrowser.accesskey "t">
-
-<!-- Statusbar -->
 <!ENTITY statusText.label "Įkelta">
-
-<!-- Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.label "Suskleisti">
 <!ENTITY minimizeWindow.key "m">
 <!ENTITY bringAllToFront.label "Perkelti visus į priekį">
 <!ENTITY zoomWindow.label "Pakeisti dydį">
-
-<!-- Mac OS X Application Menu (Cocoa widgets) -->
-<!ENTITY preferencesCmdMac2.label       "Nuostatos">
-<!ENTITY preferencesCmdMac.commandkey   ",">
-<!ENTITY preferencesCmdMac.modifiers    "accel">
-<!ENTITY servicesMenuMac.label          "Paslaugos">
-<!ENTITY hideThisAppCmdMac.label        "Nerodyti „&brandShortName;“">
-<!ENTITY hideThisAppCmdMac.commandkey   "H">
-<!ENTITY hideThisAppCmdMac.modifiers    "accel">
-<!ENTITY hideOtherAppsCmdMac.label      "Nerodyti kitų">
+<!ENTITY preferencesCmdMac2.label "Nuostatos">
+<!ENTITY preferencesCmdMac.commandkey ",">
+<!ENTITY preferencesCmdMac.modifiers "accel">
+<!ENTITY servicesMenuMac.label "Paslaugos">
+<!ENTITY hideThisAppCmdMac.label "Nerodyti „&brandShortName;“">
+<!ENTITY hideThisAppCmdMac.commandkey "H">
+<!ENTITY hideThisAppCmdMac.modifiers "accel">
+<!ENTITY hideOtherAppsCmdMac.label "Nerodyti kitų">
 <!ENTITY hideOtherAppsCmdMac.commandkey "H">
-<!ENTITY hideOtherAppsCmdMac.modifiers  "accel,alt">
-<!ENTITY showAllAppsCmdMac.label        "Rodyti viską">
-
-<!-- Mac OS X Dock Icon pop-up menu -->
-<!ENTITY dockOptions.label              "Programos piktogramos nuostatos…">
-<!ENTITY writeNewMessageDock.label      "Rašyti naują laišką">
-<!ENTITY openAddressBookDock.label      "Atverti adresų knygą">
-
-<!-- Content tab Navigation buttons -->
-<!ENTITY browseBackButton.tooltip    "Vienu puslapiu atgal">
+<!ENTITY hideOtherAppsCmdMac.modifiers "accel,alt">
+<!ENTITY showAllAppsCmdMac.label "Rodyti viską">
+<!ENTITY dockOptions.label "Programos piktogramos nuostatos…">
+<!ENTITY writeNewMessageDock.label "Rašyti naują laišką">
+<!ENTITY openAddressBookDock.label "Atverti adresų knygą">
+<!ENTITY browseBackButton.tooltip "Vienu puslapiu atgal">
 <!ENTITY browseForwardButton.tooltip "Vienu puslapiu pirmyn">
-
-<!ENTITY exportCmd.label "Export…">
-<!ENTITY exportCmd.accesskey "x">

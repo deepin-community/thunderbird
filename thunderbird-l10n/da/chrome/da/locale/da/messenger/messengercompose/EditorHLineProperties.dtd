@@ -1,10 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-
 <!ENTITY windowTitle.label "Egenskaber for linje">
-
 <!ENTITY dimensionsBox.label "Dimensioner">
 <!ENTITY heightEditField.label "Højde:">
 <!ENTITY heightEditField.accessKey "H">
@@ -18,7 +12,6 @@
 <!ENTITY centerRadio.accessKey "C">
 <!ENTITY rightRadio.label "Højre">
 <!ENTITY rightRadio.accessKey "H">
-
 <!ENTITY threeDShading.label "3-D-skygge">
 <!ENTITY threeDShading.accessKey "3">
 <!ENTITY saveSettings.label "Brug som standard">

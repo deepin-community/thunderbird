@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Podatki o modulih tretjih ponudnikov
 third-party-section-title = Seznam modulov tretjih ponudnikov v { -brand-short-name(sklon: "mestnik") }
 third-party-intro =
@@ -44,19 +40,6 @@ third-party-button-reload = Znova naloži s sistemskimi podatki
     .title = Znova naloži s sistemskimi podatki
 third-party-button-open =
     .title = Odpri mesto datoteke …
-third-party-button-to-block =
-    .title = Blokiraj ta modul
-    .aria-label = Blokiraj ta modul
-third-party-button-to-unblock =
-    .title = Trenutno blokiran. Kliknite za odblokiranje.
-    .aria-label = Trenutno blokiran. Kliknite za odblokiranje.
-third-party-button-to-unblock-disabled =
-    .title =
-        Trenutno označen kot blokiran, čeprav je seznam blokad za ta zagon
-        { -brand-short-name(sklon: "rodilnik") } onemogočen. Kliknite za odblokiranje.
-    .aria-label =
-        Trenutno označen kot blokiran, čeprav je seznam blokad za ta zagon
-        { -brand-short-name(sklon: "rodilnik") } onemogočen. Kliknite za odblokiranje.
 third-party-button-to-block-module = Blokiraj ta modul
     .title = Blokiraj ta modul
     .aria-label = Blokiraj ta modul

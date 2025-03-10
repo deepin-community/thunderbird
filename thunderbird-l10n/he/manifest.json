@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-he@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: עברית (Hebrew)",
   "description": "Thunderbird Language Pack for עברית (he) – Hebrew",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "he": {
-      "version": "20240930174559",
+      "version": "20250227153732",
       "chrome_resources": {
         "alerts": "chrome/he/locale/he/alerts/",
         "autoconfig": "chrome/he/locale/he/autoconfig/",

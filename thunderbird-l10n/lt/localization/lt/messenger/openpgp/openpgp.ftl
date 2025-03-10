@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 e2e-intro-description = Norėdami siųsti užšifruotus ar skaitmeniškai pasirašytus pranešimus, turite sukonfigūruoti šifravimo technologiją - „OpenPGP“ arba „S/MIME“.
 e2e-intro-description-more = Pasirinkite savo asmeninį raktą, kad galėtumėte naudoti „OpenPGP“, arba asmeninį sertifikatą, kad galėtumėte naudoti „S/MIME“. Kaip asmeninio rakto ar sertifikato savininkas, jūs turite atitinkamą slaptą raktą.
 e2e-advanced-section = Papildomi nustatymai
@@ -9,9 +5,6 @@ openpgp-key-expiry-label =
     .label = Galiojimo pabaiga
 openpgp-key-id-label =
     .label = Rakto ID
-openpgp-cannot-change-expiry = Tai raktas su sudėtinga struktūra, jo galiojimo pabaigos keitimas nepalaikomas.
-openpgp-key-man-title =
-    .title = „OpenPGP Key Manager“
 openpgp-key-man-dialog-title = „OpenPGP Key Manager“
 openpgp-key-man-generate =
     .label = Nauja raktų pora
@@ -19,8 +12,6 @@ openpgp-key-man-generate =
 openpgp-key-man-gen-revoke =
     .label = Atšaukimo pažymėjimas
     .accesskey = A
-openpgp-key-man-ctx-gen-revoke-label =
-    .label = Sukurti ir išsaugoti atšaukimo pažymėjimą
 openpgp-key-man-file-menu =
     .label = Failas
     .accesskey = F
@@ -99,8 +90,6 @@ openpgp-key-man-copy-to-clipboard =
            *[other] Kopijuoti viešųjų raktų į mainų sritį
         }
     .accesskey = K
-openpgp-key-man-ctx-expor-to-file-label =
-    .label = Eksportuoti raktus į failą
 openpgp-key-man-ctx-copy =
     .label = Kopijuoti
     .accesskey = K
@@ -229,10 +218,6 @@ openpgp-personal-yes-label =
     .label = Taip, tai asmeninis raktas.
 openpgp-copy-cmd-label =
     .label = Kopijuoti
-
-## e2e encryption settings
-
-#   $key (String) - the currently selected OpenPGP key
 openpgp-selection-status-error = Dabartinėje konfigūracijoje naudojamas raktas <b> { $key } </b>, kurio galiojimo laikas baigėsi.
 openpgp-add-key-button =
     .label = Pridėti raktą…
@@ -241,16 +226,11 @@ e2e-learn-more = Sužinoti daugiau
 openpgp-keygen-success = „OpenPGP“ raktas sukurtas sėkmingai!
 openpgp-keygen-import-success = „OpenPGP“ raktai sėkmingai importuoti!
 openpgp-keygen-external-success = Išorinio „GnuPG“ rakto ID išsaugotas.
-
-## OpenPGP Key selection area
-
 openpgp-radio-none =
     .label = Joks
 openpgp-radio-none-desc = Šiai tapatybei „OpenPGP“ nenaudoti.
 openpgp-radio-key-not-found = Šio rakto rasti nepavyko! Jei norite jį naudoti, turite jį importuoti į „{ -brand-short-name }“.
-#   $key (String) - the expiration date of the OpenPGP key
 openpgp-radio-key-expires = Galiojimas baigiasi: { $date }
-#   $key (String) - the expiration date of the OpenPGP key
 openpgp-radio-key-expired = Negalioja nuo: { $date }
 openpgp-key-expand-section =
     .tooltiptext = Daugiau informacijos
@@ -265,10 +245,6 @@ openpgp-key-remove-external =
     .label = Pašalinti išorinio rakto ID
     .accesskey = P
 key-external-label = Išorinis „GnuPG“ raktas
-
-## Strings in keyDetailsDlg.xhtml
-
-# Strings in keyDetailsDlg.xhtml
 key-type-public = viešas raktas
 key-type-primary = pirminis raktas
 key-type-subkey = dalinis raktas
@@ -283,16 +259,8 @@ key-expired-date = Raktas negalioja nuo { $keyExpiry }
 key-expired-simple = Raktas nebegalioja
 key-revoked-simple = Raktas atšauktas
 key-do-you-accept = Ar priimate šį raktą skaitmeninių parašų tikrinimui ir pranešimų šifravimui?
-
-## Strings enigmailMsgComposeOverlay.js
-
-# Strings enigmailMsgComposeOverlay.js
 cannot-use-own-key-because = Nepavyko išsiųsti pranešimo, nes yra problema su jūsų asmeniniu raktu. { $problem }
 window-locked = Kūrimo langas yra užrakintas; siuntimas atšauktas
-
-## Strings in keyserver.jsm
-
-# Strings in keyserver.jsm
 keyserver-error-aborted = Nutraukta
 keyserver-error-unknown = Įvyko nežinoma klaida
 keyserver-error-server-error = Raktų serveris pranešė apie klaidą.
@@ -301,61 +269,32 @@ keyserver-error-unavailable = Raktų serveris nepasiekiamas.
 keyserver-error-security-error = Raktų serveris nepalaiko šifruotos prieigos.
 keyserver-error-certificate-error = Raktų serverio sertifikatas negalioja.
 keyserver-error-unsupported = Raktų serveris nepalaikomas.
-
-## Strings in mimeWkdHandler.jsm
-
-# Strings in mimeWkdHandler.jsm
 wkd-message-body-req =
     Jūsų el. pašto paslaugų teikėjas apdorojo jūsų užklausą įkelti viešąjį raktą į „OpenPGP“ žiniatinklio raktų katalogą.
     Patvirtinkite ir baigsite viešojo rakto paskelbimą.
 wkd-message-body-process =
     Šis el. laiškas susijęs su automatiniu viešų „OpenPGP“ raktų įkėlimu į žiniatinklio raktų katalogą.
     Jums nereikia atlikti jokių rankinių veiksmų.
-
-## Strings in persistentCrypto.jsm
-
-# Strings in persistentCrypto.jsm
 converter-decrypt-body-failed =
     Nepavyko iššifruoti pranešimo, kurio tema
     { $subject }.
     Galima bandyti dar kartą, naudojant kitą slaptažodį, arba praleisti pranešimą.
-
-## Strings filters.jsm
-
-# Strings filters.jsm
 filter-folder-required = Reikia nurodyti aplanką.
-filter-decrypt-move-warn-experimental =
-    Įspėjimas - filtravimo veiksmas „Iššifruoti visam laikui“ gali sunaikinti pranešimus.
-    Primygtinai rekomenduojama pirmiausia išbandyti filtrą „Sukurti iššifruotą kopiją“, atidžiai peržiūrėti rezultatą ir pradėti naudoti šį filtrą tik tada, kai esate šiuo rezultatu užtikrintas.
 filter-term-pgpencrypted-label = Šifruotas „OpenPGP“
 filter-key-required = Turite pasirinkti gavėjo raktą.
 filter-key-not-found = Nepavyko rasti „{ $desc }“ šifravimo rakto.
 filter-warn-key-not-secret =
     Įspėjimas - filtravimo veiksmas „Šifruoti į raktą“ pakeičia gavėjus.
     Jei neturite slapto „{ $desc }“ rakto, nebegalėsite skaityti el. laiškų.
-
-## Strings filtersWrapper.jsm
-
-# Strings filtersWrapper.jsm
 filter-decrypt-move-label = Iššifruoti visam laikui („OpenPGP“)
 filter-decrypt-copy-label = Sukurti iššifruotą kopiją („OpenPGP“)
 filter-encrypt-label = Šifruoti su raktu („OpenPGP“)
-
-## Strings in enigmailKeyImportInfo.js
-
-# Strings in enigmailKeyImportInfo.js
-import-info-title =
-    .title = Raktai sėkmingai importuoti
 import-info-dialog-title = Raktai sėkmingai importuoti
 import-info-bits = bitų
 import-info-created = Sukurtas
 import-info-fpr = „Pirštų atspaudas“
 import-info-details = Peržiūrėti išsamią informaciją ir tvarkyti raktų priėmimą
 import-info-no-keys = Nėra importuotų raktų.
-
-## Strings in enigmailKeyManager.js
-
-# Strings in enigmailKeyManager.js
 import-from-clip = Ar tikrai norite importuoti raktą (-us) iš mainų srities?
 import-from-url = Atsisiųsti viešąjį raktą iš šio URL:
 copy-to-clipbrd-failed = Nepavyko nukopijuoti pasirinkto (-ų) rakto (-ų) į mainų sritį.
@@ -392,20 +331,10 @@ refresh-key-warn = Įspėjimas: atsižvelgiant į raktų skaičių ir ryšio gre
 preview-failed = Nepavyko nuskaityti viešojo rakto failo.
 general-error = Klaida: { $reason }
 dlg-button-delete = Š&alinti
-
-## Account settings export output
-
 openpgp-export-public-success = <b> Viešasis raktas eksportuotas </b>
 openpgp-export-public-fail = <b> Nepavyko eksportuoti pasirinkto viešojo rakto! </b>
 openpgp-export-secret-success = <b> Slaptasis raktas eksportuotas </b>
 openpgp-export-secret-fail = <b> Nepavyko eksportuoti pasirinkto slaptojo rakto! </b>
-
-## Strings in keyObj.jsm
-## Variables:
-## $userId (String) - The name and/or email address that is mentioned in the key's information.
-## $keyId (String) - Key id for the key entry.
-
-# Strings in keyObj.jsm
 key-ring-pub-key-revoked = Raktas { $userId } (rakto ID { $keyId }) yra atšauktas.
 key-ring-pub-key-expired = Rakto „{ $userId }“ (rakto ID „{ $keyId }“) galiojimas pasibaigęs.
 key-ring-no-secret-key = Panašu, kad jūs neturite slapto { $userId } (rakto ID { $keyId }) rakto, todėl negalite naudoti šio rakto pasirašymui.
@@ -415,27 +344,16 @@ key-ring-sign-sub-keys-revoked = Visi rakto { $userId } (rakto ID { $keyId }) pa
 key-ring-sign-sub-keys-expired = Visi rakto { $userId } (rakto ID { $keyId }) pasirašymo raktai nebegalioja.
 key-ring-enc-sub-keys-revoked = Visi rakto { $userId } (rakto ID { $keyId }) šifravimo raktai atšaukiami.
 key-ring-enc-sub-keys-expired = Visi rakto { $userId } (rakto ID { $keyId }) šifravimo raktai nebegalioja.
-
-## Strings in gnupg-keylist.jsm
-
-# Strings in gnupg-keylist.jsm
 keyring-photo = Nuotrauka
 user-att-photo = Vartotojo atributas (JPEG vaizdas)
-
-## Strings in key.jsm
-
-# Strings in key.jsm
 already-revoked = Šis raktas atšauktas.
-#   $identity (String) - the id and associated user identity of the key being revoked
 revoke-key-question =
     Ketinate atšaukti raktą „{ $identity }“.
     Jūs nebegalėsite pasirašyti šiou raktu, o kai atšaukimo informacija bus išplatinta, kiti nebegalės šifruoti šiuo raktu. Bet vis dar galėsite naudoti raktą iššifruoti seniems pranešimams.
     Ar norite testi?
-#   $keyId (String) - the id of the key being revoked
 revoke-key-not-present =
     Jūs neturite rakto (0x{ $keyId }), kuris atitiktų šį atšaukimo sertifikatą!
     Jei pametėte raktą, prieš importuodami atšaukimo sertifikatą turite šį raktą importuoti (pvz. iš raktų serverio).
-#   $keyId (String) - the id of the key being revoked
 revoke-key-already-revoked = Raktas 0x{ $keyId } jau atšauktas.
 key-man-button-revoke-key = &Atšaukti raktą
 openpgp-key-revoke-success = Raktas sėkmingai atšauktas.
@@ -444,10 +362,6 @@ after-revoke-info =
     Dar kartą bendrinkite šį viešąjį raktą siųsdami jį el. paštu arba įkeldami į raktų serverius, kad kiti žinotų, jog atšaukėte raktą.
     Kai tik kitų žmonių naudojama programinė įranga sužinos apie rakto atšaukimą, ji nustos naudoti seną raktą.
     Jei tam pačiam el. pašto adresui naudojate naują raktą ir jį pridedate prie siunčiamų el. laiškų, informacija apie panaikintą seną raktą bus įtraukta automatiškai .
-
-## Strings in keyRing.jsm & decryption.jsm
-
-# Strings in keyRing.jsm & decryption.jsm
 key-man-button-import = &Importuoti
 delete-key-title = Pašalingti „OpenPGP“ raktą
 delete-external-key-title = Pašalinti išorinį „GnuPG“ raktą
@@ -455,41 +369,17 @@ delete-external-key-description = Ar norite pašalinti šį išorinio „GnuPG�
 key-in-use-title = Šis „OpenPGP“ raktas šiuo metu naudojamas
 delete-key-in-use-description = Neįmanoma tęsti! Ši tapatybė šiuo metu naudoja raktą, kurį norite ištrinti. Pasirinkite tapatybei kitą raktą ( arba jokio rakto) ir bandykite dar kartą.
 revoke-key-in-use-description = Neįmanoma tęsti! Ši tapatybė šiuo metu naudoja raktą, kurį norite atšaukti. Pasirinkite tapatybei kitą raktą ( arba jokio rakto) ir bandykite dar kartą.
-
-## Strings used in errorHandling.jsm
-
-# Strings used in errorHandling.jsm
 key-error-key-spec-not-found = El. pašto adreso „{ $keySpec }“ nėra jūsų raktų sąraše.
 key-error-key-id-not-found = Nurodyto rakto ID „{ $keySpec }“ nėrai jūsų raktų saraše.
 key-error-not-accepted-as-personal = Jūs nepatvirtinote, kad raktas, kurio ID „{ $keySpec }“, yra jūsų asmeninis raktas.
-
-## Strings used in enigmailKeyManager.js & windows.jsm
-
-# Strings used in enigmailKeyManager.js & windows.jsm
 need-online = Pasirinkta funkcija negalima neprisijungus prie tinklo. Prisijunkite prie interneto ir bandykite dar kartą.
-
-## Strings used in keyRing.jsm & keyLookupHelper.jsm
-
-
-## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
-
-# Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
 fail-key-extract = Klaida - nepavyko išgauti rakto
-
-## Strings used in keyRing.jsm
-
-# Strings used in keyRing.jsm
 fail-cancel = Klaida - rakto gavimą atšaukė vartotojas
 not-first-block = Klaida - pirmasis „OpenPGP“ blokas nėra viešojo rakto blokas
 import-key-confirm = Ar importuoti į pranešimą įdėtą(-us) viešąjį raktą(-us)?
 fail-key-import = Klaida - nepavyko importuoti rakto
 file-write-failed = Nepavyko įrašyti į failą { $output }
 no-pgp-block = Klaida - nerastas galiojantis apsaugotas „OpenPGP“ duomenų blokas
-confirm-permissive-import = Nepavyko importuoti. Raktas, kurį bandote importuoti, gali būti sugadintas arba naudoja nežinomus atributus. Galima pabandyti importuoti teisingas dalis, bet dėl to gali būti importuojami neišsamūs ar netinkami naudojimui raktai.
-
-## Strings used in trust.jsm
-
-# Strings used in trust.jsm
 key-valid-unknown = nežinomas
 key-valid-invalid = netinkamas
 key-valid-disabled = išjungtas
@@ -500,19 +390,11 @@ key-trust-marginal = ribinis
 key-trust-full = patikimas
 key-trust-ultimate = visiškas
 key-trust-group = (grupė)
-
-## Strings used in commonWorkflows.js
-
-# Strings used in commonWorkflows.js
 import-key-file = Importuoti „OpenPGP“ raktų failą
 import-rev-file = Importuoti „OpenPGP“ atšaukimų failą
 gnupg-file = „GnuPG“ failai
 import-keys-failed = Nepavyko importuoti raktų
 file-to-big-to-import = Šis failas per didelis. Neimportuokite didelių raktų rinkinių vienu metu.
-
-## Strings used in enigmailKeygen.js
-
-# Strings used in enigmailKeygen.js
 save-revoke-cert-as = Sukurti ir išsaugoti atšaukimo pažymėjimą
 revoke-cert-ok = Atšąukimo sertifikatas sėkmingai sukurtas. Galite jį naudoti norėdami anuliuoti savo viešąjį raktą, pvz. jei pamestumėte slaptą raktą.
 revoke-cert-failed = Nepavyko sukurti atšaukimo pažymėjimo.
@@ -525,9 +407,6 @@ key-man-button-generate-key = &Sukurti raktą
 key-abort = Nutraukti raktų generavimą?
 key-man-button-generate-key-abort = &Nutraukti raktų generavimą?
 key-man-button-generate-key-continue = &Tęsti raktų generavimą
-
-## Strings used in enigmailMessengerOverlay.js
-
 failed-decrypt = Klaida - nepavyko iššifruoti
 fix-broken-exchange-msg-failed = Nepavyko ištaisyti šio pranešimo.
 attachment-no-match-from-signature = Nepavyko suderinti parašo failo „{ $attachment }“ ir priedo
@@ -539,10 +418,6 @@ decrypt-ok-no-sig =
     Iššifruoti pavyko, tačiau parašo nepavyko teisingai patikrinti.
 msg-ovl-button-cont-anyway = &Tęsti bet kokiu atveju
 enig-content-note = * Šio pranešimo priedai nebuvo pasirašyti ir užšifruoti *
-
-## Strings used in enigmailMsgComposeOverlay.js
-
-# Strings used in enigmailMsgComposeOverlay.js
 msg-compose-button-send = Išsiųsti laišką
 msg-compose-details-button-label = Išsamiau…
 msg-compose-details-button-access-key = D
@@ -564,21 +439,9 @@ quoted-printable-warn =
 minimal-line-wrapping =
     Jūs nustatėte { $width } simbolių eilutęs ilgį. Norint teisingai užšifruoti ir (arba) pasirašyti, šis ilgis turi būti bent 68.
     Ar norite pakeisti eilučių ilgį į 68 simbolius?
-sending-news =
-    Šifruota siuntimo operacija nutraukta.
-    Šio pranešimo negalima užšifruoti, nes jį gaus ir naujienų grupės. Išsiųskite pranešimą iš naujo, be šifravimo.
-send-to-news-warning =
-    Įspėjimas: ruošiatės siųsti užšifruotą pranešimą naujienų grupei.
-    Tai nerekomenduojama, nes turi prasmę tik tuomet, kai visi grupės nariai galės iššifruoti šį pranešimą, todėl pranešimą reikia užšifruoti visų grupės dalyvių raktais. Siųskite šį pranešimą tik tada, jei tiksliai žinote, ką darote.
-    Tęsti?
 save-attachment-header = Išsaugoti iššifruotą priedą
-possibly-pgp-mime = Galbūt tai PGP/MIME šifruotas arba pasirašytas pranešimas; patikrinimui naudokite funkciją „Iššifruoti / patvirtinti“
 cannot-send-sig-because-no-own-key = Negalima pasirašyti šio pranešimo skaitmeniniu būdu, nes raktui „<{ $key }>“ dar nesukonfigūravote abipusio šifravimo
 cannot-send-enc-because-no-own-key = Negalima užšifruoti ir išsiųsti šio pranešimo, nes raktui „<{ $key }>“ dar nesukonfigūravote abipusio šifravimo
-
-## Strings used in decryption.jsm
-
-# Strings used in decryption.jsm
 do-import-multiple =
     Importuoti šiuos raktus?
     { $key }
@@ -592,49 +455,17 @@ attachment-pgp-key =
     Panašu, kad atidaromas priedas „{ $name }“ yra „OpenPGP“ rakto failas.
     Spustelėkite „Importuoti“, jei norite importuoti esančius raktus, arba „Žiūrėti“, jei norite peržiūrėti failo turinį naršyklės lange
 dlg-button-view = &Peržiūrėti
-
-## Strings used in enigmailMsgHdrViewOverlay.js
-
-# Strings used in enigmailMsgHdrViewOverlay.js
-decrypted-msg-with-format-error = Iššifruotas pranešimas ( tai atkurtas sugadintas PGP el. pašto pranešimas, kurį tikriausiai sugadino senas „Exchange“ serveris. Rezultatas gali būti netikslus ar neįskaitomas)
-
-## Strings used in encryption.jsm
-
-# Strings used in encryption.jsm
 not-required = Klaida - šifruoti nereikia
-
-## Strings used in windows.jsm
-
-# Strings used in windows.jsm
 no-photo-available = Nuotraukos nėra
 error-photo-path-not-readable = Nepavyko nuskaityti nuotraukų iš nurodytos vietos „{ $photo }“
 debug-log-title = „OpenPGP“ derinimo žurnalas
-
-## Strings used in dialog.jsm
-
-# Strings used in dialog.jsm
-repeat-prefix = Šis įspėjimas pasikartos { $count }
-repeat-suffix-singular = daugiau laiko.
-repeat-suffix-plural = daugiau kartų.
-no-repeat = Šis perspėjimas daugiau nebus rodomas.
-dlg-keep-setting = Įsiminti mano atsakymą ir daugiau nebeklausti
 dlg-button-ok = &Gerai
 dlg-button-close = &Užverti
 dlg-button-cancel = &Atsisakyti
 dlg-no-prompt = Šio dialogo daugiau neberodyti.
 enig-prompt = „OpenPGP“ pranešimas
 enig-confirm = „OpenPGP“ patvirtinimas
-enig-alert = „OpenPGP“ įspėjimas
-enig-info = „OpenPGP“ informacija
-
-## Strings used in persistentCrypto.jsm
-
-# Strings used in persistentCrypto.jsm
 dlg-button-retry = Kartoti
 dlg-button-skip = &Praleisti
-
-## Strings used in enigmailMsgBox.js
-
-# Strings used in enigmailMsgBox.js
 enig-alert-title =
     .title = „OpenPGP“ įspėjimas

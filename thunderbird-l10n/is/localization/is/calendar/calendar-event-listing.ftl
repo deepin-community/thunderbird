@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Loka atburðaleit og atburðalista
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Nafn dagatals
     .tooltiptext = Raða eftir nafni dagatals
 calendar-event-listing-column-category =
     .label = Flokkur
     .tooltiptext = Raða eftir flokk
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Ljúka
     .tooltiptext = Raða eftir lokið
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Titill
     .tooltiptext = Raða eftir titli
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Atburðir í fortíðinni
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Atburðir næstu 7 mánuði
 calendar-event-listing-interval-next-12-months =
     .label = Atburðir næstu 12 mánuði
+calendar-event-listing-interval-future =
+    .label = Allir atburðir í framtíðinni
 calendar-event-listing-interval-all =
     .label = Allir atburðir
 calendar-event-listing-interval-selected-day =

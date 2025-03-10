@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Tisefsiyin
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Amezwer ({ $name })
 fonts-label-default-unnamed =
     .label = Amezwer
-fonts-encoding-dialog-title =
-    .title = Tisefsiyin d usettengel
 fonts-language-legend =
     .value = Tisefsiyin i:
     .accesskey = s
 fonts-proportional-label =
     .value = Aẓunan:
     .accesskey = A
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Talaṭinit
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Tasinhalit
 font-language-group-tibetan =
     .label = Tatibitant
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = T
 min-size-none =
     .label = Ula yiwen
-
-## Fonts in message
-
 font-control-legend = Asenqed n tsefsit
 use-document-fonts-checkbox =
     .label = Sireg iznan akken ad sqedcen tisefsiyin nniḍen.
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Seqdec tehri tusbiṭ i yeznan n uḍris aččuran
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Asettengel n uḍris
 text-encoding-description = Sbadu asettengel n uḍris amewer i tuzna d urmas n yimayl
 font-outgoing-email-label =

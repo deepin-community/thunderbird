@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 archive-options-title = 저장 설정
 archive-granularity-prefix-label = 보관된 메시지를 다음 위치에 저장합니다 :
 archive-flat =
@@ -16,10 +12,15 @@ archive-monthly =
 keep-folder-structure =
     .label = 보관된 메시지 폴더 구조 유지
     .accesskey = K
+recreate-inbox =
+    .label = 받은 편지함 폴더 다시 만들기
+    .accesskey = R
 archive-example-label = 예제
-# This should match the default name for the "Archives" folder.
 archive-folder-name =
     .label = 기록 보관소
-# This should match the default name for the "Inbox" folder.
 inbox-folder-name =
     .label = 받은 편지함
+child-folder-name =
+    .label = 받은 편지함 하위 폴더
+sibling-folder-name =
+    .label = 받은 편지함 형제 폴더

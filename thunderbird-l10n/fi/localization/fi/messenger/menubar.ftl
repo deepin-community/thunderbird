@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Valikkopalkki
     .accesskey = V
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Asetukset
     .accesskey = A
 menu-addons-and-themes =
     .label = Lisäosat ja teemat
     .accesskey = L
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Vie mobiililaitteelle…
+    .accesskey = i
 menu-help-help-title =
     .label = Ohje
     .accesskey = H
 menu-help-get-help =
     .label = Tuki
     .accesskey = H
-menu-help-explore-features =
-    .label = Tutustu ominaisuuksiin
-    .accesskey = F
 menu-help-get-release-help =
     .label = Apua { -brand-short-name }in käyttöön
     .accesskey = ä
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Tietoja: { -brand-short-name }
     .accesskey = A
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] x
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Lopeta { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Lopeta { -brand-full-name }
            *[other] Lopeta { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Roskapostia
     .tooltiptext = Merkitse valitut viestit roskapostiksi
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Peruuta poistaminen
     .tooltiptext = Peruuta valittujen viestien poistaminen
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Korjaa merkistökoodaus
     .accesskey = K
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Kansiopaneelin otsake
     .accesskey = p
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Viestiluettelon otsake
     .accesskey = V
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Tilat-työkalupalkki
     .accesskey = T
-
-## File
-
 file-new-email-account =
     .label = Sähköpostitili…
     .accesskey = S

@@ -1,21 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### These strings are used inside the Accessibility panel.
-
 accessibility-learn-more = Saznaj više
 accessibility-text-label-header = Tekstualne oznake i imena
 accessibility-keyboard-header = Tipkovnica
-
-## These strings are used in the overlay displayed when running an audit in the accessibility panel
-
 accessibility-progress-initializing = Inicijaliziranje …
     .aria-valuetext = Inicijaliziranje …
-# This string is displayed in the audit progress bar in the accessibility panel.
-# Variables:
-#   $nodeCount (Integer) - The number of nodes for which the audit was run so far.
 accessibility-progress-progressbar =
     { $nodeCount ->
         [one] Provjera { $nodeCount } čvora
@@ -24,20 +11,12 @@ accessibility-progress-progressbar =
     }
 accessibility-progress-finishing = Završavanje …
     .aria-valuetext = Završavanje …
-
-## Text entries that are used as text alternative for icons that depict accessibility issues.
-
 accessibility-warning =
     .alt = Upozorenje
 accessibility-fail =
     .alt = Greška
 accessibility-best-practices =
     .alt = Uvriježena praksa
-
-## Text entries for a paragraph used in the accessibility panel sidebar's checks section
-## that describe that currently selected accessible object has an accessibility issue
-## with its text label or accessible name.
-
 accessibility-text-label-issue-area = Koristi <code>alt</code> atribut za označavanje <div>area</div> elemenata koji imaju <span>href</span> atribut. <a>Saznaj više</a>
 accessibility-text-label-issue-dialog = Dijalozi bi trebali biti označeni. <a>Saznaj više</a>
 accessibility-text-label-issue-document-title = Dokumenti moraju sadržati <code>title</code>. <a>Saznaj više</a>
@@ -56,11 +35,6 @@ accessibility-text-label-issue-image = Sadržaj sa slikom mora biti označen. <a
 accessibility-text-label-issue-interactive = Interaktivni elementi moraju biti označeni. <a>Saznaj više</a>
 accessibility-text-label-issue-optgroup-label2 = Koristi jedan <code>label</code> atribut za označavanje jednog <span>optgroup</span>. <a>Saznaj više</a>
 accessibility-text-label-issue-toolbar = Alatne trake moraju biti označene, ako ima više od jedne alatne trake. <a>Saznaj više</a>
-
-## Text entries for a paragraph used in the accessibility panel sidebar's checks section
-## that describe that currently selected accessible object has a keyboard accessibility
-## issue.
-
 accessibility-keyboard-issue-semantics = Fokusirajući elementi trebaju imati interaktivnu semantiku. <a>Saznaj više</a>
 accessibility-keyboard-issue-tabindex = Izbjegni koristiti <code>tabindex</code> atribut, veći od nula. <a>Saznaj više</a>
 accessibility-keyboard-issue-action = Interaktivni elementi se moraju moći aktivirati pomoću tipkovnice. <a>Saznaj više</a>

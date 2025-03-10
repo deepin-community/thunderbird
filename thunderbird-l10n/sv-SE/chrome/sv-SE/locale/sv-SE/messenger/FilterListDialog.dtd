@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "Meddelandefilter">
 <!ENTITY nameColumn.label "Filternamn">
 <!ENTITY activeColumn.label "Aktiv">
@@ -36,8 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "å">
 <!ENTITY helpButton.label "Hjälp">
 <!ENTITY helpButton.accesskey "H">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Sök filter efter namn…">
-
-
-

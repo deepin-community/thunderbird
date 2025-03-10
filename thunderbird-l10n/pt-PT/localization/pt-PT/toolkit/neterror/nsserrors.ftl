@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Não é possível ligar de forma segura porque o protocolo SSL foi desativado.
 psmerr-ssl2-disabled = Não é possível ligar de forma segura porque o site utiliza uma versão do protocolo SSL antiga e é insegura.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Recebeu um certificado inválido.  Por favor contacte o administrador do servidor ou endereço de email equivalente e dê-lhes a seguinte informação:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = O servidor apresentou um certifica
 mozilla-pkix-error-empty-issuer-name = O servidor apresentou um certificado com um nome de emissor distinto vazio.
 mozilla-pkix-error-additional-policy-constraint-failed = Uma restrição de política adicional falhou ao validar este certificado.
 mozilla-pkix-error-self-signed-cert = O certificado não é de confiança porque é auto-assinado.
+mozilla-pkix-error-issuer-no-longer-trusted = A autoridade certificadora que emitiu o certificado foi marcada como não confiável antes da emissão do certificado.
 xp-java-remove-principal-error = Não foi possível remover o principal
 xp-java-delete-privilege-error = Não foi possível apagar o privilégio
 xp-java-cert-not-exists-error = Este principal não tem um certificado

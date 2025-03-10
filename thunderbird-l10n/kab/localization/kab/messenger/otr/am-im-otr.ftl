@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Awgelhen seg yixef ɣer wayeḍ
 account-otr-label = Tirawt Off-the-Record (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     ur d-ttwaskanen ara deg udiwenni amagnu yerna ur ttwaseklasen ara.
 otr-verify-nudge =
     .label = Smektay-iyi-d yal tikkelt ɣef usenqed n unermas ur nettwasenqed ara
-
 otr-not-yet-available = Ulac akka tura
-

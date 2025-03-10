@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Synchronizace
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Odhlásit se…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nový účet
 appmenu-new-account-panel =
     .label = Nový účet
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Založit nový e-mail
-    .accesskey = Z
-appmenu-new-mail-account =
-    .label = Existující e-mail
-    .accesskey = E
 appmenu-new-email-account =
     .label = E-mail
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Diskusní skupina
     .accesskey = D
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nová složka kontaktů
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Složka kontaktů LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Vytvořit
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Otevřít ze souboru
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalendář…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Zobrazit
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Zvětšit písmo
 appmenuitem-font-size-reduce =
     .tooltiptext = Zmenšit písmo
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Obnovit velikost písma
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Nástroje
 appmenu-tools-panel =
@@ -147,6 +114,9 @@ appmenu-tools-import =
     .accesskey = I
 appmenu-tools-export =
     .label = Exportovat
+    .accesskey = E
+appmenu-export-for-mobile =
+    .label = Exportovat pro mobilní zařízení
     .accesskey = E
 appmenu-tools-message-search =
     .label = Hledat ve zprávách
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Nástroje pro vývojáře
     .accesskey = t
-
-## Help
-
 appmenu-help-panel-title =
     .title = Nápověda
 appmenu-help-get-help =
     .label = Získat pomoc
     .accesskey = p
-appmenu-help-explore-features =
-    .label = Prozkoumat všechny funkce
-    .accesskey = f
 appmenu-help-get-release-help =
     .label =
         { -brand-short-name.case-status ->
@@ -209,9 +173,6 @@ appmenu-help-about-product =
            *[no-cases] O aplikaci { -brand-short-name }
         }
     .accesskey = O
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label =
         { -brand-shorter-name.case-status ->

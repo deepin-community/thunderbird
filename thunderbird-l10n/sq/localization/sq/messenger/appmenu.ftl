@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Njëkohësim
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Dilni…
     .accesskey = D
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Llogari e Re
 appmenu-new-account-panel =
     .label = Llogari e Re
     .accesskey = o
-appmenu-create-new-mail-account =
-    .label = Merrni një Email të Ri
-    .accesskey = R
-appmenu-new-mail-account =
-    .label = Email Ekzistues
-    .accesskey = E
 appmenu-new-email-account =
     .label = Email
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Grup Lajmesh
     .accesskey = G
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Libër i Ri Adresash
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Libër Adresash LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Krijoje
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakte
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Hap prej Kartele
     .accesskey = l
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalendar…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Shihen
 appmenu-view-panel =
@@ -127,14 +99,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Zmadho Madhësi Shkronjash
 appmenuitem-font-size-reduce =
     .tooltiptext = Zvogëlo Madhësi Shkronjash
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Riktheni Madhësinë e Shkronjave te Parazgjedhjet
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Mjete
 appmenu-tools-panel =
@@ -145,6 +112,9 @@ appmenu-tools-import =
     .accesskey = I
 appmenu-tools-export =
     .label = Eksporto
+    .accesskey = E
+appmenu-export-for-mobile =
+    .label = Eksportoji për Celular
     .accesskey = E
 appmenu-tools-message-search =
     .label = Kërko në Mesazhe
@@ -161,17 +131,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Mjete Zhvilluesi
     .accesskey = Z
-
-## Help
-
 appmenu-help-panel-title =
     .title = Ndihmë
 appmenu-help-get-help =
     .label = Merrni Ndihmë
     .accesskey = N
-appmenu-help-explore-features =
-    .label = Eksploroni Veçori
-    .accesskey = E
 appmenu-help-get-release-help =
     .label = Merrni Ndihmë për { -brand-short-name }
     .accesskey = R
@@ -199,9 +163,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Mbi { -brand-short-name }-in
     .accesskey = M
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Po shkarkohet përditësim { -brand-shorter-name }-i
 appmenuitem-banner-update-available =

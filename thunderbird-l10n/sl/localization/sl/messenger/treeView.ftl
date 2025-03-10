@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Potrditveno polje za preklop izbire trenutne vrstice
     .title = Izberi trenutno vrstico
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Obnovi trenutno vrstico
 tree-list-view-column-picker =
     .title = Izberite stolpce za prikaz
-tree-list-view-column-picker-restore =
-    .label = Povrni vrstni red stolpcev
 tree-list-view-column-picker-restore-default-columns =
     .label = Obnovi privzete stolpce
 tree-list-view-row-thread-button =

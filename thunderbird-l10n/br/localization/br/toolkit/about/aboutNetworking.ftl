@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = A-zivout ar rouedad
 about-networking-http = HTTP
 about-networking-sockets = Sockets
@@ -53,11 +49,4 @@ about-networking-rcwn-cache-slow = Niver a grubuilh gorrek
 about-networking-rcwn-cache-not-slow = Niver a grubuilh prim
 about-networking-networkid = ID ar rouedad
 about-networking-networkid-id = ID ar rouedad
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Dilec’hiet eo bet ar bajenn-mañ etrezek <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
-
-##
-

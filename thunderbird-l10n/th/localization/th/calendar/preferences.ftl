@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = ปฏิทิน
 calendar-title-reminder = ตัวเตือนความจำ
 calendar-title-notification = การแจ้งเตือน
@@ -9,10 +5,8 @@ calendar-title-category = หมวดหมู่
 dateformat-label =
     .value = รูปแบบข้อความวันที่:
     .accesskey = ว
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = ยาว: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = สั้น: { $date }
 use-system-timezone-radio-button =

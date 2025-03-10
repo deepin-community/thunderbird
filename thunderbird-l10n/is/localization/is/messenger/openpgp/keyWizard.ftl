@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Bæta við persónulegum OpenPGP-einkalykli fyrir { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Halda áfram
-    .buttonlabelhelp = Fara til baka
 key-wizard-dialog =
     .buttonlabelaccept = Halda áfram
     .buttonlabelextra1 = Fara til baka
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Nota utanaðkomandi lykilinn þinn í gegnum GnuPG (t.d. af snjallkorti)
     .accesskey = y
-
-## Generate key section
-
 openpgp-generate-key-title = Útbúa OpenPGP-lykil
 openpgp-keygen-secret-protection = Verndun leynilykla
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Lykillinn þinn verður að vera gildur í að min
 openpgp-keygen-ongoing = Gerð lykils þegar í gangi!
 openpgp-keygen-error-core = Ekki tókst að frumstilla OpenPGP kjarnaþjónustuna
 openpgp-keygen-error-failed = OpenPGP-lyklagerð mistókst óvænt
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP-lykill var útbúinn, en tókst ekki að fá afturköllun fyrir lykilinn { $key }
 openpgp-keygen-abort-title = Hætta við gerð lykils?
 openpgp-keygen-abort = OpenPGP-lyklagerð er í gangi, ertu viss um að þú viljir hætta við hana?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Búa til opinberan og leynilegan lykil fyrir { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Flytja inn fyrirliggjandi persónulegan OpenPGP-lykil
 openpgp-import-key-legend = Velja áður öryggisafritaða skrá.
 openpgp-import-key-description = Þú getur flutt inn persónulega lykla sem voru búnir til með öðrum OpenPGP-hugbúnaði.
 openpgp-import-key-info = Annar hugbúnaður gæti lýst persónulegum einkalykli með því að nota önnur hugtök eins og þinn eigin lykill, leynilykill, einkalykill eða lyklapar.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } fann einn lykil sem hægt er að flytja inn.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Lyklar sem merktir eru til að meðhöndla sem
 openpgp-import-keep-passphrases =
     .label = Halda verndun með aðgangsorðum fyrir innflutta leynilykla
 openpgp-passphrase-prompt-title = Aðgangsorðs krafist
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Settu inn aðgangsorðið til að aflæsa eftirfarandi lykli: { $key }
 openpgp-import-key-button =
     .label = Veldu skrá til að flytja inn...
     .accesskey = s
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Farðu með þennan lykil sem persónulegan lykil
 gnupg-file = GnuPG-skrár
 import-error-file-size = <b>Villa!</b> Skrár stærri en 5MB eru ekki studdar.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Villa!</b> Mistókst að flytja inn skrá. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Villa!</b> Mistókst að flytja inn lykla. { $error }
 openpgp-import-identity-label = Auðkenni
 openpgp-import-fingerprint-label = Fingrafar
@@ -127,9 +106,6 @@ openpgp-import-bits-label = bitar
 openpgp-import-key-props =
     .label = Eiginleikar lykils
     .accesskey = k
-
-## External Key section
-
 openpgp-external-key-title = Utanaðkomandi GnuPG-lykill
 openpgp-external-key-description = Settu upp utanaðkomandi GnuPG-lykil með því að setja inn lykilauðkennið
 openpgp-external-key-info = Að auki verður þú að nota lyklastýringuna til að flytja inn og samþykkja samsvarandi opinberan dreifilykil.

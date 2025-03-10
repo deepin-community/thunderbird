@@ -1,13 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- extracted from MsgSynchronize.xul and msgSelectOffline.xul-->
-
-<!-- extracted from MsgSynchronize.xul and msgSelectOfflineFolders.xul-->
-
-<!-- extracted from MsgSynchronize.xhtml and msgSelectOfflineFolders.xhtml-->
-
 <!ENTITY MsgSynchronize.label "Berjochten downloade en syngronisearje">
 <!ENTITY MsgSelect.label "Items foar offline gebrûk">
 <!ENTITY MsgSyncDesc.label "As jo al e-mailmappen of nijsgroepen selektearre hawwe foar offline gebrûk, kinne jo se no downloade en/of syngronisearje. Brûk oars de knop &quot;Selektearje&quot; om e-mailmappen en nijsgroepen te selektearjen foar offline gebrûk.">

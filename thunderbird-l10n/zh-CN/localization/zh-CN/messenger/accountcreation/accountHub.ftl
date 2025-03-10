@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = 欢迎使用 <span data-l10n-name="brand-name">{ -brand-full-name }</span>
 account-hub-title = 账户中心
-
-## Footer
-
 account-hub-release-notes = 发行说明
 account-hub-support = 支持
 account-hub-donate = 捐赠
-
-## Initial setup page
-
 account-hub-email-setup-button = 邮箱账户
     .title = 设置邮箱账户
 account-hub-calendar-setup-button = 日历
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = 新闻组
     .title = 设置新闻组账户
 account-hub-import-setup-button = 导入
     .title = 导入备份配置文件
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = 登录以同步…
-
-## Email page
-
-account-hub-email-title = 设置您的电子邮件账户
 account-hub-add-email-title = 添加您的账户
 account-hub-manually-configure-email-title = 设置账户配置
 account-hub-email-cancel-button = 取消
@@ -51,17 +29,19 @@ account-hub-email-finish-button = 完成
 account-hub-email-manually-configure-button = 手动配置
 account-hub-email-continue-button = 继续
 account-hub-email-confirm-button = 确认
-account-hub-incoming-server-legend = 收件服务器
-account-hub-outgoing-server-legend = 发件服务器
+account-hub-result-incoming-server-legend = 收件服务器
+    .title = 收件服务器
+account-hub-result-outgoing-server-legend = 发件服务器
+    .title = 发件服务器
 account-hub-protocol-label = 协议
-account-hub-hostname-label = 主机名
+account-hub-result-hostname-label = 主机名
+    .title = 主机名
+account-hub-result-authentication-label = 身份验证方式
+    .title = 身份验证方式
 account-hub-port-label = 端口
     .title = 设置端口号为 0 表示自动检测
 account-hub-auto-description = { -brand-short-name } 将尝试自动检测留白的字段。
 account-hub-ssl-label = 连接安全性
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = 自动检测
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = 普通密码
 account-hub-ssl-encrypted-password-option =
     .label = 加密密码
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = 无
 account-hub-auth-no-authentication-option =
     .label = 无须验证
 account-hub-auth-label = 验证方式
-account-hub-username-label = 用户名
+account-hub-result-username-label = 用户名
+    .title = 用户名
 account-hub-name-label = 全名
     .accesskey = n
 account-hub-adding-account-title = 正在添加账户
@@ -97,3 +75,24 @@ account-hub-email-enter-password = 请输入邮箱账户密码
 account-hub-email-sync-accounts = 同步日历和通讯录
 account-hub-test-configuration = 测试
 account-hub-add-new-email = 添加其他邮箱
+account-hub-result-imap-description = 保持文件夹和邮件在服务器上同步
+account-hub-result-pop-description = 将文件夹和邮件保存于计算机
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = 使用 Microsoft Exchange Web 服务同步文件夹和邮件
+account-hub-result-ews-text = 服务器
+account-hub-result-recommended-label = 推荐
+account-hub-edit-configuration = 编辑配置
+account-hub-config-success = 在 Mozilla ISPDB 中找到的配置
+account-hub-password-info = 您的登录凭据只会存储在您的计算机本地
+account-hub-sync-success = Thunderbird 找到一些已连接的服务
+account-hub-sync-failure = Thunderbird 找不到已连接的服务
+account-hub-unable-to-sync-accounts = Thunderbird 无法连接所选服务
+account-hub-email-added-success = 邮箱账户连接成功
+account-hub-config-test-success = 配置设置有效
+account-hub-select-all = 全部选择
+account-hub-deselect-all = 全部取消
+account-hub-sync-accounts-selected = 已选择 { $count } 项
+account-hub-no-address-books = 找不到通讯录
+account-hub-no-calendars = 找不到日历
+account-hub-email-added-success-links-title = 浏览安全与个性化选项：
+account-hub-signature-link = 邮件签名

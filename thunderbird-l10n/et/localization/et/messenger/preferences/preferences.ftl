@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Sulge
 preferences-doc-title2 = Sätted
@@ -47,8 +43,6 @@ collection-health-report =
     .label = { -brand-short-name }il lubatakse automaatselt saata tehnilisi andmeid { -vendor-short-name }le
     .accesskey = l
 collection-health-report-link = Rohkem teavet
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Selle kompileerimise konfiguratsiooniga on andmete raporteerimine keelatud
 collection-backlogged-crash-reports =
     .label = { -brand-short-name }il lubatakse saatmata vearaporteid saata
@@ -69,10 +63,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Muudatuste rakendamiseks taaskäivita { -brand-short-name }
 confirm-messenger-language-change-button = Rakenda ja taaskäivita
 update-setting-write-failure-title = Uuendamise sätete salvestamisel esines viga
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name }il esines viga ja muudatust ei salvestatud. Antud sätte muutmiseks on vajalikud õigused alloleva faili muutmiseks. Probleem võib laheneda, kui sina või sinu süsteemiadministraator annab Users grupile täielikud muutmise õigused sellele failile.
     
@@ -80,26 +70,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Uuendamine
 update-in-progress-message = Kas soovid, et { -brand-short-name } jätkaks uuendamisega?
 update-in-progress-ok-button = &Loobu
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Jätka
 account-button = Kontode sätted
 open-addons-sidebar-button = Lisad ja teemad
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Ülemparooli loomiseks sisesta Windowsi sisselogimisandmed. See aitab kaitsta sinu kontode turvalisust.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = create a Primary Password
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = F
 focus-search-shortcut-alt =
@@ -124,8 +100,6 @@ remove-search-engine =
 add-opensearch-provider-title = Lisa OpenSearchi teenusepakkuja
 add-opensearch-provider-text = Sisesta lisatava OpenSearchi teenusepakkuja URL. Kasuta kas otsest kirjeldusfaili URLi või automaatselt tuvastamise URLi.
 adding-opensearch-provider-failed-title = OpenSearchi teenusepakkuja lisamine ebaõnnestus.
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = OpenSearchi teenusepakkujat URLile { $url } polnud võimalik lisada.
 minimize-to-tray-label =
     .label = { -brand-short-name }i minimeerimisel liigutatakse see salve
@@ -203,8 +177,6 @@ always-check-default =
 check-default-button =
     .label = Kontrolli nüüd…
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -222,8 +194,6 @@ return-receipts-button =
     .label = Kättesaamise kinnitused...
     .accesskey = M
 update-app-legend = { -brand-short-name }i uuendused
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versioon { $version }
 allow-description = { -brand-short-name }il lubatakse
 automatic-updates-label =
@@ -258,18 +228,10 @@ offline-compact-folder-automatically =
     .accesskey = g
 compact-folder-size =
     .value = MiB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Vahemäluks kasutatakse kuni
     .accesskey = V
 use-cache-after = MiB mälu
-
-##
-
 smart-cache-label =
     .label = Keelatakse automaatne vahemälu haldamine
     .accesskey = u
@@ -290,7 +252,6 @@ color-options-button =
     .label = Värvid…
     .accesskey = r
 display-width-legend = Lihttekstis kirjad
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Emotikonide graafiline esitamine
     .accesskey = m
@@ -358,17 +319,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Manuste kuvamine kirja sees
     .accesskey = M
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = märgitakse loetuks pärast
     .accesskey = m
 seconds-label = sekundit
-
-##
-
 open-msg-label =
     .value = Kirjad avatakse:
 open-msg-tab =
@@ -383,14 +337,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Kustutamisel või liigutamisel kirja aken/kaart suletakse
     .accesskey = K
-display-name-label =
-    .value = Kuvatav nimi:
 condensed-addresses-label =
     .label = Aadressiraamatus olevate kontaktide puhul näidatakse ainult kuvatavat nime
     .accesskey = k
-
-## Compose Tab
-
 forward-label =
     .value = Kirjad edastatakse:
     .accesskey = K
@@ -401,17 +350,10 @@ as-attachment-label =
 extension-label =
     .label = failinimele lisatakse laiend
     .accesskey = f
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Salvestatakse automaatselt iga
     .accesskey = o
 auto-save-end = minuti järel
-
-##
-
 warn-on-send-accel-key =
     .label = Küsitakse kinnitust, kui kiri saadetakse klahvide kiirkombinatsiooni abil
     .accesskey = t
@@ -502,9 +444,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Leia veel teenusepakkujaid…
 cloud-account-description = Lisa uus pilveteenus
-
-## Privacy Tab
-
 mail-content = E-posti sisu
 remote-content-label =
     .label = Kirjades lubatakse väline sisu
@@ -530,25 +469,9 @@ third-party-never =
     .label = mitte kunagi
 third-party-visited =
     .label = varem külastatud saitidelt
-keep-label =
-    .value = Säilitatakse kuni:
-    .accesskey = l
-keep-expire =
-    .label = nad aeguvad
-keep-close =
-    .label = { -brand-short-name } suletakse
-keep-ask =
-    .label = küsitakse iga kord
 cookies-button =
     .label = Näita küpsiseid…
     .accesskey = S
-do-not-track-label =
-    .label = Saitidele saadetakse signaal, et sa ei soovi olla jälitatud
-    .accesskey = s
-learn-button =
-    .label = Rohkem teavet
-dnt-learn-more-button =
-    .value = Rohkem teavet
 passwords-description = { -brand-short-name } võib paroolide infot meeles pidada, et sa ei peaks logimisel neid uuesti sisestama.
 passwords-button =
     .label = Salvestatud paroolid…
@@ -563,18 +486,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Sa oled FIPS-režiimis. See eeldab, et sinu ülemparool ei oleks tühi.
 forms-master-pw-fips-desc = Parooli muutmine ebaõnnestus
 junk-description = Määra oma vaikimisi rämpsposti sätted. Kontopõhiseid rämpsposti sätteid saab häälestada konto sätetes.
-junk-label =
-    .label = Kui kirjad märgitakse rämpspostiks:
-    .accesskey = K
 junk-move-label =
     .label = liigutatakse nad konto "Rämpspost" kausta
     .accesskey = l
 junk-delete-label =
     .label = need kustutatakse
     .accesskey = t
-junk-read-label =
-    .label = Rämpspostiks määratud kirjad märgitakse loetuks
-    .accesskey = k
 junk-log-label =
     .label = Kohastuva rämpsposti filtri logimine lubatakse
     .accesskey = f
@@ -608,9 +525,6 @@ certificate-button =
 security-devices-button =
     .label = Turvaseadmed…
     .accesskey = T
-
-## Chat Tab
-
 startup-label =
     .value = { -brand-short-name }i käivitumisel:
     .accesskey = k
@@ -618,20 +532,10 @@ offline-label =
     .label = jäetakse kiirsuhtluse kontod ühendamata
 auto-connect-label =
     .label = ühendatakse kiirsuhtluse kontod automaatselt
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Kontaktidele antakse jõudeolekust teada
     .accesskey = o
 idle-time-label = minuti möödumisel
-
-##
-
 away-message-label =
     .label = ning eemaloleku teateks määratakse:
     .accesskey = n
@@ -693,28 +597,13 @@ no-preview-description = See teema pole korrektne või pole praegu saadaval (kee
 chat-variant-label =
     .value = Variant:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Otsi sätetest
-
-## Settings UI Search Results
-
 search-results-header = Otsingutulemused
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Vabandust! Sätete seast ei leitud vastet otsingule “<span data-l10n-name="query"></span>”.
        *[other] Vabandust! Sätete seast ei leitud vastet otsingule “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Vajad abi? Külasta lehte <a data-l10n-name="url">{ -brand-short-name }i abi</a>
-
-## Sync Tab
-

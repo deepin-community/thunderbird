@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Croeso i <span data-l10n-name="brand-name">{ -brand-full-name }</span>
 account-hub-title = Canolfan Cyfrifon
-
-## Footer
-
 account-hub-release-notes = Nodiadau ryddhau
 account-hub-support = Cefnogaeth
 account-hub-donate = Cyfrannu
-
-## Initial setup page
-
 account-hub-email-setup-button = Cyfrif E-bost
     .title = Creu cyfrif e-bost
 account-hub-calendar-setup-button = Calendr
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Grŵp Newyddion
     .title = Creu cyfrif grŵp newyddion
 account-hub-import-setup-button = Mewnforio
     .title = Mewnforio proffil wrth gefn
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Mewngofnodi i Sync…
-
-## Email page
-
-account-hub-email-title = Creu cyfrif e-bost
 account-hub-add-email-title = Ychwanegu Eich Cyfrif
 account-hub-manually-configure-email-title = Gosod Ffurfweddu Cyfrif
 account-hub-email-cancel-button = Diddymu
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Gorffen
 account-hub-email-manually-configure-button = Ffurfweddu â Llaw
 account-hub-email-continue-button = Parhau
 account-hub-email-confirm-button = Cadarnhau
-account-hub-incoming-server-legend = Gweinydd derbyn
-account-hub-outgoing-server-legend = Gweinydd anfon
+account-hub-result-incoming-server-legend = Gweinydd derbyn
+    .title = Gweinydd derbyn
+account-hub-result-outgoing-server-legend = Gweinydd anfon
+    .title = Gweinydd anfon
 account-hub-protocol-label = Protocol
-account-hub-hostname-label = Enw Gwesteiwr
+account-hub-result-hostname-label = Enw Gwesteiwr
+    .title = Enw Gwesteiwr
+account-hub-result-authentication-label = Dilysu
+    .title = Dilysu
 account-hub-port-label = Porth
     .title = Gosodwch rif y porth i 0 ar gyfer awtoganfod
 account-hub-auto-description = Bydd { -brand-short-name } yn ceisio awtoganfod meysydd sy'n cael eu gadael yn wag.
 account-hub-ssl-label = Diogelwch cysylltiad
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Awtoganfod
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = Cyfrinair arferol
 account-hub-ssl-encrypted-password-option =
     .label = Cyfrinair wedi'i amgryptio
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Dim
 account-hub-auth-no-authentication-option =
     .label = Dim Dilysu
 account-hub-auth-label = Dull dilysu
-account-hub-username-label = Enw Defnyddiwr
+account-hub-result-username-label = Enw Defnyddiwr
+    .title = Enw Defnyddiwr
 account-hub-name-label = Enw llawn
     .accesskey = E
 account-hub-adding-account-title = Ychwanegu Cyfrif
@@ -97,3 +75,32 @@ account-hub-email-enter-password = Rhowch gyfrinair eich cyfrif e-bost
 account-hub-email-sync-accounts = Cydweddwch eich calendrau a llyfrau cyfeiriadau
 account-hub-test-configuration = Profi
 account-hub-add-new-email = Ychwanegu e-bost arall
+account-hub-result-imap-description = Cadwch eich ffolderi a'ch e-byst wedi'u cydweddu ar eich gweinydd
+account-hub-result-pop-description = Cadwch eich ffolderi a'ch e-byst ar eich cyfrifiadur
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Defnyddiwch Microsoft Exchange Web Services i gydweddu'ch ffolderi a'ch e-byst
+account-hub-result-ews-text = Gweinydd
+account-hub-result-recommended-label = Cymeradwy
+account-hub-edit-configuration = Golygu ffurfweddiad
+account-hub-config-success = Canfuwyd y ffurfweddiad yn Mozilla ISPDB
+account-hub-password-info = Bydd eich manylion yn cael eu cadw'n lleol dim ond ar eich cyfrifiadur chi
+account-hub-sync-success = Mae Thunderbird wedi canfod rhai gwasanaethau cysylltiedig
+account-hub-sync-failure = Nid oedd Thunderbird yn gallu dod o hyd i wasanaethau cysylltu
+account-hub-unable-to-sync-accounts = Nid oedd Thunderbird yn gallu cysylltu'r gwasanaethau a ddewiswyd
+account-hub-email-added-success = Cyfrif e-bost wedi'i gysylltu'n llwyddiannus
+account-hub-config-test-success = Mae'r gosodiadau ffurfweddiad yn ddilys
+account-hub-select-all = Dewis y cyfan
+account-hub-deselect-all = Dad-ddewis y cyfan
+account-hub-sync-accounts-selected =
+    { $count ->
+        [zero] Mae { $count } wedi'u dewis
+        [one] Mae { $count } wedi'i ddewis
+        [two] Mae { $count } wedi'u dewis
+        [few] Mae { $count } wedi'u dewis
+        [many] Mae { $count } wedi'u dewis
+       *[other] Mae { $count } wedi'u dewis
+    }
+account-hub-no-address-books = Heb ganfod llyfrau cyfeiriadau
+account-hub-no-calendars = Heb ganfod calendrau
+account-hub-email-added-success-links-title = Edrychwch ar y dewisiadau diogelwch a phersonoli:
+account-hub-signature-link = Llofnod e-bost

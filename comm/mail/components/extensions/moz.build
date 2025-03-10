@@ -9,9 +9,12 @@ EXTRA_COMPONENTS += [
 EXTRA_JS_MODULES += [
     "ExtensionAccounts.sys.mjs",
     "ExtensionBrowsingData.sys.mjs",
+    "ExtensionMailTabs.sys.mjs",
     "ExtensionMessages.sys.mjs",
     "ExtensionPopups.sys.mjs",
+    "ExtensionSpaces.sys.mjs",
     "ExtensionToolbarButtons.sys.mjs",
+    "ExtensionUtilities.sys.mjs",
     "MailExtensionShortcuts.sys.mjs",
 ]
 

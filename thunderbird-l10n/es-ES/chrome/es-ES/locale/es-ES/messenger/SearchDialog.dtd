@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY searchHeading.label "Buscar mensajes en:">
 <!ENTITY searchHeading.accesskey "B">
 <!ENTITY searchSubfolders.label "Buscar subcarpetas">
@@ -23,7 +19,6 @@
 <!ENTITY openInFolder.accesskey "i">
 <!ENTITY saveAsVFButton.label "Guardar como carpeta de búsqueda">
 <!ENTITY saveAsVFButton.accesskey "G">
-
 <!ENTITY abSearchHeading.label "Buscar en:">
 <!ENTITY abSearchHeading.accesskey "n">
 <!ENTITY propertiesButton.label "Propiedades">

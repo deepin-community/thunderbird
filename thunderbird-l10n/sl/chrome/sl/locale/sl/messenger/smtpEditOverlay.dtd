@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY settings.caption "Nastavitve">
 <!ENTITY security.caption "Varnost in overitev">
 <!ENTITY serverName.label "Ime strežnika:">
@@ -15,7 +11,6 @@
 <!ENTITY connectionSecurity.label "Varnost povezave:">
 <!ENTITY connectionSecurity.accesskey "a">
 <!ENTITY connectionSecurityType-0.label "Brez">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, če je na voljo">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY smtpEditTitle.label "Strežnik SMTP">

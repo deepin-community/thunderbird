@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Číst a upravovat záložky
 webext-perms-description-browserSettings = Číst a upravovat nastavení prohlížeče
 webext-perms-description-browsingData = Mazat nedávnou historii prohlížení, cookies a související data
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Přistupovat k nedávno zavřeným panelům
 webext-perms-description-tabs = Přistupovat k panelům prohlížeče
 webext-perms-description-tabHide = Skrývat a zobrazovat panely prohlížeče
 webext-perms-description-topSites = Přistupovat k historii prohlížení
+webext-perms-description-trialML = Stahovat a spouštět modely AI na zařízení
+webext-perms-description-userScripts = Povolit neověřeným skriptům třetích stran přístup k vašim údajům
 webext-perms-description-webNavigation = Přistupovat k aktivitám prohlížeče během prohlížení
+webext-perms-extra-warning-userScripts-long = Neověřené skripty mohou představovat bezpečnostní riziko a riziko pro soukromí, např. spouštění škodlivého kódu nebo sledování aktivity na webových stránkách. Spouštějte skripty pouze z rozšíření nebo zdrojů, kterým důvěřujete.
+webext-perms-extra-warning-userScripts-short = Neověřené skripty mohou představovat bezpečnostní rizika a rizika pro soukromí. Spouštějte skripty pouze z rozšíření nebo zdrojů, kterým důvěřujete.

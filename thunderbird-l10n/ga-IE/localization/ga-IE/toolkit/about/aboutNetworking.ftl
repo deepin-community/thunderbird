@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Maidir le Líonrú
 about-networking-http = HTTP
 about-networking-sockets = Soicéid
@@ -40,9 +36,3 @@ about-networking-rcwn-perf-read = Leámh
 about-networking-rcwn-perf-write = Scríobh
 about-networking-rcwn-cache-slow = Líon amas mall ón taisce
 about-networking-rcwn-cache-not-slow = Líon amas nach mall ón taisce
-
-## Link is intended as "network link"
-
-
-##
-

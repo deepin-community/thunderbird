@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Tallunt tafallaẓt
 search-bar-label = Nadi
 toolbar-write-message-label = Aru
@@ -150,9 +143,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Kter
 toolbar-import-contacts =
     .title = Kter inermisen seg ufaylu
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Rnu amedlis n tensa adigan
 toolbar-new-address-book-popup-add-carddav-address-book =

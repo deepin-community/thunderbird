@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, you can obtain one at http://mozilla.org/MPL/2.0/.
-
 carddav-window-title = Új CardDAV-címjegyzék
 carddav-dialog =
     .buttonlabelaccept = Folytatás
@@ -15,8 +11,6 @@ carddav-location-label =
 carddav-location =
     .default-placeholder = A címjegyék-kiszolgáló webcíme vagy gépneve
 carddav-loading = Konfiguráció felolvasása…
-# Variables:
-# $url (String) - CardDAV endpoint hostname. For example "example.com".
 carddav-known-incompatible = A(z) { $url } nem kompatibilis a { -brand-short-name }del.
 carddav-connection-error = A kapcsolódás sikertelen.
 carddav-none-found = A megadott fiókhoz nem található címjegyzék.

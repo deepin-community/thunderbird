@@ -1,3 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+verify-window-title = Verifikasi Identitas
+verify-window-subject-title = Verifikasi Identitas { $subject }
+verify-dialog =
+    .buttonlabelaccept = Mereka Cocok
+    .buttonaccesskeyaccept = M
+    .buttonlabelextra2 = Mereka tidak cocok
+    .buttonaccesskeyextra2 = d
+challenge-label = Pastikan string yang ditampilkan cocok dengan tampilan di ujung lainnya.

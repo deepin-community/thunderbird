@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = حقوقك
 rights-intro = { -brand-full-name } برنامج حرّ مفتوح المصدر، اشترك في بنائه الآلاف من أنحاء العالم. هناك بضعة أمور ينبغي أن تعلمها:
 rights-intro-point-1 = يُتاح لك { -brand-short-name } وفق بنود <a data-l10n-name="mozilla-public-license-link">رخصة Mozilla العامة</a>. يعني هذا أنك تستطيع استخدام { -brand-short-name } ونسخه وتوزيعه إلى الآخرين.  تستطيع أيضًا تعديل كود { -brand-short-name } المصدري كما تشاء لموافقة احتياجاتك. كما تعطيك رخصة موزيلا العامة الحق في توزيع نسخك المعدلة.

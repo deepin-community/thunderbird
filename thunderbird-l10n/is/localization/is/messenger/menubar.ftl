@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Valmyndaslá
     .accesskey = m
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Stillingar
     .accesskey = i
 menu-addons-and-themes =
     .label = Viðbætur og þemu
     .accesskey = V
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Útflutningur fyrir farsíma…
+    .accesskey = F
 menu-help-help-title =
     .label = Hjálp
     .accesskey = H
 menu-help-get-help =
     .label = Fá aðstoð
     .accesskey = a
-menu-help-explore-features =
-    .label = Kannaðu eiginleika
-    .accesskey = e
 menu-help-get-release-help =
     .label = Fáðu aðstoð með { -brand-short-name }
     .accesskey = F
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Um { -brand-short-name }
     .accesskey = m
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] h
            *[other] q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Hætta í { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Hætta í { -brand-full-name }
            *[other] Hætta í { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Ruslpóstur
     .tooltiptext = Merkja valin skilaboð sem ruslpóst
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Afturkalla eyðingu
     .tooltiptext = Afturkalla eyðingu á völdum skilaboðum
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Gera við textakóðun
     .accesskey = x
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Fyrirsögn möppuspjalds
     .accesskey = F
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Fyrirsögn skilaboðalista
     .accesskey = g
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Svæða-verkfærastika
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = Tölvupóstreikningur…
     .accesskey = p

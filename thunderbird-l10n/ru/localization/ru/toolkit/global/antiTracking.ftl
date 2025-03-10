@@ -1,3 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+btp-warning-tracker-classified =
+    { $gracePeriodSeconds ->
+        [one] «{ $siteHost }» был классифицирован как трекер отказов. Если он не получит активацию пользователя в течение следующей { $gracePeriodSeconds } секунды, его состояние будет очищено.
+        [few] «{ $siteHost }» был классифицирован как трекер отказов. Если он не получит активацию пользователя в течение следующих { $gracePeriodSeconds } секунд, его состояние будет очищено.
+       *[many] «{ $siteHost }» был классифицирован как трекер отказов. Если он не получит активацию пользователя в течение следующих { $gracePeriodSeconds } секунд, его состояние будет очищено.
+    }
+btp-warning-tracker-purged = Состояние «{ $siteHost }» недавно было очищено, так как он был обнаружен как трекер отказов.

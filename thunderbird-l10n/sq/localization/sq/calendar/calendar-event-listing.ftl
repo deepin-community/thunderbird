@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Mbyllni kërkim veprimtarish dhe listë veprimtarish
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Emër Kalendari
     .tooltiptext = Renditini sipas emrash kalendari
 calendar-event-listing-column-category =
     .label = Kategori
     .tooltiptext = Renditini sipas kategorish
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = E kryer
     .tooltiptext = Renditini sipas plotësimesh
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Titull
     .tooltiptext = Renditini sipas titujsh
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Veprimtari në të Kaluarën
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Veprimtari në 6 Muajt e Ardhshëm
 calendar-event-listing-interval-next-12-months =
     .label = Veprimtari në 12 Muajt e Ardhshëm
+calendar-event-listing-interval-future =
+    .label = Krejt Veprimtaritë e Ardhshme
 calendar-event-listing-interval-all =
     .label = Krejt Veprimtaritë
 calendar-event-listing-interval-selected-day =

@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = პირადი OpenPGP-გასაღების დამატება { $identity }-ისთვის
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = გამოიყენეთ გარეშე გასაღები GnuPG-ით (მაგ. სმარტბარათიდან)
     .accesskey = ყ
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP-გასაღების შედგენა
 openpgp-keygen-secret-protection = საიდუმლო გასაღების უსაფრთხოება
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = თქვენი გასაღების ვ
 openpgp-keygen-ongoing = გასაღების შედგენა უკვე მიმდინარეობს!
 openpgp-keygen-error-core = ვერ ეშვება OpenPGP-ის ძირითადი მომსახურება
 openpgp-keygen-error-failed = OpenPGP-გასაღების შედგენა მოულოდნელად შეწყდა
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP-გასაღები შეიქმნა წარმატებით, მაგრამ ვერ გაუქმდა გასაღები { $key }
 openpgp-keygen-abort-title = შეწყდეს გასაღების შედგენა?
 openpgp-keygen-abort = OpenPGP-გასაღების შედგენა მიმდინარეობს, ნამდვილად გსურთ გაუქმება?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = გსურთ შედგენა საჯარო და საიდუმლო გასაღების ანგარიშისთვის { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = გადმოიტანეთ არსებული პირადი OpenPGP-გასაღები
 openpgp-import-key-legend = აირჩიეთ ადრე დამარქაფებული ფაილი.
 openpgp-import-key-description = შეგიძლიათ გადმოიტანოთ პირადი გასაღებები, რომლებიც სხვა OpenPGP-პროგრამითაა შექმნილი.
 openpgp-import-key-info = სხვა პროგრამაში პირად გასაღებს განსხვავებულად შეიძლება ერქვას, კუთვნილი გასაღები, საიდუმლო გასაღები, კერძო გასაღები ან გასაღების წყვილი.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } მოახერხებს ერთი გასაღების გადმოტანას.
@@ -111,20 +97,15 @@ import-key-personal-checkbox =
     .label = გასაღების პირად გასაღებად განსაზღვრა
 gnupg-file = GnuPG-ფაილები
 import-error-file-size = <b>შეცდომა!</b> 5MB-ზე დიდი ფაილები არაა მხარდაჭერილი.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>შეცდომა!</b> ვერ მოხერხდა ფაილის შემოტანა. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>შეცდომა!</b> ვერ მოხერხდა გასაღებების შემოტანა. { $error }
-openpgp-import-identity-label = მოწმობა
+openpgp-import-identity-label = ვინაობა
 openpgp-import-fingerprint-label = ანაბეჭდი
 openpgp-import-created-label = შექმნილი
 openpgp-import-bits-label = ბიტი
 openpgp-import-key-props =
     .label = გასაღების თვისებები
     .accesskey = ღ
-
-## External Key section
-
 openpgp-external-key-title = გარე GnuPG-გასაღები
 openpgp-external-key-description = გარე GnuPG-გასაღების გამართვა, გასაღების ID-ის მითითებით
 openpgp-external-key-info = გარდა ამისა, უნდა გამოიყენოთ გასაღების მმართველი, შესაბამისი საჯარო გასაღების შემოტანისა და დაშვებისთვის.

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Synchronizácia
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Odhlásiť sa…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nový účet
 appmenu-new-account-panel =
     .label = Nový účet
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Založiť nový e‑mail
-    .accesskey = Z
-appmenu-new-mail-account =
-    .label = Existujúci e‑mail
-    .accesskey = E
 appmenu-new-email-account =
     .label = E‑mail
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Diskusná skupina
     .accesskey = D
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nový adresár
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Adresár LDAP
     .accesskey = d
-
-## Create
-
 appmenu-create-panel-title =
     .title = Vytvoriť
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Otvoriť zo súboru
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalendár…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Zobraziť
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Zväčšiť veľkosť písma
 appmenuitem-font-size-reduce =
     .tooltiptext = Zmenšiť veľkosť písma
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Obnoviť veľkosť písma
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Nástroje
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Exportovať
     .accesskey = x
+appmenu-export-for-mobile =
+    .label = Exportovať pre mobilné zariadenie
+    .accesskey = m
 appmenu-tools-message-search =
     .label = Hľadať v správach
     .accesskey = H
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Vývojárske nástroje
     .accesskey = V
-
-## Help
-
 appmenu-help-panel-title =
     .title = Pomocník
 appmenu-help-get-help =
     .label = Získať pomoc
     .accesskey = Z
-appmenu-help-explore-features =
-    .label = Spoznajte funkcie
-    .accesskey = S
 appmenu-help-get-release-help =
     .label = Získať pomoc s { -brand-short-name(case: "ins") }
     .accesskey = m
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = O aplikácii { -brand-short-name }
     .accesskey = O
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Sťahuje sa aktualizácia { -brand-shorter-name(case: "gen") }
 appmenuitem-banner-update-available =

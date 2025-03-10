@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL ਵਰਗੀਕਰਤਾ ਜਾਣਕਾਰੀ
 url-classifier-search-title = ਖੋਜੋ
 url-classifier-search-result-title = ਨਤੀਜੇ
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = ਸਾਰਣੀਆਂ ਦੀ ਸੂਚੀ: { $list }
 url-classifier-search-input = URL
 url-classifier-search-error-invalid-url = ਗਲਤ URL
@@ -53,9 +45,5 @@ url-classifier-disabled = ਅਸਮਰੱਥ ਹੈ
 url-classifier-updating = ਅੱਪਡੇਟ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ
 url-classifier-cannot-update = ਅੱਪਡੇਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ
 url-classifier-success = ਕਾਮਯਾਬ
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = ਅੱਪਡੇਟ ਗਲਤੀ ({ $error })
 url-classifier-download-error = ਡਾਊਨਲੋਡ ਗਲਤੀ ({ $error })

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = A-zivout ho kwirioù
 rights-intro = { -brand-full-name } zo ur meziant digoust ha digor e darzh, savet gant miliadoù a dud dre ar bed a-bezh. Gwell eo deoc'h gouzout un toulladig traoù :
 rights-intro-point-1 = Reiñ a reer tro deoc'h d'ober gant { -brand-short-name } dindan an termenoù eus <a data-l10n-name="mozilla-public-license-link">Lañvaz Foran Mozilla</a>. An dra-mañ a dalv e c'hallit arverañ, eilañ ha skignañ { -brand-short-name } da dud all. Aotreet oc'h da zaskemmañ boneg tarzh { -brand-short-name } diouzh hoc'h ezhommoù. Aotreet oc'h, gant Lañvaz Foran Mozilla, da zasparzhañ ho handelvoù daskemmet.

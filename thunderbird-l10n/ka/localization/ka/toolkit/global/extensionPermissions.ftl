@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = სანიშნების ნახვა და შეცვლა
 webext-perms-description-browserSettings = ბრაუზერის პარამეტრების ნახვა და შეცვლა
 webext-perms-description-browsingData = ბოლოს შენახული ისტორიის, ფუნთუშებისა და მასთან დაკავშირებული მონაცემების წაშლა
@@ -30,4 +21,8 @@ webext-perms-description-sessions = ბოლოს დახურულ ჩა
 webext-perms-description-tabs = ბრაუზერის ჩანართებთან წვდომა
 webext-perms-description-tabHide = ბრაუზერის ჩანართების დამალვა და გამოჩენა
 webext-perms-description-topSites = მონახულებული გვერდების ისტორიასთან წვდომა
+webext-perms-description-trialML = ხელოვნური ინტელექტის მოდელების მოწყობილობაზე ჩამოტვირთვა და გაშვება
+webext-perms-description-userScripts = დაუმოწმებელი გარეშე მხარის სკრიპტებისთვის თქვენს მონაცემებთან წვდომის ნებართვა
 webext-perms-description-webNavigation = გვერდებზე გადაადგილებისას ბრაუზერის მოქმედებებთან წვდომა
+webext-perms-extra-warning-userScripts-long = გადაუმოწმებელ სკრიპტებს შეუძლია საფრთხე შეუქმნას უსაფრთხოებასა და პირადულობას, სახიფათო კოდის გაშვებით ან ვებსაიტზე მოქმედებების თვალის დევნებით. სკრიპტების გაშვების ნება დართეთ მხოლოდ იმ გაფართოებებსა თუ წყაროებს, რომელთაც ენდობით.
+webext-perms-extra-warning-userScripts-short = გადაუმოწმებელ სკრიპტებს შეუძლია საფრთხე შეუქმნას უსაფრთხოებასა და პირადულობას. სკრიპტების გაშვების ნება დართეთ მხოლოდ იმ გაფართოებებსა თუ წყაროებს, რომელთაც ენდობით.

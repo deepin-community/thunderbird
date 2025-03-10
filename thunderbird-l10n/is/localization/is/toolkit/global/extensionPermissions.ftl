@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Skoða og breyta bókamerkjum
 webext-perms-description-browserSettings = Lesa og breyta vafrastillingum
 webext-perms-description-browsingData = Hreinsa nýlegan vafurferil, vefkökur og tengd gögn
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Skoða nýjustu flipa sem var lokað
 webext-perms-description-tabs = Skoða vafraflipa
 webext-perms-description-tabHide = Fela og sýna flipa
 webext-perms-description-topSites = Fá aðgang að vafraferli
+webext-perms-description-trialML = Sæktu og keyrðu gervigreindarlíkön á tækinu þínu
+webext-perms-description-userScripts = Leyfa óstaðfestum skriftum frá utanaðkomandi aðilum að fá aðgang að gögnunum þínum
 webext-perms-description-webNavigation = Skoða vafranotkun við að fara um
+webext-perms-extra-warning-userScripts-long = Óstaðfestar skriftur geta valdið öryggis- og persónuverndaráhættu, svo sem það að keyra skaðlegan kóða eða rekja virkni vefsvæðis. Keyrðu aðeins skriftur frá viðbótum eða uppruna sem þú treystir.
+webext-perms-extra-warning-userScripts-short = Óstaðfestar skriftur geta valdið öryggis- og persónuverndaráhættu. Keyrðu aðeins skriftur frá viðbótum eða uppruna sem þú treystir.

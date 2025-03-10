@@ -1,26 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Main toolbar buttons (tooltips and alt text for images)
-
 pdfjs-previous-button =
     .title = Aurreko orria
 pdfjs-previous-button-label = Aurrekoa
 pdfjs-next-button =
     .title = Hurrengo orria
 pdfjs-next-button-label = Hurrengoa
-# .title: Tooltip for the pageNumber input.
 pdfjs-page-input =
     .title = Orria
-# Variables:
-#   $pagesCount (Number) - the total number of pages in the document
-# This string follows an input field with the number of the page currently displayed.
 pdfjs-of-pages = / { $pagesCount }
-# Variables:
-#   $pageNumber (Number) - the currently visible page
-#   $pagesCount (Number) - the total number of pages in the document
 pdfjs-page-of-pages = { $pagesCount }/{ $pageNumber }
 pdfjs-zoom-out-button =
     .title = Urrundu zooma
@@ -42,24 +28,12 @@ pdfjs-print-button-label = Inprimatu
 pdfjs-save-button =
     .title = Gorde
 pdfjs-save-button-label = Gorde
-# Used in Firefox for Android as a tooltip for the download button (“download” is a verb).
 pdfjs-download-button =
     .title = Deskargatu
-# Used in Firefox for Android as a label for the download button (“download” is a verb).
-# Length of the translation matters since we are in a mobile context, with limited screen estate.
 pdfjs-download-button-label = Deskargatu
 pdfjs-bookmark-button =
     .title = Uneko orria (ikusi uneko orriaren URLa)
 pdfjs-bookmark-button-label = Uneko orria
-# Used in Firefox for Android.
-pdfjs-open-in-app-button =
-    .title = Ireki aplikazioan
-# Used in Firefox for Android.
-# Length of the translation matters since we are in a mobile context, with limited screen estate.
-pdfjs-open-in-app-button-label = Ireki aplikazioan
-
-##  Secondary toolbar and context menu
-
 pdfjs-tools-button =
     .title = Tresnak
 pdfjs-tools-button-label = Tresnak
@@ -102,32 +76,20 @@ pdfjs-spread-odd-button-label = Barreiatze bakoitia
 pdfjs-spread-even-button =
     .title = Elkartu barreiatutako orriak bikoiti zenbakidunekin hasita
 pdfjs-spread-even-button-label = Barreiatze bikoitia
-
-## Document properties dialog
-
 pdfjs-document-properties-button =
     .title = Dokumentuaren propietateak…
 pdfjs-document-properties-button-label = Dokumentuaren propietateak…
 pdfjs-document-properties-file-name = Fitxategi-izena:
 pdfjs-document-properties-file-size = Fitxategiaren tamaina:
-# Variables:
-#   $size_kb (Number) - the PDF file size in kilobytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-kb = { $size_kb } KB ({ $size_b } byte)
-# Variables:
-#   $size_mb (Number) - the PDF file size in megabytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-mb = { $size_mb } MB ({ $size_b } byte)
+pdfjs-document-properties-size-kb = { NUMBER($kb, maximumSignificantDigits: 3) } KB ({ $b } byte)
+pdfjs-document-properties-size-mb = { NUMBER($mb, maximumSignificantDigits: 3) } MB ({ $b } byte)
 pdfjs-document-properties-title = Izenburua:
 pdfjs-document-properties-author = Egilea:
 pdfjs-document-properties-subject = Gaia:
 pdfjs-document-properties-keywords = Gako-hitzak:
 pdfjs-document-properties-creation-date = Sortze-data:
 pdfjs-document-properties-modification-date = Aldatze-data:
-# Variables:
-#   $date (Date) - the creation/modification date of the PDF file
-#   $time (Time) - the creation/modification time of the PDF file
-pdfjs-document-properties-date-string = { $date }, { $time }
+pdfjs-document-properties-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
 pdfjs-document-properties-creator = Sortzailea:
 pdfjs-document-properties-producer = PDFaren ekoizlea:
 pdfjs-document-properties-version = PDF bertsioa:
@@ -141,38 +103,17 @@ pdfjs-document-properties-page-size-name-a-three = A3
 pdfjs-document-properties-page-size-name-a-four = A4
 pdfjs-document-properties-page-size-name-letter = Gutuna
 pdfjs-document-properties-page-size-name-legal = Legala
-
-## Variables:
-##   $width (Number) - the width of the (current) page
-##   $height (Number) - the height of the (current) page
-##   $unit (String) - the unit of measurement of the (current) page
-##   $name (String) - the name of the (current) page
-##   $orientation (String) - the orientation of the (current) page
-
 pdfjs-document-properties-page-size-dimension-string = { $width } × { $height } { $unit } ({ $orientation })
 pdfjs-document-properties-page-size-dimension-name-string = { $width } × { $height } { $unit } ({ $name }, { $orientation })
-
-##
-
-# The linearization status of the document; usually called "Fast Web View" in
-# English locales of Adobe software.
 pdfjs-document-properties-linearized = Webeko ikuspegi bizkorra:
 pdfjs-document-properties-linearized-yes = Bai
 pdfjs-document-properties-linearized-no = Ez
 pdfjs-document-properties-close-button = Itxi
-
-## Print
-
 pdfjs-print-progress-message = Dokumentua inprimatzeko prestatzen…
-# Variables:
-#   $progress (Number) - percent value
 pdfjs-print-progress-percent = %{ $progress }
 pdfjs-print-progress-close-button = Utzi
 pdfjs-printing-not-supported = Abisua: inprimatzeko euskarria ez da erabatekoa nabigatzaile honetan.
 pdfjs-printing-not-ready = Abisua: PDFa ez dago erabat kargatuta inprimatzeko.
-
-## Tooltips and alt text for side panel toolbar buttons
-
 pdfjs-toggle-sidebar-button =
     .title = Txandakatu alboko barra
 pdfjs-toggle-sidebar-notification-button =
@@ -197,20 +138,10 @@ pdfjs-findbar-button =
     .title = Bilatu dokumentuan
 pdfjs-findbar-button-label = Bilatu
 pdfjs-additional-layers = Geruza gehigarriak
-
-## Thumbnails panel item (tooltip and alt text for images)
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-title =
     .title = { $page }. orria
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-canvas =
     .aria-label = { $page }. orriaren koadro txikia
-
-## Find panel button title and messages
-
 pdfjs-find-input =
     .title = Bilatu
     .placeholder = Bilatu dokumentuan…
@@ -226,72 +157,37 @@ pdfjs-find-match-diacritics-checkbox-label = Bereizi diakritikoak
 pdfjs-find-entire-word-checkbox-label = Hitz osoak
 pdfjs-find-reached-top = Dokumentuaren hasierara heldu da, bukaeratik jarraitzen
 pdfjs-find-reached-bottom = Dokumentuaren bukaerara heldu da, hasieratik jarraitzen
-# Variables:
-#   $current (Number) - the index of the currently active find result
-#   $total (Number) - the total number of matches in the document
 pdfjs-find-match-count =
     { $total ->
         [one] { $total }/{ $current }. bat-etortzea
        *[other] { $total }/{ $current }. bat-etortzea
     }
-# Variables:
-#   $limit (Number) - the maximum number of matches
 pdfjs-find-match-count-limit =
     { $limit ->
         [one] Bat datorren { $limit } baino gehiago
        *[other] Bat datozen { $limit } baino gehiago
     }
 pdfjs-find-not-found = Esaldia ez da aurkitu
-
-## Predefined zoom values
-
 pdfjs-page-scale-width = Orriaren zabalera
 pdfjs-page-scale-fit = Doitu orrira
 pdfjs-page-scale-auto = Zoom automatikoa
 pdfjs-page-scale-actual = Benetako tamaina
-# Variables:
-#   $scale (Number) - percent value for page scale
 pdfjs-page-scale-percent = %{ $scale }
-
-## PDF page
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-page-landmark =
     .aria-label = { $page }. orria
-
-## Loading indicator messages
-
 pdfjs-loading-error = Errorea gertatu da PDFa kargatzean.
 pdfjs-invalid-file-error = PDF fitxategi baliogabe edo hondatua.
 pdfjs-missing-file-error = PDF fitxategia falta da.
 pdfjs-unexpected-response-error = Espero gabeko zerbitzariaren erantzuna.
 pdfjs-rendering-error = Errorea gertatu da orria errendatzean.
-
-## Annotations
-
-# Variables:
-#   $date (Date) - the modification date of the annotation
-#   $time (Time) - the modification time of the annotation
-pdfjs-annotation-date-string = { $date }, { $time }
-# .alt: This is used as a tooltip.
-# Variables:
-#   $type (String) - an annotation type from a list defined in the PDF spec
-# (32000-1:2008 Table 169 – Annotation types).
-# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+pdfjs-annotation-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
 pdfjs-text-annotation-type =
     .alt = [{ $type } ohartarazpena]
-
-## Password
-
 pdfjs-password-label = Idatzi PDF fitxategi hau irekitzeko pasahitza.
 pdfjs-password-invalid = Pasahitz baliogabea. Saiatu berriro mesedez.
 pdfjs-password-ok-button = Ados
 pdfjs-password-cancel-button = Utzi
 pdfjs-web-fonts-disabled = Webeko letra-tipoak desgaituta daude: ezin dira kapsulatutako PDF letra-tipoak erabili.
-
-## Editing
-
 pdfjs-editor-free-text-button =
     .title = Testua
 pdfjs-editor-free-text-button-label = Testua
@@ -304,15 +200,10 @@ pdfjs-editor-stamp-button-label = Gehitu edo editatu irudiak
 pdfjs-editor-highlight-button =
     .title = Nabarmendu
 pdfjs-editor-highlight-button-label = Nabarmendu
-pdfjs-highlight-floating-button =
-    .title = Nabarmendu
 pdfjs-highlight-floating-button1 =
     .title = Nabarmendu
     .aria-label = Nabarmendu
 pdfjs-highlight-floating-button-label = Nabarmendu
-
-## Remove button for the various kind of editor.
-
 pdfjs-editor-remove-ink-button =
     .title = Kendu marrazkia
 pdfjs-editor-remove-freetext-button =
@@ -321,10 +212,6 @@ pdfjs-editor-remove-stamp-button =
     .title = Kendu irudia
 pdfjs-editor-remove-highlight-button =
     .title = Kendu nabarmentzea
-
-##
-
-# Editor Parameters
 pdfjs-editor-free-text-color-input = Kolorea
 pdfjs-editor-free-text-size-input = Tamaina
 pdfjs-editor-ink-color-input = Kolorea
@@ -333,23 +220,21 @@ pdfjs-editor-ink-opacity-input = Opakutasuna
 pdfjs-editor-stamp-add-image-button =
     .title = Gehitu irudia
 pdfjs-editor-stamp-add-image-button-label = Gehitu irudia
-# This refers to the thickness of the line used for free highlighting (not bound to text)
 pdfjs-editor-free-highlight-thickness-input = Loditasuna
 pdfjs-editor-free-highlight-thickness-title =
     .title = Aldatu loditasuna testua ez beste elementuak nabarmentzean
-pdfjs-free-text =
+pdfjs-free-text2 =
     .aria-label = Testu-editorea
-pdfjs-free-text-default-content = Hasi idazten…
+    .default-content = Hasi idazten…
 pdfjs-ink =
     .aria-label = Marrazki-editorea
 pdfjs-ink-canvas =
     .aria-label = Erabiltzaileak sortutako irudia
-
-## Alt-text dialog
-
-# Alternative text (alt text) helps when people can't see the image.
+pdfjs-editor-alt-text-button =
+    .aria-label = Testu alternatiboa
 pdfjs-editor-alt-text-button-label = Testu alternatiboa
-pdfjs-editor-alt-text-edit-button-label = Editatu testu alternatiboa
+pdfjs-editor-alt-text-edit-button =
+    .aria-label = Editatu testu alternatiboa
 pdfjs-editor-alt-text-dialog-label = Aukeratu aukera
 pdfjs-editor-alt-text-dialog-description = Testu alternatiboak laguntzen du jendeak ezin duenean irudia ikusi edo ez denean kargatzen.
 pdfjs-editor-alt-text-add-description-label = Gehitu azalpena
@@ -359,25 +244,24 @@ pdfjs-editor-alt-text-mark-decorative-description = Irudiak apaingarrientzat era
 pdfjs-editor-alt-text-cancel-button = Utzi
 pdfjs-editor-alt-text-save-button = Gorde
 pdfjs-editor-alt-text-decorative-tooltip = Apaingarri gisa markatuta
-# .placeholder: This is a placeholder for the alt text input area
 pdfjs-editor-alt-text-textarea =
     .placeholder = Adibidez, "gizon gaztea mahaian eserita dago bazkaltzeko"
-
-## Editor resizers
-## This is used in an aria label to help to understand the role of the resizer.
-
-pdfjs-editor-resizer-label-top-left = Goiko ezkerreko izkina — aldatu tamaina
-pdfjs-editor-resizer-label-top-middle = Goian erdian — aldatu tamaina
-pdfjs-editor-resizer-label-top-right = Goiko eskuineko izkina — aldatu tamaina
-pdfjs-editor-resizer-label-middle-right = Erdian eskuinean — aldatu tamaina
-pdfjs-editor-resizer-label-bottom-right = Beheko eskuineko izkina — aldatu tamaina
-pdfjs-editor-resizer-label-bottom-middle = Behean erdian — aldatu tamaina
-pdfjs-editor-resizer-label-bottom-left = Beheko ezkerreko izkina — aldatu tamaina
-pdfjs-editor-resizer-label-middle-left = Erdian ezkerrean —  aldatu tamaina
-
-## Color picker
-
-# This means "Color used to highlight text"
+pdfjs-editor-resizer-top-left =
+    .aria-label = Goiko ezkerreko izkina — aldatu tamaina
+pdfjs-editor-resizer-top-middle =
+    .aria-label = Goian erdian — aldatu tamaina
+pdfjs-editor-resizer-top-right =
+    .aria-label = Goiko eskuineko izkina — aldatu tamaina
+pdfjs-editor-resizer-middle-right =
+    .aria-label = Erdian eskuinean — aldatu tamaina
+pdfjs-editor-resizer-bottom-right =
+    .aria-label = Beheko eskuineko izkina — aldatu tamaina
+pdfjs-editor-resizer-bottom-middle =
+    .aria-label = Behean erdian — aldatu tamaina
+pdfjs-editor-resizer-bottom-left =
+    .aria-label = Beheko ezkerreko izkina — aldatu tamaina
+pdfjs-editor-resizer-middle-left =
+    .aria-label = Erdian ezkerrean —  aldatu tamaina
 pdfjs-editor-highlight-colorpicker-label = Nabarmentze kolorea
 pdfjs-editor-colorpicker-button =
     .title = Aldatu kolorea
@@ -393,10 +277,61 @@ pdfjs-editor-colorpicker-pink =
     .title = Arrosa
 pdfjs-editor-colorpicker-red =
     .title = Gorria
-
-## Show all highlights
-## This is a toggle button to show/hide all the highlights.
-
 pdfjs-editor-highlight-show-all-button-label = Erakutsi denak
 pdfjs-editor-highlight-show-all-button =
     .title = Erakutsi denak
+pdfjs-editor-new-alt-text-dialog-edit-label = Editatu testu alternatiboa (irudiaren azalpena)
+pdfjs-editor-new-alt-text-dialog-add-label = Gehitu testu alternatiboa (irudiaren azalpena)
+pdfjs-editor-new-alt-text-textarea =
+    .placeholder = Idatzi zure azalpena hemen…
+pdfjs-editor-new-alt-text-description = Azalpen laburra irudia ikusi ezin duen jendearentzat edo irudia kargatu ezin denerako.
+pdfjs-editor-new-alt-text-disclaimer1 = Testu alternatibo hau automatikoki sortu da eta okerra izan liteke.
+pdfjs-editor-new-alt-text-disclaimer-learn-more-url = Argibide gehiago
+pdfjs-editor-new-alt-text-create-automatically-button-label = Sortu testu alternatiboa automatikoki
+pdfjs-editor-new-alt-text-not-now-button = Une honetan ez
+pdfjs-editor-new-alt-text-error-title = Ezin da testu alternatiboa automatikoki sortu
+pdfjs-editor-new-alt-text-error-description = Idatzi zure testu alternatibo propioa edo saiatu berriro geroago.
+pdfjs-editor-new-alt-text-error-close-button = Itxi
+pdfjs-editor-new-alt-text-ai-model-downloading-progress = Testu alternatiboaren AA modeloa deskargatzen ({ $totalSize }/{ $downloadedSize } MB)
+    .aria-valuetext = Testu alternatiboaren AA modeloa deskargatzen ({ $totalSize }/{ $downloadedSize } MB)
+pdfjs-editor-new-alt-text-added-button =
+    .aria-label = Testu alternatiboa gehituta
+pdfjs-editor-new-alt-text-added-button-label = Testu alternatiboa gehituta
+pdfjs-editor-new-alt-text-missing-button =
+    .aria-label = Testu alternatiboa falta da
+pdfjs-editor-new-alt-text-missing-button-label = Testu alternatiboa falta da
+pdfjs-editor-new-alt-text-to-review-button =
+    .aria-label = Berrikusi testu alternatiboa
+pdfjs-editor-new-alt-text-to-review-button-label = Berrikusi testu alternatiboa
+pdfjs-editor-new-alt-text-generated-alt-text-with-disclaimer = Automatikoki sortua: { $generatedAltText }
+pdfjs-image-alt-text-settings-button =
+    .title = Irudiaren testu alternatiboaren ezarpenak
+pdfjs-image-alt-text-settings-button-label = Irudiaren testu alternatiboaren ezarpenak
+pdfjs-editor-alt-text-settings-dialog-label = Irudiaren testu alternatiboaren ezarpenak
+pdfjs-editor-alt-text-settings-automatic-title = Testu alternatibo automatikoa
+pdfjs-editor-alt-text-settings-create-model-button-label = Sortu testu alternatiboa automatikoki
+pdfjs-editor-alt-text-settings-create-model-description = Azalpenak iradokitzen ditu irudia ikusi ezin duen jendearentzat edo irudia kargatu ezin denerako.
+pdfjs-editor-alt-text-settings-download-model-label = Testu alternatiboaren AA modeloa ({ $totalSize } MB)
+pdfjs-editor-alt-text-settings-ai-model-description = Zure gailuan modu lokalean exekutatzen da eta zure datuak pribatu mantentzen dira. Testu alternatibo automatikorako beharrezkoa.
+pdfjs-editor-alt-text-settings-delete-model-button = Ezabatu
+pdfjs-editor-alt-text-settings-download-model-button = Deskargatu
+pdfjs-editor-alt-text-settings-downloading-model-button = Deskargatzen…
+pdfjs-editor-alt-text-settings-editor-title = Testu alternatiboaren editorea
+pdfjs-editor-alt-text-settings-show-dialog-button-label = Erakutsi testu alternatiboa irudi bat gehitzean berehala
+pdfjs-editor-alt-text-settings-show-dialog-description = Zure irudiek testu alternatiboa duela ziurtatzen laguntzen dizu.
+pdfjs-editor-alt-text-settings-close-button = Itxi
+pdfjs-editor-undo-bar-message-highlight = Nabarmentzea kenduta
+pdfjs-editor-undo-bar-message-freetext = Testua kenduta
+pdfjs-editor-undo-bar-message-ink = Marrazkia kenduta
+pdfjs-editor-undo-bar-message-stamp = Irudia kenduta
+pdfjs-editor-undo-bar-message-multiple =
+    { $count ->
+        [one] Esku-ohar bat kenduta
+       *[other] { $count } esku-ohar kenduta
+    }
+pdfjs-editor-undo-bar-undo-button =
+    .title = Desegin
+pdfjs-editor-undo-bar-undo-button-label = Desegin
+pdfjs-editor-undo-bar-close-button =
+    .title = Itxi
+pdfjs-editor-undo-bar-close-button-label = Itxi

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Serrar
 preferences-doc-title2 = Parameters
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sync
+pane-qr-export-title = Exportar per in apparat mobil
+category-qr-export =
+    .tooltiptext = Exportar per in apparat mobil
 general-language-and-appearance-header = Lingua & apparientscha
 general-incoming-mail-header = E-mails che entran
 general-files-and-attachment-header = Datotecas & agiuntas
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Permetter a { -brand-short-name } da trametter datas tecnicas e datas d'interacziun a { -vendor-short-name }
     .accesskey = p
 collection-health-report-link = Ulteriuras infurmaziuns
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Rapports da datas èn deactivads per questa configuraziun da compilaziun
 collection-backlogged-crash-reports =
     .label = Permetter a { -brand-short-name } da trametter automaticamain rapports da collaps anc betg tramess
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Reaviar { -brand-short-name } per applitgar questas midadas
 confirm-messenger-language-change-button = Applitgar e reaviar
 update-setting-write-failure-title = Errur cun memorisar preferenzas per actualisaziuns
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } è fruntà sin in problem e n'ha betg memorisà questa midada. Igl è necessari da pudair scriver en la datoteca sutvart per pudair definir quest parameter dad actualisaziuns. Eventualmain pos ti u l'administratur dal sistem schliar il problem cun permetter a la gruppa d'utilisaders l'access cumplain a questa datoteca.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Actualisaziun en lavur
 update-in-progress-message = Vuls ti che { -brand-short-name } cuntinueschia cun questa actualisaziun?
 update-in-progress-ok-button = &Interrumper
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Cuntinuar
 account-button = Parameters dal conto
 open-addons-sidebar-button = Supplements e designs
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Per crear in pled-clav universal, endatescha tias datas d'annunzia per Windows. Quai gida a garantir la segirezza da tes contos.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = crear in pled-clav universal
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Agiuntar in purschider OpenSearch
 add-opensearch-provider-text = Endatescha l'URL dal purschider OpenSearch che duai vegnir agiuntà. Utilisescha l'URL direct da la datoteca da descripziun OpenSearch u in URL per al chattar automaticamain.
 adding-opensearch-provider-failed-title = Betg reussì dad agiuntar il purschider OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Impussibel dad agiuntar il purschider OpenSearch per { $url }.
 minimize-to-tray-label =
     .label = Sche { -brand-short-name } è minimà, al spustar en la trav da notificaziuns
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Tschertgar uss…
     .accesskey = u
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Confermas da retschavida…
     .accesskey = R
 update-app-legend = Actualisaziuns da { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versiun { $version }
 allow-description = Permetter a { -brand-short-name } da
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = a
 compact-folder-size =
     .value = MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = I vegn utilisada ina capacitad da memorisar da fin
     .accesskey = U
 use-cache-after = MB sco cache
-
-##
-
 smart-cache-label =
     .label = Betg utilisar la gestiun automatica dal cache
     .accesskey = g
@@ -304,7 +269,6 @@ color-options-button =
     .label = Colurs
     .accesskey = C
 display-width-legend = Messadis da text senza formataziun
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Mussar emoticons sco graficas
     .accesskey = e
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Mussar las agiuntas a l'intern
     .accesskey = M
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Suenter avair mussà durant
     .accesskey = t
 seconds-label = secundas
-
-##
-
 open-msg-label =
     .value = Avrir messadis en:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Serrar la fanestra da messadis/il tab sch'il messadi vegn spustà u stizzà
     .accesskey = S
-display-name-label =
-    .value = Num mussà:
 address-display-legend = Glista da messadis
 address-display-description = Format preferì per mussar adressas:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Mo mussar il 'Num per mussar' per persunas en mes cudeschet d'adressas
     .accesskey = M
-
-## Compose Tab
-
+table-layout-legend = Vista da tabella
+table-layout-horizontal-scroll-label =
+    .label = Permetter la defilada orizontala
+    .accesskey = o
+conversation-view-legend = Vista da conversaziun
+conversation-view-checkbox-label =
+    .label = Activar la vista da conversaziun
+    .accesskey = c
+conversation-view-checkbox-description = Funcziun experimentala che sa basa sin Gloda. Utilisaziun sin atgna ristga.
+label-experiment = Experimental
+account-hub-legend = Administraziun dals contos
+account-hub-checkbox-label =
+    .label = Crear contos en la nova administraziun da contos
+    .accesskey = C
+account-hub-checkbox-description = Nov process experimental per la creaziun da contos dad e-mail
 forward-label =
     .value = Trametter vinavant messadis:
     .accesskey = v
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = agiuntar la terminaziun al num da datoteca
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Memorisar automaticamain mintga
     .accesskey = A
 auto-save-end = minutas
-
-##
-
 warn-on-send-accel-key =
     .label = Confermar, sche las tastas da scursanida vegnan utilisadas per trametter in messadi
     .accesskey = C
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Chattar ulteriurs purschiders…
 cloud-account-description = Agiuntar in nov servetsch per memorisar datotecas
-
-## Privacy Tab
-
 mail-content = Cuntegn dad e-mail
 remote-content-label =
     .label = Lubir cuntegn extern en messadis
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Mussar ils cookies…
     .accesskey = o
-do-not-track-label =
-    .label = Trametter a websites il signal «Do Not Track» per inditgar che ti na vuls betg vegnir fastizà
-    .accesskey = D
-dnt-learn-more-button =
-    .value = Ulteriuras infurmaziuns
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Dir a websites da betg vender u cundivider mias datas
+    .accesskey = n
+do-not-track-removal = Nus na sustegnain betg pli il signal «Betg ma fastizar»
 passwords-description = { -brand-short-name } po tegnair endament ils pleds-clav da tut tes contos.
 passwords-button =
     .label = Pleds-clav memorisads…
@@ -571,7 +528,6 @@ primary-password-description = In pled-clav universal protegia tut tes pleds-cla
 primary-password-label =
     .label = Utilisar in pled-clav universal
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Pretender l’endataziun da las datas d’annunzia da l’apparat per laschar endatar automaticamain pleds-clav e per als administrar
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Ti es actualmain en il modus FIPS. FIPS pretenda in pled-clav universal (betg vid).
 forms-master-pw-fips-desc = I n'è betg reussì da midar il pled-clav
 junk-description = Las suandantas configuraziuns areguard e-mails nungiavischads valan per tut ils contos. En la configuraziun dals contos pon ins definir supplementarmain configuraziuns specificas per mintga conto.
-junk-label =
-    .label = Sche messadis vegnan marcads manualmain sco nungiavischads:
-    .accesskey = m
 junk-marked-label =
     .label = Sche messadis èn marcads sco nungiavischads:
     .accesskey = n
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Stizzar quests messadis
     .accesskey = D
-junk-read-label =
-    .label = Marcar ils messadis nungiavischads sco legids
-    .accesskey = l
 junk-read-description = Marcar ils messadis sco legids
 junk-read-manual-label =
     .label = Sch’els vegnan marcads manualmain sco nungiavischads
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Decisiuns automaticas vegnan ignoradas sch'il criptadi vegn activà u deactivà manualmain durant rediger in messadi.
     Avis: Il criptadi è adina activà automaticamain sch'i sa tracta dad ina resposta ad in messadi criptà.
-
-## Chat Tab
-
 startup-label =
     .value = Sche { -brand-short-name } aviescha:
     .accesskey = s
@@ -661,20 +608,10 @@ offline-label =
     .label = Restar offline cun mes contos
 auto-connect-label =
     .label = Connectar automaticamain mes contos da chat
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Laschar savair mes contacts ch'jau sun inactiv suenter
     .accesskey = I
 idle-time-label = minutas inactivitad
-
-##
-
 away-message-label =
     .label = e midar mes status sin 'Absent' cun quest messadi da status:
     .accesskey = A
@@ -736,41 +673,21 @@ no-preview-description = Quest design è nunvalid u actualmain indisponibel (sup
 chat-variant-label =
     .value = Varianta:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Chattar en ils parameters
-
-## Settings UI Search Results
-
 search-results-header = Resultats da tschertga
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Perstgisa! Impussibel da chattar «<span data-l10n-name="query"></span>» en ils parameters.
        *[other] Perstgisa! Impussibel da chattar «<span data-l10n-name="query"></span>» en ils parameters.
     }
 search-results-help-link = Dovras sustegn? Consultescha <a data-l10n-name="url">{ -brand-short-name }l'agid</a>
-
-## Sync Tab
-
 sync-signedout-caption = Prenda tes web cun tai
 sync-signedout-description = Sincronisescha tes contos, cudeschets d'adressas, chalenders, supplements e parameters cun tut tes apparats.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = S'annunziar per sincronisar…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = «{ $userEmail }» n'è betg verifitgà.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = T'annunzia per plaschair per reconnectar via «{ $userEmail }»
 sync-pane-resend-verification = Reenviar la verificaziun
 sync-pane-sign-in = S'annunziar
@@ -800,3 +717,49 @@ synced-acount-item-filters = Filters
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Sincronisescha tes contos dad e-mail, cudeschets d'adressas, chalenders e tias identitads sin tut tes apparats.
 sync-disconnected-turn-on-sync = Activar la sincronisaziun…
+qr-export-pane-header = Exportar ils contos en { -brand-product-name } Mobile
+qr-export-description = Transferescha sveltamain ils parameters da tes conto dal computer desktop sin l’apparat mobil cun generar in code QR. Tscherna tge contos includer, decida sche ti vuls transferir tes pled-clav e scannescha il code cun tes apparat mobil. Svelt, segir e simpel.
+qr-export-get-app = N’has ti anc betg { -brand-product-name } sin tes apparat mobil? <a data-l10n-name="app-link">Va per l’app en Google Play</a>
+qr-export-create = Creescha in code QR per exportar tes contos
+qr-export-select-accounts = Tscherna ils contos per exportar:
+qr-export-no-accounts = Na vesas ti betg tut tes contos? Tscherts contos èn eventualmain deactivads perquai ch’els na vegnan betg sustegnids da { -brand-product-name } per Android. <a data-l10n-name="account-support-link">Agid</a>
+qr-export-accounts-legend = Contos dad e-mail
+qr-export-select-all-accounts = Selecziunar tut
+qr-export-security-legend = Segirezza
+qr-export-include-passwords = Includer ils pleds-clav da tut ils contos
+qr-export-oauth-warning = Tscherts da tes contos utiliseschan ina metoda d’autentificaziun che pretenda eventualmain che ti t’autentifitgeschias danovamain sin tes apparat mobil. Ti stos probablamain endatar anc ina giada tes pleds-clav durant quest process.
+qr-export-security-hint = Cun scannar ils suandants codes QR vegnan tes parameters dal conto – inclus tia adressa dad e-mail ed il pled-clav – transferids a moda segira. Nus ni rimnain ni memorisain ni arcunain questas datas durant il process. Il transfer succeda directamain tranter tes apparats.
+qr-export-security-warning = Per tia segirezza, t’atschertescha che ti ta chattas en in conturn privat e scannescha mo codes QR da funtaunas fidadas.
+qr-export-start-export = Exportar
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } dad { $count } code QR
+       *[other] { $step } da { $count } codes QR
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Scannescha il code QR cun { -brand-product-name } sin tes apparat mobil
+       *[other] Scannescha ils codes QR cun { -brand-product-name } sin tes apparat mobil
+    }
+qr-export-scan-step1 = Avra { -brand-product-name } sin tes apparat mobil
+qr-export-scan-step2 = Acceda als parameters
+qr-export-scan-step3 = Tscherna <strong>Importar parameters</strong>
+qr-export-scan-step4-revision = Smatga sin <strong>Scannar in code QR</strong> e tegna tes telefonin sur quest code
+qr-export-back = Enavos
+qr-export-next = Enavant
+qr-export-done = Finì
+qr-export-summary-description = Exportà ils contos. Cuntinuescha sin tes apparat mobil.
+qr-export-summary-title = Resumaziun da l’export:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] Generà { $count } code QR
+       *[other] Generà { $count } codes QR
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] Exportà { $count } conto:
+       *[other] Exportà { $count } contos:
+    }
+qr-export-summary-passwords-included = Cun pleds-clav
+qr-export-summary-passwords-excluded = Senza pleds-clav
+qr-export-more-accounts = Exportar ulteriurs contos

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = გარეშე მხარის მოდულის მონაცემები
 third-party-section-title = გარეშე მხარის მონაცემების სია - { -brand-short-name }
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = გადატვირთვა სისტემ
     .title = გადატვირთვა სისტემის ინფორმაციით
 third-party-button-open =
     .title = მდებარეობის გახსნა...
-third-party-button-to-block =
-    .title = მოდულის შეზღუდვა
-    .aria-label = მოდულის შეზღუდვა
-third-party-button-to-unblock =
-    .title = ამჟამად შეზღუდულია. დაწკაპეთ შეზღუდვის მოსახსნელად.
-    .aria-label = ამჟამად შეზღუდულია. დაწკაპეთ შეზღუდვის მოსახსნელად.
-third-party-button-to-unblock-disabled =
-    .title =
-        ამჟამად მონიშნულია შეზღუდულად, თუმცა შეზღუდულთა სია უქმია და არ იყენებს
-        გაშვებული { -brand-short-name }. დაწკაპეთ შეზღუდვის მოსახსნელად.
-    .aria-label =
-        ამჟამად მონიშნულია შეზღუდულად, თუმცა შეზღუდულთა სია უქმია და არ იყენებს
-        გაშვებული { -brand-short-name }. დაწკაპეთ შეზღუდვის მოსახსნელად.
 third-party-button-to-block-module = მოდულის შეზღუდვა
     .title = მოდულის შეზღუდვა
     .aria-label = მოდულის შეზღუდვა

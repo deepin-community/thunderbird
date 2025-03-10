@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-update-whats-new = 新着情報
 about-dialog-title = { -brand-full-name } について
 release-notes-link = リリースノート
@@ -21,22 +17,13 @@ update-other-instance-handling-updates = { -brand-short-name } は別のイン�
 update-manual = 更新が利用可能です <label data-l10n-name="manual-link"/>
 update-unsupported = ご利用のシステムでは、このバージョン以降の更新はできません。<a data-l10n-name="unsupported-link">詳細</a>
 update-restarting = 再起動中...
-# Variables:
-#   $channel (String): description of the update channel (e.g. "release", "beta", "nightly" etc.)
 channel-description = 現在の更新チャンネルは <span data-l10n-name="current-channel">{ $channel }</span> です。
 warning-desc-version = { -brand-short-name } は実験的であり、動作が不安定である可能性があります。
 warning-desc-telemetry = このバージョンは、{ -brand-short-name } の改善を助けるため、パフォーマンスやハードウェア、使用状況、カスタマイズされた設定についての情報を { -vendor-short-name } に自動的に送信します。
-# Example of resulting string: 66.0.1 (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 66.0.1
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version = { $version } ({ $bits } ビット)
-# Example of resulting string: 66.0a1 (2019-01-16) (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird for Daily builds, e.g. 66.0a1
-#   $isodate (String): date in ISO format, e.g. 2019-01-16
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version-nightly = { $version } ({ $isodate }) ({ $bits } ビット)
+aboutdialog-version-arch = { $version } ({ $arch })
+aboutdialog-version-arch-nightly = { $version } ({ $isodate }) ({ $arch })
 aboutdialog-update-checking-failed = 更新の確認に失敗しました。
 community-experimental = <a data-l10n-name="community-exp-mozilla-link">{ -vendor-short-name }</a> は、ウェブがすべての人々にとってオープンかつパブリックであり、アクセスできるように保つため、一つに集まって働く <a data-l10n-name="community-exp-credits-link">グローバルなコミュニティ</a> です。
 community-desc = { -brand-short-name } をデザインしている <a data-l10n-name="community-mozilla-link">{ -vendor-short-name }</a> は、ウェブの公開性、公衆性、制限のないアクセスを保つために共に活動している <a data-l10n-name="community-credits-link">グローバルなコミュニティ</a> です。

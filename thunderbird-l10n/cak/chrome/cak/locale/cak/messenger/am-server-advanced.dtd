@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Q'axinäq Kinuk'ulem Rub'i' Taqoya'l">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "IMAP rucholb'al k'uxasamaj:">
 <!ENTITY serverDirectory.accesskey "c">
 <!ENTITY usingSubscription.label "Kek'ut pe xa xe ri etz'ib'an taq yakwuj">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "y">
 <!ENTITY maximumConnectionsNumber.label "Nïm rajilab'al rokem ri k'uxasamaj pa jumejyak">
 <!ENTITY maximumConnectionsNumber.accesskey "N">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "Re taq ajowab'äl re' nikiya' retal ri taq kikojol b'i'aj pa ri IMAP k'uxasamaj">
 <!ENTITY personalNamespace.label "Ichinan rukojol b'i'aj:">
 <!ENTITY personalNamespace.accesskey "I">

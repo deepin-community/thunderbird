@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Defnyddio Darparwr
     .accesskey = D
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (Rhagosodiad)
     .tooltiptext = Defnyddiwch yr URL rhagosodedig ar gyfer datrys DNS dros HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = Rhowch eich hoff URL er mwyn datrys DNS drod HTTPS
 connection-dns-over-https-custom-label = Cyfaddas
-connection-dialog-window2 =
-    .title = Gosodiadau Cysylltu
 connection-dialog-title = Gosodiadau Cysylltu
 disable-extension-button = Analluogi Estyniad
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Mae estyniad, <img data-l10n-name="icon"/> { $name }, yn rheoli sut mae { -brand-short-name } yn cysylltu â'r Rhyngrwyd.
 connection-proxy-legend = Ffurfweddu'r Dirprwyon i Gael Mynediad i'r Rhyngrwyd
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Dim Dirprwy ar gyfer:
     .accesskey = m
 no-proxy-example = Esiampl: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Nid yw cysylltiadau â localhost, 127.0.0.1/8, a ::1 byth yn cael eu dirprwyo.
 proxy-password-prompt =
     .label = Peidio gofyn am ddilysiad os yw'r cyfrinair wedi ei gadw

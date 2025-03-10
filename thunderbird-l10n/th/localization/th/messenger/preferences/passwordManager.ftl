@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = การเข้าสู่ระบบที่บันทึกไว้
 saved-logins-title = การเข้าสู่ระบบที่บันทึกไว้
-window-close =
-    .key = w
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -69,15 +61,11 @@ remove-all-shown =
 remove-all-passwords-prompt = คุณแน่ใจหรือไม่ว่าต้องการเอารหัสผ่านทั้งหมดออก?
 remove-all-passwords-title = เอารหัสผ่านทั้งหมดออก
 no-master-password-prompt = คุณแน่ใจหรือไม่ว่าต้องการแสดงรหัสผ่านของคุณ?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = ยืนยันตัวตนของคุณเพื่อเผยรหัสผ่านที่บันทึกไว้
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = เผยรหัสผ่านที่บันทึกไว้
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
+password-os-auth-change-dialog-message =
+    { PLATFORM() ->
+        [macos] เปลี่ยนการตั้งค่าสำหรับรหัสผ่าน
+       *[other] { -brand-short-name } กำลังพยายามที่จะเปลี่ยนการตั้งค่าเกี่ยวกับรหัสผ่าน ให้ใช้อุปกรณ์ของคุณลงชื่อเข้าเพื่ออนุญาตการกระทำนี้
+    }

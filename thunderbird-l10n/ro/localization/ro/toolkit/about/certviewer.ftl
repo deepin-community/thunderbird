@@ -1,25 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = Certificat
-
-## Error messages
-
 certificate-viewer-error-message = Nu am reușit să găsim informațiile certificatului sau certificatul este corupt. Te rugăm să încerci din nou.
 certificate-viewer-error-title = Ceva nu a funcționat.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = Algoritm
 certificate-viewer-certificate-authority = Autoritate de certificare
 certificate-viewer-cipher-suite = Suită de cifru
 certificate-viewer-common-name = Denumire comună
 certificate-viewer-email-address = Adresă de e-mail
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = Certificat pentru { $firstCertName }
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-country = Țara firmei
 certificate-viewer-country = Țară
 certificate-viewer-curve = Curbă
@@ -32,7 +19,6 @@ certificate-viewer-id = ID
 certificate-viewer-key-exchange-group = Grup de schimb de chei
 certificate-viewer-key-id = ID cheie
 certificate-viewer-key-size = Mărime cheie
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-locality = Sediu social
 certificate-viewer-locality = Localitate
 certificate-viewer-location = Loc
@@ -52,7 +38,6 @@ certificate-viewer-qualifier = Calificativ
 certificate-viewer-qualifiers = Calificative
 certificate-viewer-required = Obligatoriu
 certificate-viewer-unsupported = &lt;fără suport&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = Stat/Provincie firmă
 certificate-viewer-state-province = Stat/Provincie
 certificate-viewer-sha-1 = SHA-1
@@ -81,37 +66,20 @@ certificate-viewer-authority-info-aia = Informații despre autoritate (AIA)
 certificate-viewer-certificate-policies = Politicile certificatului
 certificate-viewer-embedded-scts = SCT înglobate
 certificate-viewer-crl-endpoints = Puncte de sfârșit CRL
-
-# This message is used as a row header in the Miscellaneous section. 
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = Descărcare
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] Da
        *[false] Nu
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (cert)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (lanț)
     .download = { $fileName }-chain.pem
-
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = Această extensie a fost marcată drept critică, iar clienții trebuie să respingă certificatul dacă nu îl înțeleg.
 certificate-viewer-export = Exportă
     .download = { $fileName }.pem
-
-##
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = Certificatele tale
 certificate-viewer-tab-people = Persoane
 certificate-viewer-tab-servers = Servere

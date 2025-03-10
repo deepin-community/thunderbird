@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = სერტიფიკატების მმართველი
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = PKCS #12 დამარქაფებული ფ
 pkcs12-unknown-err = PKCS #12 ოპერირება წარუმატებელია.  მიზეზი უცნობია.
 pkcs12-info-no-smartcard-backup = უსაფრთხოების ისეთი მოწყობილობის სერტიფიკატის დამარქაფება, როგორიც გონიერი ბარათია, ვერ მოხერხდება.
 pkcs12-dup-data = სერტიფიკატი და საიდუმლო გასაღები დაცვის მოწყობილობაზე უკვე არსებობს.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = ფაილის სახელი, დასამარქაფებლად
 file-browse-pkcs12-spec = PKCS12 ფაილები
 choose-p12-restore-file-dialog = შემოსატანი სერტიფიკატის ფაილი
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = სერტიფიკატის ფაილი
 import-ca-certs-prompt = CA სერტიფიკატის შემცველი ფაილის არჩევა შემოსატანად
 import-email-cert-prompt = ელფოსტის სერტიფიკატის შემოსატანად ფაილის არჩევა
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = სერტიფიკატი “{ $certName }” წარმოადგენს სერტიფიკატის გამცემს.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = საკუთარი სერტიფიკატის წაშლა
 delete-user-cert-confirm = ნამდვილად გსურთ ვებსაიტის სერტიფიკატების წაშლა?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = ელფოსტის სერტიფიკატების წაშლა
 delete-email-cert-confirm = ნამდვილად გსურთ ამ პირების ელფოსტის სერტიფიკატების წაშლა?
 delete-email-cert-impact = ელფოსტის სერტიფიკატების წაშლის შემთხვევაში თქვენ ამ პირებს დაშიფრულ წერილებს ელფოსტით ვეღარ გაუგზავნით.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = სერტიფიკატი სერიული ნომრით: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = კლიენტის გარეშე სერტიფიკატის გაგზავნა
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (არ შენახულა)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (მიუწვდომელი)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = მუდმივი
 temporary-override = დროებითი
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = თქვენ აპირებთ გადააკეთოთ წესი, რომლითაც { -brand-short-name } ამ საიტს ცნობს.
 add-exception-invalid-header = საიტი საკუთარი ნამდვილობის დადასტურებას, არამართებული მონაცემებით ცდილობს.
 add-exception-domain-mismatch-short = არასწორი საიტი
@@ -170,9 +139,6 @@ add-exception-checking-short = ინფორმაციის შემოწ
 add-exception-checking-long = ამ საიტის ამოცნობის მცდელობა…
 add-exception-no-cert-short = ინფორმაცია მიუწვდომელია
 add-exception-no-cert-long = საიტის ნამდვილობის შესახებ ინფორმაციის მიღება, შეუძლებელია.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = სერტიფიკატის ფაილში შენახვა
 cert-format-base64 = X.509 სერტიფიკატი (PEM)
 cert-format-base64-chain = X.509 სერტიფიკატი ჯაჭვით (PEM)

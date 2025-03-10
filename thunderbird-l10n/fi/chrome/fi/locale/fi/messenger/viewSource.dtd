@@ -1,19 +1,7 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- extracted from content/viewSource.xul -->
-
-<!-- extracted from content/viewSource.xhtml -->
-
-<!-- LOCALIZATION NOTE (mainWindow.title) : DONT_TRANSLATE -->
 <!ENTITY mainWindow.title "&brandFullName;">
-<!-- LOCALIZATION NOTE (mainWindow.titlemodifier) : DONT_TRANSLATE -->
 <!ENTITY mainWindow.titlemodifier "&brandFullName;">
-<!-- LOCALIZATION NOTE (mainWindow.titlemodifierseparator) : DONT_TRANSLATE -->
 <!ENTITY mainWindow.titlemodifierseparator " - ">
 <!ENTITY mainWindow.preface "Lähdekoodi sivulle: ">
-
 <!ENTITY editMenu.label "Muokkaa">
 <!ENTITY editMenu.accesskey "M">
 <!ENTITY fileMenu.label "Tiedosto">
@@ -27,13 +15,6 @@
 <!ENTITY closeCmd.label "Sulje">
 <!ENTITY closeCmd.accesskey "S">
 <!ENTITY closeCmd.commandkey "W">
-
-<!-- LOCALIZATION NOTE :
-textEnlarge.commandkey3, textReduce.commandkey2 and
-textReset.commandkey2 are alternative acceleration keys for zoom.
-If shift key is needed with your locale popular keyboard for them,
-you can use these alternative items. Otherwise, their values should be empty.  -->
-
 <!ENTITY textEnlarge.commandkey "+">
 <!ENTITY textEnlarge.commandkey2 "=">
 <!ENTITY textEnlarge.commandkey3 "">
@@ -41,13 +22,11 @@ you can use these alternative items. Otherwise, their values should be empty.  -
 <!ENTITY textReduce.commandkey2 "">
 <!ENTITY textReset.commandkey "0">
 <!ENTITY textReset.commandkey2 "">
-
 <!ENTITY goToLineCmd.label "Siirry riville…">
 <!ENTITY goToLineCmd.accesskey "r">
 <!ENTITY goToLineCmd.commandkey "L">
-
-<!ENTITY viewMenu.label           "Näytä">
-<!ENTITY viewMenu.accesskey       "N">
+<!ENTITY viewMenu.label "Näytä">
+<!ENTITY viewMenu.accesskey "N">
 <!ENTITY reloadCmd.label "Lataa uudelleen">
 <!ENTITY reloadCmd.accesskey "L">
 <!ENTITY reloadCmd.commandkey "U">
@@ -63,23 +42,20 @@ you can use these alternative items. Otherwise, their values should be empty.  -
 <!ENTITY menu_textReduce.accesskey "P">
 <!ENTITY menu_textReset.label "Normaali">
 <!ENTITY menu_textReset.accesskey "N">
-
-<!ENTITY findOnCmd.label     "Etsi tältä sivulta…">
+<!ENTITY findOnCmd.label "Etsi tältä sivulta…">
 <!ENTITY findOnCmd.accesskey "t">
 <!ENTITY findOnCmd.commandkey "E">
-<!ENTITY findAgainCmd.label  "Etsi seuraava">
+<!ENTITY findAgainCmd.label "Etsi seuraava">
 <!ENTITY findAgainCmd.accesskey "u">
 <!ENTITY findAgainCmd.commandkey "G">
 <!ENTITY findAgainCmd.commandkey2 "VK_F3">
 <!ENTITY findSelectionCmd.commandkey "e">
-
 <!ENTITY backCmd.label "Takaisin">
 <!ENTITY backCmd.accesskey "T">
 <!ENTITY forwardCmd.label "Eteenpäin">
 <!ENTITY forwardCmd.accesskey "E">
 <!ENTITY goBackCmd.commandKey "4">
 <!ENTITY goForwardCmd.commandKey "6">
-
 <!ENTITY copyLinkCmd.label "Kopioi linkin sijainti">
 <!ENTITY copyLinkCmd.accesskey "l">
 <!ENTITY copyEmailCmd.label "Kopioi sähköpostiosoite">

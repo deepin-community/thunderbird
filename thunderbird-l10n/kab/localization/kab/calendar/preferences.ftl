@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Awitay
 calendar-title-reminder = Imektiyen
 calendar-title-notification = Ilɣa
@@ -9,10 +5,8 @@ calendar-title-category = Taggayin
 dateformat-label =
     .value = Amasal n wazemz:
     .accesskey = s
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Aɣezfan: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Awezlan: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Ssuter seld ad tekkseḍ tidyanin  d twuriwin
     .accesskey = d
-accessibility-legend = Tuffart
-accessibility-colors-label =
-    .label = Sefrer initen i tuffart
-    .accesskey = n
 reminder-legend = Ticki yebbeḍ-d wakud n usmekti:
 reminder-play-checkbox =
     .label = Urar imesli

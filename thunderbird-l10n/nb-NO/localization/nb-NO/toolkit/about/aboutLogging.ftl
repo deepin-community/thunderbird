@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Om logging
 about-logging-page-title = Loggbehandler
 about-logging-current-log-file = Gjeldende loggfil:
 about-logging-new-log-file = Ny loggfil:
 about-logging-currently-enabled-log-modules = Aktiverte loggmoduler for øyeblikket:
 about-logging-log-tutorial = See <a data-l10n-name="logging">HTTP Logging</a> for instructions on how to use this tool.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Åpne mappe
 about-logging-set-log-file = Velg loggfil
 about-logging-set-log-modules = Velg loggmoduler
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Ingen
 about-logging-no-log-file = Ingen
 about-logging-logging-preset-selector-text = Forhåndsvalg for logging:
 about-logging-with-profiler-stacks-checkbox = Aktiver stack-sporing for loggmeldinger
-
-## Logging presets
-
 about-logging-preset-networking-label = Nettverk
 about-logging-preset-networking-description = Loggmoduler for å diagnostisere nettverksproblemer
 about-logging-preset-networking-cookie-label = Infokapsler
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Loggmoduler for å diagnostisere WebGPU-problemer
 about-logging-preset-gfx-label = Grafikk
 about-logging-preset-gfx-description = Loggmoduler for å diagnostisere grafikkproblemer
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Loggmoduler for å diagnostisere problemer som er spesifikke for Microsoft Windows
 about-logging-preset-custom-label = Tilpasset
 about-logging-preset-custom-description = Loggmoduler valgt manuelt
-# Error handling
 about-logging-error = Feil:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Ugyldig verdi «{ $v }» for nøkkel «{ $k }»
 about-logging-unknown-logging-preset = Ukjent forhåndsvalg for logging «{ $v }»
 about-logging-unknown-profiler-preset = Ukjent forhåndsvalg for profilering «{ $v }»

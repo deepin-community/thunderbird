@@ -1,136 +1,120 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# LOCALIZATION NOTE (matrix-username-hint):
-#  This is displayed inside the accountUsernameInfoWithDescription
-#  string defined in imAccounts.properties when the user is
-#  configuring a Matrix account.
 matrix-username-hint = ID Matrix
-# LOCALIZATION NOTE (options-*):
-#   These are the protocol specific options shown in the account manager and
-#   account wizard windows.
 options-save-token = Simpan token akses
 options-device-display-name = Nama tampilan perangkat
 options-homeserver = Server
 options-backup-passphrase = Frasa Sandi Cadangan Kunci
-# LOCALIZATION NOTE (options-encryption-*):
-#   These are strings used to build the status information of the encryption
-#   storage, shown in the account manager. $status (String) is one of the statuses and the
-#   strings are combined with a pipe (|) between.
 options-encryption-enabled = Fungsi Kriptografi: { $status }
-# $status (String) a status
 options-encryption-secret-storage = Penyimpanan Rahasia: { $status }
-# $status (String) a status
 options-encryption-key-backup = Cadangan Kunci Enkripsi: { $status }
-# $status (String) a status
 options-encryption-cross-signing = Penandatanganan Silang: { $status }
 options-encryption-status-ok = ok
 options-encryption-status-not-ok = belum siap
 options-encryption-need-backup-passphrase = Harap masukkan frasa sandi kunci cadangan Anda di opsi protokol.
 options-encryption-set-up-secret-storage = Untuk menyiapkan penyimpanan rahasia, silakan gunakan klien lain dan setelah itu masukkan frasa sandi kunci cadangan yang dibuat di tab "Umum".
 options-encryption-set-up-backup-and-cross-signing = Untuk mengaktifkan pencadangan kunci enkripsi dan penandatanganan silang, masukkan frasa sandi kunci cadangan Anda di tab "Umum" atau verifikasi identitas salah satu sesi di bawah ini.
-# $sessionId (String) is the session ID, $sessionDisplayName (String) is the session display name
 options-encryption-session = { $sessionId } ({ $sessionDisplayName })
-# LOCALIZATION NOTE (connection-*):
-#   These will be displayed in the account manager in order to show the progress
-#   of the connection.
-#   (These will be displayed in account.connection.progress from
-#    accounts.properties, which adds … at the end, so do not include
-#    periods at the end of these messages.)
 connection-request-auth = Menunggu hasil otentikasi
 connection-request-access = Menyelesaikan otentikasi
-# LOCALIZATION NOTE (connection-error-*):
-#   These will show in the account manager if an error occurs during the
-#   connection attempt.
 connection-error-no-supported-flow = Server tidak menawarkan alur log masuk yang kompatibel.
 connection-error-auth-cancelled = Anda membatalkan proses otentikasi.
 connection-error-session-ended = Sesi telah log keluar.
 connection-error-server-not-found = Tidak dapat mengidentifikasi server Matrix untuk akun Matrix yang diberikan.
-# LOCALIZATION NOTE (chat-room-field-*):
-#   These are the name of fields displayed in the 'Join Chat' dialog
-#   for Matrix accounts.
-#   The _ character won't be displayed; it indicates the next
-#   character of the string should be used as the access key for this
-#   field.
 chat-room-field-room = _Kamar
-# LOCALIZATION NOTE (tooltip-*):
-#    These are the descriptions given in a tooltip with information received
-#    from the "User" object.
-# The human readable name of the user.
 tooltip-display-name = Nama tampilan
-# $timespan (String) is the timespan elapsed since the last activity.
 tooltip-timespan = { $timespan } lalu
 tooltip-last-active = Aktivitas terakhir
-# LOCALIZATION NOTE (power-level-*):
-#    These are the string representations of different standard power levels and strings.
-#    $powerLevelName (String) are one of the power levels, Default/Moderator/Admin/Restricted/Custom.
-#    $powerLevelName (String) is the power level name
-#    $powerLevelNumber (String) is the power level number
 power-level-default = Baku
 power-level-moderator = Moderator
 power-level-admin = Admin
 power-level-restricted = Terbatas
 power-level-custom = Ubahan
-#    $powerLevelName is the power level name
-#    $powerLevelNumber is the power level number
 power-level-detailed = { $powerLevelName } ({ $powerLevelNumber })
-#    $powerLevelName is the power level name
 power-level-default-role = Peran baku: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-invite-user = Undang pengguna: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-kick-users = Tendang pengguna: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-ban = Cekal pengguna: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-room-avatar = Ubah avatar ruang: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-main-address = Ubah alamat utama ruangan: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-history = Ubah visibilitas riwayat: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-room-name = Ubah nama ruang: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-change-permissions = Ubah izin: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-server-acl = Kirim acara m.room.server_acl: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-upgrade-room = Tingkatkan ruang: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-remove = Hapus pesan: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-events-default = Baku acara: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-state-default = Ubah pengaturan: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-encryption = Aktifkan enkripsi Ruang: { $powerLevelName }
-#    $powerLevelName is the power level name
 power-level-topic = Tetapkan topik ruang: { $powerLevelName }
-# LOCALIZATION NOTE (detail-*):
-#    These are the string representations of different matrix properties.
-#    $value will typically be strings with the actual values.
-# $value Example placeholder: "Foo bar"
 detail-name = Nama: { $value }
-# $value Example placeholder: "My first room"
 detail-topic = Topik: { $value }
-# $value Example placeholder: "5"
 detail-version = Versi Ruang: { $value }
-# $value Example placeholder: "#thunderbird:mozilla.org"
 detail-room-id = RoomID: { $value }
-# $value are all admin users. Example: "@foo:example.com, @bar:example.com"
 detail-admin = Admin: { $value }
-# $value are all moderators. Example: "@lorem:mozilla.org, @ipsum:mozilla.org"
 detail-moderator = Moderator: { $value }
-# $value Example placeholder: "#thunderbird:matrix.org"
 detail-alias = Alias: { $value }
-# $value Example placeholder: "can_join"
 detail-guest = Akses Tamu: { $value }
-# This is a heading, followed by the power-level-* strings
 detail-power = Tingkat Daya:
-#    $user is the name of the user who accepted an invitation.
+command-ban = { $commandName } &lt;userId&gt; [&lt;reason&gt;]: Blokir pengguna dengan userId dari ruangan dengan pesan alasan opsional. Memerlukan izin untuk mencekal pengguna.
+command-invite = { $commandName } &lt;userId&gt;: Undang pengguna ke ruangan.
+command-kick = { $commandName } &lt;userId&gt; [&lt;reason&gt;]: Keluarkan pengguna dengan userId dari ruangan dengan pesan alasan opsional. Memerlukan izin untuk menendang pengguna.
+command-nick = { $commandName } &lt;display_name&gt;: Ubah nama tampilan Anda.
+command-op = { $commandName } &lt;userId&gt; [&lt;tingkat kekuatan&gt;]: Menentukan tingkat kekuatan pengguna. Masukkan nilai integer, Pengguna: 0, Moderator: 50 dan Admin: 100. Nilai bakunya adalah 50 jika tidak ada argumen yang diberikan. Memerlukan izin untuk mengubah tingkat kekuatan anggota. Tidak berfungsi pada admin selain Anda sendiri.
+command-deop = { $commandName } &lt;userId&gt;: Setel ulang pengguna ke tingkat 0 (Pengguna). Memerlukan izin untuk mengubah tingkat anggota. Tidak berfungsi pada admin selain Anda sendiri.
+command-leave = { $commandName }: Tinggalkan ruangan saat ini.
+command-topic = { $commandName } &lt;topic&gt;: Mengatur topik ruangan. Memerlukan izin untuk mengubah topik ruangan.
+command-unban = { $commandName } &lt;userId&gt;: Membatalkan pemblokiran pengguna yang diblokir dari ruangan. Memerlukan izin untuk mencekal pengguna.
+command-visibility = { $commandName } [&lt;visibilitas&gt;]: Mengatur visibilitas ruangan saat ini di direktori ruangan Server Home saat ini. Masukkan nilai integer, Privat: 0 dan Publik: 1. Nilai baku adalah Privat (0) jika tidak ada argumen yang diberikan. Memerlukan izin untuk mengubah visibilitas ruangan.
+command-guest = { $commandName } &lt;akses tamu&gt; &lt;visibilitas riwayat&gt;: Mengatur akses dan visibilitas riwayat ruangan saat ini untuk pengguna tamu. Masukkan dua nilai integer, yang pertama untuk akses tamu (tidak diizinkan: 0 dan diizinkan: 1) dan yang kedua untuk visibilitas riwayat (tidak terlihat: 0 dan terlihat: 1). Memerlukan izin untuk mengubah keterlihatan riwayat.
+command-roomname = { $commandName } &lt;name&gt;: Menyetel nama ruangan. Memerlukan izin untuk mengubah nama ruangan.
+command-detail = { $commandName }: Menampilkan detail ruangan.
+command-addalias = { $commandName } &lt;alias&gt;: Buat alias untuk ruangan. Alias ruang yang diharapkan dalam bentuk '#localname:domain'. Memerlukan izin untuk menambahkan alias.
+command-removealias = { $commandName } &lt;alias&gt;: Hapus alias untuk ruangan. Alias ruang yang diharapkan dalam bentuk '#localname:domain'. Memerlukan izin untuk menghapus alias.
+command-upgraderoom = { $commandName } &lt;newVersion&gt;: Tingkatkan ruang ke versi tertentu. Memerlukan izin untuk meningkatkan versi ruangan.
+command-me = { $commandName } &lt;aksi&gt;: Melakukan aksi.
+command-msg = { $commandName } &lt;userId&gt; &lt;pesan&gt;: Mengirim pesan langsung ke pengguna tertentu.
+command-join = { $commandName } &lt;roomId&gt;: Bergabung dengan ruangan yang ditentukan.
+message-banned = { $user } mencekal { $userBanned }.
+message-banned-with-reason = { $user } mencekal { $userBanned }. Alasan: { $reason }
+message-accepted-invite-for = { $user } menerima undangan untuk { $userWhoSent }.
 message-accepted-invite = { $user } menerima undangan.
-#    $user is the name of the user who has left the room.
+message-invited = { $user } mengundang { $userWhoGotInvited }.
+message-display-name-changed = { $user } mengubah nama tampilan mereka dari { $oldDisplayName } menjadi { $newDisplayName }.
+message-display-name-set = { $user } menyetel nama tampilan mereka menjadi { $changedName }.
+message-display-name-remove = { $user } menghapus nama tampilan mereka { $nameRemoved }.
+message-joined = { $user } telah bergabung ke ruangan.
+message-rejected-invite = { $user } telah menolak undangan.
 message-left = { $user } telah meninggalkan ruangan.
+message-unbanned = { $user } membatalkan pencekalan { $userUnbanned }.
+message-kicked = { $user } menendang { $userGotKicked }.
+message-kicked-with-reason = { $user } menendang { $userGotKicked }. Alasan: { $reason }
+message-withdrew-invite = { $user } menarik undangan { $userInvitationWithdrawn }.
+message-withdrew-invite-with-reason = { $user } menarik undangan { $userInvitationWithdrawn }. Alasan: { $reason }
+message-room-name-remove = { $user } menghapus nama ruangan.
+message-room-name-changed = { $user } mengubah nama ruangan menjadi { $newRoomName }.
+message-power-level-changed = { $user } mengubah tingkat kekuatan { $powerLevelChanges }.
+message-power-level-from-to = { $user } dari { $oldPowerLevel } ke { $newPowerLevel }
+message-guest-allowed = { $user } telah mengizinkan tamu untuk bergabung ke ruangan.
+message-guest-prevented = { $user } telah mencegah tamu bergabung ke ruangan.
+message-history-anyone = { $user } membuat riwayat ruang di masa mendatang dapat dilihat oleh siapa saja.
+message-history-shared = { $user } membuat riwayat ruang mendatang dapat dilihat oleh semua anggota ruang.
+message-history-invited = { $user } membuat riwayat ruang mendatang terlihat oleh semua anggota ruang, sejak mereka diundang.
+message-history-joined = { $user } membuat riwayat ruang masa depan terlihat oleh semua anggota ruang, sejak mereka bergabung.
+message-alias-main = { $user } menyetel alamat utama untuk ruangan ini dari { $oldAddress } menjadi { $newAddress }.
+message-alias-added = { $user } menambahkan { $addresses } sebagai alamat alternatif untuk ruangan ini.
+message-alias-removed = { $user } menghapus { $addresses } sebagai alamat alternatif untuk ruangan ini.
+message-alias-removed-and-added = { $user } menghapus { $removedAddresses } dan menambahkan { $addedAddresses } sebagai alamat untuk ruangan ini.
+message-space-not-supported = Kamar ini adalah suatu space, yang tidak didukung.
+message-encryption-start = Pesan dalam percakapan ini sekarang dienkripsi ujung-ke-ujung.
+message-verification-request2 = { $user } ingin memverifikasi { $userReceiving }.
+message-verification-cancel2 = { $user } membatalkan verifikasi dengan alasan: { $reason }
+message-verification-done = Verifikasi selesai.
+message-decryption-error = Tidak dapat mendekripsi isi pesan ini. Untuk meminta kunci enkripsi dari perangkat Anda yang lain, klik kanan pesan ini.
+message-decrypting = Mendekripsi...
+message-redacted = Pesan disensor.
+message-reaction = { $userThatReacted } berreaksi terhadap { $userThatSentMessage } dengan { $reaction }.
+message-action-request-key = Minta Ulang Kunci
+message-action-redact = Sensor
 message-action-report = Laporkan Pesan
+message-action-retry = Coba Kirim Lagi
 message-action-cancel = Batalkan Pesan
+error-send-message-failed = Terjadi kesalahan saat mengirim pesan Anda “{ $message }”.

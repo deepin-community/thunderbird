@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "За икономия на дисково пространство да не бъдат изтегляни:">
 <!ENTITY doNotDownloadNntp.label "За икономия на дисково пространство да не бъдат изтегляни за употреба без мрежа:">
 <!ENTITY doNotDownloadImap.label "За икономия на дисково пространство, изтеглянето на съобщения от сървъра и съхраняването на копия от тях за употреба без мрежа, може да бъде ограничено според възрастта и големината им.">
@@ -32,26 +28,19 @@
 <!ENTITY retentionApplyToFlagged.accesskey "д">
 <!ENTITY nntpRemoveMsgBody.label "Премахване на съдържанието на съобщения повече от">
 <!ENTITY nntpRemoveMsgBody.accesskey "е">
-<!ENTITY offlineSelectNntp.label "Избор на дискусионни групи за работа без връзка…">
+<!ENTITY offlineSelectNntp.label "Избор на новинарски групи за използване без мрежа…">
 <!ENTITY offlineSelectNntp.accesskey "И">
 <!ENTITY offlineImapAdvancedOffline.label "Разширени…">
 <!ENTITY offlineImapAdvancedOffline.accesskey "Р">
 <!ENTITY syncGroupTitle.label "Синхронизиране на съобщения">
 <!ENTITY diskspaceGroupTitle.label "Дисково пространство">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Синхронизиране на всички съобщения локално независимо от възрастта">
-<!ENTITY allAutosync.accesskey           "х">
-<!ENTITY ageAutosyncBefore.label         "Синхронизиране на най-новите">
-<!ENTITY ageAutosync.accesskey           "з">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Дни">
-<!ENTITY weekAgeInterval.label           "Седмици">
-<!ENTITY monthAgeInterval.label          "Месеци">
-<!ENTITY yearAgeInterval.label           "Години">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Синхронизиране на всички съобщения локално независимо от възрастта">
+<!ENTITY allAutosync.accesskey "х">
+<!ENTITY ageAutosyncBefore.label "Синхронизиране на най-новите">
+<!ENTITY ageAutosync.accesskey "з">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Дни">
+<!ENTITY weekAgeInterval.label "Седмици">
+<!ENTITY monthAgeInterval.label "Месеци">
+<!ENTITY yearAgeInterval.label "Години">
+<!ENTITY ageAutosyncAfter.label "">

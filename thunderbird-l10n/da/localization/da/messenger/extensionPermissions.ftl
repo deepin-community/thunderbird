@@ -1,19 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-## All localized permissions have to be added to the `PERMISSIONS_WITH_MESSAGE`
-## map. Both maps are populated in mail/modules/ExtensionsUI.sys.mjs.
-
 webext-perms-description-accountsFolders = Oprette, omdøbe eller slette dine kontomapper
 webext-perms-description-accountsIdentities = Oprette, ændre eller slette dine mailkontis identiteter
 webext-perms-description-accountsRead = Se dine mailkonti, deres identiteter og deres mapper
@@ -27,7 +11,6 @@ webext-perms-description-messagesModify = Læse og tilpasse dine mails, når de 
 webext-perms-description-messagesModifyPermanent = Lave permanente ændringer i kilden til dine meddelelser (herunder meddelelseshoveder, meddelelsesindhold og vedhæftede filer)
 webext-perms-description-messagesMove = Kopiere eller flytte dine mails (herunder flytte dem til mappen Papirkurv)
 webext-perms-description-messagesDelete = Permanent slette dine mails
-webext-perms-description-messagesRead = Læse dine mails og markere eller sætte mærkater på dem
 webext-perms-description-messagesRead2 = Læse dine mails
 webext-perms-description-messagesUpdate = Skifte egenskaber og mærkater for dine mails
 webext-perms-description-messagesTags = Oprette, ændre og slette meddelelsesmærkater

@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Persönlichen OpenPGP-Schlüssel für { $identity } hinzufügen
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Externen Schlüssel mittels GnuPG benutzen (z.B. von einer Smartcard)
     .accesskey = E
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP-Schlüssel erzeugen
 openpgp-keygen-secret-protection = Schutz des Geheimschlüssels
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = Der Schlüssel muss mindestens einen Tag gültig s
 openpgp-keygen-ongoing = Schlüsselerzeugung wird bereits durchgeführt
 openpgp-keygen-error-core = OpenPGP-Basisdienste konnten nicht initialisiert werden
 openpgp-keygen-error-failed = Erzeugung von OpenPGP-Schlüssel schlug unerwartet fehl
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP-Schlüssel erfolgreich erzeugt, aber Erstellen des Widerrufs für Schlüssel { $key } schlug fehl
 openpgp-keygen-abort-title = Schlüsselerzeugung abbrechen?
 openpgp-keygen-abort = Derzeit wird die Erzeugung eines OpenPGP-Schlüssels durchgeführt, soll diese wirklich abgebrochen werden?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Öffentlichen und geheimen Schlüssel für { $identity } erzeugen?
-
-## Import Key section
-
 openpgp-import-key-title = Bestehenden persönlichen OpenPGP-Schlüssel importieren
 openpgp-import-key-legend = Vorher erzeugte Sicherheitskopie auswählen
 openpgp-import-key-description = Sie können persönliche Schlüssel importieren, welche mit anderer OpenPGP-Software erzeugt wurden.
 openpgp-import-key-info = Andere Software kann den persönlichen Schlüssel anders bezeichnen, z.B. "Ihr eigener Schlüssel", "geheimer Schlüssel", "privater Schlüssel" oder "Schlüsselpaar".
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } erkannte einen Schlüssel, der importiert werden kann.
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = Diesen Schlüssel als persönlichen Schlüssel verwenden
 gnupg-file = GnuPG-Dateien
 import-error-file-size = <b>Fehler:</b> Dateien größer als 5MB werden nicht unterstützt.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Fehler:</b> Datei konnte nicht importiert werden. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Fehler:</b> Fehler beim Schlüsselimport. { $error }
 openpgp-import-identity-label = Identität
 openpgp-import-fingerprint-label = Fingerabdruck
@@ -122,9 +106,6 @@ openpgp-import-bits-label = Bit
 openpgp-import-key-props =
     .label = Schlüsseleigenschaften
     .accesskey = e
-
-## External Key section
-
 openpgp-external-key-title = Externer GnuPG-Schlüssel
 openpgp-external-key-description = Richten Sie einen externen GnuPG-Schlüssel ein, indem Sie die Schlüssel-ID eingeben.
 openpgp-external-key-info = Zusätzlich müssen Sie den entsprechenden öffentlichen Schlüssel in der Schlüsselverwaltung importieren und akzeptieren.

@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = 字体
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = 默认（{ $name }）
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = 比例字体
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = 拉丁字母
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = 僧伽罗文
 font-language-group-tibetan =
     .label = 藏文
-
-## Default font type
-
 default-font-serif =
     .label = 衬线字体
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = z
 min-size-none =
     .label = 无
-
-## Fonts in message
-
 font-control-legend = 字体控制
 use-document-fonts-checkbox =
     .label = 允许消息使用其他字体
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = 用等宽字体显示纯文本信息
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = 文字编码
 text-encoding-description = 设置发送和接收邮件时的默认文字编码
 font-outgoing-email-label =

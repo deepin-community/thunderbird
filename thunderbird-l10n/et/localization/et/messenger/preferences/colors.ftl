@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Tekst ja taust
 text-color-label =
     .value = Tekst:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Külastatud lingid:
     .accesskey = u
-underline-link-checkbox =
-    .label = Allajoonitud lingid
-    .accesskey = l
 override-color-label =
     .value = Ülalolevaid määranguid kasutatakse sisu värvide asemel:
     .accesskey = l

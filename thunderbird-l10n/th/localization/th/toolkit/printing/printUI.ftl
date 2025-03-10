@@ -1,12 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 printui-title = พิมพ์
-# Dialog title to prompt the user for a filename to save print to PDF.
 printui-save-to-pdf-title = บันทึกเป็น
-# Variables
-# $sheetCount (integer) - Number of paper sheets
 printui-sheets-count =
     { $sheetCount ->
        *[other] กระดาษ { $sheetCount } แผ่น
@@ -22,49 +15,29 @@ printui-page-range-picker =
 printui-page-custom-range-input =
     .aria-label = ใส่ช่วงหน้ากระดาษกำหนดเอง
     .placeholder = เช่น 2-6, 9, 12-16
-# Section title for the number of copies to print
 printui-copies-label = สำเนา
 printui-orientation = การวางแนว
 printui-landscape = แนวนอน
 printui-portrait = แนวตั้ง
-# Section title for the printer or destination device to target
 printui-destination-label = ปลายทาง
 printui-destination-pdf-label = บันทึกไปเป็น PDF
 printui-more-settings = การตั้งค่าเพิ่มเติม
 printui-less-settings = การตั้งค่าน้อยลง
 printui-paper-size-label = ขนาดกระดาษ
-# Section title (noun) for the print scaling options
 printui-scale = มาตราส่วน
 printui-scale-fit-to-page-width = พอดีกับความกว้างของหน้า
-# Label for input control where user can set the scale percentage
 printui-scale-pcent = มาตราส่วน
-# Section title (noun) for the two-sided print options
 printui-two-sided-printing = การพิมพ์สองด้าน
 printui-two-sided-printing-off = ปิด
-# Flip the sheet as if it were bound along its long edge.
 printui-two-sided-printing-long-edge = พลิกตามขอบยาว
-# Flip the sheet as if it were bound along its short edge.
 printui-two-sided-printing-short-edge = พลิกตามขอบสั้น
-# Section title for miscellaneous print options
 printui-options = ตัวเลือก
 printui-headers-footers-checkbox = พิมพ์หัวกระดาษและท้ายกระดาษ
 printui-backgrounds-checkbox = พิมพ์พื้นหลัง
-
-## The "Format" section, select a version of the website to print. Radio
-## options to select between the original page, selected text only, or a version
-## where the page is processed with "Reader View".
-
-# The section title.
 printui-source-label = รูปแบบ
-# Option for printing the original page.
 printui-source-radio = ต้นฉบับ
-# Option for printing just the content a user selected prior to printing.
 printui-selection-radio = ส่วนที่เลือก
-# Option for "simplifying" the page by printing the Reader View version.
 printui-simplify-page-radio = เรียบง่าย
-
-##
-
 printui-color-mode-label = โหมดสี
 printui-color-mode-color = สี
 printui-color-mode-bw = ขาวดำ
@@ -92,18 +65,11 @@ printui-primary-button-save = บันทึก
 printui-cancel-button = ยกเลิก
 printui-close-button = ปิด
 printui-loading = กำลังเตรียมตัวอย่าง
-# Reported by screen readers and other accessibility tools to indicate that
-# the print preview has focus.
 printui-preview-label =
     .aria-label = ตัวอย่างก่อนพิมพ์
 printui-pages-per-sheet = หน้าต่อแผ่น
-# This is shown next to the Print button with an indefinite loading spinner
-# when the user prints a page and it is being sent to the printer.
 printui-print-progress-indicator = กำลังพิมพ์…
 printui-print-progress-indicator-saving = กำลังบันทึก…
-
-## Paper sizes that may be supported by the Save to PDF destination:
-
 printui-paper-a5 = A5
 printui-paper-a4 = A4
 printui-paper-a3 = A3
@@ -117,13 +83,8 @@ printui-paper-jis-b4 = JIS-B4
 printui-paper-letter = US Letter
 printui-paper-legal = US Legal
 printui-paper-tabloid = Tabloid
-
-## Error messages shown when a user has an invalid input
-
 printui-error-invalid-scale = มาตราส่วนต้องเป็นตัวเลขระหว่าง 10 ถึง 200
 printui-error-invalid-margin = โปรดป้อนระยะขอบที่ถูกต้องสำหรับขนาดกระดาษที่เลือก
 printui-error-invalid-copies = สำเนาต้องเป็นตัวเลขระหว่าง 1 และ 10000
-# Variables
-# $numPages (integer) - Number of pages
 printui-error-invalid-range = ช่วงต้องเป็นตัวเลขระหว่าง 1 ถึง { $numPages }
 printui-error-invalid-start-overflow = หมายเลขหน้า “จาก” ต้องน้อยกว่าหมายเลขหน้า “ถึง”

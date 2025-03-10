@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Strings used for device manager
-
 devmgr-window =
     .title = Ardoer trevnad
     .style = min-width: 67em; min-height: 32em;
@@ -35,9 +28,6 @@ devmgr-button-enable-fips =
 devmgr-button-disable-fips =
     .label = Diweredekaat FIPS
     .accesskey = F
-
-## Strings used for load device
-
 load-device =
     .title = Kargañ sturier an drobarzhell PKCS#11
 load-device-info = Roit ar stlennoù evit ar mollad a fell deoc'h ouzhpennañ.
@@ -52,9 +42,6 @@ load-device-filename =
 load-device-browse =
     .label = Furchal…
     .accesskey = r
-
-## Token Manager
-
 devinfo-status =
     .label = Stad
 devinfo-status-disabled =
@@ -89,10 +76,8 @@ devinfo-serialnum =
 fips-nonempty-primary-password-required = Azgoulennet eo gant ar mod FIPS ma vo ur ger-tremen pennañ ganeoc’h, kefluniet evit an holl drevnadoù diogelroez. Kefluniañ ar ger-tremen kent klask gweredekaat ar mod FIPS.
 unable-to-toggle-fips = N'haller ket kemmañ ar mod FIPS evit an trevnad diogelroez. Erbedet eo kuitaat hag adloc'hañ an arload-mañ.
 load-pk11-module-file-picker-title = Dibabit ur sturier trobarzhell PKCS#11 da gargañ
-# Load Module Dialog
 load-module-help-empty-module-name =
     .value = Anv ar mollad n'hall ket bezañ goullo.
-# Do not translate 'Root Certs'
 load-module-help-root-certs-module-name =
     .value = Miret eo an anv ‘Root Certs‘ ha n'hall ket bezañ implijet evit ur mollad.
 add-module-failure = Divarrek da ouzhpennañ ar mollad

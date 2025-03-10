@@ -142,6 +142,7 @@ add_task(async function testInitializeWithExistingCalenderEvents() {
     beginUpdateBatch() {},
     endUpdateBatch() {},
     invalidateRow() {},
+    dispatchEvent() {},
   };
   view.setTree(tree);
 
@@ -261,7 +262,7 @@ add_task(async function testFilterFunction() {
   Assert.ok(view.selection.isSelected(0), "item 'one' should be selected");
 
   // Verify that setting filter function appropriately hides non-matching items.
-  view.setFilterFunction(item => {
+  view.applyFiltering(item => {
     return item.title.includes("f");
   });
   assertViewContainsItemsInOrder(view, "five");
@@ -280,7 +281,7 @@ add_task(async function testFilterFunction() {
   assertViewContainsItemsInOrder(view, "five", "four");
 
   // Verify that clearing the filter shows all items properly sorted.
-  view.clearFilter();
+  view.clearFiltering();
   assertViewContainsItemsInOrder(
     view,
     "five",
@@ -443,6 +444,7 @@ async function initializeCalendarAndView() {
     beginUpdateBatch() {},
     endUpdateBatch() {},
     invalidateRow() {},
+    dispatchEvent() {},
   };
   view.setTree(tree);
 

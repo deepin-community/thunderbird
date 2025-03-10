@@ -26,9 +26,6 @@ var { EnigmailArmor } = ChromeUtils.importESModule(
 var { EnigmailKeyRing } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/keyRing.sys.mjs"
 );
-var { EnigmailURIs } = ChromeUtils.importESModule(
-  "chrome://openpgp/content/modules/uris.sys.mjs"
-);
 var { EnigmailConstants } = ChromeUtils.importESModule(
   "chrome://openpgp/content/modules/constants.sys.mjs"
 );
@@ -94,7 +91,7 @@ Enigmail.msg = {
 
   async composeStartup() {
     if (!gMsgCompose || !gMsgCompose.compFields) {
-      return;
+      throw new Error("OpenPGP initialization failed");
     }
 
     gMsgCompose.RegisterStateListener(Enigmail.composeStateListener);
@@ -171,7 +168,7 @@ Enigmail.msg = {
       console.error(ex);
     }
 
-    if (EnigmailURIs.isEncryptedUri(msgUri)) {
+    if (gEncryptedURIService.isEncrypted(msgUri)) {
       properties |= EnigmailConstants.DECRYPTION_OKAY;
     }
 
@@ -736,9 +733,10 @@ Enigmail.msg = {
     wrapresultObj.cancelled = false;
     wrapresultObj.usePpgMime = false;
     try {
-      const dce = Ci.nsIDocumentEncoder;
       var editor = gMsgCompose.editor.QueryInterface(Ci.nsIEditorMailSupport);
-      var encoderFlags = dce.OutputFormatted | dce.OutputLFLineBreak;
+      var encoderFlags =
+        Ci.nsIDocumentEncoder.OutputFormatted |
+        Ci.nsIDocumentEncoder.OutputLFLineBreak;
 
       var wrapWidth = Services.prefs.getIntPref("mailnews.wraplength");
       if (wrapWidth > 0 && wrapWidth < 68 && editor.wrapWidth > 0) {
@@ -1109,15 +1107,6 @@ Enigmail.msg = {
    * @param {nsIMsgCompDeliverMode} msgSendType
    */
   async prepareSendMsg(msgSendType) {
-    if (
-      !gMsgCompose.compFields.to &&
-      !gMsgCompose.compFields.cc &&
-      !gMsgCompose.compFields.bcc &&
-      !gMsgCompose.compFields.newsgroups
-    ) {
-      throw new Error("No recipients specified!");
-    }
-
     const senderKeyIsGnuPG =
       Services.prefs.getBoolPref("mail.openpgp.allow_external_gnupg") &&
       gCurrentIdentity.getBoolAttribute("is_gnupg_key_id");
@@ -1131,6 +1120,15 @@ Enigmail.msg = {
         // Saving drafts is simpler and works differently than the rest of
         // OpenPGP. All rules except account-settings are ignored.
         return this.saveDraftMessage(senderKeyIsGnuPG);
+    }
+
+    if (
+      !gMsgCompose.compFields.to &&
+      !gMsgCompose.compFields.cc &&
+      !gMsgCompose.compFields.bcc &&
+      !gMsgCompose.compFields.newsgroups
+    ) {
+      throw new Error("No recipients specified!");
     }
 
     this.unsetAdditionalHeader("x-enigmail-draft-status");
@@ -1712,8 +1710,9 @@ Enigmail.msg = {
 
     EnigmailCore.init();
 
-    const dce = Ci.nsIDocumentEncoder;
-    var encoderFlags = dce.OutputFormatted | dce.OutputLFLineBreak;
+    var encoderFlags =
+      Ci.nsIDocumentEncoder.OutputFormatted |
+      Ci.nsIDocumentEncoder.OutputLFLineBreak;
 
     var docText = this.editorGetContentAs("text/plain", encoderFlags);
 
@@ -1975,7 +1974,7 @@ Enigmail.msg = {
       this.editor.selectionController.scrollSelectionIntoView(
         Ci.nsISelectionController.SELECTION_NORMAL,
         Ci.nsISelectionController.SELECTION_ANCHOR_REGION,
-        true
+        Ci.nsISelectionController.SCROLL_SYNCHRONOUS
       );
     }
   },
@@ -2223,10 +2222,7 @@ Enigmail.msg = {
  */
 Enigmail.composeStateListener = {
   NotifyComposeFieldsReady() {
-    try {
-      Enigmail.msg.editor = gMsgCompose.editor.QueryInterface(Ci.nsIEditor);
-    } catch (ex) {}
-
+    Enigmail.msg.editor = gMsgCompose.editor.QueryInterface(Ci.nsIEditor);
     if (!Enigmail.msg.editor) {
       return;
     }
@@ -2272,7 +2268,7 @@ Enigmail.composeStateListener = {
 };
 
 window.addEventListener(
-  "load",
+  "compose-startup-done",
   Enigmail.msg.composeStartup.bind(Enigmail.msg),
   {
     capture: false,

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL sınıflandırıcısı bilgileri
 url-classifier-search-title = Arama
 url-classifier-search-result-title = Sonuçlar
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Safe Browsing log modülleri
 url-classifier-debug-modules = Geçerli log modülleri
 url-classifier-debug-sbjs-modules = Safe Browsing JS logu
 url-classifier-debug-file = Geçerli log dosyası
-
 url-classifier-trigger-update = Güncellemeyi tetikle
 url-classifier-not-available = Yok
 url-classifier-disable-sbjs-log = Safe Browsing JS logunu kapat
@@ -50,9 +45,5 @@ url-classifier-disabled = Devre dışı
 url-classifier-updating = güncelleniyor
 url-classifier-cannot-update = güncellenemedi
 url-classifier-success = başarılı
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = güncelleme hatası ({ $error })
 url-classifier-download-error = indirme hatası ({ $error })

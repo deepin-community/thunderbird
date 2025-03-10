@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Talɣut n usellek
 page-subtitle = Asebter-agi igber talɣut tatiknikant i izemren ahat ticki tettaɛraḍeḍ ad tefruḍ ugur. Ma yella tettnadiḍ tiririt ɣef isteqsiyen n { -brand-short-name },senqed <a data-l10n-name="support-link"> asmel-nneɣ Web</a>.
 crashes-title = Ineqqisen n uɣelluy
@@ -37,8 +33,6 @@ app-basics-version = Lqem
 app-basics-build-id = Asulay n usefsu
 app-basics-distribution-id = Tussa ID
 app-basics-update-channel = Abadu n uleqqem
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Akaram n Ileqman
@@ -46,20 +40,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Azray n ileqman
 app-basics-show-update-history = Sken azray n ileqman
-# Represents the path to the binary used to start the application.
 app-basics-binary = Timsint n usnas
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Akaram n umaɣnu
        *[other] Akaram n umaɣnu
     }
-app-basics-enabled-plugins = Izegrar iremden
 app-basics-build-config = Aswel n usefsu
 app-basics-user-agent = Ameggi aseqdac
 app-basics-os = NGR.MMD
 app-basics-os-theme = Asentel n unagraw n wammud
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Yettusuqel sɣur Rosetta
 app-basics-memory-use = Aseqdec n tkatut
 app-basics-performance = Tamellit
@@ -77,9 +67,6 @@ app-basics-key-mozilla = Tasarutt n umeẓlu n wadi Mozilla
 app-basics-safe-mode = Askar aɣelsan
 app-basics-memory-size = Teɣzi n takatut (RAM)
 app-basics-disk-available = Tallunt n uḍebsi yellan
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -111,9 +98,7 @@ graphics-decision-log-title = Aɣmis n ugemmen
 graphics-crash-guards-title = Timhalin ur nermid ara n uɛessas n uɣelluy
 graphics-workarounds-title = Tifrat n usellek
 graphics-device-pixel-ratios = Ifmiḍiyen n yipiksilen n yibenk n yisfuyla
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Aneggaf n usfaylu
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Tawennaḍt n tnarit
 place-database-title = Taffa n isefka n idigen
 place-database-stats = Tidaddanin
@@ -149,9 +134,6 @@ clear-startup-cache-label = Sfeḍ tanekkra tuffirt…
 startup-cache-dialog-title2 = Ales asenker i tikkelt-nniḍen { -brand-short-name } i usfaḍ n tuffirt n usenker?
 startup-cache-dialog-body2 = Aya ur yettbeddil iɣewwaren-inek·inem, ur itekkes iseɣzaf.
 restart-button-label = Ales asenker
-
-## Media titles
-
 audio-backend = Ameslaw ɣer deffir
 max-audio-channels = Amḍan afellay n ibuda
 sample-rate = Afmiḍi n imedyaten i tebɣiḍ
@@ -170,16 +152,10 @@ media-device-rate = Afmiḍi
 media-device-latency = Akud n ugani
 media-capabilities-title = Tazmert n umidya
 media-codec-support-info = Talɣut n tallalt kudak
-# List all the entries of the database.
 media-capabilities-enumerate = Snirem taffa n yisefka
-
-## Codec support table
-
 media-codec-support-supported = Yettusefrek
 media-codec-support-unsupported = ur ttwasefraken ara
-
-##
-
+media-key-system-name = Isem n unagraw n tsarut
 intl-title = Asegreɣlen & Asideg
 intl-app-title = Iɣewwaṛen n usnas
 intl-locales-requested = Tutlayin ittwasutren
@@ -189,52 +165,29 @@ intl-locales-default = Tutlayt tamezwert
 intl-os-title = Anagraw n wammud
 intl-os-prefs-system-locales = Tutlayin n unagraw
 intl-regional-prefs = Ismenyifen n temnaḍt
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Tamseɣtayt tanmeggagt (Aneggaf Chromium )
 remote-debugging-accepting-connections = Aqbal n tuqqniwin
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Issaɣen n uɣelluy n { $days } aneggaru
        *[other] issaɣen n uɣelluy n { $days } ineggura
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } n tesdat aya
        *[other] { $minutes } n tesdatin aya
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } n usrag aya
        *[other] { $hours } n isragen aya
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } n wass aya
        *[other] { $days } n wussan aya
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Akk ineqqisen n uɣelluy (ula d { $reports } n uneqqis yettṛaǧun aɣelluy deg uzilal n wakud)
@@ -242,18 +195,11 @@ pending-reports =
     }
 raw-data-copied = Talɣut tarewwayt yettwaneɣlen ɣef afus
 text-copied = Aḍris yettwaneɣlen ɣef afus
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Yewḥel ɣef lqem n unuḍaf udlif.
 blocked-gfx-card = Yewḥel ɣef lqem n unuḍaf udlif acku kra n wuguren n unuḍaf ur frin ara.
 blocked-os-version = Yewḥel ɣef lqem n unagraw-inek n wammud.
 blocked-mismatched-version = Yettwasewḥel i unuḍaf n idlifen n lqem ur yelhin ara deg uɣmis neɣ DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Yewḥel ɣef lqem n unuḍaf udlif. Ɛreḍ aleqqem n unuḍaf-inek udlif ɣeṛ leqem { $driverVersion } neɣ ugar.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Iɣewwaṛen ClearType
 compositing = Compositing
 hardware-h264 = Akestengel H264 s useqdec n warrum
@@ -262,11 +208,6 @@ yes = Ih
 no = Ala
 unknown = Arussin
 virtual-monitor-disp = Taskant n ugdil araɣaṛan
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Yettwaf
 missing = ulac-it
 gpu-process-pid = GPUProcessPid
@@ -293,11 +234,7 @@ webgl2-driver-extensions = Isiɣzaf WebGL 2 Driver
 webgl2-extensions = Isiɣzaf WebGL 2
 webgpu-default-adapter = Amezgay WebGPU amezwer
 webgpu-fallback-adapter = Amezgay WebGPU n tɣellist
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Tabdart tettusewḥel ssebba n wugur yettwassnen: <a data-l10n-name="bug-link">abug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Yettusewḥel; tangalt n tuccḍa { $failureCode }
 d3d11layers-crash-guard = Amsuddes D3D11
 glcontext-crash-guard = OpenGL
@@ -336,16 +273,8 @@ launcher-process-status-0 = Irmed
 launcher-process-status-1 = Yensa ɣef sebba n tuccḍa
 launcher-process-status-2 = Arurmid s tedusi
 launcher-process-status-unknown = Addad arussin
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Yettwasens s termit
-fission-status-experiment-treatment = Yermed n termit
 fission-status-disabled-by-e10s-env = Yettwasens s twennaḍt
 fission-status-enabled-by-env = yetturmed s twennaḍt
 fission-status-disabled-by-env = Yensa s twennaḍt
@@ -354,7 +283,6 @@ fission-status-disabled-by-default = Yensa s wudem amezwer
 fission-status-enabled-by-user-pref = Yetturmed sɣur useqdac
 fission-status-disabled-by-user-pref = Yensa sɣur useqdac
 fission-status-disabled-by-e10s-other = E10s yettwasens
-fission-status-enabled-by-rollout = Rmed asenqqes s cwiṭ cwiṭ
 async-pan-zoom = Asemɣeṛ/Asemẓi aramtawa
 apz-none = ulac
 wheel-enabled = anekcum n tjaṛaṛt yermed
@@ -363,30 +291,20 @@ drag-enabled = Adrurem nufeggag yettwarmed
 keyboard-enabled = anasiw yermed
 autoscroll-enabled = Adrurem awurman yermed
 zooming-enabled = smooth pinch-zoom yermed
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = anekcum aramtawan ur yermid ara ɣef sebba n usmenyaf ur nettusefrak ara: { $preferenceKey }
 touch-warning = anekcum amennalan yensa ɣef sebba  n usmenyaf ur iţusefraken ara: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Insa
 policies-active = Urmid
 policies-error = Tuccḍa
-
-## Printing section
-
 support-printing-title = Asiggez
 support-printing-troubleshoot = Asellek
 support-printing-clear-settings-button = Sfeḍ iɣewwaren n usiggez yettuskelsen
 support-printing-modified-settings = Iɣewwaren n usiggez yettusneflen
 support-printing-prefs-name = Isem
 support-printing-prefs-value = Azal
-
-## Normandy sections
-
+support-remote-settings-status = Addad
+support-remote-settings-status-ok = IH
+support-remote-settings-status-broken = Ur iteddu ara
 support-remote-experiments-title = Tirmitin tinmeggagin
 support-remote-experiments-name = Isem
 support-remote-experiments-branch = Anfal armitan
@@ -394,8 +312,5 @@ support-remote-experiments-see-about-studies = Wali <a data-l10n-name="support-a
 support-remote-features-title = Timahilin tinmeggayin
 support-remote-features-name = Isem
 support-remote-features-status = Addad
-
-## Pointing devices
-
 pointing-device-mouse = Taɣerdayt
 pointing-device-touchscreen = Nnal agdil

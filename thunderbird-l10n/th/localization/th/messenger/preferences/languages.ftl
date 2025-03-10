@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = ย้ายขึ้น
     .accesskey = ย
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = เพิ่ม
     .accesskey = พ
-messenger-languages-window2 =
-    .title = การตั้งค่าภาษาของ { -brand-short-name }
 messenger-languages-dialog-title = การตั้งค่าภาษาของ { -brand-short-name }
 messenger-languages-description = { -brand-short-name } จะแสดงผลภาษาแรกเป็นค่าเริ่มต้นของคุณและจะแสดงผลภาษาอื่นแทนหากจำเป็นตามลำดับที่ปรากฏ
 messenger-languages-search = ค้นหาภาษาเพิ่มเติม…

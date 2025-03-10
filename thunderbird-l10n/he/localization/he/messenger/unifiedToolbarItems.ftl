@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = רווח גמיש
 toolbar-write-message-label = כתיבה
 toolbar-write-message =
@@ -46,8 +39,6 @@ toolbar-junk-label = זבל
 toolbar-junk =
     .title = סימון ההודעות המסומנות כזבל
 toolbar-delete-label = מחיקה
-toolbar-delete =
-    .title = מחיקת ההודעות או תיקייה המסומנים
 toolbar-compact-label = כווץ
 toolbar-compact =
     .title = הסר הודעות שנמחקו מתיקייה מסומנת

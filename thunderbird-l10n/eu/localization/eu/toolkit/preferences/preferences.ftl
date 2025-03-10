@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ezarri gabe)
 failed-pp-change = Ezin da pasahitz nagusia aldatu.
@@ -21,7 +17,6 @@ set-password-new-password = Idatzi pasahitz berria:
 set-password-reenter-password = Idatzi berriz pasahitza:
 set-password-meter = Pasahitzaren kalitate neurgailua
 set-password-meter-loading = Kargatzen
-primary-password-admin = Saio-hasierak eta pasahitzak gordetzeko, pasahitz nagusia ezartzea eskatzen du zure administratzaileak.
 primary-password-required-by-policy = Saio-hasierak eta pasahitzak gordetzeko, pasahitz nagusia ezartzea eskatzen du zure erakundeak.
 primary-password-description = Pasahitz nagusia gailu honetan kontuzko informazioa babesteko erabiltzen da, hala nola saio-hasierak eta pasahitzak. Pasahitz nagusia sortzen baduzu, saioan behin sartzeko eskatuko zaizu, { -brand-short-name }(e)k pasahitz bitartez babestutako informazioa behar duenean.
 primary-password-warning = Ziurta zaitez ezarritako pasahitz nagusia gogoratzen duzula. Zure pasahitz nagusia ahazten baduzu, ez duzu honek gailu honetan babestutako inongo informaziorako sarbiderik izango.

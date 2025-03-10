@@ -1,29 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Localization for Developer Tools tooltips.
-
 learn-more = <span data-l10n-name="link">Dalše informacije</span>
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## The variables are all passed from the same place, in `InactiveCssTooltipHelper#getTemplate`
-## (devtools/client/shared/widgets/tooltip/inactive-css-tooltip-helper.js#95)
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
 inactive-css-not-grid-or-flex-container = <strong>{ $property }</strong> na tutón element efekt nima, dokelž ani kontejner flex ani kontejner grid njeje.
 inactive-css-not-grid-or-flex-container-or-multicol-container = <strong>{ $property }</strong> na tutón element wuskutk nima, dokelž kontejner flex, lěsyčny kontejner abo wjacešpaltowy kontejner njeje.
 inactive-css-not-multicol-container = <strong>{ $property }</strong> na tutón element efekt nima, dokelž so wo wjacešpaltowy kontejner njejedna.
@@ -38,7 +13,6 @@ inactive-css-first-line-pseudo-element-not-supported = <strong>{ $property }</st
 inactive-css-first-letter-pseudo-element-not-supported = <strong>{ $property }</strong> so za pseudoelementy ::first-letter njepodpěruje.
 inactive-css-placeholder-pseudo-element-not-supported = <strong>{ $property }</strong> so za pseudo-elementy ::placeholder njepodpěruje.
 inactive-css-property-because-of-display = <strong>{ $property }</strong> nima wuskutk na tutón element, dokelž ma zwobraznjenje <strong>{ $display }</strong>.
-inactive-css-not-display-block-on-floated = Hódnota <strong>display</strong> je so přez engine do <strong>block</strong> změnił, dokelž element je <strong>floated</strong>.
 inactive-css-not-display-block-on-floated-2 = Hódnota <strong>display</strong> je so přez engine do <strong>{ $display }</strong> změnił, dokelž element je <strong>floated</strong>.
 inactive-css-only-non-grid-or-flex-item = <strong>{ $property }</strong> wuskutk nima, dokelž njeda so ani na zapiskach grid ani na zapiskach flex wužiwać.
 inactive-css-not-block = <strong>{ $property }</strong> na tutón element wuskutk nima, dokelž so jenož na elementy blokoweje runiny nałožuje.
@@ -47,6 +21,7 @@ inactive-css-property-is-impossible-to-override-in-visited = Wobmjezowanja <stro
 inactive-css-position-property-on-unpositioned-box = <strong>{ $property }</strong> na tutón element efekt nima, dokelž pozicionowany element njeje.
 inactive-css-only-replaced-elements = <strong>{ $property }</strong> na tutón element wuskutk nima, dokelž da so jenož na wuměnjene elementy nałožić.
 inactive-text-overflow-when-no-overflow = <strong>{ $property }</strong> na tutón element efekt nima, dokelž hódnota <strong>overflow:hidden</strong> nastajena njeje.
+inactive-css-no-size-containment = <strong>{ $property }</strong> na tutón element efekt nima, dokelž wobmjezowanje wulkosće nima.
 inactive-css-not-for-internal-table-elements = <strong>{ $property }</strong> žadyn efekt na interne tabelowe elementy nima.
 inactive-css-not-for-internal-table-elements-except-table-cells = <strong>{ $property }</strong> žadyn efekt na interne tabelowe elementy mimo tabelowych celow nima.
 inactive-css-not-table = <strong>{ $property }</strong> na tutón element efekt nima, dokelž tabela njeje.
@@ -56,15 +31,8 @@ inactive-scroll-padding-when-not-scroll-container = <strong>{ $property }</stron
 inactive-css-border-image = <strong>{ $property }</strong> na tutón element wuskutk nima, dokelž njeda so na nutřkowne tabelowe elementy nałožić, hdźež <strong>border-collapse</strong> je na <strong>collapse</strong> na nadrjadowanym elemenće tabele stajeny.
 inactive-css-resize = <strong>{ $property }</strong> na tutón element wuskutk nima, dokelž da so jenož na elementy z druhej hódnotu za overflow hač visible nałožić, a na wěste wuměnjene elementy, na přikład tekstowe pola.
 inactive-css-ruby-element = <strong>{ $property }</strong> wuskutk na tutón element nima, dokelž je element ruby. Jeje wulkosć so přez wulkosć pisma teksta ruby postaja.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved.
-
 inactive-css-highlight-pseudo-elements-not-supported = <strong>{ $property }</strong> so za pseudoelementy wuzběhnjenja njepodpěruje.
 inactive-css-cue-pseudo-element-not-supported = <strong>{ $property }</strong> so za pseudo-elementy ::cue njepodpěruje.
-# Variables:
-#   $lineCount (integer) - The number of lines the element has.
 inactive-css-text-wrap-balance-lines-exceeded =
     { $lineCount ->
         [one] <strong>{ $property }</strong> na tutón element efekt nima, dokelž ma wjace hač { $lineCount } linku.
@@ -74,12 +42,6 @@ inactive-css-text-wrap-balance-lines-exceeded =
     }
 inactive-css-text-wrap-balance-fragmented = <strong>{ $property }</strong> na tutón element efekt nima, dokelž je fragmentowany, t. r. jeho wobsah je na wjacore špalty abo strony rozdźěleny.
 inactive-css-no-width-height = <strong>{ $property }</strong> na tutón element wuskutk nima, dokelž jeho šěrokosć a wysokosć njedatej so nastajić.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved. CSS properties and values in <strong> tags should
-## not be translated.
-
 inactive-css-not-grid-or-flex-container-fix = Spytajće <strong>display:grid</strong> abo <strong>display:flex</strong> přidać. { learn-more }
 inactive-css-not-grid-or-flex-or-block-container-fix = Spytajće <strong>display:grid</strong>, <strong>display:flex</strong> abo <strong>display:block</strong> přidać. { learn-more }
 inactive-css-not-grid-or-flex-container-or-multicol-container-fix = Spytajće <strong>display:grid</strong>, <strong>display:flex</strong> abo <strong>columns:2</strong> přdać. { learn-more }
@@ -100,6 +62,7 @@ inactive-css-not-floated-fix = Spytajće kajkosć <strong>float</strong> z druhe
 inactive-css-position-property-on-unpositioned-box-fix = Spytajće jeho kajkosć <strong>position</strong> na něšto druhe hač <strong>static</strong> nastajić. { learn-more }
 inactive-css-only-replaced-elements-fix = Zawěsćće, zo kajkosć wuměnjenemu elementej přidawaće. { learn-more }
 inactive-text-overflow-when-no-overflow-fix = Spytajće <strong>overflow:hidden</strong> přidać. { learn-more }
+inactive-css-no-size-containment-fix = Spytajće kajkosć <strong>display</strong> na něšto druhe hač <strong>none</strong>, <strong>contents</strong>, <strong>table</strong> abo <strong>inline-table</strong> stajić a zawěsćće, zo w tabeli abo segmenće ruby njeje. { learn-more }
 inactive-css-not-for-internal-table-elements-fix = Spytajće kajkosć <strong>display</strong> na něsto druhe hač <strong>table-cell</strong>, <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row.group</strong> abo <strong>table-footer-group</strong> stajić. { learn-more }
 inactive-css-not-for-internal-table-elements-except-table-cells-fix = Spytajće kajkosć <strong>display</strong> na něsto druhe hač <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row.group</strong> abo <strong>table-footer-group</strong> stajić. { learn-more }
 inactive-css-not-table-fix = Spytajće <strong>display:table</strong> abo <strong>display:inline-tabel</strong> přidać. { learn-more }
@@ -111,14 +74,6 @@ inactive-css-resize-fix = Spytajće <strong>overflow</strong> na druhu hódnotu 
 inactive-css-ruby-element-fix = Spytajće <strong>font-size</strong> teksta ruby změnić. { learn-more }
 inactive-css-text-wrap-balance-lines-exceeded-fix = Spytajće ličbu linkow redukować. { learn-more }
 inactive-css-text-wrap-balance-fragmented-fix = Wotstrońće špalty abo wužiwajće <strong>page-break-inside:avoid</strong>, zo byšće rozdźělenje elementoweho wobsaha wobešoł. { learn-more }
-
-## In the Rule View when a CSS property may have compatibility issues with other browsers
-## we display an icon. When this icon is hovered this message is displayed to explain why
-## the property is incompatible and the platforms it is incompatible on.
-## Variables:
-##   $property (string) - A CSS declaration name e.g. "-moz-user-select" that can be a platform specific alias.
-##   $rootProperty (string) - A raw CSS property name e.g. "user-select" that is not a platform specific alias.
-
 css-compatibility-default-message = <strong>{ $property }</strong> so w slědowacych wobhladowakach njepodpěruje:
 css-compatibility-deprecated-experimental-message = <strong>{ $property }</strong> bě eksperimentelna kajkosć, kotraž je nětko po W3C-standardach zestarjena. Njepodpěruje so w slědowacych wobhladowakach:
 css-compatibility-deprecated-experimental-supported-message = <strong>{ $property }</strong> bě eksperimentelna kajkosć, kotraž je nětko po W3C-standardach zestarjena.
@@ -127,10 +82,4 @@ css-compatibility-deprecated-supported-message = <strong>{ $property }</strong> 
 css-compatibility-experimental-message = <strong>{ $property }</strong> je eksperimentelna kajkosć. Njepodpěruje so w slědowacych wobhladowakach:
 css-compatibility-experimental-supported-message = <strong>{ $property }</strong> je eksperimentelna kajkosć.
 css-compatibility-learn-more-message = <span data-l10n-name="link">Dalše informacije</span>wo <strong>{ $rootProperty }</strong>
-
-## In the Rule View when a rule selector can causes issues, we display an icon.
-## When this icon is hovered one or more of those messages are displayed to explain what
-## the issue are.
-
-# :has() should not be translated
 css-selector-warning-unconstrained-has = Tutón selektor njewobmjezowany <strong>:has()</strong> wužiwa, kotryž móže pomały być

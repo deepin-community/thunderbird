@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Membaca dan mengubah markah
 webext-perms-description-browserSettings = Lihat dan ubah setelan peramban
 webext-perms-description-browsingData = Bersihkan riwayat penjelajahan terkini, kuki, dan data terkait
@@ -30,4 +21,6 @@ webext-perms-description-sessions = Mengakses tab yang baru saja ditutup
 webext-perms-description-tabs = Mengakses tab peramban
 webext-perms-description-tabHide = Sembunyikan dan tampilkan tab peramban
 webext-perms-description-topSites = Mengakses riwayat penjelajahan
+webext-perms-description-trialML = Unduh dan jalankan model AI di perangkat Anda
+webext-perms-description-userScripts = Izinkan skrip pihak ketiga yang belum diverifikasi untuk mengakses data Anda
 webext-perms-description-webNavigation = Mengakses aktivitas peramban selama navigasi

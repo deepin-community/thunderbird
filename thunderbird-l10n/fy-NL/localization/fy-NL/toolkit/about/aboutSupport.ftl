@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Helpynformaasje
 page-subtitle =
     Dizze side befettet technyske ynformaasje dy’t brûkber wêze kin as jo
@@ -41,8 +37,6 @@ app-basics-version = Ferzje
 app-basics-build-id = Build-ID
 app-basics-distribution-id = Distribúsje-ID
 app-basics-update-channel = Fernijingskanaal
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Map fernije
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Fernijingsskiednis
 app-basics-show-update-history = Fernijingsskiednis toane
-# Represents the path to the binary used to start the application.
 app-basics-binary = Binêr tapassingsbestân
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Profylmap
        *[other] Profylmap
     }
-app-basics-enabled-plugins = Ynskeakele ynstekkers
 app-basics-build-config = Utjeftekonfiguraasje
 app-basics-user-agent = User Agent
 app-basics-os = OS
 app-basics-os-theme = OS-tema
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Troch Rosetta oerset
 app-basics-memory-use = Unthâldgebrûk
 app-basics-performance = Prestaasje
@@ -82,9 +72,6 @@ app-basics-safe-mode = Feilige modus
 app-basics-memory-size = Unthâldgrutte (RAM)
 app-basics-disk-available = Beskikbere skiifromte:
 app-basics-pointing-devices = Oanwiisapparaten
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Beslútloch
 graphics-crash-guards-title = Utskeakele funksjes fan ûngelokbeskerming
 graphics-workarounds-title = Workarounds
 graphics-device-pixel-ratios = Pikselferhâldingen fan finsterapparaat
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Finsterprotokol
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Desktopomjouwing
 place-database-title = Places-database
 place-database-stats = Statistiken
@@ -156,9 +141,6 @@ clear-startup-cache-label = Opstartbuffer wiskje…
 startup-cache-dialog-title2 = { -brand-short-name } opnij starte om de opstartbuffer te wiskjen?
 startup-cache-dialog-body2 = Dit sil jo ynstellingen net wizigje of útwreidingen fuortsmite.
 restart-button-label = Opnij starte
-
-## Media titles
-
 audio-backend = Audio-backend
 max-audio-channels = Maks kanalen
 sample-rate = Oanrekommandearre foarbyldfrekwinsje
@@ -177,11 +159,7 @@ media-device-rate = Wurdearrring
 media-device-latency = Latintens
 media-capabilities-title = Mediamooglikheden
 media-codec-support-info = Codec-stipeynformaasje
-# List all the entries of the database.
 media-capabilities-enumerate = Database ynventarisearje
-
-## Codec support table
-
 media-codec-support-sw-decoding = Software-dekodearring
 media-codec-support-hw-decoding = Hardware-dekodearring
 media-codec-support-codec-name = Codecnamme
@@ -189,26 +167,13 @@ media-codec-support-supported = Stipe
 media-codec-support-unsupported = Net stipe
 media-codec-support-error = Codec-stipeynformaasje net beskikber. Probearje it nochris nei it ôfspyljen fan in mediabestân.
 media-codec-support-lack-of-extension = Utwreiding ynstallearje
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Ynformaasje oer ynhâldsûntsiferingsmodulen
 media-key-system-name = Kaaisysteemnamme
 media-video-robustness = Fideo-robústheid
 media-audio-robustness = Audio-robústheid
 media-cdm-capabilities = Mooglikheden
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Skjinne start
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = HDCP 2.2-kompatibel
-
-##
-
 intl-title = Ynternasjonalisaasje & lokalisaasje
 intl-app-title = Applikaasjeynstellingen
 intl-locales-requested = Fersochte talen
@@ -218,52 +183,29 @@ intl-locales-default = Standerttaal
 intl-os-title = Bestjoeringssysteem
 intl-os-prefs-system-locales = Systeemtalen
 intl-regional-prefs = Regionale foarkarren
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Remote debugging (Chromium-protokol)
 remote-debugging-accepting-connections = Akseptearret ferbiningen
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Ungelokrapporten foar de lêste { $days } dei
        *[other] Ungelokrapporten foar de lêste { $days } dagen
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } minút lyn
        *[other] { $minutes } minuten lyn
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } oer lyn
        *[other] { $hours } oer lyn
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } dei lyn
        *[other] { $days } dagen lyn
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Alle ûngelokrapporten (ynklusyf { $reports } ûngelok op wacht yn it opjûne tiidsrak)
@@ -271,18 +213,11 @@ pending-reports =
     }
 raw-data-copied = Rûge gegevens nei klamboerd kopiearre
 text-copied = Tekst nei klamboerd kopiearre
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Blokkearre foar jo grafyske stjoerprogramma.
 blocked-gfx-card = Blokkearre foar jo grafyske kaart fanwegen net oploste problemen mei it stjoerprogramma.
 blocked-os-version = Blokkearre foar jo bestjoeringssysteemferzje.
 blocked-mismatched-version = Blokkearre foar jo grafyske stjoerprogramma, ferzjes yn register en DLL komme net oerien.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Blokkearre foar jo grafysk stjoerprogramma. Probearje jo grafyske stjoerprogramma by te wurkjen nei ferzje { $driverVersion } of nijer.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType parameters
 compositing = Gearstalle
 support-font-determination = Debugynformaasje oer lettertypesichtberheid
@@ -292,11 +227,6 @@ yes = Ja
 no = Nee
 unknown = Unbekend
 virtual-monitor-disp = Virtual Monitor Display
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Fûn
 missing = Untbrekt
 gpu-process-pid = GPUProcessPid
@@ -323,11 +253,7 @@ webgl2-driver-extensions = Utwreidingen fan WebGL 2-stjoerprogramma
 webgl2-extensions = WebGL 2-útwreidingen
 webgpu-default-adapter = WebGPU-standertdadapter
 webgpu-fallback-adapter = WebGPU-tebekfaladapter
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Blokkearre fanwegen bekende problemen: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Op blokkearlist; flaterkoade { $failureCode }
 d3d11layers-crash-guard = D3D11-compositor
 glcontext-crash-guard = OpenGL
@@ -347,8 +273,6 @@ has-seccomp-bpf = Seccomp-BPF (Systeemoanropfiltering)
 has-seccomp-tsync = Seccomp-threadsynchronisatie
 has-user-namespaces = Namespaces fan brûker
 has-privileged-user-namespaces = Namespaces fan brûker foar proscessen mei foech
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } – Dizze funksje is net tastien troch jo systeem. Dit kin befeiligingsfunksjes fan { -brand-short-name } beheine.
 can-sandbox-content = Ynhâldsproses-sandboxing
 can-sandbox-media = Mediaynstekker-sandboxing
@@ -369,16 +293,8 @@ launcher-process-status-0 = Ynskeakele
 launcher-process-status-1 = Utskeakele fanwegen flater
 launcher-process-status-2 = Forsearre útskeakele
 launcher-process-status-unknown = Unbekende steat
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Utskeakele troch eksperimint
-fission-status-experiment-treatment = Ynskeakele troch eksperimint
 fission-status-disabled-by-e10s-env = Utskeakele troch omjouwing
 fission-status-enabled-by-env = Ynskeakele troch omjouwing
 fission-status-disabled-by-env = Utskeakele troch omjouwing
@@ -387,7 +303,6 @@ fission-status-disabled-by-default = Standert útskeakele
 fission-status-enabled-by-user-pref = Ynskeakele troch brûker
 fission-status-disabled-by-user-pref = Utskeakele troch brûker
 fission-status-disabled-by-e10s-other = E10s útskeakele
-fission-status-enabled-by-rollout = Ynskeakele troch fazearre útjefte
 async-pan-zoom = Asyngroan panne/zoome
 apz-none = gjin
 wheel-enabled = tsjilynfier ynskeakele
@@ -396,34 +311,20 @@ drag-enabled = sleep fia skowbalke ynskeakele
 keyboard-enabled = toetseboerd ynskeakele
 autoscroll-enabled = automatysk skowe ynskeakele
 zooming-enabled = soepele knyp-zoom ynskeakele
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = async-tsjilynfier útskeakele fanwegen net stipe foarkar: { $preferenceKey }
 touch-warning = async-oanraakynfier útskeakele fanwegen net stipe foarkar: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Ynaktyf
 policies-active = Aktyf
 policies-error = Flater
-
-## Printing section
-
 support-printing-title = Ofdrukke
 support-printing-troubleshoot = Probleemoplossing
 support-printing-clear-settings-button = Bewarre ôfdrukynstellingen wiskje
 support-printing-modified-settings = Wizige ôfdrukynstellingen
 support-printing-prefs-name = Namme
 support-printing-prefs-value = Wearde
-
-## Remote Settings sections
-
 support-remote-settings-title = Eksterne ynstellingen
 support-remote-settings-status = Steat
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Wurket net
 support-remote-settings-last-check = Lêste kontrôle
 support-remote-settings-local-timestamp = Lokale tiidstimpel
@@ -431,9 +332,6 @@ support-remote-settings-sync-history = Skiednis
 support-remote-settings-sync-history-status = Steat
 support-remote-settings-sync-history-datetime = Datum
 support-remote-settings-sync-history-infos = Ynformaasje
-
-## Normandy sections
-
 support-remote-experiments-title = Eksterne eksperiminten
 support-remote-experiments-name = Namme
 support-remote-experiments-branch = Eksperiminttak
@@ -441,19 +339,10 @@ support-remote-experiments-see-about-studies = Sjoch <a data-l10n-name="support-
 support-remote-features-title = Eksterne funksjes
 support-remote-features-name = Namme
 support-remote-features-status = Steat
-
-## Pointing devices
-
 pointing-device-mouse = Mûs
 pointing-device-touchscreen = Oanraakskerm
 pointing-device-pen-digitizer = Pen Digitizer
 pointing-device-none = Gjin oanwiisapparaten
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Ynhâldsanalyze (DLP)
 content-analysis-active = Aktyf
 content-analysis-connected-to-agent = Ferbûn mei agent

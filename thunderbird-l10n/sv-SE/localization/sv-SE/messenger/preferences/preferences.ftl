@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Stäng
 preferences-doc-title2 = Inställningar
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Synkronisera
 category-sync =
     .tooltiptext = Synkronisera
+pane-qr-export-title = Exportera för mobil
+category-qr-export =
+    .tooltiptext = Exportera för mobil
 general-language-and-appearance-header = Språk & utseende
 general-incoming-mail-header = Inkommande e-post
 general-files-and-attachment-header = Filer & bilagor
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Tillåt { -brand-short-name } att automatiskt skicka teknisk och interaktionsdata till { -vendor-short-name }
     .accesskey = T
 collection-health-report-link = Läs mer
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Datarapportering är inaktiverad för denna byggkonfiguration
 collection-backlogged-crash-reports =
     .label = Tillåt { -brand-short-name } att skicka eftersläpande kraschrapporter för din räkning
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Starta om { -brand-short-name } för att tillämpa ändringarna
 confirm-messenger-language-change-button = Tillämpa och starta om
 update-setting-write-failure-title = Det gick inte att spara uppdateringsinställningar
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } stötte på ett fel och lagrade inte den här ändringen. Observera att ange denna uppdateringsinställning kräver tillstånd att skriva till filen nedan. Du eller en systemadministratör kan eventuellt lösa felet genom att ge användargruppen fullständig kontroll till den här filen.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Uppdatering pågår
 update-in-progress-message = Vill du att { -brand-short-name } ska fortsätta med denna uppdatering?
 update-in-progress-ok-button = &Ignorera
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Fortsätt
 account-button = Kontoinställningar
 open-addons-sidebar-button = Tillägg och teman
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Om du vill skapa ett huvudlösenord anger du dina inloggningsuppgifter för Windows. Detta skyddar dina kontons säkerhet.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = skapa ett huvudlösenord
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Lägg till OpenSearch-leverantör
 add-opensearch-provider-text = Ange URL-adressen till OpenSearch-leverantören som du vill lägga till. Använd antingen den direkta URL-adressen till OpenSearch-beskrivningsfilen eller en URL där den kan upptäckas automatiskt.
 adding-opensearch-provider-failed-title = Det gick inte att lägga till OpenSearch-leverantör
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Det gick inte att lägga till OpenSearch-leverantör för { $url }.
 minimize-to-tray-label =
     .label = När { -brand-short-name } minimeras, flytta den till aktivitetsfält
@@ -185,12 +162,12 @@ mbox-store-label =
     .label = Fil per mapp (mbox)
 maildir-store-label =
     .label = Fil per meddelande (maildir)
-scrolling-legend = Scrollning
+scrolling-legend = Rullning
 autoscroll-label =
-    .label = Använd automatisk scrollning
+    .label = Använd automatisk rullning
     .accesskey = u
 smooth-scrolling-label =
-    .label = Använd mjuk scrollning
+    .label = Använd mjuk rullning
     .accesskey = m
 browsing-gtk-use-non-overlay-scrollbars =
     .label = Visa alltid rullningslister
@@ -210,8 +187,6 @@ always-check-default =
 check-default-button =
     .label = Kontrollera nu…
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -229,8 +204,6 @@ return-receipts-button =
     .label = Mottagningskvitton…
     .accesskey = M
 update-app-legend = { -brand-short-name } uppdateringar
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Version { $version }
 allow-description = Tillåt { -brand-short-name } att
 automatic-updates-label =
@@ -265,18 +238,10 @@ offline-compact-folder-automatically =
     .accesskey = F
 compact-folder-size =
     .value = MB totalt
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Använd upp till
     .accesskey = A
 use-cache-after = MB utrymme för cachen
-
-##
-
 smart-cache-label =
     .label = Åsidosätt automatisk cachehantering
     .accesskey = s
@@ -300,7 +265,6 @@ color-options-button =
     .label = Färger…
     .accesskey = F
 display-width-legend = Oformaterade meddelanden
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Visa smilisar (gubbar som uttrycker känslor).
     .accesskey = m
@@ -368,17 +332,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Visa bilagor inline
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Efter att ha visats i
     .accesskey = E
 seconds-label = sekunder
-
-##
-
 open-msg-label =
     .value = Öppna meddelanden i:
 open-msg-tab =
@@ -393,8 +350,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Stäng meddelandefönstret/fliken vid flyttning eller borttagning
     .accesskey = S
-display-name-label =
-    .value = Visningsnamn:
 address-display-legend = Meddelandelista
 address-display-description = Föredraget visningsformat för adress:
 address-display-full =
@@ -409,9 +364,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Visa endast kortnamn för personer som finns i adressboken
     .accesskey = V
-
-## Compose Tab
-
+table-layout-legend = Tabellvy
+table-layout-horizontal-scroll-label =
+    .label = Tillåt vågrät rullning
+    .accesskey = v
+conversation-view-legend = Konversationsvy
+conversation-view-checkbox-label =
+    .label = Aktivera konversationsvy
+    .accesskey = k
+conversation-view-checkbox-description = Experimentell funktion baserad på Gloda, använd den på egen risk
+label-experiment = Experimentell
+account-hub-legend = Kontonav
+account-hub-checkbox-label =
+    .label = Skapa konton i nya kontonavet
+    .accesskey = S
+account-hub-checkbox-description = Experimentellt flöde för att skapa nya e-postkonton
 forward-label =
     .value = Vidarebefordra meddelanden:
     .accesskey = V
@@ -422,17 +389,10 @@ as-attachment-label =
 extension-label =
     .label = med ett filnamnstillägg
     .accesskey = m
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Autospara var
     .accesskey = u
 auto-save-end = minut
-
-##
-
 warn-on-send-accel-key =
     .label = Bekräfta när du skickar meddelanden med tangentbordskommando
     .accesskey = ä
@@ -523,9 +483,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Hitta fler leverantörer…
 cloud-account-description = Lägg till en ny Filelink lagringstjänst
-
-## Privacy Tab
-
 mail-content = E-postinnehåll
 remote-content-label =
     .label = Tillåt fjärrinnehåll i meddelanden
@@ -554,11 +511,11 @@ third-party-visited =
 cookies-button =
     .label = Visa kakor…
     .accesskey = V
-do-not-track-label =
-    .label = Skicka webbplatser en “Spåra inte”-signal att du inte vill bli spårad
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Läs mer
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Tala om för webbplatser att inte sälja eller dela min data
+    .accesskey = T
+do-not-track-removal = Vi stöder inte längre signalen "Spåra inte".
 passwords-description = { -brand-short-name } kan spara lösenord för alla dina konton.
 passwords-button =
     .label = Sparade lösenord…
@@ -567,7 +524,6 @@ primary-password-description = Ett huvudlösenord skyddar alla dina lösenord, m
 primary-password-label =
     .label = Använd ett huvudlösenord
     .accesskey = A
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Kräv enhetsinloggning för att fylla i och hantera lösenord
 primary-password-button =
@@ -576,9 +532,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Du är för närvarande i FIPS-läge. FIPS kräver ett huvudlösenord.
 forms-master-pw-fips-desc = Ändring av lösenordet misslyckades
 junk-description = Ange inställningar för skräpposthantering. Kontospecifika skräppostinställningar kan göras i Kontoinställningar.
-junk-label =
-    .label = När jag märker meddelanden som skräppost:
-    .accesskey = N
 junk-marked-label =
     .label = När meddelanden är markerade som skräp:
     .accesskey = N
@@ -588,9 +541,6 @@ junk-move-label =
 junk-delete-label =
     .label = Ta bort dem
     .accesskey = T
-junk-read-label =
-    .label = Märk skräpklassade meddelanden som lästa
-    .accesskey = M
 junk-read-description = Markera meddelanden som lästa
 junk-read-manual-label =
     .label = När meddelanden är manuellt markerade som skräp
@@ -647,9 +597,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Automatiska beslut kan åsidosättas genom att manuellt aktivera eller inaktivera kryptering när du skriver ett meddelande.
     Obs: kryptering aktiveras alltid automatiskt när du svarar på ett krypterat meddelande.
-
-## Chat Tab
-
 startup-label =
     .value = När { -brand-short-name } startar:
     .accesskey = s
@@ -657,20 +604,10 @@ offline-label =
     .label = Håll mina chattkonton offline
 auto-connect-label =
     .label = Anslut mina chattkonton automatiskt
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Låt mina kontakter veta att jag är Inaktiv efter
     .accesskey = I
 idle-time-label = minuters inaktivitet
-
-##
-
 away-message-label =
     .label = och sätt min status till Borta med statusmeddelandet:
     .accesskey = B
@@ -732,41 +669,21 @@ no-preview-description = Det här temat är inte giltigt eller är för närvara
 chat-variant-label =
     .value = Variant:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Hitta i inställningar
-
-## Settings UI Search Results
-
 search-results-header = Sökresultat
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Förlåt! Det finns inga resultat i inställningar för "<span data-l10n-name="query"></span>".
        *[other] Förlåt! Det finns inga resultat i inställningar för "<span data-l10n-name="query"></span>".
     }
 search-results-help-link = Behöver du hjälp? <a data-l10n-name="url">{ -brand-short-name } supporten</a>
-
-## Sync Tab
-
 sync-signedout-caption = Ta med dig webben
 sync-signedout-description = Synkronisera dina konton, adressböcker, kalendrar, tillägg och inställningar på alla dina enheter.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Logga in för att synkronisera…
 sync-pane-header = Synkronisera
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = "{ $userEmail }" är inte verifierad.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Logga in för att återansluta "{ $userEmail }"
 sync-pane-resend-verification = Skicka verifiering igen
 sync-pane-sign-in = Logga in
@@ -796,3 +713,49 @@ synced-acount-item-filters = Filter
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Synkronisera dina e-postkonton, adressböcker, kalendrar och identiteter på alla dina enheter.
 sync-disconnected-turn-on-sync = Aktivera synkronisering…
+qr-export-pane-header = Exportera konton till { -brand-product-name } mobil
+qr-export-description = Överför snabbt dina kontoinställningar från dator till mobil genom att generera en QR-kod. Välj vilka konton som ska inkluderas, bestäm om du vill överföra ditt lösenord och skanna koden med din mobila enhet. Snabbt, säkert och enkelt.
+qr-export-get-app = Har du inte { -brand-product-name } på mobilen än? <a data-l10n-name="app-link">Hämta den på Google Play</a>
+qr-export-create = Skapa en QR-kod för att exportera dina konton
+qr-export-select-accounts = Välj vilka konton som ska exporteras:
+qr-export-no-accounts = Ser du inte alla dina konton? Vissa konton kan inaktiveras eftersom de inte stöds av { -brand-product-name } för Android. <a data-l10n-name="account-support-link">Support</a>
+qr-export-accounts-legend = E-postkonton
+qr-export-select-all-accounts = Markera alla
+qr-export-security-legend = Säkerhet
+qr-export-include-passwords = Inkludera lösenorden för alla konton
+qr-export-oauth-warning = Vissa av dina konton använder en autentiseringsmetod som kan kräva ny autentisering på din mobila enhet. Du kan behöva ange dina lösenord igen under denna process.
+qr-export-security-hint = Genom att skanna följande QR-koder kommer dina kontoinställningar—inklusive din e-post och lösenord—att överföras säkert. Vi samlar inte in, lagrar eller delar inte någon av dessa uppgifter under processen. Överföringen sker direkt mellan dina enheter.
+qr-export-security-warning = För din säkerhet, se till att du är i en privat miljö och skanna endast QR-koder från betrodda källor.
+qr-export-start-export = Exportera
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } av { $count } QR-kod
+       *[other] { $step } av { $count } QR-koder
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skanna QR-kod med { -brand-product-name } på din mobila enhet
+       *[other] Skanna QR-koder med { -brand-product-name } på din mobila enhet
+    }
+qr-export-scan-step1 = Öppna { -brand-product-name } på din mobila enhet
+qr-export-scan-step2 = Gå till Inställningar
+qr-export-scan-step3 = Välj <strong>Importera inställningar</strong>
+qr-export-scan-step4-revision = Tryck på <strong>Skanna QR-kod</strong> och håll telefonen ovanför den här koden
+qr-export-back = Tillbaka
+qr-export-next = Nästa
+qr-export-done = Klar
+qr-export-summary-description = Konton exporterade. Fortsätt på din mobila enhet.
+qr-export-summary-title = Exportöversikt:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-kod har genererats
+       *[other] { $count } QR-koder har genererats
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } konto exporterat:
+       *[other] { $count } konton exporterade:
+    }
+qr-export-summary-passwords-included = Lösenord medföljer
+qr-export-summary-passwords-excluded = Lösenord exkluderas
+qr-export-more-accounts = Exportera fler konton

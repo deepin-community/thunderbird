@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Сачуване пријаве
 saved-logins-title = Сачуване пријаве
-window-close =
-    .key = њ
 focus-search-primary-shortcut =
     .key = ф
 focus-search-alt-shortcut =
@@ -69,15 +61,6 @@ remove-all-shown =
 remove-all-passwords-prompt = Јесте ли сигурни да желите да уклоните све лозинке?
 remove-all-passwords-title = Уклони све лозинке
 no-master-password-prompt = Јесте ли сигурни да желите да прикажете ваше лозинке?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Потврдите свој идентитет да бисте открили сачуване лозинке.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = откриј сачуване лозинке
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }

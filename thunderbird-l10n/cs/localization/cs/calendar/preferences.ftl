@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Kalendář
 calendar-title-reminder = Upozornění
 calendar-title-notification = Oznámení
@@ -9,10 +5,8 @@ calendar-title-category = Kategorie
 dateformat-label =
     .value = Formát data:
     .accesskey = d
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Dlouhý: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Krátký: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Zeptat se na potvrzení před smazáním události nebo úkolu.
     .accesskey = v
-accessibility-legend = Přístupnost
-accessibility-colors-label =
-    .label = Optimalizovat barvy kvůli přístupnosti
-    .accesskey = O
 reminder-legend = Při upozornění:
 reminder-play-checkbox =
     .label = Přehrát zvuk

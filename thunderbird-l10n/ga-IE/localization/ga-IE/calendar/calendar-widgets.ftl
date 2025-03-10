@@ -1,13 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Side panel
-
-
-## Calendar navigation
-
 calendar-view-toggle-day = Lá
     .title = Oscail amharc lae
 calendar-view-toggle-week = Seachtain
@@ -16,12 +6,6 @@ calendar-view-toggle-multiweek = Amharc Ilseachtaine
     .title = Oscail amharc ilseachtaine
 calendar-view-toggle-month = Mí
     .title = Oscail amharc míosa
-
-## Menu on calendar control bar
-
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = An Lá Roimhe Seo
     .accesskey = S

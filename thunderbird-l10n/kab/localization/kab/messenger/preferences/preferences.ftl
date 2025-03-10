@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Mdel
 preferences-doc-title2 = Iɣewwaren
@@ -50,8 +46,6 @@ collection-health-report =
     .label = Sireg { -brand-short-name } ad yazen isefka itiknikanen ɣer { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Issin ugar
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Aneqqis n isefka ur irmid ara i uswel-a n usefsu
 collection-backlogged-crash-reports =
     .label = Sireg { -brand-short-name } akken ad yazen ineqqisen n uɣelluy deg ugilal
@@ -72,10 +66,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Ales tanekra n { -brand-short-name } akken ad ddun ibeddilen-a
 confirm-messenger-language-change-button = Snes sakin ales tanekra
 update-setting-write-failure-title = Tuccḍa deg usekles n yismenyifen n uleqqem
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } yemmuger-d tuccḍa ihi ur izmir ara ad isekles abeddel-a. Ẓer dakken abeddel n usmenyif-a n uleqqem, yesra tasiregt n tira deg ufaylu seddaw. Kečč neɣ anedbal n unagraw, tzemrem ahat ad tesseɣtim tuccḍa s umuddu n usenqed ummid n ufaylu-a i ugraw yiseqdacen.
     
@@ -83,26 +73,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Aleqqem itteddu
 update-in-progress-message = Tebɣiḍ { -brand-short-name } ad ikemmel aleqqem-a?
 update-in-progress-ok-button = &Anef
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Kemmel
 account-button = Iɣewwaṛen n umiḍan
 open-addons-sidebar-button = Izegrar d yisental
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Akken ad ternuḍ awal-inek·inem uffir agejdan, sekcem inekcam-inek·inem n tuqqna n Windows. Ayagi ad yeḍmen aḥraz n tɣellist n yimiḍanen-inek·inem.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = rnu awal uffir agejdan
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +103,6 @@ remove-search-engine =
 add-opensearch-provider-title = Rnu asaǧǧăw OpenSearch
 add-opensearch-provider-text = Sekcem URL n usaǧǧaw OpenSearch ara ternuḍ. Seqdec URL srid seg ufaylu n uglam OpenSearch, neɣ URL anida yezmer ad yettwaf s wudem awurman.
 adding-opensearch-provider-failed-title = Timerna n usaǧǧaw OpenSearch ur teddi ara
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Yegguma ad yernu asaǧǧaw OpenSearch i{ $url }.
 minimize-to-tray-label =
     .label = Ticki { -brand-short-name } yuder, awi-t ɣer ufeggag n wadda
@@ -206,8 +180,6 @@ always-check-default =
 check-default-button =
     .label = Senqed tura…
     .accesskey = t
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Amfeṛṛaz
@@ -225,8 +197,6 @@ return-receipts-button =
     .label = Inagan n waggaḍ…
     .accesskey = g
 update-app-legend = Ileqman n { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Lqem { $version }
 allow-description = Eǧǧ { -brand-short-name }
 automatic-updates-label =
@@ -261,18 +231,10 @@ offline-compact-folder-automatically =
     .accesskey = s
 compact-folder-size =
     .value = Asemday s MAṬ
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Seqdec arama
     .accesskey = q
 use-cache-after = MAṬ n tallunt i tuffirt
-
-##
-
 smart-cache-label =
     .label = Snifel asefrek awurman n tuffirt
     .accesskey = v
@@ -293,7 +255,6 @@ color-options-button =
     .label = Tiɣmiyin…
     .accesskey = m
 display-width-legend = Iznan n udris ačuṛan
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Skeyn iẓuyaṛ am idlifen
     .accesskey = ẓ
@@ -358,17 +319,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Imir imir deg uskan
     .accesskey = d
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Ticki yettwaskan di
     .accesskey = T
 seconds-label = tasinin
-
-##
-
 open-msg-label =
     .value = Ldi iznan di:
 open-msg-tab =
@@ -383,14 +337,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Mdel asfaylu/iccer n yizen deg unkaz neɣ di tukksa
     .accesskey = M
-display-name-label =
-    .value = Isem yettwaseknen:
 condensed-addresses-label =
     .label = Sken kan isem iyemdanen yellan deg imedlis inu n tensa
     .accesskey = S
-
-## Compose Tab
-
 forward-label =
     .value = Welleh iznan:
     .accesskey = z
@@ -401,17 +350,10 @@ as-attachment-label =
 extension-label =
     .label = Rnu asi qzef i yisem n ufaylu
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Asekles awurman yal
     .accesskey = w
 auto-save-end = tisdatin
-
-##
-
 warn-on-send-accel-key =
     .label = Sentem ticki tesseqdaceḍ anegzum n unasiw akken ad tazneḍ izen
     .accesskey = t
@@ -491,9 +433,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Af-d ugar n yisaǧǧawen...
 cloud-account-description = Rnu ameẓlu n usekles n useɣwen n ufaylu amaynut
-
-## Privacy Tab
-
 mail-content = Agbur n yimayl
 remote-content-label =
     .label = Sireg agbur anmeggag deg iznan
@@ -522,11 +461,6 @@ third-party-visited =
 cookies-button =
     .label = Sken
     .accesskey = S
-do-not-track-label =
-    .label = Ad yazen tamuli “ur sfu$yul ara” γer ismal web akken ad gzun d akken ur tebγiḍ ara asfuγel
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Issin ugar
 passwords-description = { -brand-short-name } yezmer ad yecfu ɣef awalen uffiren n imiḍan-inek imeṛṛa.
 passwords-button =
     .label = Awalen uffiren iţwakelsen…
@@ -541,18 +475,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Aql-ak·akem tura deg uskar FIPS. FPIS yesra awal uffir agejdan arilem.
 forms-master-pw-fips-desc = Asnifel n wawal uffir ur yeddi ara
 junk-description = Sbadu iɣewwaren imezwar n yimaylen ispamen. Iɣewwaren n yimaylen ispamen n umiḍan yezmer ad ittuswel deg iɣewwaren n umiḍan.
-junk-label =
-    .label = Ticki ceṛḍeɣ iznan inu amzun d ispamen:
-    .accesskey = c
 junk-move-label =
     .label = Awi-ten ɣer ukaram "Aspam" n umiḍan
     .accesskey = w
 junk-delete-label =
     .label = Kkes-iten
     .accesskey = K
-junk-read-label =
-    .label = Creḍ iznan ispamen amzun ttwaɣṛan
-    .accesskey = C
 junk-log-label =
     .label = Rmed asniɣmes n imzizdig aspam aserwestan
     .accesskey = R
@@ -586,9 +514,6 @@ certificate-button =
 security-devices-button =
     .label = Ibenkan n tɣellist…
     .accesskey = k
-
-## Chat Tab
-
 startup-label =
     .value = Di tnekra n { -brand-short-name }:
     .accesskey = D
@@ -596,20 +521,10 @@ offline-label =
     .label = Eǧǧ amiḍan inu n udiwenni usrid di war  tuqqna
 auto-connect-label =
     .label = Qqen amiḍan inu n udiwenni s srid s wudem awurman
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Eǧǧ inermisen-iw ad ẓren d akken ulac-iyi di
     .accesskey = I
 idle-time-label = tisdatin anda ulac-iyi
-
-##
-
 away-message-label =
     .label = u sbadu addad inu ɣer Ulac-it s yizen-agi n waddad
     .accesskey = U
@@ -671,40 +586,20 @@ no-preview-description = Asentel-agi mačči d ameɣtu neɣ ulac-it akka tura (a
 chat-variant-label =
     .value = Talmest:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Af deg yiɣewwaren
-
-## Settings UI Search Results
-
 search-results-header = Igmaḍ n unadi
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Nesḥassef! Ulac igmaḍ deg textiṛiyin i "<span data-l10n-name="query"></span>"
        *[other] Nesḥassef! Ulac igmaḍ deg yiɣewwaren i "<span data-l10n-name="query"></span>"
     }
 search-results-help-link = Tesriḍ tallelt? Rzu γer <a data-l10n-name="url">{ -brand-short-name } Tallelt</a>
-
-## Sync Tab
-
 sync-signedout-caption = Awi web-inek yid-k
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Qqen ɣer Sync…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” ur ittusenqed ara.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Ma ulac aɣilif sesteb akken ad tkecmeḍ “{ $userEmail }”
 sync-pane-resend-verification = Ales tuzna n usentem
 sync-pane-sign-in = Kcem

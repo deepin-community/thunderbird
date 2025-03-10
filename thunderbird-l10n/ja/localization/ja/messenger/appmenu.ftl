@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = 同期
 appmenu-signin-panel =
@@ -26,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = ログアウト...
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = 新しいアカウント
 appmenu-new-account-panel =
     .label = 新しいアカウント
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = 新しいメールアドレスを取得
-    .accesskey = G
-appmenu-new-mail-account =
-    .label = 既存のメールアドレス
-    .accesskey = E
 appmenu-new-email-account =
     .label = メール
     .accesskey = E
@@ -55,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = ニュースグループ
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = 新しいアドレス帳
 appmenu-newab-panel =
@@ -72,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP アドレス帳
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = 作成
 appmenu-create-panel =
@@ -92,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = 連絡先
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = ファイルから開く
     .accesskey = O
@@ -106,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = カレンダー...
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = 表示
 appmenu-view-panel =
@@ -128,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = フォントサイズを大きくします
 appmenuitem-font-size-reduce =
     .tooltiptext = フォントサイズを小さくします
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = フォントサイズをリセットします
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = ツール
 appmenu-tools-panel =
@@ -147,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = 設定とデータのエクスポート
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = モバイル向けのエクスポート
+    .accesskey = p
 appmenu-tools-message-search =
     .label = メッセージを検索
     .accesskey = S
@@ -162,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = 開発ツール
     .accesskey = T
-
-## Help
-
 appmenu-help-panel-title =
     .title = ヘルプ
 appmenu-help-get-help =
     .label = ヘルプを表示
     .accesskey = H
-appmenu-help-explore-features =
-    .label = 機能紹介
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = { -brand-short-name } に関するヘルプ
     .accesskey = R
@@ -200,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = { -brand-short-name } について
     .accesskey = A
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = { -brand-shorter-name } の更新をダウンロード中
 appmenuitem-banner-update-available =

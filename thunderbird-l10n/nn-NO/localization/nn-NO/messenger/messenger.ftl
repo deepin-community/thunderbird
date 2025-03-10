@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Window controls
-
 messenger-window-minimize-button =
     .tooltiptext = Minimer
 messenger-window-maximize-button =
@@ -13,76 +6,48 @@ messenger-window-restore-down-button =
     .tooltiptext = Gjenopprett ned
 messenger-window-close-button =
     .tooltiptext = Lat att
-# Variables:
-# $count (Number) - Number of unread messages.
 unread-messages-os-tooltip =
     { $count ->
         [one] 1 ulesen melding
        *[other] { $count } ulesne meldingar
     }
 about-rights-notification-text = { -brand-short-name } er fri programvare basert på open kjeldekode, bygd av eit fellesskap av tusentals personar over heile verda.
-
-## Content tabs
-
 content-tab-page-loading-icon =
     .alt = Sida vert lasta inn
 content-tab-security-high-icon =
     .alt = Tilkoplinga er trygg
 content-tab-security-broken-icon =
     .alt = Tilkoplinga er ikkje trygg
-
-# Back
-
-# Variables
-#   $shortcut (String) - A keyboard shortcut for the Go Back command.
 content-tab-menu-back =
     .tooltiptext = Gå tilbake ei side ({ $shortcut })
     .aria-label = Tilbake
     .accesskey = T
-# This menuitem is only visible on macOS
 content-tab-menu-back-mac =
     .label = Tilbake
     .accesskey = T
-
-# Forward
-
-# Variables
-#   $shortcut (String) - A keyboard shortcut for the Go Forward command.
 content-tab-menu-forward =
     .tooltiptext = Gå fram ei side ({ $shortcut })
     .aria-label = Fram
     .accesskey = F
-# This menuitem is only visible on macOS
 content-tab-menu-forward-mac =
     .label = Fram
     .accesskey = F
-
-# Reload
-
 content-tab-menu-reload =
     .tooltiptext = Oppdater sida
     .aria-label = Oppdater
     .accesskey = O
-# This menuitem is only visible on macOS
 content-tab-menu-reload-mac =
     .tooltiptext = Oppdater sida
     .label = Oppdater
     .accesskey = O
-
-# Stop
-
 content-tab-menu-stop =
     .tooltiptext = Stopp sidelasting
     .aria-label = Stopp
     .accesskey = S
-# This menuitem is only visible on macOS
 content-tab-menu-stop-mac =
     .tooltiptext = Stopp sidelasting
     .label = Stopp
     .accesskey = S
-
-## Toolbar
-
 addons-and-themes-toolbarbutton =
     .label = Tillegg og tema
     .tooltiptext = Handter tillegga dine
@@ -92,18 +57,12 @@ quick-filter-toolbarbutton =
 redirect-msg-button =
     .label = Omdiriger
     .tooltiptext = Om diriger vald melding
-
-## Folder Pane
-
 folder-pane-toolbar =
     .toolbarname = Verktøylinje for mapperute
     .accesskey = m
 folder-pane-toolbar-options-button =
     .tooltiptext = Innstillingar for mapperute
 folder-pane-header-label = Mapper
-
-## Folder Toolbar Header Popup
-
 folder-toolbar-hide-toolbar-toolbarbutton =
     .label = Gøym verktøylinje
     .accesskey = G
@@ -128,23 +87,15 @@ show-tags-folders-label =
 folder-toolbar-toggle-folder-compact-view =
     .label = Kompakt vising
     .accesskey = K
-
-## File Menu
-
 menu-file-save-as-file =
     .label = Fil…
     .accesskey = F
-
-## Edit Menu
-
 menu-edit-delete-folder =
     .label = Slett mappe
     .accesskey = S
 menu-edit-unsubscribe-newsgroup =
     .label = Avslutt abonnement på nyhendegruppe
     .accesskey = A
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-delete-messages =
     .label =
         { $count ->
@@ -152,8 +103,6 @@ menu-edit-delete-messages =
            *[other] Slett valde meldingar
         }
     .accesskey = t
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-undelete-messages =
     .label =
         { $count ->
@@ -170,24 +119,15 @@ menu-edit-folder-properties =
 menu-edit-newsgroup-properties =
     .label = Nyhendegruppe-innstillingar
     .accesskey = N
-
-## Message Menu
-
 redirect-msg-menuitem =
     .label = Omdiriger
     .accesskey = d
-
-## AppMenu
-
 appmenu-save-as-file =
     .label = Fil…
 appmenu-settings =
     .label = Innstillingar
 appmenu-addons-and-themes =
     .label = Tillegg og tema
-
-## Context menu
-
 context-menu-mark-read =
     .aria-label = Merk som lesen
     .tooltiptext = Merk som lesen
@@ -218,8 +158,6 @@ mail-context-menu-forward-forward =
 mail-context-menu-forward-inline =
     .label = Innebygd
     .accesskey = I
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-menu-forward-as-attachment =
     .label =
         { $count ->
@@ -235,27 +173,8 @@ mail-context-menu-threads =
     .accesskey = T
 context-menu-redirect-msg =
     .label = Omdiriger
-# This menu item is for canceling an NNTP message
 context-menu-cancel-msg =
     .label = Avbryt melding
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-delete-messages =
-    .label =
-        { $count ->
-            [one] Slett melding
-           *[other] Slett valde meldingar
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-undelete-messages =
-    .label =
-        { $count ->
-            [one] Angre sletting av melding
-           *[other] Angre valde meldingar
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-messages-delete =
     .label =
         { $count ->
@@ -263,8 +182,6 @@ mail-context-messages-delete =
            *[other] Slett valde meldingar
         }
     .tooltiptext = { mail-context-messages-delete.label }
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-messages-undelete =
     .label =
         { $count ->
@@ -275,24 +192,13 @@ mail-context-messages-undelete =
 context-menu-decrypt-to-folder2 =
     .label = Lag dekryptert kopi i
     .accesskey = a
-
-## Message header pane
-
 other-action-redirect-msg =
     .label = Omdiriger
 message-header-msg-flagged =
-    .title = Med stjerne
-    .aria-label = Med stjerne
-# Variables:
-# $address (String) - The email address of the recipient this picture belongs to.
+    .title = Stjernemarkert
+    .aria-label = Stjernemarkert
 message-header-recipient-avatar =
     .alt = Profilbilde for { $address }.
-
-## Message header cutomize panel
-
-
-## Message header customize panel
-
 message-header-customize-panel-title = Innstillingar for meldingshovud
 message-header-customize-button-style =
     .value = Knappestil
@@ -309,20 +215,12 @@ message-header-show-sender-full-address =
 message-header-show-big-avatar =
     .label = Større profilbilde
     .accesskey = S
-
-## Action Button Context Menu
-
 toolbar-context-menu-manage-extension =
     .label = Handter utviding
     .accesskey = H
 toolbar-context-menu-remove-extension =
     .label = Fjern utviding
     .accesskey = F
-
-## Add-on removal warning
-
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
 addon-removal-title = Fjerne { $name }?
 addon-removal-confirmation-button = Fjern
 caret-browsing-prompt-title = Nettlesing med markør
@@ -330,16 +228,7 @@ caret-browsing-prompt-check-text = Ikkje spør meg fleire gongar.
 repair-text-encoding-button =
     .label = Reparer tekstkoding
     .tooltiptext = Gjett rett tekst frå meldingsinnhald
-
-## no-reply handling
-
 no-reply-reply-anyway-button = Svar likevel
-
-## error messages
-
-
-## Spaces toolbar
-
 spaces-toolbar-button-mail2 =
     .title = E-post
 spaces-toolbar-button-address-book2 =
@@ -356,8 +245,6 @@ spaces-context-new-tab-item =
     .label = Opne i ny fane
 spaces-context-new-window-item =
     .label = Opne i nytt vindauge
-# Variables:
-# $tabName (String) - The name of the tab this item will switch to.
 spaces-context-switch-tab-item =
     .label = Byt til { $tabName }
 settings-context-open-settings-item2 =
@@ -366,9 +253,6 @@ settings-context-open-account-settings-item2 =
     .label = Kontoinnstillingar
 settings-context-open-addons-item2 =
     .label = Tillegg og tema
-
-## Spaces toolbar pinned tab menupopup
-
 spaces-pinned-button-menuitem-mail2 =
     .label = { spaces-toolbar-button-mail2.title }
 spaces-pinned-button-menuitem-address-book2 =
@@ -383,38 +267,22 @@ spaces-pinned-button-menuitem-settings2 =
     .label = { spaces-toolbar-button-settings2.title }
 spaces-pinned-button-menuitem-show =
     .label = { spaces-toolbar-button-show.title }
-# Variables:
-# $count (Number) - Number of unread messages.
 chat-button-unread-messages = { $count }
     .title =
         { $count ->
             [one] Ei ulesen melding
            *[other] { $count } ulesne meldingar
         }
-
-## Spaces toolbar customize panel
-
 menuitem-customize-label =
     .label = Tilpass…
 spaces-customize-background-color = Bakgrunnsfarge
 spaces-customize-icon-color = Knappefarge
+spaces-customize-button-restore = Still tilbake til standard
+    .accesskey = t
 customize-panel-button-save = Ferdig
     .accesskey = F
-
-## Quick Filter Bar
-
-# The label to display for the "View... Toolbars..." menu item that controls
-# whether the quick filter bar is visible.
 quick-filter-bar-toggle =
     .label = Filterverktøylinje
     .accesskey = F
-# This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-search-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
-
-## OpenPGP
-
-
-## Quota panel.
-

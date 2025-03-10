@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (net ynsteld)
 failed-pp-change = Kin haadwachtwurd net wizigje.
@@ -21,7 +17,6 @@ set-password-new-password = Nij wachtwurd ynfiere:
 set-password-reenter-password = Wachtwurd opnij ynfiere:
 set-password-meter = Wachtwurdkwaliteitsmeter
 set-password-meter-loading = Lade
-primary-password-admin = Jo behearder fereasket dat jo in haadwachtwurd ynsteld hawwe om oanmeldingen en wachtwurden te bewarjen.
 primary-password-required-by-policy = Jo organisaasje fereasket dat jo in haadwachtwurd ynsteld hawwe om oanmeldingen en wachtwurden te bewarjen.
 primary-password-description = In haadwachtwurd wurdt brûkt om gefoelige gegevens te beskermjen, lykas oanmeldingen en wachtwurden. As jo in haadwachtwurd oanmeitsje sil jo by elke sesje ien kear frege wurde dit yn te fieren as { -brand-short-name } troch it wachtwurd beskerme bewarre ynformaasje ophellet.
 primary-password-warning = Wês wis dat jo it ynstelde haadwachtwurd ûnthâlde. As jo jo haadwachtwurd ferjitte, sille jo op dit apparaat net langer yn steat wêze om tagong te krijen ta de earder beskerme gegevens.

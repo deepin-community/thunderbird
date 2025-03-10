@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 accounts-title = Cunntasan puist is naidheachdan
 show-private-data-main-text = Gabh a-steach ainmean chunntasan
 show-private-data-explanation-text = (fiosrachadh air a dh’aithnichear thu fhèin ma dh’fhaoidte)

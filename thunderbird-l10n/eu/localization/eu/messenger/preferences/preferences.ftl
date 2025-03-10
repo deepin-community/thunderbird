@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Itxi
 preferences-doc-title2 = Ezarpenak
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sinkronizatu
+pane-qr-export-title = Esportatu mugikorrera
+category-qr-export =
+    .tooltiptext = Esportatu mugikorrera
 general-language-and-appearance-header = Hizkuntza eta itxura
 general-incoming-mail-header = Sarrerako postak
 general-files-and-attachment-header = Fitxategi eta eranskinak
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Baimendu { -brand-short-name }(r)i datu tekniko eta interakziozkoak { -vendor-short-name }ra bidaltzea
     .accesskey = B
 collection-health-report-link = Argibide gehiago
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Datuen berri ematea desgaituta dago eraikitze-konfigurazio honetarako
 collection-backlogged-crash-reports =
     .label = Baimendu { -brand-short-name }(r)i atzeratutako hutsegite-txostenak zuregatik bidaltzea
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Barrabiarazi { -brand-short-name } aldaketa hauek aplikatzeko
 confirm-messenger-language-change-button = Aplikatu eta berrabiarazi
 update-setting-write-failure-title = Errorea eguneratze hobespenak gordetzean
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name }(e)k errore bat aurkitu du eta ez du aldaketa hau gorde. Kontuan izan eguneraketen hobespen hau ezartzeak azpiko fitxategia idazteko baimenak behar dituela. Zu edo sistema-kudeatzaile bat errorea konpontzeko moduan izan zaitezkete erabiltzaileen taldeari fitxategi honetarako kontrol osoa emanez.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Eguneratzea egiten
 update-in-progress-message = { -brand-short-name } eguneratze honekin jarraitzea nahi duzu?
 update-in-progress-ok-button = &Baztertu
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Jarraitu
 account-button = Kontu-ezarpenak
 open-addons-sidebar-button = Gehigarriak eta itxurak
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Pasahitz nagusi bat sortzeko, sartu zure Windows kredentzialak. Honek zure kontuen segurtasuna babesten laguntzen du.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = Sortu pasahitz nagusia
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Gehitu OpenSearch hornitzailea
 add-opensearch-provider-text = Sart URLa OpenSearch hornitzailea gehitzeko. Bestela erabili OpenSearch deskripzio fitxategiko URL zuzena, edo auto-aurkitu daitekeen URL bat.
 adding-opensearch-provider-failed-title = OpenSearch hornitzailea gehitzean huts egin du
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Ezin da gehitu OpenSearch hornitzailea { $url } honekin.
 minimize-to-tray-label =
     .label = { -brand-short-name } txikitzen denean, mugitu erretilura
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Egiaztatu orain…
     .accesskey = o
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Hartu-agiriak…
     .accesskey = r
 update-app-legend = { -brand-short-name } eguneraketak
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Bertsioa { $version }
 allow-description = Baimendu { -brand-short-name }(r)i
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = t
 compact-folder-size =
     .value = MB guztira
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Erabili gehienez
     .accesskey = E
 use-cache-after = MB cachearentzat
-
-##
-
 smart-cache-label =
     .label = Gainidatzi automatikoki cachearen kudeaketa
     .accesskey = a
@@ -304,7 +269,6 @@ color-options-button =
     .label = Koloreak…
     .accesskey = K
 display-width-legend = Testu-arrunteko mezuak
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Bistaratu aurpegierak eta grafikoak
     .accesskey = a
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Ikusi eranskinak lerroan
     .accesskey = I
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Denbora batez bistaratu eta gero:
     .accesskey = e
 seconds-label = segundoz
-
-##
-
 open-msg-label =
     .value = Ireki mezuak:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Itxi mezu-leihoa/fitxa lekuz aldatzean edo ezabatzean
     .accesskey = I
-display-name-label =
-    .value = Bistaratzeko izena:
 address-display-legend = Mezu zerrenda
 address-display-description = Helbidea bistaratzeko formatu lehenetsia:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Erakutsi nire helbide-liburuko pertsonen bistarazte-izena bakarrik
     .accesskey = p
-
-## Compose Tab
-
+table-layout-legend = Taula ikuspegia
+table-layout-horizontal-scroll-label =
+    .label = Baimendu korrirtze horizontala
+    .accesskey = h
+conversation-view-legend = Elkarrizketa ikuspegia
+conversation-view-checkbox-label =
+    .label = Gaitu elkarrizketa ikuspegia
+    .accesskey = e
+conversation-view-checkbox-description = Glodan oinarritutako funtzio esperimentala, zure arriskupean
+label-experiment = Esperimentala
+account-hub-legend = Kontu zentroa
+account-hub-checkbox-label =
+    .label = Sortu kontuak 'kontu zentro' berrian
+    .accesskey = S
+account-hub-checkbox-description = Posta-kontu berriak sortzeko fluxu esperimentala
 forward-label =
     .value = Birbidali mezuak:
     .accesskey = B
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = gehitu luzapena fitxategi-izenari
     .accesskey = f
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Gorde automatikoki
     .accesskey = u
 auto-save-end = minutuan behin
-
-##
-
 warn-on-send-accel-key =
     .label = Eskatu berrespena mezua bidaltzeko laster-tekla erabiltzean
     .accesskey = i
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Bilatu hornitzaile gehiago…
 cloud-account-description = Gehitu Filelink biltegiratze-zerbitzu berri bat
-
-## Privacy Tab
-
 mail-content = Postaren edukia
 remote-content-label =
     .label = Baimendu urruneko edukia mezuetan
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Erakutsi cookieak…
     .accesskey = E
-do-not-track-label =
-    .label = Bidali webguneei "Do Not Track" seinalea zure jarraipena ez egitea adierazteko
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Esan webguneei nire datuak ez saltzeko edo partekatzeko
     .accesskey = n
-dnt-learn-more-button =
-    .value = Argibide gehiago
+do-not-track-removal = Jada ez dugu onartzen "Ez jarraitu" seinalea
 passwords-description = { -brand-short-name }(e)k pasahitzen informazioa gogora dezake zure kontu guztientzat.
 passwords-button =
     .label = Gordetako pasahitzak…
@@ -571,7 +528,6 @@ primary-password-description = Pasahitz nagusiak zure pasahitz guztiak babesten 
 primary-password-label =
     .label = Erabili pasahitz nagusia
     .accesskey = E
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Pasahitzak bete eta kudeatzeko gailuan saioa hasi behar da
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Une honetan FIPS moduan zaude. FIPS moduak pasahitz nagusia ezartzea eskatzen du.
 forms-master-pw-fips-desc = Pasahitz aldaketak huts egin du
 junk-description = Ezarri zabor-postaren ezarpen lehenetsiak. Kontu bakoitzari lotutako zabor-postaren ezarpenak kontu-ezarpenetan konfiguratu daitezke.
-junk-label =
-    .label = Mezuak zabor gisa markatzen ditudanean:
-    .accesskey = z
 junk-marked-label =
     .label = Mezuak zabor gisa markatzen direnean:
     .accesskey = z
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Ezabatu
     .accesskey = E
-junk-read-label =
-    .label = Markatu zabor-mezuak irakurrita gisa
-    .accesskey = M
 junk-read-description = Markatu mezuak irakurrita
 junk-read-manual-label =
     .label = Eskuz zabor gisa markatzean
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Erabaki automatikoak baliogabetu daitezke mezu bat idazterakoan zifratzea eskuz gaituz edo desgaituz.
     oharra: Zifratzea automatikoki gaituta dago beti zifratutako mezu bati erantzutean.
-
-## Chat Tab
-
 startup-label =
     .value = { -brand-short-name } abiatzean:
     .accesskey = a
@@ -661,20 +608,10 @@ offline-label =
     .label = Mantendu txat-kontuak deskonektatuta
 auto-connect-label =
     .label = Konektatu txat-kontuak automatikoki
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Jakinarazi nire kontaktuei inaktibo nagoela
     .accesskey = i
 idle-time-label = minutu ondoren
-
-##
-
 away-message-label =
     .label = eta ezarri nire egoera Kanpoan egoera-mezu honekin:
     .accesskey = K
@@ -736,41 +673,21 @@ no-preview-description = Gai hau ez da baliokoa edo une honetan ez dago erabilga
 chat-variant-label =
     .value = Aldaerak:
     .accesskey = A
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Bilatu ezarpenetan
-
-## Settings UI Search Results
-
 search-results-header = Bilaketaren emaitzak
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Barkatu! Aukeretan ez dago "<span data-l10n-name="query"></span>" bilaketarako emaitzarik.
        *[other] Barkatu! Ezarpenetan ez dago "<span data-l10n-name="query"></span>" bilaketarako emaitzarik.
     }
 search-results-help-link = Laguntza behar duzu? Bisitatu <a data-l10n-name="url">{ -brand-short-name }(r)en laguntza</a>
-
-## Sync Tab
-
 sync-signedout-caption = Eraman ezazu weba zurekin
 sync-signedout-description = Sinkronizatu zure kontuak, helbide liburuak, egutegiak, gehigarriak eta ezarpenak zure gailu guztietan.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Hasi saioa sinkronizatzeko…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” ez dago egiaztatuta.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Hasi saioa berriro konektatzeko “{ $userEmail }”
 sync-pane-resend-verification = Birbidali egiaztapena
 sync-pane-sign-in = Hasi saioa
@@ -800,3 +717,49 @@ synced-acount-item-filters = Iragazkiak
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Sinkronizatu zure posta elektroniko kontuak, helbide liburuak, egutegiak eta identitateak zure gailu guztietan.
 sync-disconnected-turn-on-sync = Gaitu sinkronizazioa…
+qr-export-pane-header = Esportatu kontuak { -brand-product-name } mugikorrera
+qr-export-description = Bizkor transferitu zure kontuaren ezarpenak mahaigainetik mugikorrera QR kodea sortuz. Hautatu zein kontu sartu, erabaki zure pasahitza transferitu nahi duzun eta eskaneatu kodea zure gailu mugikorrekin. Azkarra, segurua eta sinplea.
+qr-export-get-app = Ez duzu { -brand-product-name } mugikorrean oraindik? <a data-l10n-name="app-link">Lortu Google Playen</a>
+qr-export-create = Sortu QR kode bat zure kontuak esportatzeko
+qr-export-select-accounts = Hautatu zein kontu esportatu nahi dituzun:
+qr-export-no-accounts = Ez dituzu zure kontu guztiak ikusten? Baliteke kontu batzuk desgaituta egotea Androidek { -brand-product-name } onartzen ez duelako. <a data-l10n-name="account-support-link">Laguntza</a>
+qr-export-accounts-legend = Posta elektroniko kontuak
+qr-export-select-all-accounts = Hautatu dena
+qr-export-security-legend = Segurtasuna
+qr-export-include-passwords = Sartu kontu guztien pasahitzak
+qr-export-oauth-warning = Zure kontuetako batzuek autentifikazio-metodo bat erabiltzen dute, eta baliteke zure gailu mugikorrean berriro autentifikazioa behar izatea. Baliteke zure pasahitzak berriro sartu behar izatea prozesu honetan zehar.
+qr-export-security-hint = Ondoko QR kodeak eskaneatzen dituzunean, zure kontuaren ezarpenak  —zure posta elektronikoa eta pasahitza barne— modu seguruan transferituko dira. Prozesuan zehar ez dugu datu horiek biltzen, gordetzen edo partekatzen. Transferentzia zuzenean zure gailuen artean gertatzen da.
+qr-export-security-warning = Zure segurtasunerako, ziurtatu ezarpen pribatu batean zaudela eta iturri fidagarrietako QR kodeak soilik eskaneatu.
+qr-export-start-export = Esportatu
+qr-export-scan-progress =
+    { $count ->
+        [one] { $count } QR kodetik { $step }
+       *[other] { $count } QR kodetik { $step }
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Eskaneatu QR kodea { -brand-product-name }rekin zure gailu mugikorrean
+       *[other] Eskaneatu QR kodeak { -brand-product-name }rekin zure gailu mugikorrean
+    }
+qr-export-scan-step1 = Ireki { -brand-product-name } zure gailu mugikorrean
+qr-export-scan-step2 = Joan ezarpenetara
+qr-export-scan-step3 = Hautatu <strong>Ezarpenak inportatu</strong>
+qr-export-scan-step4-revision = Sakatu <strong>Eskaneatu QR kodea</strong> eta eutsi telefonoa kode honen gainean
+qr-export-back = Atzera
+qr-export-next = Hurrengoa
+qr-export-done = Eginda
+qr-export-summary-description = Kontuak esportatuta. Jarraitu zure gailu mugikorrean.
+qr-export-summary-title = Esportazioaren laburpena:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR kodea sortua
+       *[other] { $count } QR kodeak sortuta
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] Kontu { $count } esportatuta:
+       *[other] { $count } kontu esportatua:
+    }
+qr-export-summary-passwords-included = Pasahitzak barne
+qr-export-summary-passwords-excluded = Pasahitzak baztertuta
+qr-export-more-accounts = Esportatu kontu gehiago

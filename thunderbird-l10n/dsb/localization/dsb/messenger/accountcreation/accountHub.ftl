@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Witajśo k <span data-l10n-name="brand-name">{ -brand-full-name }</span>
 account-hub-title = Kontowy centrum
-
-## Footer
-
 account-hub-release-notes = Wersijowe informacije
 account-hub-support = Pomoc
 account-hub-donate = Pósćiś
-
-## Initial setup page
-
 account-hub-email-setup-button = E-mailowe konto
     .title = E-mailowe konto konfigurěrowaś
 account-hub-calendar-setup-button = Kalendaŕ
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Diskusijna kupka
     .title = Konto diskusijneje kupki konfigurěrowaś
 account-hub-import-setup-button = Importěrowaś
     .title = Zawěsćony profil importěrowaś
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Pla Sync pśizjawiś…
-
-## Email page
-
-account-hub-email-title = Wašo e-mailowe konto konfigurěrowaś
 account-hub-add-email-title = Pśidajśo wašo konto
 account-hub-manually-configure-email-title = Kontowu konfiguraciju nastajiś
 account-hub-email-cancel-button = Pśetergnuś
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Dokóńcyś
 account-hub-email-manually-configure-button = Manuelnje konfigurěrowaś
 account-hub-email-continue-button = Dalej
 account-hub-email-confirm-button = Wobkšuśiś
-account-hub-incoming-server-legend = Dochadny serwer
-account-hub-outgoing-server-legend = Wuchadny serwer
+account-hub-result-incoming-server-legend = Dochadny serwer
+    .title = Dochadny serwer
+account-hub-result-outgoing-server-legend = Wuchadny serwer
+    .title = Wuchadny serwer
 account-hub-protocol-label = Protokol
-account-hub-hostname-label = Hostmě
+account-hub-result-hostname-label = Hostmě
+    .title = Hostmě
+account-hub-result-authentication-label = Awtentifikacija
+    .title = Awtentifikacija
 account-hub-port-label = Port
     .title = Portowy numer na 0 za awtomatiske spóznaśe stajiś
 account-hub-auto-description = { -brand-short-name } buźo wopytowaś, póla awtomatiski namakaś, kótarež su prozne.
 account-hub-ssl-label = Zwiskowa wěstota
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Awtomatiski zwěsćiś
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = Normalne gronidło
 account-hub-ssl-encrypted-password-option =
     .label = Skoděrowane gronidło
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Žeden
 account-hub-auth-no-authentication-option =
     .label = Žedna awtentifikacija
 account-hub-auth-label = Awtentificěrowańska metoda
-account-hub-username-label = Wužywaŕske mě
+account-hub-result-username-label = Wužywaŕske mě
+    .title = Wužywaŕske mě
 account-hub-name-label = Dopołne mě
     .accesskey = m
 account-hub-adding-account-title = Pśidawanje konta
@@ -97,3 +75,30 @@ account-hub-email-enter-password = Zapódajśo gronidło swójogo e-mailowego ko
 account-hub-email-sync-accounts = Synchronizěrujśo swóje kalendery a adresniki
 account-hub-test-configuration = Testowaś
 account-hub-add-new-email = Dalšnu e-mailowu adresu pśidaś
+account-hub-result-imap-description = Źaržćo swóje zarědniki a e-maile na swójom serwerje synchrone
+account-hub-result-pop-description = Wobchowajśo swóje zastojniki a mejlki na swójom licadle
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Wužywajśo Microsoft Exchange Web Services, aby swóje zarědniki a mejlki synchronizěrował
+account-hub-result-ews-text = Serwer
+account-hub-result-recommended-label = Dopórucony
+account-hub-edit-configuration = Konfiguraciju wobźěłaś
+account-hub-config-success = Konfiguracija jo se namakała w Mozilla ISPDB
+account-hub-password-info = Waše pśizjawjeńske daty budu se jano lokalnje na wašom licadle składowaś
+account-hub-sync-success = Thunderbird jo namakał někotare zwězane słužby
+account-hub-sync-failure = Thunderbird njejo mógał zwězane słužby namakaś
+account-hub-unable-to-sync-accounts = Thunderbird njejo mógał wubrane słužby zwězaś
+account-hub-email-added-success = E-mailowe konto jo se wuspěšnje zwězało
+account-hub-config-test-success = Konfiguraciske nastajenja płaśiwe
+account-hub-select-all = Wšykne wubraś
+account-hub-deselect-all = Wšykne wótwóliś
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] { $count } wubrane
+        [two] { $count } wubranej
+        [few] { $count } wubrane
+       *[other] { $count } wubrane
+    }
+account-hub-no-address-books = Žedne adresniki namakane
+account-hub-no-calendars = Žedne kalendarje namakane
+account-hub-email-added-success-links-title = Wuslěźćo nastajenja za wěstotu a personalizěrowanje:
+account-hub-signature-link = E-mailowa signatura

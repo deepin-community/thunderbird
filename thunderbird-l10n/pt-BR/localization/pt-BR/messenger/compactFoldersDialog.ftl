@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-compact-dialog-window-title =
-    .title = Compactar pastas
 compact-folders-dialog-title = Compactar pastas
 compact-dialog =
     .buttonlabelaccept = Compactar agora
@@ -12,9 +6,7 @@ compact-dialog =
     .buttonaccesskeycancel = L
     .buttonlabelextra1 = Saiba mais…
     .buttonaccesskeyextra1 = S
-# Variables:
-#  $data (String): The amount of space to be freed, formatted byte, MB, GB, etc., based on the size.
-compact-dialog-message = O { -brand-short-name } precisa fazer manutenção regular de arquivos para melhorar o desempenho de suas pastas de email. Isso recupera { $data } de espaço em disco sem alterar suas mensagens. Para deixar o { -brand-short-name } fazer isso automaticamente sem preguntar, marque a opção abaixo antes de selecionar ‘{ compact-dialog.buttonlabelaccept }’.
+compact-dialog-message = O { -brand-short-name } precisa fazer manutenção regular de arquivos para melhorar o desempenho de suas pastas de email. Isso recupera { $data } de espaço em disco sem alterar suas mensagens. Para deixar o { -brand-short-name } fazer isso automaticamente sem perguntar, marque a opção abaixo antes de selecionar ‘{ compact-dialog.buttonlabelaccept }’.
 compact-dialog-never-ask-checkbox =
     .label = Compactar pastas automaticamente
     .accesskey = a

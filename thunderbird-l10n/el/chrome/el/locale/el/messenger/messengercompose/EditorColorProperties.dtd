@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Χρώματα και φόντο σελίδας">
 <!ENTITY pageColors.label "Χρώματα σελίδας">
 <!ENTITY defaultColorsRadio.label "Προεπιλεγμένα χρώματα αναγνώστη (Χωρίς ορισμό χρωμάτων στη σελίδα)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Χρήση προσαρμοσμένων χρωμάτων:">
 <!ENTITY customColorsRadio.accessKey "π">
 <!ENTITY customColorsRadio.tooltip "Αυτές οι ρυθμίσεις χρωμάτων αντικαθιστούν τις ρυθμίσεις του προγράμματος περιήγησης">
-
 <!ENTITY normalText.label "Κανονικό κείμενο">
 <!ENTITY normalText.accessKey "ν">
 <!ENTITY linkText.label "Κείμενο συνδέσμου">

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Mu do chòraichean
 rights-intro = Tha { -brand-full-name } 'na bhathar-bog a tha saor an-asgaidh agus 'na chòd fosgailte a tha 'ga leasachadh le coimhearsnachd mhòr a dhaoine o cheithir ceàrnan an t-saoghail. Tha rud na dhà ann a tha cudromach:
 rights-intro-point-1 = Tha { -brand-short-name } ’ga sholar dhut fo theirmichean <a data-l10n-name="mozilla-public-license-link">Ceadachas Poblach Mozilla</a>. ’S ciall dha seo gu bheil cead agad { -brand-short-name } a chleachdadh, lethbhreacan a dhèanamh dheth agus a thoirt do dhaoine eile.  Tha fàilte romhad cuideachd am bun-tùs aig { -brand-short-name } atharrachadh ach an obraich e nas fheàrr dhut. Tha Ceadachas Poblach Mozilla a’ toirt cead dhut cuideachd na tionndaidhean a dh’atharraich thu a sgaoileadh.

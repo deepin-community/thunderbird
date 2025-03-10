@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Mută în sus
     .accesskey = U
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Adaugă
     .accesskey = A
-messenger-languages-window2 =
-    .title = Setări de limbă { -brand-short-name }
 messenger-languages-dialog-title = Setări de limbă { -brand-short-name }
 messenger-languages-description = { -brand-short-name } va afișa limba implicită pe prima poziție și pe cele alternative, dacă este necesar, în ordinea în care apar.
 messenger-languages-search = Caută mai multe limbi ...

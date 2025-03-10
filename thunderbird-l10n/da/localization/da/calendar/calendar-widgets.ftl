@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Alle kalendere er i øjeblikket deaktiveret. Aktiver en eksisterende kalender eller tilføj en ny for at oprette og redigere begivenheder.
 calendar-deactivated-notification-tasks = Alle kalendere er i øjeblikket deaktiveret. Aktiver en eksisterende kalender eller tilføj en ny for at oprette og redigere opgaver.
 calendar-notifications-label = Vis beskeder for kommende begivenheder
 calendar-add-notification-button =
     .label = Tilføj besked
-
-## Side panel
-
 calendar-list-header = Kalendere
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Alarmer for kalenderen { $calendarName } ignoreres
 calendar-enable-button = Aktiver
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Kalenderindstillinger for { $calendarName }
 calendar-import-new-calendar = Ny kalender…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Genindlæs alle kalendere og synkroniser ændringer
 calendar-new-event-primary-button = Ny begivenhed
 calendar-new-task-primary-button = Ny opgave
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Forrige dag
     .accesskey = e
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Multiuge
     .title = Skift til multiugeoversigt
 calendar-view-toggle-month = Måned
     .title = Skift til månedoversigt
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Indstillinger for kalenderudseende
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Definer hverdage
 calendar-show-tasks-calendar-option =
     .label = Vis opgaver i Kalender
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Forrige dag
     .accesskey = F

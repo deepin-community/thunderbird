@@ -1,3 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+btp-warning-tracker-classified =
+    { $gracePeriodSeconds ->
+        [one] "{ $siteHost }" wurde als Bounce-Tracker klassifiziert. Wenn es innerhalb der nächsten { $gracePeriodSeconds } Sekunde keine Benutzeraktivierung erhält, wird sein Zustand gelöscht.
+       *[other] "{ $siteHost }" wurde als Bounce-Tracker klassifiziert. Wenn es innerhalb der nächsten { $gracePeriodSeconds } Sekunden keine Benutzeraktivierung erhält, wird sein Zustand gelöscht.
+    }
+btp-warning-tracker-purged = Der Status von "{ $siteHost }" wurde kürzlich gelöscht, weil er als Bounce-Tracker erkannt wurde.

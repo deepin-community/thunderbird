@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = כניסות שמורות
 saved-logins-title = כניסות שמורות
 copy-username-cmd =
     .label = העתקת שם המשתמש
@@ -43,6 +37,3 @@ remove-all-shown =
     .accesskey = מ
 remove-all-passwords-title = הסרת כל הססמאות
 no-master-password-prompt = האם ברצונך להציג את הססמאות שלך?
-
-## OS Authentication dialog
-

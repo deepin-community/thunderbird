@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Thêm Khóa OpenPGP Cá nhân cho { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Tiếp tục
-    .buttonlabelhelp = Quay lại
 key-wizard-dialog =
     .buttonlabelaccept = Tiếp tục
     .buttonlabelextra1 = Quay lại
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Sử dụng khóa ngoài của bạn thông qua GnuPG (ví dụ: từ thẻ thông minh)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Tạo khóa OpenPGP
 openpgp-keygen-secret-protection = Khóa bảo vệ bí mật
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Khóa của bạn phải có giá trị trong ít 
 openpgp-keygen-ongoing = Đã ở trong quá trình tạo khóa!
 openpgp-keygen-error-core = Không thể khởi tạo OpenPGP Core Service
 openpgp-keygen-error-failed = Trình tạo khóa OpenPGP đột ngột không thành công
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Đã tạo thành công khóa OpenPGP nhưng không thể thu hồi khóa { $key }
 openpgp-keygen-abort-title = Hủy việc tạo khóa?
 openpgp-keygen-abort = Khóa OpenPGP hiện đang được tạo, bạn có chắc chắn muốn hủy nó không?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Tạo khóa công khai và khóa bí mật cho { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Nhập khóa OpenPGP cá nhân hiện có
 openpgp-import-key-legend = Chọn một tập tin đã sao lưu trước đó.
 openpgp-import-key-description = Bạn có thể nhập các khóa cá nhân đã được tạo bằng phần mềm OpenPGP khác.
 openpgp-import-key-info = Phần mềm khác có thể mô tả khóa cá nhân bằng các thuật ngữ thay thế như khóa riêng, khóa bí mật, khóa cá nhân hoặc cặp khóa.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
        *[other] { -brand-short-name } đã tìm thấy { $count } khóa có thể nhập.
@@ -105,8 +88,6 @@ openpgp-import-key-list-caption = Các khóa được đánh dấu được coi 
 openpgp-import-keep-passphrases =
     .label = Giữ bảo vệ cụm mật khẩu cho các khóa bí mật đã nhập
 openpgp-passphrase-prompt-title = Yêu cầu cụm mật khẩu
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Vui lòng nhập cụm mật khẩu để mở khóa sau: { $key }
 openpgp-import-key-button =
     .label = Chọn tập tin để nhập…
     .accesskey = S
@@ -115,9 +96,7 @@ import-key-personal-checkbox =
     .label = Coi khóa này như một khóa cá nhân
 gnupg-file = Tập tin GnuPG
 import-error-file-size = <b>Lỗi!</b> Các tập tin lớn hơn 5MB không được hỗ trợ.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Lỗi!</b> Không thể nhập tập tin. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Lỗi!</b> Không thể nhập khóa. { $error }
 openpgp-import-identity-label = Danh tính
 openpgp-import-fingerprint-label = Vân tay
@@ -126,9 +105,6 @@ openpgp-import-bits-label = Bit
 openpgp-import-key-props =
     .label = Thuộc tính khóa
     .accesskey = K
-
-## External Key section
-
 openpgp-external-key-title = Khóa GnuPG bên ngoài
 openpgp-external-key-description = Định cấu hình khóa GnuPG bên ngoài bằng cách nhập ID khóa
 openpgp-external-key-info = Ngoài ra, bạn phải sử dụng Trình quản lý khóa để nhập và chấp nhận khóa công khai tương ứng.

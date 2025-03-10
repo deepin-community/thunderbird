@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Synkroniser
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Logg ut
     .accesskey = L
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Ny konto
 appmenu-new-account-panel =
     .label = Ny konto
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Få ein ny e-post
-    .accesskey = F
-appmenu-new-mail-account =
-    .label = Eksisterande e-post
-    .accesskey = E
 appmenu-new-email-account =
     .label = E-post
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Nyheitsgruppe
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Ny adressebok
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-adressebok
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Opprett
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Opne frå fil
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalender…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Vis
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Auk skriftstorleiken
 appmenuitem-font-size-reduce =
     .tooltiptext = Reduser skriftstorleiken
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Tilbakestill skriftstorleiken
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Verktøy
 appmenu-tools-panel =
@@ -147,6 +114,9 @@ appmenu-tools-import =
     .accesskey = I
 appmenu-tools-export =
     .label = Eksporter
+    .accesskey = E
+appmenu-export-for-mobile =
+    .label = Eksporter til mobil
     .accesskey = E
 appmenu-tools-message-search =
     .label = Søk i meldingar
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Utviklarverktøy
     .accesskey = U
-
-## Help
-
 appmenu-help-panel-title =
     .title = Hjelp
 appmenu-help-get-help =
     .label = Få hjelp
     .accesskey = F
-appmenu-help-explore-features =
-    .label = Utforsk funksjonar
-    .accesskey = U
 appmenu-help-get-release-help =
     .label = Få hjelp med { -brand-short-name }
     .accesskey = F
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Om { -brand-short-name }
     .accesskey = O
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Lastar ned { -brand-shorter-name }-oppdatering
 appmenuitem-banner-update-available =

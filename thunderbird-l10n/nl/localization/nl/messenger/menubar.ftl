@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menubalk
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Instellingen
     .accesskey = e
 menu-addons-and-themes =
     .label = Add-ons en thema’s
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exporteren voor Mobiel…
+    .accesskey = p
 menu-help-help-title =
     .label = Help
     .accesskey = H
 menu-help-get-help =
     .label = Hulp verkrijgen
     .accesskey = H
-menu-help-explore-features =
-    .label = Functies verkennen
-    .accesskey = F
 menu-help-get-release-help =
     .label = Hulp verkrijgen bij { -brand-short-name }
     .accesskey = H
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Over { -brand-short-name }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] f
            *[other] f
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } afsluiten
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] { -brand-full-name } afsluiten
            *[other] { -brand-full-name } afsluiten
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Ongewenst
     .tooltiptext = De geselecteerde berichten als ongewenst markeren
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Verwijderen ongedaan maken
     .tooltiptext = Verwijdering van geselecteerde berichten ongedaan maken
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Tekstcodering repareren
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Koptekst Mappenpaneel
     .accesskey = M
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Koptekst berichtenlijst
     .accesskey = K
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Taakbalk
     .accesskey = T
-
-## File
-
 file-new-email-account =
     .label = E-mailaccount…
     .accesskey = E

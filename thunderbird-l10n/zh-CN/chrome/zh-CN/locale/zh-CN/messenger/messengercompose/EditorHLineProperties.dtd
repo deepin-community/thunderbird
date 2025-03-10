@@ -1,11 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- Window title -->
-
-
 <!ENTITY windowTitle.label "水平线特性">
-
 <!ENTITY dimensionsBox.label "尺寸">
 <!ENTITY heightEditField.label "高度:">
 <!ENTITY heightEditField.accessKey "g">
@@ -19,7 +12,6 @@
 <!ENTITY centerRadio.accessKey "C">
 <!ENTITY rightRadio.label "右">
 <!ENTITY rightRadio.accessKey "R">
-
 <!ENTITY threeDShading.label "3 维阴影">
 <!ENTITY threeDShading.accessKey "S">
 <!ENTITY saveSettings.label "用作默认值">

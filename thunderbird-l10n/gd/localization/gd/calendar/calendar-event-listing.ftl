@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Dùin lorg is liosta nan tachartasan
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Ainm a' mhìosachain
     .tooltiptext = Seòrsaich a-rèir ainm a' mhìosachain
 calendar-event-listing-column-category =
     .label = Roinn-seòrsa
     .tooltiptext = Seòrsaich a-rèir roinn-seòrsa
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Dèanta
     .tooltiptext = Seòrsaich a-rèir coileanaidh
@@ -48,9 +39,8 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Tiotal
     .tooltiptext = Seòrsaich a-rèir tiotail
-
-## Interval dropdown options
-
+calendar-event-listing-interval-past =
+    .label = Tachartasan san àm a dh’fhalbh
 calendar-event-listing-interval-calendar-month =
     .label = Tachartasan sa mhìos mhìosachain seo
 calendar-event-listing-interval-current-view =
@@ -61,5 +51,13 @@ calendar-event-listing-interval-next-14-days =
     .label = Tachartasan sa chola-deug seo tighinn
 calendar-event-listing-interval-next-31-days =
     .label = Tachartasan san 31 latha seo tighinn
+calendar-event-listing-interval-next-6-months =
+    .label = Tachartasan sna 6 mìosan seo tighinn
+calendar-event-listing-interval-next-12-months =
+    .label = Tachartasan san 12 mhìos seo tighinn
+calendar-event-listing-interval-all =
+    .label = Gach tachartas
 calendar-event-listing-interval-selected-day =
     .label = An latha a thagh thu
+calendar-event-listing-interval-today =
+    .label = Tachartasan an-diugh

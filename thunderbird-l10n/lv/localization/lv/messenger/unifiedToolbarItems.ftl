@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Elastīga atstarpe
 toolbar-write-message-label = Rakstīt
 toolbar-write-message =
@@ -42,8 +35,6 @@ toolbar-junk-label = Draza
 toolbar-junk =
     .title = Atzīmēt atlasītās vēstules kā drazu
 toolbar-delete-label = Dzēst
-toolbar-delete =
-    .title = Dzēst mapē atlasītās vēstules
 toolbar-compact-label = Saspiest
 toolbar-compact =
     .title = Noņemt dzēstās vēstules no atlasītās mapes

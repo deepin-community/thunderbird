@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Шрифти
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Типовий ({ $name })
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = Пропорційний:
     .accesskey = П
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Латиниця
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = Сінгала
 font-language-group-tibetan =
     .label = Тибетська
-
-## Default font type
-
 default-font-serif =
     .label = Із зарубками
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = Н
 min-size-none =
     .label = Немає
-
-## Fonts in message
-
 font-control-legend = Керування шрифтами
 use-document-fonts-checkbox =
     .label = Дозволити повідомленням використовувати інші шрифти
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Шрифт фіксованої ширини для повідомлень простим текстом
     .accesskey = к
-
-## Language settings
-
 text-encoding-legend = Кодування тексту
 text-encoding-description = Встановити стандартне кодування тексту для надісланих та отриманих повідомлень
 font-outgoing-email-label =

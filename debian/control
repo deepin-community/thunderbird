@@ -7,14 +7,12 @@ Uploaders:
 Build-Depends:
  bash-completion,
  bzip2,
- cargo (>= 0.66),
+ cargo (>= 1.80.1),
  cbindgen (>= 0.26.0),
  clang,
  debhelper-compat (= 13),
  dh-apparmor,
  dh-exec,
- dpkg (>= 1.16.18~),
- dpkg-dev (>= 1.16.18~),
  libasound2-dev [linux-any],
  libatk-adaptor,
  libcairo2-dev (>= 1.10.2-1.1~),
@@ -30,7 +28,7 @@ Build-Depends:
  libiw-dev [linux-any],
  libnotify-dev,
  libnspr4-dev (>= 2:4.32~),
- libnss3-dev (>= 2:3.97~),
+ libnss3-dev (>= 2:3.105~),
  libpng-dev,
  libpulse-dev,
  libreadline-dev,
@@ -48,9 +46,8 @@ Build-Depends:
  nasm,
  nodejs (>= 12.22.0),
  python3,
- rustc (>= 1.66),
+ rustc (>= 1.80.1),
  unzip,
- yasm (>= 1.1),
  zip,
  zlib1g-dev,
 Rules-Requires-Root: no
@@ -61,10 +58,11 @@ X-Debian-Homepage: http://wiki.debian.org/Thunderbird
 Standards-Version: 4.7.0
 
 Package: thunderbird
-Architecture: amd64 arm64 i386 loong64 mips64el ppc64el s390x ppc64 riscv64
+Architecture: amd64 arm64 i386 mips64el ppc64el s390x ppc64 riscv64
 Depends:
  debianutils (>= 1.16),
  fontconfig,
+ libotr5t64,
  librnp0 (>= 0.17.0),
  psmisc,
  x11-utils | kdialog | zenity,

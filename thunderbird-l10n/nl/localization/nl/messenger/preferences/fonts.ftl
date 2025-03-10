@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Lettertypen
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Standaard ({ $name })
 fonts-label-default-unnamed =
     .label = Standaard
-fonts-encoding-dialog-title =
-    .title = Lettertypen & tekensets
 fonts-language-legend =
     .value = Lettertypen voor:
     .accesskey = L
 fonts-proportional-label =
     .value = Proportioneel:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latijns
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Singalees
 font-language-group-tibetan =
     .label = Tibetaans
-
-## Default font type
-
 default-font-serif =
     .label = Met schreef
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = n
 min-size-none =
     .label = Geen
-
-## Fonts in message
-
 font-control-legend = Lettertype-instellingen
 use-document-fonts-checkbox =
     .label = Berichten toestaan om andere lettertypen te gebruiken
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Vastebreedtelettertype gebruiken voor plattetekstberichten
     .accesskey = b
-
-## Language settings
-
 text-encoding-legend = Tekstcodering
 text-encoding-description = De standaard tekstcodering voor verzenden en ontvangen van e-mailberichten instellen
 font-outgoing-email-label =

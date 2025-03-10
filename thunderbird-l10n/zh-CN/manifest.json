@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-zh-CN@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: 简体中文 (Simplified Chinese)",
   "description": "Thunderbird Language Pack for 简体中文 (zh-CN) – Simplified Chinese",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "zh-CN": {
-      "version": "20240930174700",
+      "version": "20250227153620",
       "chrome_resources": {
         "alerts": "chrome/zh-CN/locale/zh-CN/alerts/",
         "autoconfig": "chrome/zh-CN/locale/zh-CN/autoconfig/",

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL դասակարգչի տեղեկություն
 url-classifier-search-title = Որոնում
 url-classifier-search-result-title = Արդյունքներ
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Անվտանգ դիտարկման մատյան
 url-classifier-debug-modules = Ընթացիկ մատյանի մոդուլները
 url-classifier-debug-sbjs-modules = Անվտանգ դիտարկման JS մատյան
 url-classifier-debug-file = Ընթացիկ մատյանի ֆայլ
-
 url-classifier-trigger-update = Ձգան թարմացում
 url-classifier-not-available = Ա/Ո
 url-classifier-disable-sbjs-log = Անջատել Անվտանգ դիտարկման JS մատյանը
@@ -50,9 +45,5 @@ url-classifier-disabled = Անջատված է
 url-classifier-updating = թարմացում
 url-classifier-cannot-update = հնարավոր չէ թարմացնել
 url-classifier-success = հաջողվեց
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = թարմացման սխալ({ $error })
 url-classifier-download-error = բեռնման սխալ({ $error })

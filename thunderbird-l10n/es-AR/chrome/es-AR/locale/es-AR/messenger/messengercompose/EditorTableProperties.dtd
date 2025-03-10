@@ -1,11 +1,7 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY tableWindow.title "Propiedades de la tabla">
-<!ENTITY applyButton.label                "Aplicar">
-<!ENTITY applyButton.accesskey            "A">
-<!ENTITY closeButton.label                "Cerrar">
+<!ENTITY applyButton.label "Aplicar">
+<!ENTITY applyButton.accesskey "A">
+<!ENTITY closeButton.label "Cerrar">
 <!ENTITY tableTab.label "Tabla">
 <!ENTITY cellTab.label "Celdas">
 <!ENTITY tableRows.label "Filas:">
@@ -35,7 +31,6 @@
 <!ENTITY tableCaptionRight.label "Derecha de la tabla">
 <!ENTITY tableCaptionNone.label "Ninguno">
 <!ENTITY tableInheritColor.label "(Permitir que se vea el color de fondo de la página)">
-
 <!ENTITY cellSelection.label "Selección">
 <!ENTITY cellSelectCell.label "Celda">
 <!ENTITY cellSelectRow.label "Fila">
@@ -44,7 +39,7 @@
 <!ENTITY cellSelectNext.accessKey "T">
 <!ENTITY cellSelectPrevious.label "Anterior">
 <!ENTITY cellSelectPrevious.accessKey "R">
-<!ENTITY applyBeforeChange.label          "Las modificaciones pendientes serán aplicadas antes de cambiar la selección.">
+<!ENTITY applyBeforeChange.label "Las modificaciones pendientes serán aplicadas antes de cambiar la selección.">
 <!ENTITY cellContentAlignment.label "Alineación del contenido">
 <!ENTITY cellHorizontal.label "Horizontal:">
 <!ENTITY cellHorizontal.accessKey "Z">
@@ -64,8 +59,6 @@
 <!ENTITY cellAlignJustify.label "Justificar">
 <!ENTITY cellInheritColor.label "(Permitir que se vea el color de fondo de la tabla)">
 <!ENTITY cellUseCheckboxHelp.label "Use las casillas de selección para determinar qué propiedades se aplican a todas las celdas seleccionadas">
-
-<!-- Used in both Table and Cell panels  -->
 <!ENTITY size.label "Tamaño">
 <!ENTITY pixels.label "píxeles">
 <!ENTITY backgroundColor.label "Color de fondo:">

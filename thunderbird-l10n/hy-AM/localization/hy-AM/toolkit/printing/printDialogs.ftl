@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 print-setup =
     .title = Էջի կարգավորում
 custom-prompt-title = Ընտրված…
@@ -31,7 +27,7 @@ shrink-to-fit =
 options-group-label =
     .value = Կարգավորումներ
 print-bg =
-    .label = Տպել խորքը (գույները և նկարները)
+    .label = Տպել խորքը (գույները և պատկերները)
     .accesskey = Խ
 margin-group-label-inches =
     .value = Երիզ (Մատնաչափ)
@@ -103,8 +99,6 @@ print-window =
     .title = Տպել
 print-complete =
     .value = Տպված է:
-# Variables
-# $percent (integer) - Number of printed percentage
 print-percent =
     .value = { $percent }%
 dialog-cancel-label = Չեղարկել

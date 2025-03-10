@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Sobre do rexistro
 about-logging-page-title = Xestor de rexistros
 about-logging-current-log-file = Ficheiro actual do rexistro:
 about-logging-new-log-file = Novo ficheiro de rexistros:
 about-logging-currently-enabled-log-modules = Módulos de rexistro activados actualmente:
 about-logging-log-tutorial = Vaia a <a data-l10n-name="logging">HTTP logging</a> para obter instrucións de como se usa esta ferramenta.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Abrir o directorio
 about-logging-set-log-file = Estabelecer un ficheiro de rexistro
 about-logging-set-log-modules = Estabelecer módulos de rexistro
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Nada
 about-logging-no-log-file = Nada
 about-logging-logging-preset-selector-text = Predefinición de rexistro:
 about-logging-with-profiler-stacks-checkbox = Activa os rastrexos da pila para as mensaxes de rexistro
-
-## Logging presets
-
 about-logging-preset-networking-label = Rede
 about-logging-preset-networking-description = Módulos de rexistro para diagnosticar problemas de rede
 about-logging-preset-networking-cookie-label = Cookies
@@ -45,17 +36,10 @@ about-logging-preset-webrtc-label = WebRTC
 about-logging-preset-webrtc-description = Módulos de rexistro para diagnosticar chamadas WebRTC
 about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-gfx-label = Gráficos
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-custom-label = Personalizado
 about-logging-preset-custom-description = Módulos de rexistro seleccionados manualmente
-# Error handling
 about-logging-error = Erro:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = O valor «{ $v }» non é válido para a chave «{ $k }»
 about-logging-unknown-logging-preset = Predefinición de rexistro descoñecida «{ $v }»
 about-logging-unknown-profiler-preset = Predefinición de perfilador descoñecida «{ $v }»

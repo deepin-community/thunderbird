@@ -1,40 +1,16 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = Traži
-search-bar-item =
-    .label = Traži:
 search-bar-placeholder = Traži…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Prilagodi…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Dohvati sve nove poruke
     .accesskey = D
-
-## Unified Toolbar customization
-
 customize-title = Prilagodi alatne trake
 customize-space-tab-mail = Pošta
     .title = Pošta
@@ -58,8 +34,6 @@ customize-button-style-text-only-option = Samo tekst
 customize-cancel = Odustani
 customize-save = Spremi
 customize-unsaved-changes = Nespremljene promjene u drugim prostorima
-customize-search-bar =
-    .label = Tipke alatne trake za pretraživanje…
 customize-spaces-tabs =
     .aria-label = Prostori
 customize-main-toolbar-target =
@@ -72,18 +46,10 @@ customize-palette-tasks-specific-title = Dostupno samo za prostor zadataka
 customize-palette-chat-specific-title = Dostupno samo za prostor razgovora
 customize-palette-settings-specific-title = Dostupno samo za prostor postavki
 customize-palette-extension-specific-title = Dostupno samo za ovaj prostor
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = Dodaj u { $target }
 customize-palette-add-everywhere =
     .label = Dodaj na sve alatne trake
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = Premjesti naprijed
 customize-target-backward =

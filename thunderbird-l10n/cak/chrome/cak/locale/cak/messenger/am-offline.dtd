@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Richin naköl rupam ri nimayakb'äl, man taqasaj:">
 <!ENTITY doNotDownloadNntp.label "Richin naköl rupam ri nimayakb'äl, man tiqasäx richin nokisäx toq man atokinäq ta pa k'amaya'l:">
 <!ENTITY doNotDownloadImap.label "Richin niköl rupam ri nimayakb'äl, yeqasäx taq rutzijol k'uxasamaj chuqa' yeyake' aj wawe' taq wachib'enï richin ye'okisäx toq majun okem, nitikïr nuq'ät ruma ojer chik o ruma ri runimilem.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "x">
 <!ENTITY syncGroupTitle.label "Ruximik Rutzijol">
 <!ENTITY diskspaceGroupTitle.label "Rupam Rujolom">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Kexim konojel ri aj wawe' taq rutzijol, akuchi' man nijik' taq ri rurijixik">
-<!ENTITY allAutosync.accesskey           "c">
-<!ENTITY ageAutosyncBefore.label         "Kexim ri e k'ak'a'">
-<!ENTITY ageAutosync.accesskey           "z">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Taq q'ij">
-<!ENTITY weekAgeInterval.label           "Taq wuqq'ij">
-<!ENTITY monthAgeInterval.label          "Taq ik'">
-<!ENTITY yearAgeInterval.label           "Taq juna'">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Kexim konojel ri aj wawe' taq rutzijol, akuchi' man nijik' taq ri rurijixik">
+<!ENTITY allAutosync.accesskey "c">
+<!ENTITY ageAutosyncBefore.label "Kexim ri e k'ak'a'">
+<!ENTITY ageAutosync.accesskey "z">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Taq q'ij">
+<!ENTITY weekAgeInterval.label "Taq wuqq'ij">
+<!ENTITY monthAgeInterval.label "Taq ik'">
+<!ENTITY yearAgeInterval.label "Taq juna'">
+<!ENTITY ageAutosyncAfter.label "">

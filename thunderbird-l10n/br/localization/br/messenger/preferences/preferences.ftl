@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Serriñ
 preferences-doc-title2 = Arventennoù
@@ -47,18 +43,10 @@ confirm-messenger-language-change-button = Arloañ hag adloc'hañ
 update-in-progress-title = Hizivadenn war ober
 update-in-progress-message = Fellout a ra deoc'h e kendalc'hfe { -brand-short-name } da hizivaat?
 update-in-progress-ok-button = &Dilezel
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Kenderc'hel
 account-button = Arventennoù ar gont
-
-## OS Authentication dialog
-
-# Don't change this label.
+primary-password-os-auth-dialog-message-macosx = krouiñ ur ger-tremen pennañ
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -140,8 +128,6 @@ always-check-default =
 check-default-button =
     .label = Gwiriañ diouzhtu…
     .accesskey = d
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -159,8 +145,6 @@ return-receipts-button =
     .label = Testenioù-degemer…
     .accesskey = r
 update-app-legend = Hizivadurioù evit { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Handelv { $version }
 allow-description = Aotren { -brand-short-name } da
 automatic-updates-label =
@@ -195,18 +179,10 @@ offline-compact-folder-automatically =
     .accesskey = a
 compact-folder-size =
     .value = Me en holl
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Arverañ betek
     .accesskey = r
 use-cache-after = Me a egor evit ar grubuilh
-
-##
-
 smart-cache-label =
     .label = Tremen dreist ardeiñ emgefreek ar grubuilh
     .accesskey = d
@@ -227,7 +203,6 @@ color-options-button =
     .label = Livioù…
     .accesskey = i
 display-width-legend = Kemennadennoù testenn eeun
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Diskouez fromarlunioù evel kevregadoù
     .accesskey = D
@@ -290,17 +265,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Adal ar skrammañ
     .accesskey = s
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Goude
     .accesskey = d
 seconds-label = a eilennoù
-
-##
-
 open-msg-label =
     .value = Digeriñ ar c'hemennadennoù e-barzh:
 open-msg-tab =
@@ -315,14 +283,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Serrin prenestr / ivinell ar gemennadenn goude an dilec'hiañ pe an dilemel
     .accesskey = S
-display-name-label =
-    .value = Anv da skrammañ:
 condensed-addresses-label =
     .label = Diskouez an anv evit an den eus ma c'harned chomlec'hioù nemetken
     .accesskey = D
-
-## Compose Tab
-
 forward-label =
     .value = Treuzkas ar gemennadenn evel :
     .accesskey = k
@@ -333,17 +296,10 @@ as-attachment-label =
 extension-label =
     .label = ouzhpennañ un askouezh d'an anv restr
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Enrollañ emgefre bep
     .accesskey = E
 auto-save-end = a vunutennoù
-
-##
-
 warn-on-send-accel-key =
     .label = Kadarnaat pa vez graet gant berradennoù klavier evit kas ur gemennadenn
     .accesskey = i
@@ -418,9 +374,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Kavout muioc’h a bourchaserien…
 cloud-account-description = Ouzhpennañ ur gwazerezh kadaviñ Filelink nevez
-
-## Privacy Tab
-
 mail-content = Endalc'had ar postel
 remote-content-label =
     .label = Aotren an endalc'hadoù a-bell er c'hemennadennoù
@@ -449,25 +402,17 @@ third-party-visited =
 cookies-button =
     .label = Diskouez an toupinoù…
     .accesskey = s
-dnt-learn-more-button =
-    .value = Gouzout hiroc'h
 passwords-description = Gallout a ra { -brand-short-name } derc'hel soñj eus ho kerioù-tremen evit ho holl kontoù.
 passwords-button =
     .label = Gerioù-tremen enrollet…
     .accesskey = e
 junk-description = Kefluniañ arventennoù ar posteloù lastez dre ziouer. Kefluniet e vez ur gont evit ar posteloù lastez e Arventennoù ar gont.
-junk-label =
-    .label = Pa verkan kemennadennoù evel lastez :
-    .accesskey = v
 junk-move-label =
     .label = Dilec'hiañ anezho betek teuliad "Lastez" ar gont
     .accesskey = b
 junk-delete-label =
     .label = Dilemel anezho
     .accesskey = D
-junk-read-label =
-    .label = Merkañ evel bet lennet ar c'hemennadennoù despizet evel lastez
-    .accesskey = M
 junk-log-label =
     .label = Gweredekaat ar c'herzhlevr evit sil azasaus al lastez
     .accesskey = G
@@ -502,9 +447,6 @@ security-devices-button =
     .label = Trevnadoù diogelroez…
     .accesskey = T
 account-settings = Arventennoù ar gont
-
-## Chat Tab
-
 startup-label =
     .value = Pa loc'h { -brand-short-name } :
     .accesskey = l
@@ -512,20 +454,10 @@ offline-label =
     .label = Mirout ma c'hontoù postelerezh prim ezlinenn
 auto-connect-label =
     .label = Kennaskañ ma c'hontoù postelerezh prim ent emgefreek
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Reiñ da c'houzout da'm darempredoù ez eo dioberiant ma c'hont goude
     .accesskey = R
 idle-time-label = a vunutennoù eus dioberiantiz
-
-##
-
 away-message-label =
     .label = ha kemmañ ma stad da Ezvezant gant ar gemennadenn da-heul :
     .accesskey = E
@@ -587,10 +519,4 @@ no-preview-description = N'eo ket mat an tem-mañ pe dihegerz emañ evit ar mare
 chat-variant-label =
     .value = Variezon:
     .accesskey = V
-
-## Settings UI Search Results
-
-
-## Sync Tab
-
 sync-pane-cancel = Dilezel

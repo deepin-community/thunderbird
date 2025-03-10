@@ -1,12 +1,9 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Каб зберагчы дыскавую прастору, не спампоўваць:">
 <!ENTITY doNotDownloadNntp.label "Каб зберагчы дыскавую прастору, не спампоўваць для працы па-за сеткай:">
 <!ENTITY doNotDownloadImap.label "Каб зберагчы месца на дыску, спампоўка паведамленняў з сервера і трыманне лакальных копій для працы па-за сеткай можа быць абмежавана па іх ўзросце або памеры.">
 <!ENTITY allFoldersOffline2.label "Трымаць паведамленні з ўсіх папак для гэтага ўліковага запісу на гэтым камп'ютары">
 <!ENTITY allFoldersOffline2.accesskey "Т">
+<!ENTITY allFoldersOfflineNote.label "Заўвага: гэта змяненне закране ўсе папкі гэтага уліковага запісу. Каб выбраць асобныя папкі, націсніце кнопку «Пашыраныя налады…».">
 <!ENTITY offlineNotDownload.label "Паведамленні памерам больш за">
 <!ENTITY offlineNotDownload.accesskey "П">
 <!ENTITY autosyncNotDownload.label "Не спампоўваць паведамленні памерам больш за">
@@ -14,6 +11,10 @@
 <!ENTITY kb.label "КБ">
 <!ENTITY daysOld.label "дзён">
 <!ENTITY message.label "паведамленняў">
+<!ENTITY nntpNotDownloadRead.label "Read messages">
+<!ENTITY nntpNotDownloadRead.accesskey "d">
+<!ENTITY nntpDownloadMsg.label "Messages more than">
+<!ENTITY nntpDownloadMsg.accesskey "e">
 <!ENTITY retentionCleanup.label "Каб вызваліць месца на дыску, старыя паведамленні можна выдаліць цалкам.">
 <!ENTITY retentionCleanupImap.label "Каб вызваліць месца на дыску, старыя паведамленні можна выдаліць цалкам, уключаючы як лакальныя копіі, так і арыгіналы на аддаленым серверы.">
 <!ENTITY retentionCleanupPop.label "Каб вызваліць месца на дыску, старыя паведамленні можна выдаліць цалкам, уключаючы арыгіналы на аддаленым серверы.">
@@ -33,26 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "ш">
 <!ENTITY syncGroupTitle.label "Сінхранізацыя паведамленняў">
 <!ENTITY diskspaceGroupTitle.label "Дыскавая прастора">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Сінхранізаваць усе паведамленні, нягледзячы на іх узрост">
-<!ENTITY allAutosync.accesskey           "С">
-<!ENTITY ageAutosyncBefore.label         "Сінхранізаваць нядаўнія">
-<!ENTITY ageAutosync.accesskey           "і">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "дзён">
-<!ENTITY weekAgeInterval.label           "тыдняў">
-<!ENTITY monthAgeInterval.label          "месяцаў">
-<!ENTITY yearAgeInterval.label           "гадоў">
-<!ENTITY ageAutosyncAfter.label          "">
-
-<!ENTITY allFoldersOfflineNote.label "Note: Changing this affects all folders in this account. To set individual folders, use the Advanced… button.">
-<!ENTITY nntpNotDownloadRead.label "Read messages">
-<!ENTITY nntpNotDownloadRead.accesskey "d">
-<!ENTITY nntpDownloadMsg.label "Messages more than">
-<!ENTITY nntpDownloadMsg.accesskey "e">
+<!ENTITY allAutosync.label "Сінхранізаваць усе паведамленні, нягледзячы на іх узрост">
+<!ENTITY allAutosync.accesskey "С">
+<!ENTITY ageAutosyncBefore.label "Сінхранізаваць нядаўнія">
+<!ENTITY ageAutosync.accesskey "і">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "дзён">
+<!ENTITY weekAgeInterval.label "тыдняў">
+<!ENTITY monthAgeInterval.label "месяцаў">
+<!ENTITY yearAgeInterval.label "гадоў">
+<!ENTITY ageAutosyncAfter.label "">

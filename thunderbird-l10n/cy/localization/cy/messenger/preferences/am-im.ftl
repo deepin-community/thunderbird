@@ -1,13 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Gosodiadau Dilysu
 account-channel-title = Sianeli Rhagosodedig
-
 chat-autologin =
     .label = Mewngofnodi wrth gychwyn
-
 chat-encryption-generic = Generig
 chat-encryption-log =
     .label = Cynnwys negeseuon wedi'u hamgryptio o'r dechrau i'r diwedd mewn cofnodion sgwrsio

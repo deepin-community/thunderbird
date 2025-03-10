@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Chi rij ri rokisaxik ri b'ey
 about-networking-http = HTTP
 about-networking-sockets = Chuq'b'äl
@@ -55,11 +51,5 @@ about-networking-rcwn-cache-slow = Eqal rutaqoya'l jumejyak
 about-networking-rcwn-cache-not-slow = Man Eqal ta rutaqoya'l jumejyak
 about-networking-networkid = K'amab'ey ID
 about-networking-networkid-id = K'amab'ey ID
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Tzijïl Ximonel
 about-networking-networkid-status-known = Ri rub'anikil ruximonel etaman ruwäch
-
-##
-

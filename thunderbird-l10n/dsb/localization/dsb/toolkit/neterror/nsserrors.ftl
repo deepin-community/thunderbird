@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Wěsty zwisk njejo móžny, dokulaž SSL-protokol jo znjemóžnjony.
 psmerr-ssl2-disabled = Wěsty zwisk njejo móžny, dokulaž sedło wužywa staršu, njewěstu wersiju SSL-protokola.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Sćo njepłaśiwy certifikat dostał. Pšosym stajśo se ze serwerowym administratorom abo e-mailowym korespondentom do zwiska a dajśo jomu k wěsći slědujuce informacije:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Serwer jo certifikat prezentěrowa
 mozilla-pkix-error-empty-issuer-name = Serwer jo certifikat bźez rozeznawajobnego mjenja (eng.: distinguished name) wudawarja prezentěrował.
 mozilla-pkix-error-additional-policy-constraint-failed = Pśidatne wobgranicowanje pšawidła njejo mógło toś ten certifikat pśeglědaś.
 mozilla-pkix-error-self-signed-cert = Certifikat njejo dowěry gódny, dokulaž jo se sam pódpisał.
+mozilla-pkix-error-issuer-no-longer-trusted = Městnoju certificěrowanja, kótarež jo certifikat wudało, njejsu dowěrili, nježli až certifikat jo se wudał.
 xp-java-remove-principal-error = Principal njedajo se wótwónoźeś
 xp-java-delete-privilege-error = Priwileg njedajo se lašowaś
 xp-java-cert-not-exists-error = Toś ten principal njama certifikata

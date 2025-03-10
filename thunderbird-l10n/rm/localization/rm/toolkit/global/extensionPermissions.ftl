@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Leger e modifitgar segnapaginas
 webext-perms-description-browserSettings = Leger e modifitgar ils parameters dal navigatur
 webext-perms-description-browsingData = Stizzar la cronologia la pli nova, ils cookies e las datas correspundentas
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Acceder als tabs serrads dacurt
 webext-perms-description-tabs = Acceder als tabs dal navigatur
 webext-perms-description-tabHide = Zuppentar u mussar ils tabs dal navigatur
 webext-perms-description-topSites = Acceder a la cronologia da navigaziun
+webext-perms-description-trialML = Telechargiar ed exequir models IA sin tes apparat
+webext-perms-description-userScripts = Permetter a scripts betg verifitgads da terzas partidas dad acceder a tias datas
 webext-perms-description-webNavigation = Acceder a l'activitad dal navigatur durant la navigaziun
+webext-perms-extra-warning-userScripts-long = Scripts betg verifitgads pon periclitar la segirezza e la protecziun da datas, p.ex. cun exequir code donnegius u fastizar activitads sin websites. Exequescha sulettamain scripts dad extensiuns u funtaunas da las qualas ti ta fidas.
+webext-perms-extra-warning-userScripts-short = Scripts betg verifitgads pon periclitar la segirezza e la protecziun da datas. Exequescha sulettamain scripts dad extensiuns u funtaunas da las qualas ti ta fidas.

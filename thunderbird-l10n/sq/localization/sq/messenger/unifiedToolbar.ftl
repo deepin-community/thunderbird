@@ -1,42 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = Kërko
-search-bar-item =
-    .label = Kërko:
 search-bar-item2 =
     .label = Kërko
 search-bar-placeholder = Kërkoni…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Përshtateni…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Merri Krejt Mesazhet
     .accesskey = M
-
-## Unified Toolbar customization
-
 customize-title = Përshtatni Panele
 customize-space-tab-mail = Postë
     .title = Postë
@@ -60,8 +36,6 @@ customize-button-style-text-only-option = Vetëm tekst
 customize-cancel = Anuloje
 customize-save = Ruaje
 customize-unsaved-changes = Ndryshime të paruajtura në hapësira të tjera
-customize-search-bar =
-    .label = Butona paneli kërkimesh…
 customize-search-bar2 =
     .label = Butona paneli kërkimesh
     .placeholder = Butona paneli kërkimesh…
@@ -77,18 +51,10 @@ customize-palette-tasks-specific-title = I passhëm vetëm për Hapësirën Pun�
 customize-palette-chat-specific-title = I passhëm vetëm për Hapësirën Fjalosje
 customize-palette-settings-specific-title = I passhëm vetëm për Hapësirën Rregullime
 customize-palette-extension-specific-title = I passhëm vetëm për këtë Hapësirë
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = Shtoje te { $target }
 customize-palette-add-everywhere =
     .label = Shtoje te krejt panelet
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = Shpjere përpara
 customize-target-backward =

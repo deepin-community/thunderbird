@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Føj en personlig OpenPGP-nøgle til { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Fortsæt
-    .buttonlabelhelp = Gå tilbage
 key-wizard-dialog =
     .buttonlabelaccept = Fortsæt
     .buttonlabelextra1 = Gå tilbage
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Benyt din eksterne nøgle via GnuPG (fx fra et chipkort)
     .accesskey = B
-
-## Generate key section
-
 openpgp-generate-key-title = Generer OpenPGP-nøgle
 openpgp-keygen-secret-protection = Beskyttelse af hemmelig nøgle
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Din nøgle skal være gyldig i mindst en dag.
 openpgp-keygen-ongoing = Nøglegenerering er allerede i gang!
 openpgp-keygen-error-core = Kunne ikke initialisere OpenPGP-kernetjenesten
 openpgp-keygen-error-failed = OpenPGP-nøglegenerering mislykkedes uventet
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP-nøgle oprettet, men der kunne ikke skaffes en tilbagekaldelsesnøgle til nøglen { $key }
 openpgp-keygen-abort-title = Afbryd nøglegenerering?
 openpgp-keygen-abort = OpenPGP-nøglegenerering er i gang. Er du sikker på, du vil afbryde den?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Generer offentlig og hemmelig nøgle for { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Importer en eksisterende, personlig OpenPGP-nøgle
 openpgp-import-key-legend = Vælg en tidligere sikkerhedskopieret fil.
 openpgp-import-key-description = Du kan importere personlige nøgler, der er oprettet med andre OpenPGP-programmer.
 openpgp-import-key-info = Andre programmer bruger måske andre betegnelser for en personlig nøgle, fx. "din egen nøgle", "hemmelig nøgle", "privat nøgle" eller "nøglepar".
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } fandt én nøgle, der kan importeres.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Nøgler der er markeret som personlige nøgler
 openpgp-import-keep-passphrases =
     .label = Behold beskyttelse med adgangsudtryk for importerede hemmelige nøgler
 openpgp-passphrase-prompt-title = Adgangsudtryk påkrævet
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Indtast adgangsudtrykket for at låse følgende nøgle op: { $key }
 openpgp-import-key-button =
     .label = Vælg fil til import…
     .accesskey = V
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Betragt denne nøgle som en personlig nøgle
 gnupg-file = GnuPG-filer
 import-error-file-size = <b>Fejl!</b> Filer over 5MB understøttes ikke.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Fejl!</b> Kunne ikke importere fil. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Fejl!</b> Kunne ikke importere nøgler. { $error }
 openpgp-import-identity-label = Identitet
 openpgp-import-fingerprint-label = Fingeraftryk
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bits
 openpgp-import-key-props =
     .label = Nøgleegenskaber
     .accesskey = N
-
-## External Key section
-
 openpgp-external-key-title = Ekstern GnuPG-nøgle
 openpgp-external-key-description = Konfigurer en ekstern GnuPG-nøgle ved at angive dens nøgle-id
 openpgp-external-key-info = Derudover skal du bruge Nøgleadministration til at importere og acceptere den tilsvarende offentlige nøgle.

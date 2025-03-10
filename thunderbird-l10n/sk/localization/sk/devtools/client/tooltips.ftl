@@ -1,29 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Localization for Developer Tools tooltips.
-
 learn-more = <span data-l10n-name="link">Ďalšie informácie</span>
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## The variables are all passed from the same place, in `InactiveCssTooltipHelper#getTemplate`
-## (devtools/client/shared/widgets/tooltip/inactive-css-tooltip-helper.js#95)
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
 inactive-css-not-grid-or-flex-container = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože nejde ani o kontajner typu flex ani o kontajner s mriežkou.
 inactive-css-not-grid-or-flex-container-or-multicol-container = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože nejde o kontajner typu flex, kontajner s mriežkou či kontajner s viacerými stĺpcami.
 inactive-css-not-multicol-container = Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na tento prvok, pretože nejde o kontajner s viacerými stĺpcami.
@@ -38,7 +13,6 @@ inactive-css-first-line-pseudo-element-not-supported = Vlastnosť <strong>{ $pro
 inactive-css-first-letter-pseudo-element-not-supported = Vlastnosť <strong>{ $property }</strong> nie je podporovaná na pseudoprvkoch ::first-letter.
 inactive-css-placeholder-pseudo-element-not-supported = Vlastnosť <strong>{ $property }</strong> nie je podporovaná na pseudoprvkoch ::placeholder.
 inactive-css-property-because-of-display = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože tento má nastavenú vlastnosť display na hodnotu <strong>{ $display }</strong>.
-inactive-css-not-display-block-on-floated = Hodnota vlastnosti <strong>display</strong> bola vykresľovačom zmenená na <strong>block</strong>, pretože prvok je <strong>plávajúci</strong>.
 inactive-css-not-display-block-on-floated-2 = Hodnota vlastnosti <strong>display</strong> bola vykresľovačom zmenená na <strong>{ $display }</strong>, pretože prvok je <strong>plávajúci</strong>.
 inactive-css-only-non-grid-or-flex-item = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože ju nemožno použiť na položky typu flex alebo grid.
 inactive-css-not-block = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože sa vzťahuje iba na prvky na úrovni bloku.
@@ -47,6 +21,7 @@ inactive-css-property-is-impossible-to-override-in-visited = Nie je možné prep
 inactive-css-position-property-on-unpositioned-box = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože nejde o prvok s definovanou pozíciou.
 inactive-css-only-replaced-elements = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože ju možno použiť iba na nahradené prvky.
 inactive-text-overflow-when-no-overflow = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože nie je nastavené <strong>overflow: hidden</strong>.
+inactive-css-no-size-containment = Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na tento prvok, pretože tento nemá žiadne obmedzenie veľkosti.
 inactive-css-not-for-internal-table-elements = Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na interné prvky tabuľky.
 inactive-css-not-for-internal-table-elements-except-table-cells = Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na interné prvky tabuľky okrem buniek tabuľky.
 inactive-css-not-table = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože nejde o tabuľku.
@@ -56,15 +31,8 @@ inactive-scroll-padding-when-not-scroll-container = Vlastnosť <strong>{ $proper
 inactive-css-border-image = Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na tento prvok, pretože ju nemožno použiť na interné prvky tabuľky, kde je vlastnosť <strong>border-collapse</strong> na nadradenom prvku tabuľky nastavená na hodnotu <strong>collapse</strong>.
 inactive-css-resize = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože ju možno použiť iba na prvky s inou hodnotou pretečenia ako "visible" a na určité nahradené prvky, ako sú textové oblasti.
 inactive-css-ruby-element = Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na tento prvok, pretože je to prvok ruby. Jeho veľkosť je určená veľkosťou písma textu prvku ruby.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved.
-
 inactive-css-highlight-pseudo-elements-not-supported = <strong>{ $property }</strong> nie je podporované na zvýraznených pseudoprvkoch.
 inactive-css-cue-pseudo-element-not-supported = Vlastnosť <strong>{ $property }</strong> nie je podporovaná na pseudoprvkoch ::cue.
-# Variables:
-#   $lineCount (integer) - The number of lines the element has.
 inactive-css-text-wrap-balance-lines-exceeded =
     { $lineCount ->
         [one] Vlastnosť <strong>{ $property }</strong> nemá žiadny vplyv na tento prvok, pretože tento má viac ako { $lineCount } riadok.
@@ -74,12 +42,6 @@ inactive-css-text-wrap-balance-lines-exceeded =
     }
 inactive-css-text-wrap-balance-fragmented = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože tento je fragmentovaný, t. j. jeho obsah je rozdelený do viacerých stĺpcov alebo stránok.
 inactive-css-no-width-height = Vlastnosť <strong>{ $property }</strong> nemá na tento prvok žiadny vplyv, pretože jeho šírku a výšku nemožno nastaviť.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved. CSS properties and values in <strong> tags should
-## not be translated.
-
 inactive-css-not-grid-or-flex-container-fix = Skúste pridať <strong>display:grid</strong> alebo <strong>display:flex</strong>. { learn-more }
 inactive-css-not-grid-or-flex-or-block-container-fix = Skúste pridať <strong>display:grid</strong>, <strong>display:flex</strong> alebo <strong>display:block</strong>. { learn-more }
 inactive-css-not-grid-or-flex-container-or-multicol-container-fix = Skúste pridať <strong>display:grid</strong>, <strong>display:flex</strong> alebo <strong>columns:2</strong>. { learn-more }
@@ -100,6 +62,7 @@ inactive-css-not-floated-fix = Skúste pridať vlastnosť <strong>float</strong>
 inactive-css-position-property-on-unpositioned-box-fix = Skúste nastaviť vlastnosť <strong>position</strong> na inú hodnotu ako <strong>static</strong>. { learn-more }
 inactive-css-only-replaced-elements-fix = Uistite sa, že vlastnosť pridávate do nahradeného prvku. { learn-more }
 inactive-text-overflow-when-no-overflow-fix = Skúste pridať <strong>overflow:hidden</strong>. { learn-more }
+inactive-css-no-size-containment-fix = Skúste nastaviť jeho vlastnosť <strong>display</strong> na niečo iné ako <strong>none</strong>, <strong>contents</strong>, <strong>table</strong> alebo <strong>inline-table </strong> a uistite sa, že nie je v rámci tabuľky alebo segmentu ruby. { learn-more }
 inactive-css-not-for-internal-table-elements-fix = Skúste nastaviť vlastnosť <strong>display</strong> na inú hodnotu ako <strong>table-cell</strong>, <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row-group</strong> alebo <strong>table-footer-group</strong>. { learn-more }
 inactive-css-not-for-internal-table-elements-except-table-cells-fix = Skúste nastaviť vlastnosť <strong>display</strong> na inú hodnotu ako <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row-group</strong> alebo <strong>table-footer-group</strong>. { learn-more }
 inactive-css-not-table-fix = Skúste pridať <strong>display:table</strong> alebo <strong>display:inline-table</strong>. { learn-more }
@@ -111,14 +74,6 @@ inactive-css-resize-fix = Skúste nastaviť <strong>overflow</strong> na inú ho
 inactive-css-ruby-element-fix = Skúste zmeniť <strong>veľkosť písma</strong> textu prvku ruby. { learn-more }
 inactive-css-text-wrap-balance-lines-exceeded-fix = Skúste znížiť počet riadkov. { learn-more }
 inactive-css-text-wrap-balance-fragmented-fix = Vyhnite sa rozdeleniu obsahu prvku, napr. odstránením stĺpcov alebo použitím <strong>page-break-inside:avoid</strong>. { learn-more }
-
-## In the Rule View when a CSS property may have compatibility issues with other browsers
-## we display an icon. When this icon is hovered this message is displayed to explain why
-## the property is incompatible and the platforms it is incompatible on.
-## Variables:
-##   $property (string) - A CSS declaration name e.g. "-moz-user-select" that can be a platform specific alias.
-##   $rootProperty (string) - A raw CSS property name e.g. "user-select" that is not a platform specific alias.
-
 css-compatibility-default-message = Vlastnosť <strong>{ $property }</strong> nie je podporovaná v nasledujúcich prehliadačoch:
 css-compatibility-deprecated-experimental-message = Vlastnosť <strong>{ $property }</strong> bola experimentálnou vlastnosťou, ktorá je teraz podľa štandardov W3C zastaraná. Nie je podporovaná v nasledujúcich prehliadačoch:
 css-compatibility-deprecated-experimental-supported-message = Vlastnosť <strong>{ $property }</strong> bola experimentálnou vlastnosťou, ktorá je teraz podľa štandardov W3C zastaraná.
@@ -127,10 +82,4 @@ css-compatibility-deprecated-supported-message = Vlastnosť <strong>{ $property 
 css-compatibility-experimental-message = Vlastnosť <strong>{ $property }</strong> je experimentálnou vlastnosťou. Nie je podporovaná v nasledujúcich prehliadačoch:
 css-compatibility-experimental-supported-message = Vlastnosť <strong>{ $property }</strong> je experimentálnou vlastnosťou.
 css-compatibility-learn-more-message = <span data-l10n-name="link">Ďalšie informácie</span> o vlastnosti <strong>{ $rootProperty }</strong>
-
-## In the Rule View when a rule selector can causes issues, we display an icon.
-## When this icon is hovered one or more of those messages are displayed to explain what
-## the issue are.
-
-# :has() should not be translated
 css-selector-warning-unconstrained-has = Tento selektor používa nijako neobmedzenú metódu <strong>:has()</strong>, čo môže byť pomalé

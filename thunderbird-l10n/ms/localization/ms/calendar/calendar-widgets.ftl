@@ -1,14 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Side panel
-
 calendar-enable-button = Dayakan
-
-## Calendar navigation
-
 calendar-view-toggle-day = Hari
     .title = Tukar ke paparan hari
 calendar-view-toggle-week = Minggu
@@ -17,12 +7,6 @@ calendar-view-toggle-multiweek = Berbilang minggu
     .title = Tukar ke paparan berbilang minggu
 calendar-view-toggle-month = Bulan
     .title = Tukar ke paparan bulan
-
-## Menu on calendar control bar
-
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Semalam
     .accesskey = e

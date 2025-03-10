@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Боје странице и позадина">
 <!ENTITY pageColors.label "Боје странице">
 <!ENTITY defaultColorsRadio.label "Подразумеване боје читача (не подешавај боје унутар странице)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Користи прилагођене боје:">
 <!ENTITY customColorsRadio.accessKey "п">
 <!ENTITY customColorsRadio.tooltip "Ова подешавања боја премошћују подешавања прегледача читача">
-
 <!ENTITY normalText.label "Обичан текст">
 <!ENTITY normalText.accessKey "н">
 <!ENTITY linkText.label "Текст везе">

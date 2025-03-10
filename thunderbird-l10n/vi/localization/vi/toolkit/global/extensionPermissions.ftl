@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Xem và chỉnh sửa dấu trang
 webext-perms-description-browserSettings = Đọc và chỉnh sửa cài đặt trình duyệt
 webext-perms-description-browsingData = Xóa lịch sử duyệt web, cookie và dữ liệu liên quan
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Truy cập các thẻ đã đóng gần đâ
 webext-perms-description-tabs = Truy cập các thẻ trên trình duyệt
 webext-perms-description-tabHide = Ẩn và hiển thỉ các thẻ trình duyệt
 webext-perms-description-topSites = Truy cập lịch sử duyệt web
+webext-perms-description-trialML = Tải xuống và chạy các mô hình AI trên thiết bị của bạn
+webext-perms-description-userScripts = Cho phép các tập lệnh của bên thứ ba chưa được xác minh truy cập vào dữ liệu của bạn
 webext-perms-description-webNavigation = Truy cập hoạt động của trình duyệt trong khi điều hướng
+webext-perms-extra-warning-userScripts-long = Các tập lệnh chưa được xác minh có thể gây ra rủi ro về bảo mật và quyền riêng tư, chẳng hạn như chạy mã độc hại hoặc theo dõi hoạt động của trang web. Chỉ chạy tập lệnh từ tiện ích mở rộng hoặc nguồn mà bạn tin cậy.
+webext-perms-extra-warning-userScripts-short = Các tập lệnh chưa được xác minh có thể gây ra rủi ro về bảo mật và quyền riêng tư. Chỉ chạy tập lệnh từ tiện ích mở rộng hoặc nguồn mà bạn tin cậy.

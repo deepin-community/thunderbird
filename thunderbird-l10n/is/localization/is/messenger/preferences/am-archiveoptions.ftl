@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 archive-options-title = Stillingar fyrir skjalageymslu
 archive-granularity-prefix-label = Þegar póstur er settur í skjalageymslu, setja í:
 archive-flat =
@@ -20,10 +16,8 @@ recreate-inbox =
     .label = Endurgera pósthólfsmöppu
     .accesskey = r
 archive-example-label = Dæmi
-# This should match the default name for the "Archives" folder.
 archive-folder-name =
     .label = Skjalageymslur
-# This should match the default name for the "Inbox" folder.
 inbox-folder-name =
     .label = Innhólf
 child-folder-name =

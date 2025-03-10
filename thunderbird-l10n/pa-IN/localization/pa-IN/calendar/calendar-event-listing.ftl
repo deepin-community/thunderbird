@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = ਈਵੈਂਟ ਖੋਜ ਅਤੇ ਈਵੈਂਟ ਸੂਚੀ ਬੰਦ ਕਰੋ
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = ਕੈਲੰਡਰ ਦਾ ਨਾਂ
     .tooltiptext = ਕੈਲੰਡਰ ਨਾਂ ਮੁਤਾਬਕ ਲੜੀਬੱਧ ਕਰੋ
 calendar-event-listing-column-category =
     .label = ਕੈਟਾਗਰੀ
     .tooltiptext = ਵਰਗ ਮੁਤਾਬਕ ਲੜੀਬੱਧ ਕਰੋ
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = ਮੁਕੰਮਲ
     .tooltiptext = ਪੂਰਾ ਹੋਣ ਮੁਤਾਬਕ ਲੜੀਬੱਧ
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = ਟਾਈਟਲ
     .tooltiptext = ਟਾਈਟਲ ਮੁਤਾਬਕ ਲੜੀਬੱਧ
-
-## Interval dropdown options
-
 calendar-event-listing-interval-calendar-month =
     .label = ਇਸ ਕੈਲੰਡਰ ਮਹੀਨੇ ਵਿੱਚ ਈਵੈਂਟ
 calendar-event-listing-interval-current-view =

@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = S
-#   $type (String) - the shortcut key defined in the message-header-show-security-info-key
 message-security-button =
     .title =
         { PLATFORM() ->
@@ -21,20 +13,12 @@ openpgp-openpgp = OpenPGP
 openpgp-no-sig = Không có chữ ký số
 openpgp-no-sig-info = Thư này không có chữ kí điện tử của người gửi. Việc thiếu chữ kí điện tử có nghĩa là lá thư có thể đã được gửi bởi một người giả dạng địa chỉ email này. Cũng có thể lá thư đã bị sửa đổi trong khi truyền tải qua hệ thống mạng.
 openpgp-uncertain-sig = Chữ ký số không chắc chắn
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-uncertain-sig-with-date = Chữ ký số không chắc chắn - Đã ký vào { $date }
 openpgp-invalid-sig = Chữ ký số không hợp lệ
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Chữ ký số không hợp lệ - Đã ký vào { $date }
 openpgp-bad-date-sig = Ngày ký không khớp
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-bad-date-sig-with-date = Ngày ký không khớp - Đã ký vào { $date }
 openpgp-good-sig = Chữ ký số tốt
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-good-sig-with-date = Chữ ký số tốt - Đã ký vào { $date }
 openpgp-sig-uncertain-no-key = Thư này có chứa chữ ký số, nhưng không chắc liệu nó có đúng hay không. Để xác minh chữ ký, bạn cần lấy bản sao khóa công khai của người gửi.
 openpgp-sig-uncertain-uid-mismatch = Thư này chứa chữ ký số nhưng đã phát hiện thấy không khớp. Thư được gửi từ một địa chỉ email không khớp với khóa công khai của người ký.
@@ -45,19 +29,9 @@ openpgp-sig-invalid-date-mismatch = Thư này chứa chữ ký điện tử như
 openpgp-sig-valid-unverified = Thư này bao gồm một chữ ký số hợp lệ từ một khóa mà bạn đã chấp nhận. Tuy nhiên, bạn vẫn chưa xác minh được rằng khóa có thực sự thuộc sở hữu của người gửi hay không.
 openpgp-sig-valid-verified = Thư này bao gồm một chữ ký số hợp lệ từ một khóa đã được xác minh.
 openpgp-sig-valid-own-key = Thư này bao gồm một chữ ký số hợp lệ từ khóa cá nhân của bạn.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = ID khóa người ký: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = ID khóa người ký: { $key } (ID khóa phụ: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = ID khóa giải mã của bạn: { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = ID khóa giải mã của bạn: { $key } (ID khóa phụ: { $subkey })
 openpgp-enc-none = Thư không được mã hóa
 openpgp-enc-none-label = Thư này không được mã hóa trước khi gửi. Thông tin gửi qua Internet mà không mã hóa có thể bị thấy bởi người khác trong quá trình truyền tải.
@@ -75,7 +49,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Giải mã thất bại
 openpgp-message-header-signed-ok-icon =
     .alt = Chữ ký tốt
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Chữ ký lỗi
 openpgp-message-header-signed-unknown-icon =

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = 認証設定
 account-channel-title = 既定のチャンネル
 chat-autologin =
@@ -10,8 +6,6 @@ chat-encryption-generic = 一般
 chat-encryption-log =
     .label = エンドツーエンド暗号化メッセージを会話ログに含める
 chat-encryption-label = ネイティブのエンドツーエンド暗号化
-# Variables:
-# $protocol (String) - Name of the chat protocol. Example: Matrix
 chat-encryption-description = { $protocol } はチャットメッセージのためのエンドツーエンド暗号化を提供します。これは、第三者による会話の盗聴を防ぎます。暗号化を行うには、以下の追加のセットアップが必要です。
 chat-encryption-status = 暗号化状態
 chat-encryption-placeholder = 暗号化が初期化されていません。

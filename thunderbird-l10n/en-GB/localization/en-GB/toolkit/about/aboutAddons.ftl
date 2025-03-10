@@ -1,21 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = Add-ons Manager
 search-header =
     .placeholder = Search addons.mozilla.org
     .searchbuttonlabel = Search
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
 list-empty-get-extensions-message = Get extensions and themes on <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-dictionaries-message = Get dictionaries on <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-language-packs-message = Get language packs on <a data-l10n-name="get-extensions">{ $domain }</a>
-
-##
-
 list-empty-installed =
     .value = You don’t have any add-ons of this type installed
 list-empty-available-updates =
@@ -57,13 +46,9 @@ detail-update-automatic =
 detail-update-manual =
     .label = Off
     .tooltiptext = Don’t automatically install updates
-# Used as a description for the option to allow or block an add-on in private windows.
 detail-private-browsing-label = Run in Private Windows
-# Some add-ons may elect to not run in private windows by setting incognito: not_allowed in the manifest.  This
-# cannot be overridden by the user.
 detail-private-disallowed-label = Not Allowed in Private Windows
 detail-private-disallowed-description2 = This extension does not run while private browsing. <a data-l10n-name="learn-more">Learn more</a>
-# Some special add-ons are privileged, run in private windows automatically, and this permission can't be revoked
 detail-private-required-label = Requires Access to Private Windows
 detail-private-required-description2 = This extension has access to your online activities while private browsing. <a data-l10n-name="learn-more">Learn more</a>
 detail-private-browsing-on =
@@ -147,22 +132,13 @@ addon-category-recent-updates-title =
 addon-category-sitepermission = Site Permissions
 addon-category-sitepermission-title =
     .title = Site Permissions
-# String displayed in about:addons in the Site Permissions section
-# Variables:
-#  $host (string) - DNS host name for which the webextension enables permissions
 addon-sitepermission-host = Site Permissions for { $host }
-
-## These are global warnings
-
-extensions-warning-safe-mode = All add-ons have been disabled by safe mode.
-extensions-warning-check-compatibility = Add-on compatibility checking is disabled. You may have incompatible add-ons.
 extensions-warning-safe-mode2 =
     .message = All add-ons have been disabled by safe mode.
 extensions-warning-check-compatibility2 =
     .message = Add-on compatibility checking is disabled. You may have incompatible add-ons.
 extensions-warning-check-compatibility-button = Enable
     .title = Enable add-on compatibility checking
-extensions-warning-update-security = Add-on update security checking is disabled. You may be compromised by updates.
 extensions-warning-update-security2 =
     .message = Add-on update security checking is disabled. You may be compromised by updates.
 extensions-warning-update-security-button = Enable
@@ -170,57 +146,32 @@ extensions-warning-update-security-button = Enable
 extensions-warning-imported-addons2 =
     .message = Please finalise the installation of extensions that were imported to { -brand-short-name }.
 extensions-warning-imported-addons-button = Install Extensions
-
-## Strings connected to add-on updates
-
 addon-updates-check-for-updates = Check for Updates
     .accesskey = C
 addon-updates-view-updates = View Recent Updates
     .accesskey = V
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = Update Add-ons Automatically
     .accesskey = A
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = Reset All Add-ons to Update Automatically
     .accesskey = R
 addon-updates-reset-updates-to-manual = Reset All Add-ons to Update Manually
     .accesskey = R
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = Updating add-ons
 addon-updates-installed = Your add-ons have been updated.
 addon-updates-none-found = No updates found
 addon-updates-manual-updates-found = View Available Updates
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = Install Add-on From File…
     .accesskey = I
 addon-install-from-file-dialog-title = Select add-on to install
 addon-install-from-file-filter-name = Add-ons
 addon-open-about-debugging = Debug Add-ons
     .accesskey = b
-
-## Extension shortcut management
-
-# This is displayed in the page options menu
 addon-manage-extensions-shortcuts = Manage Extension Shortcuts
     .accesskey = S
 shortcuts-no-addons = You don’t have any extensions enabled.
 shortcuts-no-commands = The following extensions do not have shortcuts:
 shortcuts-input =
     .placeholder = Type a shortcut
-# Accessible name for a trashcan icon button that removes an existent shortcut
 shortcuts-remove-button =
     .aria-label = Remove shortcut
 shortcuts-browserAction2 = Activate toolbar button
@@ -231,23 +182,10 @@ shortcuts-modifier-other = Include Ctrl or Alt
 shortcuts-invalid = Invalid combination
 shortcuts-letter = Type a letter
 shortcuts-system = Can’t override a { -brand-short-name } shortcut
-# String displayed in warning label when there is a duplicate shortcut
 shortcuts-duplicate = Duplicate shortcut
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
-shortcuts-duplicate-warning-message = { $shortcut } is being used as a shortcut in more than one case. Duplicate shortcuts may cause unexpected behaviour.
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message2 =
     .message = { $shortcut } is being used as a shortcut in more than one case. Duplicate shortcuts may cause unexpected behaviour.
-# String displayed when a keyboard shortcut is already used by another add-on
-# Variables:
-#   $addon (string) - Name of the add-on
 shortcuts-exists = Already in use by { $addon }
-# Variables:
-#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
        *[other] Show { $numberToShow } More
@@ -255,59 +193,32 @@ shortcuts-card-expand-button =
 shortcuts-card-collapse-button = Show Less
 header-back-button =
     .title = Go back
-
-## Recommended add-ons page
-
-# Explanatory introduction to the list of recommended add-ons. The action word
-# ("recommends") in the final sentence is a link to external documentation.
-discopane-intro =
-    Extensions and themes are like apps for your browser, and they let you
-    protect passwords, download videos, find deals, block annoying ads, change
-    how your browser looks, and much more. These small software programmes are
-    often developed by a third party. Here’s a selection { -brand-product-name }
-    <a data-l10n-name="learn-more-trigger">recommends</a> for exceptional
-    security, performance, and functionality.
-# Notice to make user aware that the recommendations are personalized.
-discopane-notice-recommendations =
-    Some of these recommendations are personalised. They are based on other
-    extensions you’ve installed, profile preferences, and usage statistics.
-# Notice to make user aware that the recommendations are personalized.
+discopane-intro2 =
+    Extensions and themes let you customise { -brand-product-name }. They can boost privacy,
+    enhance productivity, improve media, change the way { -brand-product-name } looks, and
+    so much more. These small software programmes are often developed by a third party. Here’s
+    a selection { -brand-product-name } <a data-l10n-name="learn-more-trigger">recommends</a>
+    for exceptional security, performance, and functionality.
 discopane-notice-recommendations2 =
     .message =
         Some of these recommendations are personalised. They are based on other
         extensions you’ve installed, profile preferences, and usage statistics.
 discopane-notice-learn-more = Learn more
 privacy-policy = Privacy Policy
-# Refers to the author of an add-on, shown below the name of the add-on.
-# Variables:
-#   $author (string) - The name of the add-on developer.
 created-by-author = by <a data-l10n-name="author">{ $author }</a>
-# Shows the number of daily users of the add-on.
-# Variables:
-#   $dailyUsers (number) - The number of daily users.
 user-count = Users: { $dailyUsers }
 install-extension-button = Add to { -brand-product-name }
 install-theme-button = Install Theme
-# The label of the button that appears after installing an add-on. Upon click,
-# the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = Manage
 find-more-addons = Find more add-ons
 find-more-themes = Find more themes
-# This is a label for the button to open the "more options" menu, it is only
-# used for screen readers.
 addon-options-button =
     .aria-label = More Options
-
-## Add-on actions
-
 report-addon-button = Report
 remove-addon-button = Remove
-# The link will always be shown after the other text.
 remove-addon-disabled-button = Can’t Be Removed <a data-l10n-name="link">Why?</a>
 disable-addon-button = Disable
 enable-addon-button = Enable
-# This is used for the toggle on the extension card, it's a checkbox and this
-# is always its label.
 extension-enable-addon-button-label =
     .aria-label = Enable
 preferences-addon-button =
@@ -337,37 +248,15 @@ addon-detail-version-label = Version
 addon-detail-last-updated-label = Last Updated
 addon-detail-homepage-label = Homepage
 addon-detail-rating-label = Rating
-# Message for add-ons with a staged pending update.
-install-postponed-message = This extension will be updated when { -brand-short-name } restarts.
-# Message for add-ons with a staged pending update.
 install-postponed-message2 =
     .message = This extension will be updated when { -brand-short-name } restarts.
 install-postponed-button = Update Now
-# The average rating that the add-on has received.
-# Variables:
-#   $rating (number) - A number between 0 and 5. The translation should show at most one digit after the comma.
-five-star-rating =
-    .title = Rated { NUMBER($rating, maximumFractionDigits: 1) } out of 5
-# This string is used to show that an add-on is disabled.
-# Variables:
-#   $name (string) - The name of the add-on
 addon-name-disabled = { $name } (disabled)
-# The number of reviews that an add-on has received on AMO.
-# Variables:
-#   $numberOfReviews (number) - The number of reviews received
 addon-detail-reviews-link =
     { $numberOfReviews ->
         [one] { $numberOfReviews } review
        *[other] { $numberOfReviews } reviews
     }
-
-## Pending uninstall message bar
-
-# Variables:
-#   $addon (string) - Name of the add-on
-pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> has been removed.
-# Variables:
-#   $addon (string) - Name of the add-on
 pending-uninstall-description2 =
     .message = { $addon } has been removed.
 pending-uninstall-undo-button = Undo
@@ -377,73 +266,39 @@ addon-detail-updates-radio-on = On
 addon-detail-updates-radio-off = Off
 addon-detail-update-check-label = Check for Updates
 install-update-button = Update
-# aria-label associated to the updates row to help screen readers to announce the group
-# of input controls being entered.
 addon-detail-group-label-updates =
     .aria-label = { addon-detail-updates-label }
-# This is the tooltip text for the private browsing badge in about:addons. The
-# badge is the private browsing icon included next to the extension's name.
-addon-badge-private-browsing-allowed2 =
+addon-badge-private-browsing-allowed3 =
     .title = Allowed in private windows
-    .aria-label = { addon-badge-private-browsing-allowed2.title }
 addon-detail-private-browsing-help = When allowed, the extension will have access to your online activities while private browsing. <a data-l10n-name="learn-more">Learn more</a>
 addon-detail-private-browsing-allow = Allow
 addon-detail-private-browsing-disallow = Don’t Allow
-# aria-label associated to the private browsing row to help screen readers to announce the group
-# of input controls being entered.
 addon-detail-group-label-private-browsing =
     .aria-label = { detail-private-browsing-label }
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-# Used as a description for the option to allow or block an add-on on quarantined domains.
 addon-detail-quarantined-domains-label = Run on sites with restrictions
-# Used as help text part of the quarantined domains UI controls row.
 addon-detail-quarantined-domains-help = When allowed, the extension will have access to sites restricted by { -vendor-short-name }. Allow only if you trust this extension.
-# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
 addon-detail-quarantined-domains-allow = Allow
 addon-detail-quarantined-domains-disallow = Don’t Allow
-# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
 addon-detail-group-label-quarantined-domains =
     .aria-label = { addon-detail-quarantined-domains-label }
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-addon-badge-recommended2 =
+addon-badge-recommended3 =
     .title = { -brand-product-name } only recommends extensions that meet our standards for security and performance
-    .aria-label = { addon-badge-recommended2.title }
-# We hard code "Mozilla" in the string below because the extensions are built
-# by Mozilla and we don't want forks to display "by Fork".
-addon-badge-line3 =
+addon-badge-line4 =
     .title = Official extension built by Mozilla. Meets security and performance standards
-    .aria-label = { addon-badge-line3.title }
-addon-badge-verified2 =
+addon-badge-verified3 =
     .title = This extension has been reviewed to meet our standards for security and performance
-    .aria-label = { addon-badge-verified2.title }
-
-##
-
 available-updates-heading = Available Updates
 recent-updates-heading = Recent Updates
 release-notes-loading = Loading…
 release-notes-error = Sorry, but there was an error loading the release notes.
-addon-permissions-empty = This extension doesn’t require any permissions
+addon-permissions-empty2 = This extension doesn’t require any permissions.
 addon-permissions-required = Required permissions for core functionality:
 addon-permissions-optional = Optional permissions for added functionality:
 addon-permissions-learnmore = Learn more about permissions
 recommended-extensions-heading = Recommended Extensions
 recommended-themes-heading = Recommended Themes
-# Variables:
-#   $hostname (string) - Host where the permissions are granted
 addon-sitepermissions-required = Grants the following capabilities to <span data-l10n-name="hostname">{ $hostname }</span>:
-# A recommendation for the Firefox Color theme shown at the bottom of the theme
-# list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Feeling creative? <a data-l10n-name="link">Build your own theme with Firefox Colour.</a>
-
-## Page headings
-
 extension-heading = Manage Your Extensions
 theme-heading = Manage Your Themes
 plugin-heading = Manage Your Plugins
@@ -458,41 +313,28 @@ addons-heading-search-input =
     .placeholder = Search addons.mozilla.org
 addon-page-options-button =
     .title = Tools for all add-ons
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (string) - Application version.
-details-notification-incompatible = { $name } is incompatible with { -brand-short-name } { $version }.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } is incompatible with { -brand-short-name } { $version }.
-details-notification-incompatible-link = More Information
-details-notification-unsigned-and-disabled = { $name } could not be verified for use in { -brand-short-name } and has been disabled.
 details-notification-unsigned-and-disabled2 =
     .message = { $name } could not be verified for use in { -brand-short-name } and has been disabled.
-details-notification-unsigned-and-disabled-link = More Information
-details-notification-unsigned = { $name } could not be verified for use in { -brand-short-name }. Proceed with caution.
 details-notification-unsigned2 =
     .message = { $name } could not be verified for use in { -brand-short-name }. Proceed with caution.
-details-notification-unsigned-link = More Information
-details-notification-blocked = { $name } has been disabled due to security or stability issues.
-details-notification-blocked2 =
-    .message = { $name } has been disabled due to security or stability issues.
-details-notification-blocked-link = More Information
-details-notification-softblocked = { $name } is known to cause security or stability issues.
-details-notification-softblocked2 =
-    .message = { $name } is known to cause security or stability issues.
-details-notification-softblocked-link = More Information
-details-notification-gmp-pending = { $name } will be installed shortly.
+details-notification-hard-blocked-extension =
+    .message = This extension is blocked for violating Mozilla’s policies and has been disabled.
+details-notification-hard-blocked-other =
+    .message = This add-on is blocked for violating Mozilla’s policies and has been disabled.
+details-notification-blocked-link2 = See Details
+details-notification-soft-blocked-extension-disabled =
+    .message = This extension is restricted for violating Mozilla’s policies and has been disabled. You can enable it, but this may be risky.
+details-notification-soft-blocked-extension-enabled =
+    .message = This extension violates Mozilla’s policies. Using it may be risky.
+details-notification-soft-blocked-other-disabled =
+    .message = This add-on is restricted for violating Mozilla’s policies and has been disabled. You can enable it, but this may be risky.
+details-notification-soft-blocked-other-enabled =
+    .message = This add-on violates Mozilla’s policies. Using it may be risky.
+details-notification-softblocked-link2 = See Details
 details-notification-gmp-pending2 =
     .message = { $name } will be installed shortly.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = Licence information
 plugins-gmp-privacy-info = Privacy Information
 plugins-openh264-name = OpenH264 Video Codec provided by Cisco Systems, Inc.

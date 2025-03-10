@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-editable-item-privacy-icon-private =
     .alt = Privasi: Acara Pribadi
 calendar-editable-item-privacy-icon-confidential =
@@ -20,3 +16,11 @@ calendar-editable-item-multiday-event-icon-continue =
     .alt = Acara beberapa hari berlanjut
 calendar-editable-item-multiday-event-icon-end =
     .alt = Acara beberapa hari berakhir
+calendar-editable-item-reminder-icon-alarm =
+    .alt = Peringatan pengingat dijadwalkan
+calendar-editable-item-reminder-icon-suppressed-alarm =
+    .alt = Peringatan pengingat dijadwalkan tapi kini dibungkam
+calendar-editable-item-reminder-icon-email =
+    .alt = Surel pengingat dijadwalkan
+calendar-editable-item-reminder-icon-audio =
+    .alt = Peringatan audio pengingat dijadwalkan

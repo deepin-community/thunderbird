@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- Window title -->
-
 <!ENTITY windowTitle.label "Cor e fundo da página">
 <!ENTITY pageColors.label "Cores da página">
 <!ENTITY defaultColorsRadio.label "Cores predefinidas do leitor (não aplica cores na página)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Cores personalizadas:">
 <!ENTITY customColorsRadio.accessKey "o">
 <!ENTITY customColorsRadio.tooltip "Estas definições de cor sobrepõem-se às definições do navegador do visualizador">
-
 <!ENTITY normalText.label "Texto normal">
 <!ENTITY normalText.accessKey "n">
 <!ENTITY linkText.label "Texto da ligação">

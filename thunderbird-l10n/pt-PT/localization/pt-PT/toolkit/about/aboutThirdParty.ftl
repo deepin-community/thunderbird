@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Informações de módulos de terceiros
 third-party-section-title = Lista de módulos de terceiros no { -brand-short-name }
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = Recarregar com informações do sistema
     .title = Recarregar com informações do sistema
 third-party-button-open =
     .title = Abrir localização do ficheiro…
-third-party-button-to-block =
-    .title = Bloquear este módulo
-    .aria-label = Bloquear este módulo
-third-party-button-to-unblock =
-    .title = Atualmente bloqueado. Clique para desbloqueá-lo.
-    .aria-label = Atualmente bloqueado. Clique para desbloqueá-lo.
-third-party-button-to-unblock-disabled =
-    .title =
-        Atualmente marcado como bloqueado, embora a lista de bloqueio esteja desativada para esta execução
-        do { -brand-short-name }. Clique para desbloquear.
-    .aria-label =
-        Atualmente marcado como bloqueado, embora a lista de bloqueio esteja desativada para esta execução
-        do { -brand-short-name }. Clique para desbloquear.
 third-party-button-to-block-module = Bloquear este módulo
     .title = Bloquear este módulo
     .aria-label = Bloquear este módulo

@@ -1,11 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-setup-tab-title = Vytvoření účtu
-
-## Header
-
 account-setup-title = Nastavit existující e-mailový účet
 account-setup-description =
     Pro použití existující e-mailové adresy vyplňte své přihlašovací údaje.<br/>
@@ -18,12 +11,8 @@ account-setup-success-description =
        *[no-cases] Nyní můžete tento účet používat používat v aplikaci { -brand-short-name }.
     }
 account-setup-success-secondary-description = Připojení souvisejících služeb a konfigurace pokročilého nastavení účtu vám může usnadnit další práci.
-
-## Form fields
-
 account-setup-name-label = Vaše celé jméno
     .accesskey = n
-# Note: "John Doe" is a multiple-use name that is used when the true name of a person is unknown. We use this fake name as an input placeholder. Translators should update this to reflect the placeholder name of their language/country.
 account-setup-name-input =
     .placeholder = Jan Novák
 account-setup-name-info-icon =
@@ -41,8 +30,6 @@ account-setup-email-warning-icon =
 account-setup-password-label = Heslo
     .accesskey = H
     .title = Potřeba pouze pro ověření vašeho uživatelského jména
-account-provisioner-button = Získat novou e-mailovou adresu
-    .accesskey = Z
 account-setup-password-toggle-show =
     .title = Zobrazit heslo viditelně
 account-setup-password-toggle-hide =
@@ -51,15 +38,10 @@ account-setup-remember-password = Pamatovat si heslo
     .accesskey = m
 account-setup-exchange-label = Vaše přihlašovací jméno
     .accesskey = l
-#   YOURDOMAIN refers to the Windows domain in ActiveDirectory. yourusername refers to the user's account name in Windows.
 account-setup-exchange-input =
     .placeholder = VAŠEDOMÉNA\vašeuživatelskéjméno
-#   Domain refers to the Windows domain in ActiveDirectory. We mean the user's login in Windows at the local corporate network.
 account-setup-exchange-info-icon =
     .title = Přihlášení k doméně
-
-## Action buttons
-
 account-setup-button-cancel = Zrušit
     .accesskey = Z
 account-setup-button-manual-config = Nastavit ručně
@@ -72,9 +54,6 @@ account-setup-button-continue = Pokračovat
     .accesskey = o
 account-setup-button-done = Hotovo
     .accesskey = H
-
-## Notifications
-
 account-setup-looking-up-settings = Vyhledávání nastavení…
 account-setup-looking-up-settings-guess = Vyhledávání nastavení testováním obvyklých názvů serverů…
 account-setup-looking-up-settings-half-manual = Vyhledávání konfigurace testováním serverů…
@@ -84,7 +63,6 @@ account-setup-looking-up-disk =
        *[no-cases] Vyhledávání nastavení v adresářích aplikace { -brand-short-name }
     }
 account-setup-looking-up-isp = Vyhledávání nastavení u poskytovatele e-mailu…
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-looking-up-db = Vyhledávání nastavení v databázi Mozilly…
 account-setup-looking-up-mx = Vyhledávání nastavení: Doména příchozí pošty…
 account-setup-looking-up-exchange = Vyhledávání nastavení: Server Exchange…
@@ -95,7 +73,6 @@ account-setup-success-guess = Testováním obvyklých názvů serverů bylo nale
 account-setup-success-guess-offline = Jste v režimu offline. Nastavení bylo odhadnuto, je ale nutné ho správně doplnit.
 account-setup-success-password = Heslo je v pořádku
 account-setup-success-addon = Doplněk byl úspěšně nainstalován
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-success-settings-db = V databázi Mozilly bylo nalezeno následující nastavení.
 account-setup-success-settings-disk =
     { -brand-short-name.case-status ->
@@ -103,11 +80,7 @@ account-setup-success-settings-disk =
        *[no-cases] aplikace V adresářích Vyhledávání nastavení v adresářích aplikace { -brand-short-name } bylo nalezeno následující nastavení.
     }
 account-setup-success-settings-isp = U poskytovatele e-mailu bylo nalezeno následující nastavení.
-# Note: Microsoft Exchange is a product name.
 account-setup-success-settings-exchange = Nastavení pro server Microsoft Exchange nalezeno.
-
-## Illustrations
-
 account-setup-step1-image =
     .title = Úvodní nastavení
 account-setup-step2-image =
@@ -126,11 +99,6 @@ account-setup-documentation-help = Nápověda k nastavení
 account-setup-forum-help = Fórum podpory
 account-setup-privacy-help = Zásady ochrany osobních údajů
 account-setup-getting-started = Začínáme
-
-## Results area
-
-# Variables:
-#  $count (Number) - Number of available protocols.
 account-setup-results-area-title =
     { $count ->
         [one] Dostupné nastavení
@@ -139,7 +107,6 @@ account-setup-results-area-title =
     }
 account-setup-result-imap-description = Udržuje vaše složky a e-maily synchronizované na vašem serveru
 account-setup-result-pop-description = Uchová vaše složky a e-maily na vašem počítači
-# Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Použije server Microsoft Exchange nebo cloudové služby Office365
 account-setup-incoming-title = Příchozí
 account-setup-outgoing-title = Odchozí
@@ -149,14 +116,7 @@ account-setup-result-no-encryption = Bez šifrování
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
 account-setup-result-outgoing-existing = Použít pro odchozí poštu existující server SMTP
-# Variables:
-#  $incoming (String): The email/username used to log into the incoming server
-#  $outgoing (String): The email/username used to log into the outgoing server
 account-setup-result-username-different = Příchozí: { $incoming }, Odchozí: { $outgoing }
-
-## Error messages
-
-# Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
 account-setup-credentials-incomplete = Ověření se nezdařilo. Buď nejsou zadané přihlašovací údaje správné, nebo je pro přihlášení vyžadováno samostatné uživatelské jméno. Takovým uživatelským jménem je obvykle vaše přihlašovací jméno k doméně systému Windows s doménou nebo bez ní (například jannovak nebo AD\\jannovak).
 account-setup-credentials-wrong = Ověření se nezdařilo. Zkontrolujte prosím uživatelské jméno a heslo.
 account-setup-find-settings-failed =
@@ -165,14 +125,6 @@ account-setup-find-settings-failed =
        *[no-cases] Aplikaci { -brand-short-name } se nepodařilo najít nastavení vašeho e-mailového účtu
     }
 account-setup-exchange-config-unverifiable = Konfiguraci nelze ověřit. Pokud jsou vaše uživatelské jméno a heslo správně, je pravděpodobné, že správce serveru zvolenou konfiguraci vašeho účtu zakázal. Zkuste vybrat jiný protokol.
-account-setup-provisioner-error =
-    { -brand-short-name.case-status ->
-        [with-cases] Při nastavování vašeho nového účtu došlo v { -brand-short-name(case: "loc") } k chybě. Zkuste prosím nastavit svůj účet ručně pomocí svých přihlašovacích údajů.
-       *[no-cases] Při nastavování vašeho nového účtu došlo v aplikaci { -brand-short-name } k chybě. Zkuste prosím nastavit svůj účet ručně pomocí svých přihlašovacích údajů.
-    }
-
-## Manual configuration area
-
 account-setup-manual-config-title = Ruční nastavení
 account-setup-incoming-server-legend = Server příchozí pošty
 account-setup-protocol-label = Protokol:
@@ -182,29 +134,18 @@ account-setup-port-label = Port:
 account-setup-auto-description = { -brand-short-name } se pokusí automaticky doplnit pole, která jste nevyplnili.
 account-setup-ssl-label = Zabezpečení spojení:
 account-setup-outgoing-server-legend = Server odchozí pošty
-
-## Incoming/Outgoing SSL Authentication options
-
 ssl-autodetect-option = Rozpoznat automaticky
 ssl-no-authentication-option = Bez ověření
 ssl-cleartext-password-option = Heslo, zabezpečený přenos
 ssl-encrypted-password-option = Šifrované heslo
-
-## Incoming/Outgoing SSL options
-
 ssl-noencryption-option = Žádné
 account-setup-auth-label = Způsob ověření:
 account-setup-username-label = Uživatelské jméno:
 account-setup-advanced-setup-button = Rozšířené nastavení
     .accesskey = a
-
-## Warning insecure server dialog
-
 account-setup-insecure-title = Upozornění!
 account-setup-insecure-incoming-title = Nastavení příchozí pošty:
 account-setup-insecure-outgoing-title = Nastavené odchozí pošty:
-# Variables:
-#  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = <b>{ $server }</b> nepoužívá žádné šifrování.
 account-setup-warning-cleartext-details = Nezabezpečený server nechrání vaše heslo ani osobních informace pomocí šifrovaného spojení. Připojením k tomuto serveru můžete ohrozit své heslo a osobní informace.
 account-setup-insecure-server-checkbox = Uvědomuji si rizika
@@ -214,23 +155,15 @@ insecure-dialog-cancel-button = Změnit nastavení
     .accesskey = s
 insecure-dialog-confirm-button = Potvrdit
     .accesskey = P
-
-## Warning Exchange confirmation dialog
-
-# Variables:
-#  $domain (String): The name of the server where the configuration was found, e.g. rackspace.com.
 exchange-dialog-question =
     { -brand-short-name.gender ->
-        [masculine] { -brand-short-name } našel
-        [feminine] { -brand-short-name } našla
-        [neuter] { -brand-short-name } našlo
-       *[other] Aplikace { -brand-short-name } našla
-    } informace pro nastavení vašeho účtu v na doméně { $domain }. Chcete pokračovat a odeslat své přihlašovací údaje?
+        [masculine] { -brand-short-name } našel informace pro nastavení vašeho účtu v na doméně { $domain }. Chcete pokračovat a odeslat své přihlašovací údaje?
+        [feminine] { -brand-short-name } našla informace pro nastavení vašeho účtu v na doméně { $domain }. Chcete pokračovat a odeslat své přihlašovací údaje?
+        [neuter] { -brand-short-name } našlo informace pro nastavení vašeho účtu v na doméně { $domain }. Chcete pokračovat a odeslat své přihlašovací údaje?
+       *[other] Aplikace { -brand-short-name } našla informace pro nastavení vašeho účtu v na doméně { $domain }. Chcete pokračovat a odeslat své přihlašovací údaje?
+    }
 exchange-dialog-confirm-button = Přihlašovací údaje
 exchange-dialog-cancel-button = Zrušit
-
-## Dismiss account creation dialog
-
 exit-dialog-title = Není nastaven žádný e-mailový účet
 exit-dialog-description =
     { -brand-short-name.case-status ->
@@ -247,22 +180,13 @@ exit-dialog-cancel-button = Pokračovat v nastavení
     .accesskey = P
 exit-dialog-confirm-button = Zrušit nastavení
     .accesskey = Z
-
-## Alert dialogs
-
 account-setup-creation-error-title = Účet se nepodařilo vytvořit
 account-setup-error-server-exists = Server příchozí pošty už existuje.
 account-setup-confirm-advanced-title = Potvrzení rozšířeného nastavení
 account-setup-confirm-advanced-description = Toto dialogové okno bude zavřeno a bude vytvořen účet s aktuálním nastavením, i když je konfigurace nesprávná. Chcete pokračovat?
-
-## Addon installation section
-
 account-setup-addon-install-title = Nainstalovat
 account-setup-addon-install-intro = Doplněk třetí strany vám může umožnit přístup k poštovnímu účtu na tomto serveru:
 account-setup-addon-no-protocol = Tento e-mailový server bohužel nepodporuje otevřené protokoly. { account-setup-addon-install-intro }
-
-## Success view
-
 account-setup-settings-button = Nastavení účtu
 account-setup-encryption-button = Koncové šifrování
 account-setup-signature-button = Přidat podpis
@@ -273,41 +197,69 @@ account-setup-calendar-button = Připojit vzdálený kalendář
 account-setup-linked-services-title = Připojení propojených služeb
 account-setup-linked-services-description =
     { -brand-short-name.gender ->
-        [masculine] { -brand-short-name } zjistil
-        [feminine] { -brand-short-name } zjistila
-        [neuter] { -brand-short-name } zjistilo
-       *[other] Aplikace { -brand-short-name } zjistila
-    } další služby propojené s vaším e-mailovým účtem.
+        [masculine] { -brand-short-name } zjistil další služby propojené s vaším e-mailovým účtem.
+        [feminine] { -brand-short-name } zjistila další služby propojené s vaším e-mailovým účtem.
+        [neuter] { -brand-short-name } zjistilo další služby propojené s vaším e-mailovým účtem.
+       *[other] Aplikace { -brand-short-name } zjistila další služby propojené s vaším e-mailovým účtem.
+    }
 account-setup-no-linked-description =
     { -brand-short-name.case-status ->
         [with-cases] Nastavte si další služby, abyste { -brand-short-name(case: "acc") } využili na maximum.
        *[no-cases] Nastavte si další služby, abyste aplikaci { -brand-short-name } využili na maximum.
     }
-# Variables:
-# $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
     { -brand-short-name.gender ->
-        [masculine] { -brand-short-name } našel
-        [feminine] { -brand-short-name } našla
-        [neuter] { -brand-short-name } našlo
-       *[other] Aplikace { -brand-short-name } našla
-    } { $count ->
-        [one] jednu složku kontaktů propojenou s vaším e-mailovým účtem.
-        [few] { $count } složky kontaktů propojené s vaším e-mailovým účtem.
-       *[other] { $count } složek kontaktů propojených s vaším e-mailovým účtem.
+        [masculine]
+            { $count ->
+                [one] { -brand-short-name } našel jednu složku kontaktů propojenou s vaším e-mailovým účtem.
+                [few] { -brand-short-name } našel { $count } složky kontaktů propojené s vaším e-mailovým účtem.
+               *[other] { -brand-short-name } našel { $count } složek kontaktů propojených s vaším e-mailovým účtem.
+            }
+        [feminine]
+            { $count ->
+                [one] { -brand-short-name } našla jednu složku kontaktů propojenou s vaším e-mailovým účtem.
+                [few] { -brand-short-name } našla { $count } složky kontaktů propojené s vaším e-mailovým účtem.
+               *[other] { -brand-short-name } našla { $count } složek kontaktů propojených s vaším e-mailovým účtem.
+            }
+        [neuter]
+            { $count ->
+                [one] { -brand-short-name } našlo jednu složku kontaktů propojenou s vaším e-mailovým účtem.
+                [few] { -brand-short-name } našlo { $count } složky kontaktů propojené s vaším e-mailovým účtem.
+               *[other] { -brand-short-name } našlo { $count } složek kontaktů propojených s vaším e-mailovým účtem.
+            }
+       *[other]
+            { $count ->
+                [one] Aplikace { -brand-short-name } našla jednu složku kontaktů propojenou s vaším e-mailovým účtem.
+                [few] Aplikace { -brand-short-name } našla { $count } složky kontaktů propojené s vaším e-mailovým účtem.
+               *[other] Aplikace { -brand-short-name } našla { $count } složek kontaktů propojených s vaším e-mailovým účtem.
+            }
     }
-# Variables:
-# $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
     { -brand-short-name.gender ->
-        [masculine] { -brand-short-name } našel
-        [feminine] { -brand-short-name } našla
-        [neuter] { -brand-short-name } našlo
-       *[other] Aplikace { -brand-short-name } našla
-    } { $count ->
-        [one] jeden kalendář propojený s vaším e-mailovým účtem.
-        [few] { $count } kalendáře propojené s vaším e-mailovým účtem.
-       *[other] { $count } kalendářů propojených s vaším e-mailovým účtem.
+        [masculine]
+            { $count ->
+                [one] { -brand-short-name } našel jeden kalendář propojený s vaším e-mailovým účtem.
+                [few] { -brand-short-name } našel { $count } kalendáře propojené s vaším e-mailovým účtem.
+               *[other] { -brand-short-name } našel { $count } kalendářů propojených s vaším e-mailovým účtem.
+            }
+        [feminine]
+            { $count ->
+                [one] { -brand-short-name } našla jeden kalendář propojený s vaším e-mailovým účtem.
+                [few] { -brand-short-name } našla { $count } kalendáře propojené s vaším e-mailovým účtem.
+               *[other] { -brand-short-name } našla { $count } kalendářů propojených s vaším e-mailovým účtem.
+            }
+        [neuter]
+            { $count ->
+                [one] { -brand-short-name } našlo jeden kalendář propojený s vaším e-mailovým účtem.
+                [few] { -brand-short-name } našlo { $count } kalendáře propojené s vaším e-mailovým účtem.
+               *[other] { -brand-short-name } našlo { $count } kalendářů propojených s vaším e-mailovým účtem.
+            }
+       *[other]
+            { $count ->
+                [one] Aplikace { -brand-short-name } našla jeden kalendář propojený s vaším e-mailovým účtem.
+                [few] Aplikace { -brand-short-name } našla { $count } kalendáře propojené s vaším e-mailovým účtem.
+               *[other] Aplikace { -brand-short-name } našla { $count } kalendářů propojených s vaším e-mailovým účtem.
+            }
     }
 account-setup-button-finish = Dokončit
     .accesskey = D
@@ -322,9 +274,6 @@ account-setup-existing-calendar = Připojeno
     .title = Kalendář je už připojen
 account-setup-connect-all-calendars = Připojit všechny kalendáře
 account-setup-connect-all-address-books = Připojit všechny složky kontaktů
-
-## Calendar synchronization dialog
-
 calendar-dialog-title = Připojení kalendáře
 calendar-dialog-cancel-button = Zrušit
     .accesskey = Z
@@ -336,8 +285,6 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Barva
 account-setup-calendar-refresh-label = Obnovit
 account-setup-calendar-refresh-manual = Ručně
-# Variables:
-# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Jednou za minutu

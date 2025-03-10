@@ -1,42 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = Іздеу
-search-bar-item =
-    .label = Іздеу:
 search-bar-item2 =
     .label = Іздеу
 search-bar-placeholder = Іздеу…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Баптау…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Барлық жаңа хабарламаларды алу
     .accesskey = л
-
-## Unified Toolbar customization
-
 customize-title = Саймандар панельдерін баптау
 customize-space-tab-mail = Эл. пошта
     .title = Эл. пошта
@@ -60,8 +36,6 @@ customize-button-style-text-only-option = Тек мәтін
 customize-cancel = Бас тарту
 customize-save = Сақтау
 customize-unsaved-changes = Басқа кеңістіктердегі сақталмаған өзгерістер
-customize-search-bar =
-    .label = Іздеу панелінің батырмалары…
 customize-search-bar2 =
     .label = Іздеу панелінің батырмалары
     .placeholder = Іздеу панелінің батырмалары…
@@ -77,18 +51,10 @@ customize-palette-tasks-specific-title = Тек Тарсырмалар кеңі�
 customize-palette-chat-specific-title = Тек Чат кеңістігі үшін қолжетімді
 customize-palette-settings-specific-title = Тек Баптаулар кеңістігі үшін қолжетімді
 customize-palette-extension-specific-title = Тек бұл Кеңістік үшін қолжетімді
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = { $target } ішіне қосу
 customize-palette-add-everywhere =
     .label = Барлық құралдар панельдеріне қосу
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = Алға жылжыту
 customize-target-backward =

@@ -1,14 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = כל לוחות השנה מושבתים כרגע. יש להפעיל לוח שנה קיים או להוסיף אחד חדש כדי ליצור ולערוך אירועים.
 calendar-deactivated-notification-tasks = כל לוחות השנה מושבתים כרגע. יש להפעיל לוח שנה קיים או להוסיף אחד חדש כדי ליצור ולערוך משימות.
 calendar-add-notification-button =
     .label = הוספת התראה
-
-## Side panel
-
 calendar-list-header = לוחות שנה
 calendar-enable-button = הפעלה
 calendar-import-new-calendar = לוח שנה חדש…
@@ -17,9 +10,6 @@ calendar-refresh-calendars =
     .title = טעינה מחדש של כל לוחות השנה וסנכרון השינויים
 calendar-new-event-primary-button = אירוע חדש
 calendar-new-task-primary-button = משימה חדשה
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = היום הקודם
     .accesskey = ק
@@ -60,9 +50,6 @@ calendar-view-toggle-multiweek = רב שבועי
     .title = עבור לתצוגה רב שבועית
 calendar-view-toggle-month = חודש
     .title = עבור לתצוגת חודש
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = אפשרויות פריסת לוח שנה
 calendar-find-events-menu-option =
@@ -71,9 +58,6 @@ calendar-hide-weekends-option =
     .label = ימי עבודה בלבד
 calendar-define-workweek-option =
     .label = הגדרת ימי העבודה בשבוע
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = היום הקודם
     .accesskey = ו

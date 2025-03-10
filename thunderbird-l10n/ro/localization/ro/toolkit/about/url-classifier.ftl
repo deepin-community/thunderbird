@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Informații privind clasificarea URL-urilor
 url-classifier-search-title = Caută
 url-classifier-search-result-title = Rezultate
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Module de jurnalizare pentru navigarea sigură
 url-classifier-debug-modules = Modulele actuale de înregistrare în jurnal
 url-classifier-debug-sbjs-modules = Jurnalizare JS pentru navigarea sigură
 url-classifier-debug-file = Fișierul actual pentru jurnal
-
 url-classifier-trigger-update = Declanșează actualizarea
 url-classifier-not-available = Indisponibil
 url-classifier-disable-sbjs-log = Dezactivează jurnalizarea JS pentru navigarea sigură
@@ -50,9 +45,5 @@ url-classifier-disabled = Dezativată
 url-classifier-updating = se actualizează
 url-classifier-cannot-update = nu se poate actualiza
 url-classifier-success = succes
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = eroare la actualizare ({ $error })
 url-classifier-download-error = eroare la descărcare ({ $error })

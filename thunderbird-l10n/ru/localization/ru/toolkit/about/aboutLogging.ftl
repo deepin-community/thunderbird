@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = О ведении журнала
 about-logging-page-title = Менеджер журналов
 about-logging-current-log-file = Текущий файл журнала:
 about-logging-new-log-file = Новый файл журнала:
 about-logging-currently-enabled-log-modules = В настоящее время включены модули журнала:
 about-logging-log-tutorial = Для получения инструкций о том, как использовать этот инструмент, прочтите статью <a data-l10n-name="logging">HTTP Logging</a>.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Открыть папку
 about-logging-set-log-file = Указать файл журнала
 about-logging-set-log-modules = Указать модули журнала
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Нет
 about-logging-no-log-file = Нет
 about-logging-logging-preset-selector-text = Предустановка ведения журнала:
 about-logging-with-profiler-stacks-checkbox = Включить трассировку стека для сообщений журнала
-
-## Logging presets
-
 about-logging-preset-networking-label = Сеть
 about-logging-preset-networking-description = Модули журнала для диагностики проблем с сетью
 about-logging-preset-networking-cookie-label = Куки
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Модули журнала для диагностики проблем WebGPU
 about-logging-preset-gfx-label = Графика
 about-logging-preset-gfx-description = Модули журналирования для диагностики проблем с графикой
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Модули журналов для диагностики проблем, характерных для Microsoft Windows
 about-logging-preset-custom-label = Персональная
 about-logging-preset-custom-description = Вручную выбранные модули журнала
-# Error handling
 about-logging-error = Ошибка:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Недопустимое значение «{ $v }» для ключа «{ $k }»
 about-logging-unknown-logging-preset = Неизвестная предустановка ведения журнала «{ $v }»
 about-logging-unknown-profiler-preset = Неизвестная предустановка профайлера «{ $v }»

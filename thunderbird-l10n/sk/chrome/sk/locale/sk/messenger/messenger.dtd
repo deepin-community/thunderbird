@@ -1,11 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY titledefault.label "&brandFullName;">
 <!ENTITY titleSeparator.label " - ">
-
-<!-- File Menu -->
 <!ENTITY newFolderCmd.label "Priečinok…">
 <!ENTITY newFolderCmd.accesskey "P">
 <!ENTITY closeTabCmd2.label "Zavrieť kartu">
@@ -14,32 +8,23 @@
 <!ENTITY closeOtherTabsCmd2.accesskey "a">
 <!ENTITY recentlyClosedTabsCmd.label "Naposledy zatvorené karty">
 <!ENTITY recentlyClosedTabsCmd.accesskey "N">
-
 <!ENTITY undoCloseTabCmd.commandkey "T">
-<!-- LOCALIZATION NOTE (moveToNewWindow.label):
-     Menu option to cause the current tab to be migrated to a new Thunderbird
-     window.
-     -->
 <!ENTITY moveToNewWindow.label "Presunúť do nového okna">
 <!ENTITY moveToNewWindow.accesskey "P">
 <!ENTITY newVirtualFolderCmd.label "Priečinok hľadania…">
 <!ENTITY newVirtualFolderCmd.accesskey "d">
-<!ENTITY newCreateEmailAccountCmd.label "Získať nový poštový účet…">
-<!ENTITY newCreateEmailAccountCmd.accesskey "Z">
-<!ENTITY newExistingEmailAccountCmd.label "Existujúci poštový účet…">
-<!ENTITY newExistingEmailAccountCmd.accesskey "E">
 <!ENTITY newIMAccountCmd.label "Účet pre konverzácie…">
 <!ENTITY newIMAccountCmd.accesskey "o">
 <!ENTITY newFeedAccountCmd.label "Účet pre informačné kanály…">
 <!ENTITY newFeedAccountCmd.accesskey "m">
 <!ENTITY newIMContactCmd.label "Kontakt pre konverzácie…">
 <!ENTITY newIMContactCmd.accesskey "v">
-<!ENTITY  newMessageCmd2.key "N">
-<!ENTITY  newMessageCmd.key "M">
-<!ENTITY  newMessageCmd.label "Správa">
-<!ENTITY  newMessageCmd.accesskey "s">
-<!ENTITY  newContactCmd.label "Kontakt adresára…">
-<!ENTITY  newContactCmd.accesskey "K">
+<!ENTITY newMessageCmd2.key "N">
+<!ENTITY newMessageCmd.key "M">
+<!ENTITY newMessageCmd.label "Správa">
+<!ENTITY newMessageCmd.accesskey "s">
+<!ENTITY newContactCmd.label "Kontakt adresára…">
+<!ENTITY newContactCmd.accesskey "K">
 <!ENTITY openMenuCmd.label "Otvoriť">
 <!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY openMessageFileCmd.label "Otvoriť uložené správy…">
@@ -85,8 +70,6 @@
 <!ENTITY printCmd.label "Tlačiť…">
 <!ENTITY printCmd.accesskey "T">
 <!ENTITY printCmd.key "p">
-
-<!-- Edit Menu -->
 <!ENTITY selectMenu.label "Vybrať">
 <!ENTITY selectMenu.accesskey "b">
 <!ENTITY all.label "Všetky">
@@ -110,15 +93,12 @@
 <!ENTITY undoDefaultCmd.accesskey "S">
 <!ENTITY redoDefaultCmd.label "Znovu">
 <!ENTITY redoDefaultCmd.accesskey "Z">
-
-<!-- View Menu -->
 <!ENTITY menubarCmd.label "Hlavná ponuka">
 <!ENTITY menubarCmd.accesskey "H">
 <!ENTITY showMessengerToolbarCmd.label "Panel nástrojov pošty">
 <!ENTITY showMessengerToolbarCmd.accesskey "n">
 <!ENTITY customizeToolbar.label "Prispôsobiť…">
 <!ENTITY customizeToolbar.accesskey "P">
-
 <!ENTITY messagePaneLayoutStyle.label "Rozmiestnenie">
 <!ENTITY messagePaneLayoutStyle.accesskey "R">
 <!ENTITY messagePaneClassic.label "Klasický pohľad">
@@ -131,7 +111,6 @@
 <!ENTITY showFolderPaneCmd.accesskey "a">
 <!ENTITY showMessageCmd.label "Panel správy">
 <!ENTITY showMessageCmd.accesskey "P">
-
 <!ENTITY folderView.label "Priečinky">
 <!ENTITY folderView.accesskey "e">
 <!ENTITY unifiedFolders.label "Zoskupené">
@@ -146,8 +125,6 @@
 <!ENTITY recentFolders.accesskey "N">
 <!ENTITY compactVersion.label "Kompaktné zobrazenie">
 <!ENTITY compactVersion.accesskey "K">
-
-<!-- Sort Menu -->
 <!ENTITY sortMenu.label "Usporiadať podľa">
 <!ENTITY sortMenu.accesskey "U">
 <!ENTITY sortByDateCmd.label "Dátum">
@@ -166,7 +143,7 @@
 <!ENTITY sortByStatusCmd.accesskey "v">
 <!ENTITY sortByTagsCmd.label "Štítky">
 <!ENTITY sortByTagsCmd.accesskey "t">
-<!ENTITY sortByJunkStatusCmd.label "Stĺpec Spam">
+<!ENTITY sortByJunkStatusCmd.label "Stav nevyžiadanej pošty">
 <!ENTITY sortByJunkStatusCmd.accesskey "c">
 <!ENTITY sortBySubjectCmd.label "Predmet">
 <!ENTITY sortBySubjectCmd.accesskey "m">
@@ -210,7 +187,6 @@
 <!ENTITY watchedThreadsWithUnreadCmd.accesskey "S">
 <!ENTITY ignoredThreadsCmd.label "Ignorované vlákna">
 <!ENTITY ignoredThreadsCmd.accesskey "I">
-
 <!ENTITY headersMenu.label "Hlavičky">
 <!ENTITY headersMenu.accesskey "H">
 <!ENTITY headersAllCmd.label "Všetky">
@@ -227,7 +203,6 @@
 <!ENTITY bodyAsPlaintext.accesskey "b">
 <!ENTITY bodyAllParts.label "Celá správa">
 <!ENTITY bodyAllParts.accesskey "C">
-
 <!ENTITY bodyMenuFeed.label "Správu informačného kanála ako">
 <!ENTITY bodyMenuFeed.accesskey "n">
 <!ENTITY viewFeedWebPage.label "Webová stránka">
@@ -236,17 +211,13 @@
 <!ENTITY viewFeedSummary.accesskey "S">
 <!ENTITY viewFeedSummaryFeedPropsPref.label "Predvolený formát">
 <!ENTITY viewFeedSummaryFeedPropsPref.accesskey "e">
-
 <!ENTITY viewAttachmentsInlineCmd.label "Prílohy zobrazovať v správe">
 <!ENTITY viewAttachmentsInlineCmd.accesskey "a">
-
 <!ENTITY pageSourceCmd.label "Zdrojový kód správy">
 <!ENTITY pageSourceCmd.accesskey "Z">
 <!ENTITY pageSourceCmd.key "u">
 <!ENTITY getNewMessagesCmd.key "y">
 <!ENTITY getAllNewMessagesCmd.key "Y">
-
-<!-- Search Menu -->
 <!ENTITY findMenu.label "Hľadať">
 <!ENTITY findMenu.accesskey "d">
 <!ENTITY findCmd.label "Hľadať v tejto správe…">
@@ -265,8 +236,6 @@
 <!ENTITY glodaSearchCmd.accesskey "G">
 <!ENTITY searchAddressesCmd.label "Hľadať adresy…">
 <!ENTITY searchAddressesCmd.accesskey "a">
-
-<!-- Go Menu -->
 <!ENTITY goMenu.label "Prejsť na">
 <!ENTITY goMenu.accesskey "r">
 <!ENTITY nextMenu.label "Nasledujúca">
@@ -306,8 +275,6 @@
 <!ENTITY goRecentlyClosedTabs.accesskey "a">
 <!ENTITY startPageCmd.label "Úvodná stránka">
 <!ENTITY startPageCmd.accesskey "v">
-
-<!-- Message Menu -->
 <!ENTITY msgMenu.label "Správa">
 <!ENTITY msgMenu.accesskey "a">
 <!ENTITY newMsgCmd.label "Nová správa">
@@ -349,7 +316,7 @@
 <!ENTITY editTemplateMsgCmd.label "Upraviť šablónu">
 <!ENTITY editTemplateMsgCmd.accesskey "p">
 <!ENTITY newMsgFromTemplateCmd.label "Nová správa zo šablóny">
-<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN"><!-- do not change "VK_RETURN" -->
+<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN">
 <!ENTITY createFilter.label "Vytvoriť filter zo správy…">
 <!ENTITY createFilter.accesskey "f">
 <!ENTITY moveMsgToMenu.label "Presunúť do">
@@ -403,10 +370,10 @@
 <!ENTITY markStarredCmd.label "Pridať hviezdičku">
 <!ENTITY markStarredCmd.accesskey "h">
 <!ENTITY markStarredCmd.key "S">
-<!ENTITY markAsJunkCmd.label "Správu ako nevyžiadanú">
+<!ENTITY markAsJunkCmd.label "Správa je nevyžiadaná">
 <!ENTITY markAsJunkCmd.accesskey "r">
 <!ENTITY markAsJunkCmd.key "j">
-<!ENTITY markAsNotJunkCmd.label "Správu ako nie nevyžiadanú">
+<!ENTITY markAsNotJunkCmd.label "Správa nie je nevyžiadaná">
 <!ENTITY markAsNotJunkCmd.accesskey "n">
 <!ENTITY markAsNotJunkCmd.key "j">
 <!ENTITY recalculateJunkScoreCmd.label "Spustiť rozpoznávanie nevyžiadanej pošty">
@@ -427,11 +394,7 @@
 <!ENTITY openFeedSummary.accesskey "s">
 <!ENTITY openFeedWebPageInMP.label "Prepínať medzi stránkou a súhrnom v paneli správy">
 <!ENTITY openFeedWebPageInMP.accesskey "P">
-
-<!-- Windows Menu -->
 <!ENTITY windowMenu.label "Okno">
-
-<!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Nástroje">
 <!ENTITY tasksMenu.accesskey "N">
 <!ENTITY messengerCmd.label "Pošta a diskusie">
@@ -444,10 +407,10 @@
 <!ENTITY activitymanager.accesskey "v">
 <!ENTITY imAccountsStatus.label "Stav konverzácií">
 <!ENTITY imAccountsStatus.accesskey "z">
-<!ENTITY imStatus.available          "Prítomný">
-<!ENTITY imStatus.unavailable        "Neprítomný">
-<!ENTITY imStatus.offline            "Offline">
-<!ENTITY imStatus.showAccounts       "Zobraziť účty…">
+<!ENTITY imStatus.available "Prítomný">
+<!ENTITY imStatus.unavailable "Neprítomný">
+<!ENTITY imStatus.offline "Offline">
+<!ENTITY imStatus.showAccounts "Zobraziť účty…">
 <!ENTITY joinChatCmd.label "Pripojiť sa ku konverzácii…">
 <!ENTITY joinChatCmd.accesskey "P">
 <!ENTITY savedFiles.label "Uložené súbory">
@@ -463,7 +426,7 @@
 <!ENTITY filtersApplyToMessage.accesskey "t">
 <!ENTITY runJunkControls.label "Spustiť rozpoznávanie nevyžiadanej pošty pre tento priečinok">
 <!ENTITY runJunkControls.accesskey "u">
-<!ENTITY deleteJunk.label "Odstrániť z priečinka správy označené ako nevyžiadané (Spam)">
+<!ENTITY deleteJunk.label "Odstrániť z priečinka správy označené ako nevyžiadané">
 <!ENTITY deleteJunk.accesskey "O">
 <!ENTITY importCmd.label "Importovať…">
 <!ENTITY importCmd.accesskey "r">
@@ -473,13 +436,7 @@
 <!ENTITY clearRecentHistory.accesskey "h">
 <!ENTITY accountManagerCmd2.label "Nastavenia účtu">
 <!ENTITY accountManagerCmd2.accesskey "N">
-<!-- LOCALIZATION NOTE (accountManagerCmdUnix.accesskey):
-     Belongs to accountManagerCmd.label, which is placed under the Edit menu
-     on Unix systems
-  -->
 <!ENTITY accountManagerCmdUnix2.accesskey "A">
-
-<!-- Developer Tools Submenu -->
 <!ENTITY devtoolsMenu.label "Vývojárske nástroje">
 <!ENTITY devtoolsMenu.accesskey "o">
 <!ENTITY devToolboxCmd.label "Vývojárske nástroje">
@@ -490,8 +447,6 @@
 <!ENTITY errorConsoleCmd.label "Chybová konzola">
 <!ENTITY errorConsoleCmd.accesskey "C">
 <!ENTITY errorConsoleCmd.commandkey "j">
-
-<!-- Mail Toolbar -->
 <!ENTITY getMsgButton1.label "Prijať správy">
 <!ENTITY newMsgButton.label "Nová">
 <!ENTITY replyButton.label "Odpoveď">
@@ -524,8 +479,6 @@
 <!ENTITY tagButton.label "Štítky">
 <!ENTITY compactButton.label "Vykonať údržbu">
 <!ENTITY appmenuButton.label "Hlavná ponuka">
-
-<!-- Mail Toolbar Tooltips-->
 <!ENTITY advancedButton.tooltip "Pokročilé hľadanie v správach">
 <!ENTITY getMsgButton.tooltip "Prijať nové správy">
 <!ENTITY getAllNewMsgCmd.label "Prijať všetky nové správy">
@@ -554,45 +507,31 @@
 <!ENTITY tagButton.tooltip "Priradí správe štítok">
 <!ENTITY compactButton.tooltip "Odstráni vymazané správy z označeného priečinka">
 <!ENTITY appmenuButton1.tooltip "Zobrazí ponuku aplikácie &brandShortName;">
-
-<!-- Toolbar Button Popup -->
 <!ENTITY buttonMenuForwardAsInline.label "Odoslať ďalej v texte">
 <!ENTITY buttonMenuForwardAsAttachment.label "Odoslať ďalej ako prílohu">
-
-<!-- Remote Content Button Popup -->
 <!ENTITY remoteContentOptionsAllowForMsg.label "Zobraziť vzdialený obsah v tejto správe">
 <!ENTITY remoteContentOptionsAllowForMsg.accesskey "Z">
 <!ENTITY editRemoteContentSettings.label "Upraviť nastavenia pre vzdialený obsah…">
 <!ENTITY editRemoteContentSettings.accesskey "U">
 <!ENTITY editRemoteContentSettingsUnix.label "Upraviť nastavenia pre vzdialený obsah…">
 <!ENTITY editRemoteContentSettingsUnix.accesskey "U">
-
-<!-- Phishing Button Popup -->
 <!ENTITY phishingOptionIgnore.label "Ignorovať upozornenie pre túto správu">
 <!ENTITY phishingOptionIgnore.accesskey "I">
 <!ENTITY phishingOptionSettings.label "Upraviť nastavenia vyhľadávania podvodných správ…">
 <!ENTITY phishingOptionSettings.accesskey "v">
 <!ENTITY phishingOptionSettingsUnix.label "Upraviť nastavenia vyhľadávania podvodných správ…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "v">
-
-<!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Nová správa">
 <!ENTITY appmenuNewContactCmd.label "Kontakt adresára…">
 <!ENTITY appmenuToolbarLayout.label "Rozloženie panela nástrojov…">
-
-<!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Nový štítok…">
 <!ENTITY addNewTag.accesskey "N">
 <!ENTITY manageTags.label "Spravovať štítky…">
 <!ENTITY manageTags.accesskey "S">
-
-<!-- Folder Pane -->
 <!ENTITY folderNameColumn.label "Názov">
 <!ENTITY folderUnreadColumn.label "Neprečítané">
 <!ENTITY folderTotalColumn.label "Celkom">
 <!ENTITY folderSizeColumn.label "Veľkosť">
-
-<!-- Folder Pane Context Menu -->
 <!ENTITY folderContextGetMessages.label "Prijať správy">
 <!ENTITY folderContextGetMessages.accesskey "a">
 <!ENTITY folderContextMarkAllFoldersRead.label "Označiť všetky priečinky ako prečítané">
@@ -613,7 +552,7 @@
 <!ENTITY folderContextCompact.accesskey "V">
 <!ENTITY folderContextEmptyTrash.label "Vyprázdniť kôš">
 <!ENTITY folderContextEmptyTrash.accesskey "k">
-<!ENTITY folderContextEmptyJunk.label "Vyprázdniť priečinok Spam">
+<!ENTITY folderContextEmptyJunk.label "Vyprázdniť priečinok Nevyžiadaná pošta">
 <!ENTITY folderContextEmptyJunk.accesskey "S">
 <!ENTITY folderContextSendUnsentMessages.label "Odoslať všetky neodoslané správy…">
 <!ENTITY folderContextSendUnsentMessages.accesskey "e">
@@ -621,8 +560,6 @@
 <!ENTITY folderContextUnsubscribe.accesskey "u">
 <!ENTITY folderContextMarkNewsgroupRead.label "Označiť diskusnú skupinu ako prečítanú">
 <!ENTITY folderContextMarkNewsgroupRead.accesskey "z">
-<!ENTITY folderContextMarkMailFolderRead.label "Označiť priečinok ako prečítaný">
-<!ENTITY folderContextMarkMailFolderRead.accesskey "z">
 <!ENTITY folderContextSubscribe.label "Prihlásiť k odberu…">
 <!ENTITY folderContextSubscribe.accesskey "P">
 <!ENTITY folderContextSearchForMessages.label "Hľadať v správach…">
@@ -633,15 +570,9 @@
 <!ENTITY folderContextFavoriteFolder.accesskey "b">
 <!ENTITY folderContextSettings2.label "Nastavenia">
 <!ENTITY folderContextSettings2.accesskey "s">
-
-<!-- Search Bar -->
 <!ENTITY SearchNameOrEmail.label "Meno alebo Email obsahuje:">
 <!ENTITY SearchNameOrEmail.accesskey "M">
-
-<!-- Gloda Search Bar -->
 <!ENTITY glodaSearchBar.placeholder "Hľadať správy…">
-
-<!-- Quick Search Menu Bar -->
 <!ENTITY searchSubjectMenu.label "Predmet">
 <!ENTITY searchFromMenu.label "Od">
 <!ENTITY searchSubjectOrFromMenu.label "Predmet alebo Od">
@@ -649,8 +580,6 @@
 <!ENTITY searchSubjectOrRecipientMenu.label "Predmet, Komu alebo Kópia">
 <!ENTITY searchMessageBody.label "Telo správy">
 <!ENTITY saveAsVirtualFolderMenu.label "Uložiť hľadanie ako priečinok…">
-
-<!-- Thread Pane -->
 <!ENTITY selectColumn.label "Výber správy">
 <!ENTITY threadColumn.label "Vlákno">
 <!ENTITY fromColumn.label "Od">
@@ -663,7 +592,7 @@
 <!ENTITY accountColumn.label "Účet">
 <!ENTITY statusColumn.label "Stav">
 <!ENTITY sizeColumn.label "Veľkosť">
-<!ENTITY junkStatusColumn.label "Spam">
+<!ENTITY junkStatusColumn.label "Stav nevyžiadanej pošty">
 <!ENTITY unreadColumn.label "Neprečítané">
 <!ENTITY totalColumn.label "Celkovo">
 <!ENTITY readColumn.label "Prečítané">
@@ -673,8 +602,6 @@
 <!ENTITY idColumn.label "Poradie prijatia">
 <!ENTITY attachmentColumn.label "Prílohy">
 <!ENTITY deleteColumn.label "Odstrániť">
-
-<!-- Thread Pane Tooltips -->
 <!ENTITY columnChooser2.tooltip "Zvoliť stĺpce">
 <!ENTITY selectColumn.tooltip "Vyberie všetky správy">
 <!ENTITY threadColumn2.tooltip "Usporiadať správy do vlákien">
@@ -688,7 +615,7 @@
 <!ENTITY accountColumn2.tooltip "Usporiadať podľa účtov">
 <!ENTITY statusColumn2.tooltip "Usporiadať podľa stavu">
 <!ENTITY sizeColumn2.tooltip "Usporiadať podľa veľkosti">
-<!ENTITY junkStatusColumn2.tooltip "Zoskupiť nevyžiadanú poštu (Spam)">
+<!ENTITY junkStatusColumn2.tooltip "Zoskupiť nevyžiadanú poštu">
 <!ENTITY unreadColumn2.tooltip "Počet nečítaných správ vo vlákne">
 <!ENTITY totalColumn2.tooltip "Celkový počet správ vo vlákne">
 <!ENTITY readColumn2.tooltip "Zoskupiť čítané / nečítané správy">
@@ -698,15 +625,9 @@
 <!ENTITY idColumn2.tooltip "Usporiadať podľa poradia, v akom boli správy prijaté">
 <!ENTITY attachmentColumn2.tooltip "Zoskupiť správy s prílohou">
 <!ENTITY deleteColumn.tooltip "Odstrániť správu">
-
-<!-- Thread Pane Context Menu -->
 <!ENTITY contextNewMsgFromTemplate.label "Nová správa zo šablóny">
 <!ENTITY contextOpenNewWindow.label "Otvoriť správu v novom okne">
 <!ENTITY contextOpenNewWindow.accesskey "m">
-<!-- The contextOpenNewTab.accesskey ("T") potentially conflicts with
-     cutCmd.accessKey which is defined in textcontext.dtd from toolkit. Right
-     now, both menu items can't be visible at the same time, but should someone
-     enable copy/paste of message, this key would probably need to be changed. -->
 <!ENTITY contextOpenNewTab.label "Otvoriť správu na novej karte">
 <!ENTITY contextOpenNewTab.accesskey "k">
 <!ENTITY contextOpenConversation.label "Otvoriť správu ako konverzáciu">
@@ -728,20 +649,10 @@
 <!ENTITY contextReplyAll.accesskey "v">
 <!ENTITY contextReplyList.label "Odpovedať zoznamu">
 <!ENTITY contextReplyList.accesskey "d">
-<!ENTITY contextForward.label "Odoslať ďalej">
-<!ENTITY contextForward.accesskey "l">
-<!ENTITY contextForwardAsMenu.label "Odoslať ďalej ako">
-<!ENTITY contextForwardAsMenu.accesskey "o">
-<!ENTITY contextForwardAsInline.label "V texte">
-<!ENTITY contextForwardAsInline.accesskey "x">
-<!ENTITY contextForwardAsAttachmentItem.label "Príloha">
-<!ENTITY contextForwardAsAttachmentItem.accesskey "P">
-<!ENTITY contextMultiForwardAsAttachment.label "Odoslať ďalej ako prílohy">
-<!ENTITY contextMultiForwardAsAttachment.accesskey "h">
 <!ENTITY contextMoveMsgMenu.label "Presunúť do">
 <!ENTITY contextMoveMsgMenu.accesskey "P">
-<!ENTITY contextMoveCopyMsgRecentMenu.label "Naposledy použité">
-<!ENTITY contextMoveCopyMsgRecentMenu.accesskey "N">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.label "Recent Destinations">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.accesskey "R">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Obľúbené položky">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "O">
 <!ENTITY contextCopyMsgMenu.label "Skopírovať do">
@@ -751,10 +662,6 @@
 <!ENTITY contextKillThreadMenu.accesskey "I">
 <!ENTITY contextKillSubthreadMenu.label "Ignorovať podvlákno">
 <!ENTITY contextWatchThreadMenu.label "Sledovať vlákno">
-<!-- LOCALIZATION NOTE (contextWatchThreadMenu.accesskey):
-     In the en-US locale we ran out of access keys, so there is an empty access key for
-     Watch Thread. Localizers can pick a suitable key
-  -->
 <!ENTITY contextWatchThreadMenu.accesskey "S">
 <!ENTITY contextSaveAs.label "Uložiť ako…">
 <!ENTITY contextSaveAs.accesskey "a">
@@ -762,48 +669,10 @@
 <!ENTITY contextPrint.accesskey "T">
 <!ENTITY contextPrintPreview.label "Ukážka pred tlačou">
 <!ENTITY contextPrintPreview.accesskey "U">
-
-<!-- LOCALIZATION NOTE (columnPicker.applyTo.label):
-     This option in the thread pane column picker pops up a sub-menu containing
-     the "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" options. This item indicates
-     a desire to apply the currently displayed set of columns to some other
-     folder(s). The sub-menu items indicate whether we want to apply it to just
-     a folder or also its children.
-  -->
 <!ENTITY columnPicker.applyTo.label "Použiť stĺpce pre…">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolder.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolderAndChildren.label". It indicates a desire to
-     apply the currently display thread pane column settings to a single folder
-     that the user selects using the same widget as the move to/copy to
-     mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolder.label "Priečinok…">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolderAndChildren.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolder.label". It indicates a desire to
-     apply the currently display thread pane column settings to a folder and all
-     of its descendents. The user selects the folder using the same widget as the
-     move to/copy to mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolderAndChildren.label "Priečinok a jeho podpriečinky…">
-<!-- LOCALIZATION NOTE (columnPicker.thisFolder.label):
-     This is used in the folder selection widget for the
-     "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" menu options. Whenever
-     a folder has children, it results in a menu popup; the first menu item
-     in that popup is given this label to indicate that that folder should be
-     selected. For example, if folder "A" has two children, "B" and "C", then
-     when the user hovers over "A", a new popup menu will be displayed whose
-     items are "This folder", "B", and "C". This is the equivalent of the
-     "File here" option for the move to/copy to widget.
-  -->
 <!ENTITY columnPicker.thisFolder.label "Tento priečinok">
-
-<!-- Media (video/audio) controls -->
 <!ENTITY contextPlay.label "Prehrať">
 <!ENTITY contextPlay.accesskey "P">
 <!ENTITY contextPause.label "Pozastaviť">
@@ -812,37 +681,10 @@
 <!ENTITY contextMute.accesskey "m">
 <!ENTITY contextUnmute.label "Zapnúť zvuk">
 <!ENTITY contextUnmute.accesskey "Z">
-
-<!-- Quick Search Bar -->
-<!-- LOCALIZATION NOTE (quickSearchCmd.key):
-     This is actually the key used for the global message search box; we have
-     not changed
-  -->
 <!ENTITY quickSearchCmd.key "k">
-<!-- LOCALIZATION NOTE (search.label.base1):
-     This is the base of the empty text for the global search box. We replace
-     #1 with the contents of the appropriate search.keyLabel.* value for the
-     platform.
-     The goal is to convey to the user that typing in the box will allow them
-     to search for messages globally and that there is a hotkey they can press
-     to get to the box faster. If the global indexer is disabled, the search
-     box will be collapsed and the user will never see this message.
-  -->
 <!ENTITY search.label.base1 "Hľadať #1">
-<!-- LOCALIZATION NOTE (search.keyLabel.nonmac):
-     The description of the key-binding to get into the global search box on
-     windows and linux (which use the control key). We use the key defined in
-     the quickSearchCmd.key entity defined above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.nonmac "&lt;Ctrl+K&gt;">
-<!-- LOCALIZATION NOTE (search.keyLabel.mac):
-     The description of the key-binding to get into the global search box on mac
-     systems. We use the key defined in the quickSearchCmd.key entity defined
-     above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.mac "&lt;&#x2318;K&gt;">
-
-<!-- Message Header Context Menu -->
 <!ENTITY AddToAddressBook.label "Pridať do Adresára">
 <!ENTITY AddToAddressBook.accesskey "A">
 <!ENTITY AddDirectlyToAddressBook.label "Pridať do Adresára">
@@ -867,12 +709,8 @@
 <!ENTITY CreateFilterFrom.accesskey "f">
 <!ENTITY reportPhishingURL.label "Nahlásiť podozrivý e‑mail">
 <!ENTITY reportPhishingURL.accesskey "N">
-
-<!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Pridať slovníky…">
 <!ENTITY spellAddDictionaries.accesskey "P">
-
-<!-- Content Pane Context Menu -->
 <!ENTITY saveLinkAsCmd.label "Uložiť cieľ odkazu ako…">
 <!ENTITY saveLinkAsCmd.accesskey "c">
 <!ENTITY saveImageAsCmd.label "Uložiť obrázok ako…">
@@ -887,34 +725,24 @@
 <!ENTITY openInBrowser.accesskey "h">
 <!ENTITY openLinkInBrowser.label "Otvoriť odkaz v prehliadači">
 <!ENTITY openLinkInBrowser.accesskey "h">
-
-<!-- Statusbar -->
 <!ENTITY statusText.label "Hotovo">
-
-<!-- Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.label "Minimalizovať">
 <!ENTITY minimizeWindow.key "M">
 <!ENTITY bringAllToFront.label "Všetko preniesť do popredia">
 <!ENTITY zoomWindow.label "Lupa">
-
-<!-- Mac OS X Application Menu (Cocoa widgets) -->
-<!ENTITY preferencesCmdMac2.label       "Možnosti">
-<!ENTITY preferencesCmdMac.commandkey   ",">
-<!ENTITY preferencesCmdMac.modifiers    "accel">
-<!ENTITY servicesMenuMac.label          "Služby">
-<!ENTITY hideThisAppCmdMac.label        "Skryť &brandShortName;">
-<!ENTITY hideThisAppCmdMac.commandkey   "H">
-<!ENTITY hideThisAppCmdMac.modifiers    "accel">
-<!ENTITY hideOtherAppsCmdMac.label      "Skryť ostatné">
+<!ENTITY preferencesCmdMac2.label "Možnosti">
+<!ENTITY preferencesCmdMac.commandkey ",">
+<!ENTITY preferencesCmdMac.modifiers "accel">
+<!ENTITY servicesMenuMac.label "Služby">
+<!ENTITY hideThisAppCmdMac.label "Skryť &brandShortName;">
+<!ENTITY hideThisAppCmdMac.commandkey "H">
+<!ENTITY hideThisAppCmdMac.modifiers "accel">
+<!ENTITY hideOtherAppsCmdMac.label "Skryť ostatné">
 <!ENTITY hideOtherAppsCmdMac.commandkey "H">
-<!ENTITY hideOtherAppsCmdMac.modifiers  "accel,alt">
-<!ENTITY showAllAppsCmdMac.label        "Zobraziť všetko">
-
-<!-- Mac OS X Dock Icon pop-up menu -->
-<!ENTITY dockOptions.label              "Nastavenia ikony aplikácie…">
-<!ENTITY writeNewMessageDock.label      "Nová e‑mailová správa">
-<!ENTITY openAddressBookDock.label      "Otvoriť adresár">
-
-<!-- Content tab Navigation buttons -->
-<!ENTITY browseBackButton.tooltip    "Prejsť naspäť o jednu stránku">
+<!ENTITY hideOtherAppsCmdMac.modifiers "accel,alt">
+<!ENTITY showAllAppsCmdMac.label "Zobraziť všetko">
+<!ENTITY dockOptions.label "Nastavenia ikony aplikácie…">
+<!ENTITY writeNewMessageDock.label "Nová e‑mailová správa">
+<!ENTITY openAddressBookDock.label "Otvoriť adresár">
+<!ENTITY browseBackButton.tooltip "Prejsť naspäť o jednu stránku">
 <!ENTITY browseForwardButton.tooltip "Prejsť dopredu o jednu stránku">

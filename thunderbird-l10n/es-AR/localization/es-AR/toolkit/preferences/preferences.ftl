@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (no establecida)
 failed-pp-change = No se puede cambiar la contraseña maestra.
@@ -21,7 +17,6 @@ set-password-new-password = Ingrese nueva contraseña:
 set-password-reenter-password = Reingrese contraseña:
 set-password-meter = Medidor de calidad de la contraseña
 set-password-meter-loading = Cargando
-primary-password-admin = Su administrador requiere que tenga configurada una Contraseña maestra para guardar los inicios de sesión y las contraseñas.
 primary-password-required-by-policy = Su organización requiere que tenga configurada una contraseña maestra para guardar los inicios de sesión y las contraseñas.
 primary-password-description = Una contraseña maestra se usa para proteger información confidencial como inicios de sesión y contraseñas. Si crea una contraseña maestra, se le pedirá que la ingrese una vez por sesión cuando { -brand-short-name } recupere información guardada protegida por la contraseña.
 primary-password-warning = Asegúrese de recordar la contraseña maestra que ingresó. Si la olvida, no podrá volver a acceder a la información que está protegiendo.

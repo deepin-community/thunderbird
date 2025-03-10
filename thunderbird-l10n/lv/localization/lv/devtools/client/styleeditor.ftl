@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Izveidot un pievienot dokumentam jaunu stila failu
     .accesskey = n
@@ -16,8 +12,6 @@ styleeditor-save-button = Saglabāt
     .accesskey = S
 styleeditor-options-button =
     .tooltiptext = Stila redaktora iestatījumi
-styleeditor-editor-textbox =
-    .data-placeholder = Rakstiet CSS šeit.
 styleeditor-no-stylesheet = Šajā lapā nav stila dokumentu.
 styleeditor-no-stylesheet-tip = Iespējams jūs vēlaties <a data-l10n-name="append-new-stylesheet">pievienot jaunu stila dokumentu</a>?
 styleeditor-open-link-new-tab =
@@ -33,10 +27,6 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Pāriet uz rindiņu…
     .accesskey = u
-
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [zero] { $ruleCount } noteikums.

@@ -1,3 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+prompt-to-install-title = إنهاء تحميل { -brand-short-name }؟
+prompt-to-install-message = أكمل عملية التثبيت هذه بخطوة واحدة للمساعدة في إبقاء { -brand-short-name } محدثًا ومنع فقد البيانات. سيتم إضافة { -brand-short-name } إلى مجلد تطبيقاتك وللـDock.
+prompt-to-install-yes-button = نصّب
+prompt-to-install-no-button = لا تقم بالتثبيت
+install-failed-title = فشل تثبيت { -brand-short-name }.
+install-failed-message = فشل تثبيت { -brand-short-name } ولكنه سيستمر في العمل.
+prompt-to-launch-existing-app-title = أأفتح تطبيق { -brand-short-name } الموجود؟
+prompt-to-launch-existing-app-message = لقد ثبّتّ { -brand-short-name } بالفعل. استخدم التطبيق المثبت للبقاء على اطلاع دائم ومنع فقدان البيانات.
+prompt-to-launch-existing-app-yes-button = افتح الموجود
+prompt-to-launch-existing-app-no-button = لا، شكرًا

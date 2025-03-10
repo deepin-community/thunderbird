@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Bine ai venit la { -brand-full-name }
 account-settings = Setări cont
-#   $accounts (Number) - the number of configured accounts
 setup-title = Alege ce să setezi
 about-title = Despre { -brand-full-name }
 resources-title = Resurse
@@ -37,7 +32,6 @@ import-label = Import
     .aria-label = Importă date din alte programe
 about-paragraph = Thunderbird este lider în rândul clienților cu sursă deschisă și multiplatformă pentru poștă electronică și calendar, gratuit atât pentru uz comercial, cât și personal. Vrem să rămână sigur și să devină și mai bun. O donație ne va permite să angajăm programatori, să plătim infrastructura și să continuăm îmbunătățirile.
 about-paragraph-consider-donation = <b>Thunderbird este finanțat de utilizatori ca tine! Dacă îți place Thunderbird, poți face o donație.</b> Cea mai bună cale să te asiguri că Thunderbird va fi în continuare disponibil este să <a data-l10n-name="donation-link"> faci o donație</a>.
-explore-link = Explorează funcționalitățile
 support-link = Asistență
 involved-link = Implică-te
 developer-link = Documentația dezvoltatorului

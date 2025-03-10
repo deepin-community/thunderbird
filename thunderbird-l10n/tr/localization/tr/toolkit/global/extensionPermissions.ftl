@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Yer imlerini okuma ve değiştirme
 webext-perms-description-browserSettings = Tarayıcı ayarlarını okuma ve değiştirme
 webext-perms-description-browsingData = Gezinti geçmişini, çerezleri ve ilgili verileri temizleme
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Son kapatılan sekmelere erişme
 webext-perms-description-tabs = Tarayıcı sekmelerine erişme
 webext-perms-description-tabHide = Tarayıcı sekmelerini gizleme ve gösterme
 webext-perms-description-topSites = Gezinti geçmişine erişme
+webext-perms-description-trialML = Yapay zekâ modellerini indirip cihazınızda çalıştırma
+webext-perms-description-userScripts = Doğrulanmamış üçüncü taraf betiklerin verilerinize erişmesine izin verme
 webext-perms-description-webNavigation = Gezinti sırasında tarayıcı etkinliğine erişme
+webext-perms-extra-warning-userScripts-long = Doğrulanmamış betikler, zararlı kod çalıştırma veya web sitesi etkinliğini izleme gibi güvenlik ve gizlilik riskleri doğurabilir. Yalnızca güvendiğiniz uzantılardan veya kaynaklardan gelen betikleri çalıştırın.
+webext-perms-extra-warning-userScripts-short = Doğrulanmamış betikler güvenlik ve gizlilik riskleri doğurabilir. Yalnızca güvendiğiniz uzantılardan veya kaynaklardan gelen betikleri çalıştırın.

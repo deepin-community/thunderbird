@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sioncronachadh
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Clàraich a-mach…
     .accesskey = a
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Cunntas ùr
 appmenu-new-account-panel =
     .label = Cunntas ùr
     .accesskey = n
-appmenu-create-new-mail-account =
-    .label = Faigh post-d ùr
-    .accesskey = F
-appmenu-new-mail-account =
-    .label = Post-d làithreach
-    .accesskey = e
 appmenu-new-calendar =
     .label = Mìosachan
     .accesskey = c
@@ -53,9 +37,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Buidheann-naidheachd
     .accesskey = n
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Leabhar-sheòlaidhean ùr
 appmenu-newab-panel =
@@ -70,9 +51,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Leabhar-sheòlaidhean LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Cruthaich
 appmenu-create-panel =
@@ -90,9 +68,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Neach-aithne
     .accesskey = c
-
-## Open
-
 appmenu-open-file-panel =
     .label = Fosgail o fhaidhle
     .accesskey = o
@@ -104,9 +79,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Mìosachan…
     .accesskey = c
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Seall
 appmenu-view-panel =
@@ -126,14 +98,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Meudaich an cruth-clò
 appmenuitem-font-size-reduce =
     .tooltiptext = Lùghdaich an cruth-clò
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Ath-shuidhich meud a’ chrutha-chlò
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Innealan
 appmenu-tools-panel =
@@ -160,17 +127,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Innealan an luchd-leasachaidh
     .accesskey = d
-
-## Help
-
 appmenu-help-panel-title =
     .title = Cobhair
 appmenu-help-get-help =
     .label = Faigh cobhair
     .accesskey = h
-appmenu-help-explore-features =
-    .label = Fidir na gleusan
-    .accesskey = F
 appmenu-help-shortcuts =
     .label = Ath-ghoiridean a’ mheur-chlàir
     .accesskey = t
@@ -195,9 +156,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Mu dhèidhinn { -brand-short-name }
     .accesskey = M
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = A’ luchdadh a-nuas ùrachadh { -brand-shorter-name }
 appmenuitem-banner-update-available =

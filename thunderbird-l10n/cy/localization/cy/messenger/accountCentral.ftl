@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Croeso i { -brand-full-name }
 account-settings = Gosodiadau Cyfrif
-#   $accounts (Number) - the number of configured accounts
 setup-title = Dewis Beth i'w Osod
 about-title = Ynghylch { -brand-full-name }
 resources-title = Adnoddau
@@ -37,7 +32,6 @@ import-label = Mewnforio
     .aria-label = Mewnforio data o raglenni eraill
 about-paragraph = Thunderbird yw'r brif raglen e-bost a chalendr, croes blatfform, cod agored, sydd ar gael am ddim ar gyfer defnydd busnes neu bersonol. Rydym am barhau i'w gadw'n ddiogel ac i'w wella i'r dyfodol. Bydd rhoddion yn caniatáu i ni gyflogi datblygwyr, talu am isadeiledd a pharhau i'w wella.
 about-paragraph-consider-donation = <b>Mae Thunderbird yn cael ei ariannu gan ddefnyddwyr fel chi! Os ydych chi'n hoffi Thunderbird, ystyriwch wneud rhodd.</b> Y ffordd orau i wneud yn siŵr fod Thunderbird yn parhau i fod ar gael yw <a data-l10n-name="donation-link"> i wneud cyfraniad.</a>
-explore-link = Edrych ar y Nodweddion
 support-link = Cefnogaeth
 involved-link = Ymunwch
 developer-link = Dogfennaeth Datblygwr

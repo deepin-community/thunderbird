@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Information om url-classifier
 url-classifier-search-title = Søgning
 url-classifier-search-result-title = Resultater
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Safe Browsing-logmoduler
 url-classifier-debug-modules = Nuværende logmoduler
 url-classifier-debug-sbjs-modules = Safe Browsing-JS-log
 url-classifier-debug-file = Nuværende logfil
-
 url-classifier-trigger-update = Udløs opdatering
 url-classifier-not-available = Ikke tilgængelig
 url-classifier-disable-sbjs-log = Deaktiver Safe Browsing-JS-log
@@ -50,9 +45,5 @@ url-classifier-disabled = Deaktiveret
 url-classifier-updating = opdaterer
 url-classifier-cannot-update = kan ikke opdatere
 url-classifier-success = succes
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = opdateringsfejl ({ $error })
 url-classifier-download-error = downloadfejl ({ $error })

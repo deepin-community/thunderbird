@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Sareari buruz
 about-networking-http = HTTP
 about-networking-sockets = Socketak
@@ -56,13 +52,6 @@ about-networking-rcwn-cache-slow = Cache motel kopurua
 about-networking-rcwn-cache-not-slow = Cache ez motel kopurua
 about-networking-networkid = Sarearen IDa
 about-networking-networkid-id = Sarearen IDa
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Orri hau lekuz aldatu da <a data-l10n-name="about-logging-url">about:logging</a> helbidera.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Konexioa aktibatuta dago
 about-networking-networkid-status-known = Konexioaren egoera ezaguna da
-
-##
-

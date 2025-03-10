@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Shtoni një Kyç Personal OpenPGP për { $identity }
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Përdoreni kyçin tuaj të jashtëm përmes GnuPG-së (p.sh., prej një smartcard-i)
     .accesskey = P
-
-## Generate key section
-
 openpgp-generate-key-title = Prodho Kyç OpenPGP
 openpgp-keygen-secret-protection = Mbrojtje Kyçesh të Fshehtë
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = Kyçi juaj duhet të jetë i vlefshëm për të pa
 openpgp-keygen-ongoing = Prodhim kyçi tashmë në kryerje e sipër!
 openpgp-keygen-error-core = S’arrihet të niset Shërbimi Bazë OpenPGP
 openpgp-keygen-error-failed = Prodhimi i Kyçit OpenPGP dështoi papritmas
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Kyçi OpenPGP u krijua me sukses, por s’u arrit të merrej shfuqizim për kyçin { $key }
 openpgp-keygen-abort-title = Të ndërpritet prodhimi i kyçit?
 openpgp-keygen-abort = Prodhim Kyçi OpenPGP aktualisht në kryerje e sipër, jeni i sigurt se doni të anulohet?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Të prodhohen kyç publik dhe i fshehtë për { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Importoni një Kyç personal ekzistues OpenPGP
 openpgp-import-key-legend = Përzgjidhni një kartelë të kopjeruajtur më parë.
 openpgp-import-key-description = Mund të importoni kyçe personale që qenë krijuar me tjetër program OpenPGP.
 openpgp-import-key-info = Tjetër program mund të përshkruajë një kyç personal duke përdorur terma alternativë, bie fjala, kyçi juaj, kyç i fshehtë, kyç privat ose çift kyçesh.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name }-i gjeti një kyç që mund të importohet.
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = Trajtoje këtë si një Kyç Personal
 gnupg-file = Kartela GnuPG
 import-error-file-size = <b>Gabim!</b> Nuk mbulohen kartela më të mëdha se 5MB.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Gabim!</b> S’u arrit të importohej kartelë. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Gabim!</b> S’u arrit të importohen kyçe. { $error }
 openpgp-import-identity-label = Identitet
 openpgp-import-fingerprint-label = Shenja gishtash
@@ -122,9 +106,6 @@ openpgp-import-bits-label = Bite
 openpgp-import-key-props =
     .label = Veti Kyçi
     .accesskey = V
-
-## External Key section
-
 openpgp-external-key-title = Kyç GnuPG i Jashtëm
 openpgp-external-key-description = Formësoni një kyç të jashtëm duke dhënë ID-në e Kyçit
 openpgp-external-key-info = Veç kësaj, duhet të përdorni Përgjegjës Kyçesh për të importuar dhe pranuar Kyçin Publik përkatës.

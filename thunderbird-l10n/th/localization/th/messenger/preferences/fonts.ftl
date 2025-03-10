@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = แบบอักษร
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = ค่าเริ่มต้น ({ $name })
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = ความกว้างตามสัดส่วน:
     .accesskey = ค
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = ละติน
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = สิงหล
 font-language-group-tibetan =
     .label = ทิเบต
-
-## Default font type
-
 default-font-serif =
     .label = มีเชิง
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = ข
 min-size-none =
     .label = ไม่มี
-
-## Fonts in message
-
 font-control-legend = การควบคุมแบบอักษร
 use-document-fonts-checkbox =
     .label = อนุญาตให้ข้อความใช้แบบอักษรอื่น ๆ
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = ใช้แบบอักษรความกว้างคงที่สำหรับข้อความตัวอักษรธรรมดา
     .accesskey = ช
-
-## Language settings
-
 text-encoding-legend = รหัสอักขระ
 text-encoding-description = ตั้งค่ารหัสอักขระเริ่มต้นสำหรับการส่งและรับจดหมาย
 font-outgoing-email-label =

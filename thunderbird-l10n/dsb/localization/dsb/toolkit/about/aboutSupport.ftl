@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Informacije za rozwězowanje problemow
 page-subtitle = Toś ten bok wopśimujo techniske informacije, kótarež by mógli wužytne byś, gaž wopytujośo problem rozwězaś. Jolic pytaśo za wótegronami za zwucone pšašanja qó { -brand-short-name }, woglědajśo k našomu <a data-l10n-name="support-link">pódpěrańskemu websydłoju</a>.
 crashes-title = Rozpšawy wowalenjow
@@ -38,8 +34,6 @@ app-basics-version = Wersija
 app-basics-build-id = Wersijowy ID
 app-basics-distribution-id = ID distribucije
 app-basics-update-channel = Aktualizěrowański kanal
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Aktualizěrowański zapis
@@ -47,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Aktualizaciska historija
 app-basics-show-update-history = Aktualizacisku historiju pokazaś
-# Represents the path to the binary used to start the application.
 app-basics-binary = Nałožeńska binarna dataja
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Profilowy zarědnik
        *[other] Profilowy zarědnik
     }
-app-basics-enabled-plugins = Zmóžnjone tykace
 app-basics-build-config = Konfiguracija programoweje wersije
 app-basics-user-agent = User Agent
 app-basics-os = Źěłowy system
 app-basics-os-theme = Drastwa źěłowego systema
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Pśez Rosetta pśełožony
 app-basics-memory-use = Wužyty składowak
 app-basics-performance = Wugbaśe
@@ -79,9 +69,6 @@ app-basics-safe-mode = Wěsty modus
 app-basics-memory-size = Wjelikosć składa (RAM)
 app-basics-disk-available = K dispoziciji stojecy platowy składowak
 app-basics-pointing-devices = Pokazowańske rědy
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -113,9 +100,7 @@ graphics-decision-log-title = Protokol rozsuźenja
 graphics-crash-guards-title = Funkcije, kótarež su se wót wowaleńskego stražnika znjemóžnili
 graphics-workarounds-title = Nuzowe rozwězanja
 graphics-device-pixel-ratios = Rědowe pikselowe poměry (device pixel ratios) wokna
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Woknowy protokol
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Desktopowa wokolina
 place-database-title = Datowa banka historije a cytańskich znamjenjow
 place-database-stats = Statistika
@@ -153,9 +138,6 @@ clear-startup-cache-label = Startowy pufrowak wuprozniś…
 startup-cache-dialog-title2 = { -brand-short-name } znowego startowaś, aby startowy pufrowak wuproznił?
 startup-cache-dialog-body2 = To waše nastajenja njezměnijo abo rozšyrjenja njewótwónoźijo.
 restart-button-label = Znowego startowaś
-
-## Media titles
-
 audio-backend = Awdiobackend
 max-audio-channels = Maksimalna licba kanalow
 sample-rate = Preferěrowana wótsmasowańska rata
@@ -174,11 +156,7 @@ media-device-rate = Rata
 media-device-latency = Latenca
 media-capabilities-title = Medijowe móžnosći
 media-codec-support-info = Informacije wó pódpěrje codecow
-# List all the entries of the database.
 media-capabilities-enumerate = Datowu banku nalicyś
-
-## Codec support table
-
 media-codec-support-sw-decoding = Softwarowe dekoděrowanje
 media-codec-support-hw-decoding = Hardwarowe dekoděrowanje
 media-codec-support-codec-name = Mě Codec
@@ -186,26 +164,13 @@ media-codec-support-supported = Pódprěty
 media-codec-support-unsupported = Njepódprěty
 media-codec-support-error = Informacije wó pódprětych kodekach njestoje k dispoziciji. Wopytajśo hyšći raz, za tym až sćo wótgrał medijowu dataju.
 media-codec-support-lack-of-extension = Rozšyrjenje instalěrowaś
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Informacije wó modulach wopśimjeśowego koděrowanja
 media-key-system-name = Mě systemowego kluca
 media-video-robustness = Wideorobustnosć
 media-audio-robustness = Awdiorobustnosć
 media-cdm-capabilities = Zamóžnosći
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Zawod wuprozniś
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Z HDCP 2.2 kompatibelny
-
-##
-
 intl-title = Internacionalizacija a lokalizacija
 intl-app-title = Nastajenja nałoženja
 intl-locales-requested = Pominane rěcy
@@ -215,24 +180,9 @@ intl-locales-default = Standardna rěc
 intl-os-title = Źěłowy system
 intl-os-prefs-system-locales = Systemowe rěcy
 intl-regional-prefs = Regionalne nastajenja
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Zdalone pytanje zmólkow (protokol Chromium)
 remote-debugging-accepting-connections = Zwiski so akceptěruju
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Rozpšawy wó wowalenjach za zachadny { $days } źeń
@@ -240,8 +190,6 @@ report-crash-for-days =
         [few] Rozpšawy wó wowalenjach za zachadne { $days } dny
        *[other] Rozpšawy wó wowalenjach za zachadnych { $days } dnjow
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] pśed { $minutes } minutu
@@ -249,8 +197,6 @@ crashes-time-minutes =
         [few] pśed { $minutes } minutami
        *[other] pśed { $minutes } minutami
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] pśed { $hours } góźinu
@@ -258,8 +204,6 @@ crashes-time-hours =
         [few] pśed { $hours } góźinami
        *[other] pśed { $hours } góźinami
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] pśed { $days } dnjom
@@ -267,8 +211,6 @@ crashes-time-days =
         [few] pśed { $days } dnjami
        *[other] pśed { $days } dnjami
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Wšykne rozpšawy wó wowalenjach (inkluziwnje { $reports } njedocinjone wowalenje w danem casu)
@@ -278,18 +220,11 @@ pending-reports =
     }
 raw-data-copied = Gropny daty kopěrowane do mjazywótkłada
 text-copied = Tekst kopěrowany do mjazywótkłada
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Za wašu wersiju grafiskego gónjaka zablokěrowany.
 blocked-gfx-card = Za wašu grafisku kórtu dla njerozwězanych gónjakowych problemow zablokěrowany.
 blocked-os-version = Za wašu wersiju źěłowego systema zablokěrowany.
 blocked-mismatched-version = Blokěrowany, dokulaž wersija wašogo grafikowego gónjaka rozeznawa se mjazy regstraciju a DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Za wašu wersiju grafiskego gónjaka zablokěrowany. Wopytajśo swój grafiski gónjak na wersiju { $driverVersion } abo nowšu aktualizěrowaś.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parametry ClearType
 compositing = Compositing
 support-font-determination = Informacije wó pytanju problemow za widobnosć pismow
@@ -299,11 +234,6 @@ yes = Jo
 no = Ně
 unknown = Njeznaty
 virtual-monitor-disp = Zwobraznjenje wirtuelnego monitora
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Namakany
 missing = Felujucy
 gpu-process-pid = GPUProcessPid
@@ -330,11 +260,7 @@ webgl2-driver-extensions = WebGL 2 - rozšyrjenja gónjaka
 webgl2-extensions = WebGL 2 - rozšyrjenja
 webgpu-default-adapter = Standardny adapter WebGPU
 webgpu-fallback-adapter = Adapter fallback WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = W blokěrowańskej lisćinje znatych problemow dla: <a data-l10n-name="bug-link">programowa zmólka { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = W blokěrowańskej lisćinje; zmólkowy kod { $failureCode }
 d3d11layers-crash-guard = D3D11 Compositor
 glcontext-crash-guard = OpenGL
@@ -354,8 +280,6 @@ has-seccomp-bpf = Seccomp-BPF (Filtrowanje systemowych zawołanjow)
 has-seccomp-tsync = Nitkowa synchronizacija Seccomp
 has-user-namespaces = Wužywaŕske mjenjowe rumy
 has-privileged-user-namespaces = Wužywaŕske mjenjowe rumy za priwilegěrowane procese
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } – Waš system toś tu funkciju njedowólujo. To móžo wěstotne funkcije { -brand-short-name } wobgranicowaś.
 can-sandbox-content = Testowanje wopśimjeśowych procesow w pěskowem kašćiku
 can-sandbox-media = Testowanje medijowych tykacow w pěskowem kašćiku
@@ -376,16 +300,8 @@ launcher-process-status-0 = Zmóžnjony
 launcher-process-status-1 = Zmólki dla znjemóžnjony
 launcher-process-status-2 = Z nuzkanim znjemóžnjony
 launcher-process-status-unknown = Njeznaty status
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Pśez eksperiment znjemóžnjony
-fission-status-experiment-treatment = Pśez eksperiment zmóžnjony
 fission-status-disabled-by-e10s-env = Pśez wokolinu znjemóžnjony
 fission-status-enabled-by-env = Pśez wokolinu zmóžnjony
 fission-status-disabled-by-env = Pśez wokolinu znjemóžnjony
@@ -394,7 +310,6 @@ fission-status-disabled-by-default = Pó standarźe znjemóžnjony
 fission-status-enabled-by-user-pref = Wót wužywarja zmóžnjony
 fission-status-disabled-by-user-pref = Wót wužywarja znjezmóžnjony
 fission-status-disabled-by-e10s-other = E10s znjemóžnjony
-fission-status-enabled-by-rollout = Za dodaśe pó fazach zmóžnjony
 async-pan-zoom = Asynchrone pśesuwanje/skalěrowanje
 apz-none = žeden
 wheel-enabled = zapódaśe z kólaskom zmóžnjone
@@ -403,34 +318,20 @@ drag-enabled = śěgnjenje suwańskeje rědki zmóžnjone
 keyboard-enabled = tastatura zmóžnjona
 autoscroll-enabled = awtomatiske kulanje zmóžnjone
 zooming-enabled = pózlažke dwójopalcowe skalěrowanje zmóžnjone
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = asynchrone zapódaśe z kólaskom jo se njepódpěranego nastajenja znjemóžniło: { $preferenceKey }
 touch-warning = asynchrone zapódaśe pśez dotyknjenje jo se njepódpěranego nastajenja znjemóžniło: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Njeaktiwny
 policies-active = Aktiwny
 policies-error = Zmólka
-
-## Printing section
-
 support-printing-title = Śišćanje
 support-printing-troubleshoot = Rozwězanje problemow
 support-printing-clear-settings-button = Skłaźone śišćaŕske nastajenja wulašowaś
 support-printing-modified-settings = Změnjone śišćaŕske nastajenja
 support-printing-prefs-name = Mě
 support-printing-prefs-value = Gódnota
-
-## Remote Settings sections
-
 support-remote-settings-title = Zdalone nastajenja
 support-remote-settings-status = Status
 support-remote-settings-status-ok = W pórěźe
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Njefunkcioněrujucy
 support-remote-settings-last-check = Slědna kontrola
 support-remote-settings-local-timestamp = Lokalny casowy kołk
@@ -438,9 +339,6 @@ support-remote-settings-sync-history = Historija
 support-remote-settings-sync-history-status = Status
 support-remote-settings-sync-history-datetime = Datum
 support-remote-settings-sync-history-infos = Informacije
-
-## Normandy sections
-
 support-remote-experiments-title = Zdalone eksperimenty
 support-remote-experiments-name = Mě
 support-remote-experiments-branch = Wótnožka eksperimenta
@@ -448,19 +346,10 @@ support-remote-experiments-see-about-studies = Glejśo <a data-l10n-name="suppor
 support-remote-features-title = Zdalone funkcije
 support-remote-features-name = Mě
 support-remote-features-status = Status
-
-## Pointing devices
-
 pointing-device-mouse = Myška
 pointing-device-touchscreen = Dotyknjeńska wobrazowka
 pointing-device-pen-digitizer = Digitalizěrowak pisaka
 pointing-device-none = Žedne pokazowańske rědy
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Analyza wopśimjeśa (DLP)
 content-analysis-active = Aktiwny
 content-analysis-connected-to-agent = Z agentom zwězany

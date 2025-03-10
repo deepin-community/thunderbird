@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Credenciais guardadas
 saved-logins-title = Credenciais guardadas
-window-close =
-    .key = w
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -69,15 +61,6 @@ remove-all-shown =
 remove-all-passwords-prompt = Tem a certeza que pretende remover todas as palavras-passe?
 remove-all-passwords-title = Remover todas as palavras-passe
 no-master-password-prompt = Tem a certeza que deseja mostrar as suas palavras-passe?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Confirme a sua identidade para revelar as palavras-passe guardadas.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = revelar as palavras-passe guardadas
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }

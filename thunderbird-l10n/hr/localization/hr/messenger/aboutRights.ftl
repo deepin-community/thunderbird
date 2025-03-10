@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = O tvojim pravima
 rights-intro = { -brand-full-name } je slobodan program otvorenog koda, koju je izradila zajednica od tisuću osoba iz cijelog svijeta. Neke podatke trebaš znati:
 rights-intro-point-1 = { -brand-short-name } je dostupan pod uvjetima <a data-l10n-name="mozilla-public-license-link">Mozilline javne licence</a>. To znači da možeš koristiti, kopirati i distribuirati { -brand-short-name } drugima. Također smiješ mijenjati izvorni kod { -brand-short-name } kako god želiš. Mozillina javna licenca daje ti pravo distribuirati promijenjene verzije.

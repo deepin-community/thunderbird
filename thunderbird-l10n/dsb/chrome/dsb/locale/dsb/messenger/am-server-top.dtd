@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Składowanje powěsćow">
 <!ENTITY securitySettings.label "Wěstotne nastajenja">
 <!ENTITY serverSettings.label "Serwerowe nastajenja">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Standard:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Kuždych ">
 <!ENTITY biffStart.accesskey "K">
 <!ENTITY biffEnd.label "minutow za nowymi powěsćami pśeglědaś">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Zwiskowa wěstota:">
 <!ENTITY connectionSecurity.accesskey "Z">
 <!ENTITY connectionSecurityType-0.label "Žedna">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, jolic k dispoziciji">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Awtentificěrowańska metoda:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "J">
 <!ENTITY modelDeleteImmediately.label "Ned wótpóraś">
 <!ENTITY modelDeleteImmediately.accesskey "e">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Postowy kašćik pśi skóńcenju zrumowaś (&quot;wulašowaś&quot;)">
 <!ENTITY expungeOnExit.accesskey "r">
 <!ENTITY emptyTrashOnExit.label "Papjernik pśi skóńcenju wuprozniś">
 <!ENTITY emptyTrashOnExit.accesskey "s">
 <!ENTITY loginAtStartup.label "Pśi starśe za nowymi powěsćami pśeglědaś">
 <!ENTITY loginAtStartup.accesskey "P">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Pśed ześěgnjenju wěcej ako">
 <!ENTITY maxMessagesStart.accesskey "w">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "powěsćow se pšašaś">
 <!ENTITY alwaysAuthenticate.label "Pśi zwězowanju z toś tym serwerom pśecej awtentificěrowanje pominaś">
 <!ENTITY alwaysAuthenticate.accesskey "z">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "P">
 <!ENTITY browseNewsrc.label "Pśepytaś…">
 <!ENTITY browseNewsrc.accesskey "e">
-
 <!ENTITY accountTitle.label "Kontowe nastajenja">
 <!ENTITY accountSettingsDesc.label "To jo wósebne konto. Z nim žedne identity njejsu zwězane.">
 <!ENTITY storeType.label "Składowański typ powěsći:">

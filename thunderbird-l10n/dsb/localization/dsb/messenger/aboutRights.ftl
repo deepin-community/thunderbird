@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Wó wašych pšawach
 rights-intro = { -brand-full-name } jo dermotna softwara wótwórjonego žrědła, napórana wót zgromaźeństwa tysacych luźi z cełego swěta. Su někotare wěcy, kótarež wy by měł wěźeś:
 rights-intro-point-1 = { -brand-short-name } staja se k dispoziciji pód wuměnjenjami <a data-l10n-name="mozilla-public-license-link">licence Mozilla Public License</a>. To co se groniś, až móžośo { -brand-short-name } wužywaś a kopěrowaś a jen na drugich rozdźěliś. Wóstanjo wam pśewóstajone, žrědłowy kode { -brand-short-name } pó wašom dobrozdaśu změniś, aby wón wašym pótrjebam wótpowědował. Licenca Mozilla Public License teke wam dajo pšawo, waše změnjone wersije rozdźěliś.

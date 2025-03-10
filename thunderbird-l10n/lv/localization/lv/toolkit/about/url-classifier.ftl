@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL klasifikatora informācija
 url-classifier-provider-title = Piegādātājs
 url-classifier-provider = Piegādātājs
@@ -30,7 +26,6 @@ url-classifier-debug-sb-modules = Drošās pārlūkošanas reģistrēšanas modu
 url-classifier-debug-modules = Pašreizējais reģistrācijas modulis
 url-classifier-debug-sbjs-modules = Drošās pārlūkošanas JS ieraksti
 url-classifier-debug-file = Pašreizējais reģistrācijas fails
-
 url-classifier-trigger-update = Izsaukt atjaunināšanu
 url-classifier-not-available = N/P
 url-classifier-disable-sbjs-log = Izslēgt drošās pārlūkošanas JS reģistrēšanu
@@ -40,9 +35,5 @@ url-classifier-disabled = Izslēgts
 url-classifier-updating = atjaunina
 url-classifier-cannot-update = nevar atjaunināt
 url-classifier-success = izdevās
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = atjaunināšanas kļūda ({ $error })
 url-classifier-download-error = lejupielādes kļūda ({ $error })

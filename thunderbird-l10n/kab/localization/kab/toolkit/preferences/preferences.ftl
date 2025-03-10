@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ur iţusbadu ara)
 failed-pp-change = Ur yezmir ara ad isnifel awal uffir agejdan.
@@ -21,7 +17,6 @@ set-password-new-password = Sekcem awal uffir amaynut:
 set-password-reenter-password = Sekcem tikelt-nniḍen awal uffir:
 set-password-meter = Asɣel n tɣaṛa n wawal uffir
 set-password-meter-loading = Asali
-primary-password-admin = Anedbal-inek·inem yesra tesεiḍ awal uffir agejdan yettusbaduni uḥraz n yinekcam d wawalen uffiren.
 primary-password-required-by-policy = Takebbanit-inek·inem yesra tesεiḍ awal uffir agejdan yettusbaduni uḥraz n yinekcam d wawalen uffiren.
 primary-password-description = Awal uffir agejdan ittuseqdac akken ad immesten talɣut tamḥulfut am yinekcam d wawalen uffiren ɣef yibenk-a. Ma terniḍ Awal uffir agejdan, ad ak·am-d-yettusuter yiwet n tikkelt yal mi ara tesnekreḍ tiɣimit ticki { -brand-short-name } yettnadi talɣut yettwaskelsen, yettummestnen s wawal-agi uffir.
 primary-password-warning = Ma ulac aɣilif, ur tettu ara awal uffir agejdan i tesbaduḍ. Ma tettuḍ-t, ur tettizmireḍ ara ad tkecmeḍ ula ɣer yiwet telɣut yettummestnen yis-s ɣef yibenk-a.

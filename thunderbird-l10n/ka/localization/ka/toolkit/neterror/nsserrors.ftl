@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = უსაფრთხო დაკავშირება ვერ ხერხდება, რადგან SSL ოქმი ამორთულია.
 psmerr-ssl2-disabled = უსაფრთხო დაკავშირება ვერ ხერხდება, რადგან საიტი SSL ოქმის მოძველებულ ვერსიას იყენებს.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     თქვენ უმართებულო სერტიფიკატი მიიღეთ.  გთხოვთ დაუკავშირდეთ სერვერის მმართველს ან ელფოსტის მოპასუხეს და მიაწოდოთ შემდეგი მონაცემები:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = სერვერმა წარ
 mozilla-pkix-error-empty-issuer-name = სერვერმა წარმოადგინა სერტიფიკატი, რომლის გამცემის სახელიც არ ჩანს.
 mozilla-pkix-error-additional-policy-constraint-failed = დებულების დამატებითი შეზღუდვებმა ვერ იმუშავა, სერტიფიკატის დამოწმებისას.
 mozilla-pkix-error-self-signed-cert = სერტიფიკატი სანდო არაა, რადგან საკუთარი ხელმოწერითაა.
+mozilla-pkix-error-issuer-no-longer-trusted = სერტიფიკატის გამცემი, რომლისგანაცაა ეს სერტიფიკატი, აღარ მიიჩნეოდა სანდოდ სერტიფიკატის გამოშვებამდე.
 xp-java-remove-principal-error = Couldn't remove the principal
 xp-java-delete-privilege-error = Couldn't delete the privilege
 xp-java-cert-not-exists-error = This principal doesn't have a certificate

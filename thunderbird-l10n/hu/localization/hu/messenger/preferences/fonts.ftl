@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Betűkészletek
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Alapértelmezett ({ $name })
 fonts-label-default-unnamed =
     .label = Alapértelmezett
-fonts-encoding-dialog-title =
-    .title = Betűk és kódolások
 fonts-language-legend =
     .value = Kódolás:
     .accesskey = K
 fonts-proportional-label =
     .value = Proporcionális:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latin
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Szingaléz
 font-language-group-tibetan =
     .label = Tibeti
-
-## Default font type
-
 default-font-serif =
     .label = Talpas
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = L
 min-size-none =
     .label = Nincs
-
-## Fonts in message
-
 font-control-legend = Betűbeállítások
 use-document-fonts-checkbox =
     .label = Az üzenetek használhatják a saját maguk által megadott betűkészleteket.
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Fix szélességű betűk a normál szöveges üzenetekhez
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Szövegkódolás
 text-encoding-description = A kimenő és bejövő levelek alapértelmezett karakterkódolása
 font-outgoing-email-label =

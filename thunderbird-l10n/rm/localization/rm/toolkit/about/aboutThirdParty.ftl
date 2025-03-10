@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Infurmaziuns da moduls da ina terzas partidas
 third-party-section-title = Glista da moduls en { -brand-short-name } da terzas partidas
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = Rechargiar cun infos dal sistem
     .title = Rechargiar cun infurmaziuns dal sistem
 third-party-button-open =
     .title = Avrir l'ordinatur da la datoteca…
-third-party-button-to-block =
-    .title = Bloccar quest modul
-    .aria-label = Bloccar quest modul
-third-party-button-to-unblock =
-    .title = Actualmain bloccà. Cliccar per debloccar.
-    .aria-label = Actualmain bloccà. Cliccar per debloccar.
-third-party-button-to-unblock-disabled =
-    .title =
-        Actualmain marcà sco bloccà, malgrà che la glista da bloccada è deactivada per questa execuziun
-         da { -brand-short-name }. Cliccar per debloccar.
-    .aria-label =
-        Actualmain marcà sco bloccà, malgrà che la glista da bloccada è deactivada per questa execuziun
-         da { -brand-short-name }. Cliccar per debloccar.
 third-party-button-to-block-module = Bloccar quest modul
     .title = Bloccar quest modul
     .aria-label = Bloccar quest modul

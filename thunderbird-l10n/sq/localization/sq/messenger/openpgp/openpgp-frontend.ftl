@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Përgjegjës Kyçesh OpenPGP
     .accesskey = P
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Verifikoni Nënshkrimin
     .accesskey = V
 openpgp-has-sender-key = Ky mesazh pretendon se përmban kyçin publik OpenPGP të dërguesit.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Kujdes: Kyçi i ri publik OpenPGP në këtë mesazh ndryshon nga kyçet publikë që keni pranuar më parë për { $email }.
 openpgp-import-sender-key =
     .label = Importoni…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Ky mesazh qe nënshkruar me një kyç që nuk e keni ende.
 openpgp-search-signature-key =
     .label = Zbuloni…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Ky është një mesazh OpenPGP që duket të jetë korruptuar nga MS-Exchange dhe s’mund të riparohet, ngaqë është hapur që nga një kartelë vendore. Kopjojeni mesazhin në një dosje email-esh dhe provoni një riparim të automatizuar.
 openpgp-broken-exchange-info = Ky është një mesazh OpenPGP që duket se është dëmtuar nga MS-Exchange. Nëse lënda e mesazhit nuk shfaqet siç pritet, mund të provoni një riparim të automatizuar.
 openpgp-broken-exchange-repair =

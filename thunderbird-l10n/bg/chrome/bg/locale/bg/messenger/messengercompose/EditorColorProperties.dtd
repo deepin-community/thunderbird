@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Цветове и фон на страницата">
 <!ENTITY pageColors.label "Цветове за страницата">
 <!ENTITY defaultColorsRadio.label "Цветовете по подразбиране на читателя (без определяне на цветове в страницата)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Използвайте ваши цветове:">
 <!ENTITY customColorsRadio.accessKey "в">
 <!ENTITY customColorsRadio.tooltip "Тези цветови настройки ще важат и за браузъра на потребителя">
-
 <!ENTITY normalText.label "Нормален текст">
 <!ENTITY normalText.accessKey "Н">
 <!ENTITY linkText.label "Текст на връзката">

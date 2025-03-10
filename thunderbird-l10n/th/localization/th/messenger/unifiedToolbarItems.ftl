@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = ช่องว่างแบบยืดหยุ่น
 search-bar-label = ค้นหา
 toolbar-write-message-label = เขียน
@@ -94,7 +87,7 @@ toolbar-address-book =
 toolbar-chat-label = แชท
 toolbar-chat =
     .title = แสดงแท็บแชท
-toolbar-add-ons-and-themes-label = ส่วนเสริมและชุดรูปแบบ
+toolbar-add-ons-and-themes-label = ส่วนเสริมและตกแต่ง
 toolbar-add-ons-and-themes =
     .title = จัดการส่วนเสริมของคุณ
 toolbar-calendar-label = ปฏิทิน
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = นำเข้า
 toolbar-import-contacts =
     .title = นำเข้าผู้ติดต่อจากไฟล์
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = เพิ่มสมุดรายชื่อในเครื่อง
 toolbar-new-address-book-popup-add-carddav-address-book =

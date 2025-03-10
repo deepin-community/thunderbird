@@ -3,7 +3,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from ../../../../base/content/utilityOverlay.js */
-/* import-globals-from ../editorUtilities.js */
 /* import-globals-from EdDialogCommon.js */
 
 var { InlineSpellChecker } = ChromeUtils.importESModule(
@@ -18,7 +17,11 @@ var gFirstTime = true;
 var gDictCount = 0;
 
 window.addEventListener("load", Startup);
-document.addEventListener("dialogaccept", doDefault);
+document.addEventListener("keydown", event => {
+  if (event.key == "Enter") {
+    doDefault(event);
+  }
+});
 document.addEventListener("dialogcancel", CancelSpellCheck);
 
 function Startup() {

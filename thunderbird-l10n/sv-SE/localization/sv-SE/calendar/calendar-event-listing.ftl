@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Stäng händelsesökning och händelselista
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Kalendernamn
     .tooltiptext = Sortera på kalendernamn
 calendar-event-listing-column-category =
     .label = Kategori
     .tooltiptext = Sortera på kategori
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Färdig
     .tooltiptext = Sortera på slutförda
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Titel
     .tooltiptext = Sortera på titel
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Tidigare händelser
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Händelser under de kommande 6 månaderna
 calendar-event-listing-interval-next-12-months =
     .label = Händelser under de kommande 12 månaderna
+calendar-event-listing-interval-future =
+    .label = Alla framtida händelser
 calendar-event-listing-interval-all =
     .label = Alla händelser
 calendar-event-listing-interval-selected-day =

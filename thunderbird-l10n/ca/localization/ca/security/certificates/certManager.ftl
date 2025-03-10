@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Gestor de certificats
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = No s'ha pogut crear el fitxer de còpia de seguretat
 pkcs12-unknown-err = L'operació PKCS #12 ha fallat per raons desconegudes.
 pkcs12-info-no-smartcard-backup = No és possible fer còpies de seguretat dels certificats des d'un dispositiu de seguretat de maquinari com ara una targeta intel·ligent.
 pkcs12-dup-data = El certificat i la clau privada ja són al dispositiu de seguretat.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Nom del fitxer a què s'ha de fer una còpia de seguretat
 file-browse-pkcs12-spec = Fitxers PKCS12
 choose-p12-restore-file-dialog = Fitxer de certificat per importar
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Fitxers de certificat
 import-ca-certs-prompt = Seleccioneu el fitxer que conté els certificats de CA per importar
 import-email-cert-prompt = Seleccioneu el fitxer que conté el certificat de correu electrònic d'algú a importar
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = El certificat «{ $certName }» representa una entitat certificadora.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Suprimeix els vostres certificats
 delete-user-cert-confirm = Esteu segur que voleu suprimir aquests certificats?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Suprimeix els certificats de correu electrònic
 delete-email-cert-confirm = Esteu segur que voleu suprimir aquests certificats de correu electrònic d'aquestes persones?
 delete-email-cert-impact = Si suprimiu un certificat de correu electrònic d'algú, ja no podreu enviar-li correu xifrat.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Certificat amb número de sèrie: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = No enviïs cap certificat de client
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (No emmagatzemat)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (No disponible)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Permanent
 temporary-override = Temporal
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Esteu a punt de sobreescriure com el { -brand-short-name } identifica aquest lloc.
 add-exception-invalid-header = Aquest lloc intenta identificar-se amb informació que no és vàlida.
 add-exception-domain-mismatch-short = Lloc web incorrecte
@@ -170,9 +139,6 @@ add-exception-checking-short = Comprovació de la informació
 add-exception-checking-long = S'està intentant identificar aquest lloc web…
 add-exception-no-cert-short = No hi ha cap informació disponible
 add-exception-no-cert-long = No es pot obtenir l'estat d'identificació d'aquest lloc web.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Desa el certificat a un fitxer
 cert-format-base64 = Certificat X.509 (PEM)
 cert-format-base64-chain = Certificat X.509 amb cadena (PEM)

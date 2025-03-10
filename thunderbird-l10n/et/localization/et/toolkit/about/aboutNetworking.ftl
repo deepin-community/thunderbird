@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = About Networking
 about-networking-http = HTTP
 about-networking-sockets = Sockets
@@ -56,11 +52,5 @@ about-networking-rcwn-cache-slow = Cache slow count
 about-networking-rcwn-cache-not-slow = Cache not slow count
 about-networking-networkid = Network ID
 about-networking-networkid-id = Network ID
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Link is up
 about-networking-networkid-status-known = Link status is known
-
-##
-

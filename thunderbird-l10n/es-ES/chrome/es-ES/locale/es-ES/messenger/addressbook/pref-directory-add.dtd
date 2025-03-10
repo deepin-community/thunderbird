@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY directoryName.label "Nombre: ">
 <!ENTITY directoryName.accesskey "n">
 <!ENTITY directoryHostname.label "Servidor: ">
@@ -37,5 +33,4 @@
 <!ENTITY saslOff.accesskey "l">
 <!ENTITY saslGSSAPI.label "Kerberos (GSSAPI)">
 <!ENTITY saslGSSAPI.accesskey "K">
-
 <!ENTITY newDirectoryWidth "36em">

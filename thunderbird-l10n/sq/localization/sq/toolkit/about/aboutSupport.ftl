@@ -1,8 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-page-title = Të dhëna Diagnostikimi
+page-title = Hollësi Diagnostikimi
 page-subtitle =
     Kjo faqe përmban të dhëna teknike që mund të jenë të dobishme, kur përpiqeni
     të zgjidhni një problem. Nëse po shihni për përgjigje për pyetje të rëndomta
@@ -41,8 +37,6 @@ app-basics-version = Version
 app-basics-build-id = ID Montimi
 app-basics-distribution-id = ID Shpërndarjeje
 app-basics-update-channel = Kanal Përditësimi
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Drejtori Përditësimesh
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Historik Përditësimesh
 app-basics-show-update-history = Shfaq Historik Përditësimesh
-# Represents the path to the binary used to start the application.
 app-basics-binary = Dyor Aplikacioni
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Drejtoria e Profilit
        *[other] Dosje Profili
     }
-app-basics-enabled-plugins = Shtojca të Aktivizuara
 app-basics-build-config = Formësim Montimi
 app-basics-user-agent = Agjent Përdoruesi
 app-basics-os = OS
 app-basics-os-theme = Temë OS-i
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Përkthyer Nga Rosetta
 app-basics-memory-use = Përdorim Kujtese
 app-basics-performance = Punim
@@ -78,12 +68,9 @@ app-basics-enterprise-policies = Rregulla Në Nivel Ndërmarrjeje
 app-basics-location-service-key-google = Kyç Shërbimi Vendndodhjesh Google
 app-basics-safebrowsing-key-google = Kyç Google Safebrowsing
 app-basics-key-mozilla = Kyç Mozilla Location Service
-app-basics-safe-mode = Mënyrë e Sigurt
+app-basics-safe-mode = Mënyrë e Siguruar
 app-basics-memory-size = Madhësi Kujtese (RAM)
 app-basics-disk-available = Hapësirë Disku e Lirë
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -114,9 +101,7 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Regjistër Vendimesh
 graphics-crash-guards-title = Veçori të Çaktivizuara nga Roja i Vithisjeve
 graphics-workarounds-title = Zgjidhje të përkohshme
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protokoll Window
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Mjedis Desktop
 place-database-title = Bazë të Dhënash Vendesh
 place-database-stats = Statistika
@@ -151,9 +136,6 @@ clear-startup-cache-label = Spastroni fshehtinë nisjeje…
 startup-cache-dialog-title2 = Të riniset { -brand-short-name }-i për të spastruar fshehtinën e nisjes?
 startup-cache-dialog-body2 = Kjo nuk do të ndryshojë rregullimet tuaja apo të heqë zgjerime.
 restart-button-label = Rinise
-
-## Media titles
-
 audio-backend = Mekanizëm Audio
 max-audio-channels = Kanale Maksimum
 sample-rate = Shpejtësi e Parapëlqyer Kampionizimesh
@@ -172,11 +154,7 @@ media-device-rate = Shpeshti
 media-device-latency = Vonesë
 media-capabilities-title = Aftësi Media
 media-codec-support-info = Hollësi Mbulimi Kodeku
-# List all the entries of the database.
 media-capabilities-enumerate = Numërtoni bazë të dhënash
-
-## Codec support table
-
 media-codec-support-sw-decoding = Shkodim nga Software
 media-codec-support-hw-decoding = Shkodim nga Hardware
 media-codec-support-codec-name = Emër Kodeku
@@ -184,21 +162,11 @@ media-codec-support-supported = I mbuluar
 media-codec-support-unsupported = E pambuluar
 media-codec-support-error = S’ka informacion mbulimi nga kodekë. Provoni sërish, pas luajtjes së një kartele media.
 media-codec-support-lack-of-extension = Instalo zgjerimin
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Informacion Modulesh Shfshehtëzimi Lënde
 media-video-robustness = Fortësi Videoje
 media-audio-robustness = Fortësi Audioje
 media-cdm-capabilities = Aftësi
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = I përputhshëm me HDCP 2.2
-
-##
-
 intl-title = Ndërkombëtarizim & Përkthim
 intl-app-title = Rregullime Aplikacionesh
 intl-locales-requested = Gjuhë të Kërkuara
@@ -208,52 +176,29 @@ intl-locales-default = Gjuhë Parazgjedhje
 intl-os-title = Sistem Operativ
 intl-os-prefs-system-locales = Gjuhë Sistemi
 intl-regional-prefs = Parapëlqime Rajoni
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Diagnostikim Së Largëti (Protokolli Chromium)
 remote-debugging-accepting-connections = Me Pranim Lidhjesh
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Njoftime Vithisjesh për Ditën e Fundit
        *[other] Njoftime Vithisjesh për { $days } Ditët e Fundit
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } minutë më parë
        *[other] { $minutes } minuta më parë
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } orë më parë
        *[other] { $hours } orë më parë
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } ditë më parë
        *[other] { $days } ditë më parë
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Krejt Njoftimet e Vithisjeve (përfshi { $reports } vithisje të panjoftuar që ndodhi brenda intervalit kohor të dhënë)
@@ -261,18 +206,11 @@ pending-reports =
     }
 raw-data-copied = Të dhënat e papërpunuara u kopjuan te e papastra
 text-copied = Teksti u kopjua në të papastër
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = E bllokuar për versionin tuaj të përudhësit grafik.
 blocked-gfx-card = E bllokuar në kartën tuaj grafike, për shkak problemesh të pazgjidhura për përudhësin.
 blocked-os-version = E bllokuar për versionin tuaj të sistemit operativ.
 blocked-mismatched-version = E bllokuar për shkak mospërputhjeje versionesh mes regjistrit dhe DLL-së për përudhësin tuaj grafik.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = E bllokuar për versionin tuaj të përudhësit grafik. Provoni të përditësoni përudhësin tuaj grafik me versionin { $driverVersion } ose më të ri.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parametra ClearType
 compositing = Hartim
 support-font-determination = Hollësi Diagnostikimi Dukshmërie Shkronjash
@@ -282,11 +220,6 @@ yes = Po
 no = Jo
 unknown = E panjohur
 virtual-monitor-disp = Shfaqje Nën Monitor Virtual
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = U gjet
 missing = Mungon
 gpu-process-pid = GPUProcessPid
@@ -313,11 +246,7 @@ webgl2-driver-extensions = Zgjerime Përudhësi WebGL 2
 webgl2-extensions = Zgjerime WebGL 2
 webgpu-default-adapter = Përshtatës Parazgjedhje WebGPU
 webgpu-fallback-adapter = Përshtatës Rrugëdalje WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Shtuar në listë bllokimesh për shkak çështjesh të njohura: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Vënë në listë të zezë, kod dështimi { $failureCode }
 d3d11layers-crash-guard = Hartues D3D11
 glcontext-crash-guard = OpenGL
@@ -335,8 +264,6 @@ has-seccomp-bpf = Seccomp-BPF (Filtrim Thirrjesh Sistemi)
 has-seccomp-tsync = Njëkohësim Seccomp Rrjedhe
 has-user-namespaces = Emërhapësira Përdoruesi
 has-privileged-user-namespaces = Emërhapësira Përdoruesi për procese të privilegjuar
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Kjo veçori nuk lejohet nga sistemi juaj. Ky mund të kufizojë veçori sigurie të { -brand-short-name }-it.
 can-sandbox-content = Mbajtje Brenda Bankëprovës e Proceseve të Lëndës
 can-sandbox-media = Mbajtje Brenda Bankëprovës e Shtojcave Për Media
@@ -357,16 +284,8 @@ launcher-process-status-0 = I aktivizuar
 launcher-process-status-1 = Çaktivizuar për shkak dështimesh
 launcher-process-status-2 = Çaktivizuar forcërisht
 launcher-process-status-unknown = Gjendje e panjohur
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Çaktivizuar nga eksperiment
-fission-status-experiment-treatment = Aktivizuar nga eksperiment
 fission-status-disabled-by-e10s-env = Çaktivizuar nga mjedisi
 fission-status-enabled-by-env = Aktivizuar nga mjedisi
 fission-status-disabled-by-env = Çaktivizuar nga mjedisi
@@ -382,34 +301,20 @@ touch-enabled = me input nga prekje
 drag-enabled = me tërheqje shtylle rrëshqitjeje
 keyboard-enabled = me vetërrëshqitje të aktivizuar
 autoscroll-enabled = me vetërrëshqitje të aktivizuar
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = input asinkron nga rrotëz miu i çaktivizuar, për shkak parapëlqimi të pambuluar: { $preferenceKey }
 touch-warning = input asinkron me prekje i çaktivizuar, për shkak parapëlqimi të pambuluar: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Joaktiv
 policies-active = Aktiv
 policies-error = Gabim
-
-## Printing section
-
 support-printing-title = Po shtypet
 support-printing-troubleshoot = Diagnostikim
 support-printing-clear-settings-button = Spastro rregullimet e ruajtura për shtypjet
 support-printing-modified-settings = Rregullime shtypjeje të ndryshuara
 support-printing-prefs-name = Emër
 support-printing-prefs-value = Vlerë
-
-## Remote Settings sections
-
 support-remote-settings-title = Rregullime për të Largët
 support-remote-settings-status = Gjendje
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = S’funksionon
 support-remote-settings-last-check = Kontrolli i fundit më
 support-remote-settings-local-timestamp = Vulë kohore vendore
@@ -417,27 +322,15 @@ support-remote-settings-sync-history = Historik
 support-remote-settings-sync-history-status = Gjendje
 support-remote-settings-sync-history-datetime = Datë
 support-remote-settings-sync-history-infos = Hollësi
-
-## Normandy sections
-
 support-remote-experiments-title = Eksperimente Së Largëti
 support-remote-experiments-name = Emër
 support-remote-experiments-branch = Degë Eksperimenti
-support-remote-experiments-see-about-studies = Për më tepër të dhëna, shihni <a data-l10n-name="support-about-studies-link">about:studies</a>, përfshi si të çaktivizohen eksperimente individuale ose të çaktivizohet xhirimi nga { -brand-short-name }-i në të ardhmen i këtij lloji eksperimentesh.
+support-remote-experiments-see-about-studies = Për më tepër hollësi, shihni <a data-l10n-name="support-about-studies-link">about:studies</a>, përfshi si të çaktivizohen eksperimente individuale, ose të çaktivizohet xhirimi nga { -brand-short-name }-i në të ardhmen i këtij lloji eksperimentesh.
 support-remote-features-title = Veçori Së Largëti
 support-remote-features-name = Emër
 support-remote-features-status = Gjendje
-
-## Pointing devices
-
 pointing-device-mouse = Mi
 pointing-device-touchscreen = Ekran Me Prekje
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Analizë Lënde (DLP)
 content-analysis-active = Aktive
 content-analysis-connected-to-agent = I lidhur me Agjentin

@@ -1,21 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = Pengelola Pengaya
 search-header =
     .placeholder = Cari addons.mozilla.org
     .searchbuttonlabel = Cari
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
 list-empty-get-extensions-message = Dapatkan ekstensi dan tema di <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-dictionaries-message = Dapatkan kamus di <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-language-packs-message = Dapatkan paket bahasa di <a data-l10n-name="get-extensions">{ $domain }</a>
-
-##
-
 list-empty-installed =
     .value = Anda tidak memiliki pengaya terpasang jenis ini
 list-empty-available-updates =
@@ -57,13 +46,9 @@ detail-update-automatic =
 detail-update-manual =
     .label = Mati
     .tooltiptext = Jangan otomatis memasang pemutakhiran
-# Used as a description for the option to allow or block an add-on in private windows.
 detail-private-browsing-label = Jalankan di Jendela Pribadi
-# Some add-ons may elect to not run in private windows by setting incognito: not_allowed in the manifest.  This
-# cannot be overridden by the user.
 detail-private-disallowed-label = Tidak Diizinkan di Jendela Pribadi
 detail-private-disallowed-description2 = Ekstensi ini tidak berjalan saat penjelajahan pribadi. <a data-l10n-name="learn-more">Pelajari lebih lanjut</a>
-# Some special add-ons are privileged, run in private windows automatically, and this permission can't be revoked
 detail-private-required-label = Membutuhkan Akses ke Jendela Pribadi
 detail-private-required-description2 = Ekstensi ini memiliki akses ke aktivitas daring Anda saat penjelajahan pribadi. <a data-l10n-name="learn-more">Pelajari lebih lanjut</a>
 detail-private-browsing-on =
@@ -147,76 +132,48 @@ addon-category-recent-updates-title =
 addon-category-sitepermission = Izin Situs
 addon-category-sitepermission-title =
     .title = Izin Situs
-# String displayed in about:addons in the Site Permissions section
-# Variables:
-#  $host (string) - DNS host name for which the webextension enables permissions
 addon-sitepermission-host = Izin Situs untuk { $host }
-
-## These are global warnings
-
-extensions-warning-safe-mode = Semua pengaya telah dinonaktifkan dalam mode aman.
-extensions-warning-check-compatibility = Pemeriksaan kompatibilitas pengaya telah dinonaktifkan. Anda mungkin menggunakan pengaya yang tidak kompatibel.
 extensions-warning-safe-mode2 =
     .message = Semua pengaya telah dinonaktifkan dalam mode aman.
 extensions-warning-check-compatibility2 =
     .message = Pemeriksaan kompatibilitas pengaya telah dinonaktifkan. Anda mungkin menggunakan pengaya yang tidak kompatibel.
 extensions-warning-check-compatibility-button = Aktifkan
     .title = Aktifkan pemeriksaan kompatibilitas pengaya
-extensions-warning-update-security = Pemeriksaan keamanan pemutakhiran pengaya telah dinonaktifkan. Pemutakhiran pengaya saat ini memiliki risiko keamanan.
 extensions-warning-update-security2 =
     .message = Pemeriksaan keamanan pemutakhiran pengaya telah dinonaktifkan. Pemutakhiran pengaya saat ini memiliki risiko keamanan.
 extensions-warning-update-security-button = Aktifkan
     .title = Aktifkan pemeriksaan keamanan pemutakhiran pengaya
-
-## Strings connected to add-on updates
-
+extensions-warning-imported-addons2 =
+    .message = Selesaikan pemasangan ekstensi yang diimpor ke { -brand-short-name }
+extensions-warning-imported-addons-button = Pasang Ekstensi
 addon-updates-check-for-updates = Periksa Versi Baru
     .accesskey = P
 addon-updates-view-updates = Tampilkan Versi Baru
     .accesskey = V
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = Otomatis Perbarui Pengaya
     .accesskey = O
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = Setel Ulang Semua Pengaya agar Diperbarui Otomatis
     .accesskey = S
 addon-updates-reset-updates-to-manual = Setel Ulang Semua Pengaya agar Hanya Diperbarui Manual
     .accesskey = M
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = Memperbarui pengaya
 addon-updates-installed = Pengaya Anda telah diperbarui.
 addon-updates-none-found = Tidak ada versi baru ditemukan
 addon-updates-manual-updates-found = Tampilkan Versi Baru yang Tersedia
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = Pasang Pengaya dari Berkas…
     .accesskey = B
 addon-install-from-file-dialog-title = Pilih berkas pengaya untuk dipasang
 addon-install-from-file-filter-name = Pengaya
 addon-open-about-debugging = Debug Pengaya
     .accesskey = b
-
-## Extension shortcut management
-
-# This is displayed in the page options menu
 addon-manage-extensions-shortcuts = Kelola Pintasan Ekstensi
     .accesskey = K
 shortcuts-no-addons = Anda tidak memiliki ekstensi yang aktif.
 shortcuts-no-commands = Ekstensi berikut tidak memiliki pintasan:
 shortcuts-input =
     .placeholder = Ketikkan pintasan
+shortcuts-remove-button =
+    .aria-label = Hapus Pintasan
 shortcuts-browserAction2 = Aktifkan tombol bilah alat
 shortcuts-pageAction = Aktifkan tindakan laman
 shortcuts-sidebarAction = Aktifkan/Nonaktifkan bilah samping
@@ -225,23 +182,10 @@ shortcuts-modifier-other = Sertakan Ctrl atau Alt
 shortcuts-invalid = Kombinasi tidak valid
 shortcuts-letter = Ketikkan huruf
 shortcuts-system = Tidak bisa menimpa pintasan { -brand-short-name }
-# String displayed in warning label when there is a duplicate shortcut
 shortcuts-duplicate = Pintasan ganda
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
-shortcuts-duplicate-warning-message = { $shortcut } digunakan sebagai pintasan di lebih dari satu tempat. Pintasan duplikat dapat menyebabkan perilaku yang tidak terduga.
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message2 =
     .message = { $shortcut } digunakan sebagai pintasan di lebih dari satu tempat. Pintasan duplikat dapat menyebabkan perilaku yang tidak terduga.
-# String displayed when a keyboard shortcut is already used by another add-on
-# Variables:
-#   $addon (string) - Name of the add-on
 shortcuts-exists = Sudah digunakan oleh { $addon }
-# Variables:
-#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
        *[other] Tampilkan { $numberToShow } Lainnya
@@ -249,55 +193,32 @@ shortcuts-card-expand-button =
 shortcuts-card-collapse-button = Lebih Sedikit
 header-back-button =
     .title = Mundur
-
-## Recommended add-ons page
-
-# Explanatory introduction to the list of recommended add-ons. The action word
-# ("recommends") in the final sentence is a link to external documentation.
-discopane-intro =
-    Ekstensi dan tema seperti layaknya aplikasi untuk browser Anda, dan mereka bisa digunakan untuk melindungi kata sandi, mengunduh video, menemukan penawaran, memblokir iklan yang mengganggu, mengubah tampilan peramban Anda, dan banyak lagi. Program perangkat lunak kecil ini banyak dikembangkan oleh pihak ketiga. Berikut adalah pilihan 
-    <a data-l10n-name="learn-more-trigger">yang disarankan</a> { -brand-product-name } berdasarkan keamanan, kinerja, dan fungsionalitas mereka.
-# Notice to make user aware that the recommendations are personalized.
-discopane-notice-recommendations =
-    Beberapa rekomendasi ini dipersonalisasi. Rekomendasi tersebut didasarkan pada ekstensi lain
-    yang Anda pasang, preferensi profil, dan statistik penggunaan.
-# Notice to make user aware that the recommendations are personalized.
+discopane-intro2 =
+    Ekstensi dan tema memungkinkan Anda menyesuaikan { -brand-product-name }. Keduanya dapat meningkatkan privasi,
+    meningkatkan produktivitas, meningkatkan media, mengubah tampilan { -brand-product-name }, dan
+    lebih banyak lagi. Program perangkat lunak kecil ini sering dikembangkan oleh pihak ketiga. 
+    Berikut adalah <a data-l10n-name="learn-more-trigger">rekomendasi</a> pilihan { -brand-product-name }
+    untuk keamanan, kinerja, dan fungsionalitas yang luar biasa.
 discopane-notice-recommendations2 =
     .message =
         Beberapa rekomendasi ini dipersonalisasi. Rekomendasi tersebut didasarkan pada ekstensi lain
         yang Anda pasang, preferensi profil, dan statistik penggunaan.
 discopane-notice-learn-more = Pelajari lebih lanjut
 privacy-policy = Kebijakan Privasi
-# Refers to the author of an add-on, shown below the name of the add-on.
-# Variables:
-#   $author (string) - The name of the add-on developer.
 created-by-author = oleh <a data-l10n-name="author">{ $author }</a>
-# Shows the number of daily users of the add-on.
-# Variables:
-#   $dailyUsers (number) - The number of daily users.
 user-count = Pengguna: { $dailyUsers }
 install-extension-button = Tambahkan ke { -brand-product-name }
 install-theme-button = Pasang Tema
-# The label of the button that appears after installing an add-on. Upon click,
-# the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = Kelola
 find-more-addons = Temukan lebih banyak pengaya
 find-more-themes = Temukan lebih banyak tema
-# This is a label for the button to open the "more options" menu, it is only
-# used for screen readers.
 addon-options-button =
     .aria-label = Opsi Lainnya
-
-## Add-on actions
-
 report-addon-button = Laporkan
 remove-addon-button = Hapus
-# The link will always be shown after the other text.
 remove-addon-disabled-button = Tidak Dapat Dihapus <a data-l10n-name="link">Alasannya?</a>
 disable-addon-button = Nonaktifkan
 enable-addon-button = Aktifkan
-# This is used for the toggle on the extension card, it's a checkbox and this
-# is always its label.
 extension-enable-addon-button-label =
     .aria-label = Aktifkan
 preferences-addon-button =
@@ -327,36 +248,14 @@ addon-detail-version-label = Versi
 addon-detail-last-updated-label = Terakhir Diperbarui
 addon-detail-homepage-label = Beranda
 addon-detail-rating-label = Peringkat
-# Message for add-ons with a staged pending update.
-install-postponed-message = Ekstensi ini akan diperbarui ketika { -brand-short-name } dimulai ulang.
-# Message for add-ons with a staged pending update.
 install-postponed-message2 =
     .message = Ekstensi ini akan diperbarui ketika { -brand-short-name } dimulai ulang.
 install-postponed-button = Perbarui Sekarang
-# The average rating that the add-on has received.
-# Variables:
-#   $rating (number) - A number between 0 and 5. The translation should show at most one digit after the comma.
-five-star-rating =
-    .title = Peringkat { NUMBER($rating, maximumFractionDigits: 1) } dari 5
-# This string is used to show that an add-on is disabled.
-# Variables:
-#   $name (string) - The name of the add-on
 addon-name-disabled = { $name } (dinonaktifkan)
-# The number of reviews that an add-on has received on AMO.
-# Variables:
-#   $numberOfReviews (number) - The number of reviews received
 addon-detail-reviews-link =
     { $numberOfReviews ->
        *[other] { $numberOfReviews } ulasan
     }
-
-## Pending uninstall message bar
-
-# Variables:
-#   $addon (string) - Name of the add-on
-pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> telah dihapus.
-# Variables:
-#   $addon (string) - Name of the add-on
 pending-uninstall-description2 =
     .message = { $addon } telah dihapus.
 pending-uninstall-undo-button = Batal
@@ -366,60 +265,39 @@ addon-detail-updates-radio-on = Aktif
 addon-detail-updates-radio-off = Nonaktif
 addon-detail-update-check-label = Periksa Versi Baru
 install-update-button = Perbarui
-# This is the tooltip text for the private browsing badge in about:addons. The
-# badge is the private browsing icon included next to the extension's name.
-addon-badge-private-browsing-allowed2 =
+addon-detail-group-label-updates =
+    .aria-label = { addon-detail-updates-label }
+addon-badge-private-browsing-allowed3 =
     .title = Diizinkan di jendela pribadi
-    .aria-label = { addon-badge-private-browsing-allowed2.title }
 addon-detail-private-browsing-help = Jika diizinkan, ekstensi akan memiliki akses ke aktivitas daring Anda saat menjelajah secara pribadi. <a data-l10n-name="learn-more">Pelajari lebih lanjut</a>
 addon-detail-private-browsing-allow = Izinkan
 addon-detail-private-browsing-disallow = Jangan Izinkan
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-# Used as a description for the option to allow or block an add-on on quarantined domains.
+addon-detail-group-label-private-browsing =
+    .aria-label = { detail-private-browsing-label }
 addon-detail-quarantined-domains-label = Jalankan pada situs yang dibatasi
-# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
+addon-detail-quarantined-domains-help = Jika diizinkan, ekstensi akan memiliki akses ke situs yang dibatasi oleh { -vendor-short-name }. Izinkan hanya jika Anda memercayai ekstensi ini.
+addon-detail-quarantined-domains-allow = Izinkan
+addon-detail-quarantined-domains-disallow = Jangan Izinkan
 addon-detail-group-label-quarantined-domains =
     .aria-label = { addon-detail-quarantined-domains-label }
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-addon-badge-recommended2 =
+addon-badge-recommended3 =
     .title = { -brand-product-name } hanya menyarankan ekstensi yang memenuhi standar keamanan dan kinerja kami.
-    .aria-label = { addon-badge-recommended2.title }
-# We hard code "Mozilla" in the string below because the extensions are built
-# by Mozilla and we don't want forks to display "by Fork".
-addon-badge-line3 =
+addon-badge-line4 =
     .title = Ekstensi resmi yang dibuat oleh Mozilla, memenuhi standar keamanan dan kinerja
-    .aria-label = { addon-badge-line3.title }
-addon-badge-verified2 =
+addon-badge-verified3 =
     .title = Ekstensi ini telah ditinjau untuk memenuhi standar keamanan dan kinerja kami
-    .aria-label = { addon-badge-verified2.title }
-
-##
-
 available-updates-heading = Versi Baru yang Tersedia
 recent-updates-heading = Versi Terkini
 release-notes-loading = Memuat…
 release-notes-error = Maaf, galat terjadi ketika memuat catatan rilis.
-addon-permissions-empty = Ekstensi ini tidak memerlukan izin apa pun
+addon-permissions-empty2 = Ekstensi ini tidak memerlukan izin apa pun.
 addon-permissions-required = Izin yang diperlukan untuk fungsi inti:
 addon-permissions-optional = Izin opsional untuk fungsi tambahan:
 addon-permissions-learnmore = Pelajari lebih lanjut tentang perizinan
 recommended-extensions-heading = Ekstensi yang Disarankan
 recommended-themes-heading = Tema yang Disarankan
-# Variables:
-#   $hostname (string) - Host where the permissions are granted
 addon-sitepermissions-required = Berikan kemampuan berikut untuk <span data-l10n-name="hostname">{ $hostname }</span>:
-# A recommendation for the Firefox Color theme shown at the bottom of the theme
-# list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Merasa kreatif? <a data-l10n-name="link">Buat tema Anda sendiri dengan Firefox Color.</a>
-
-## Page headings
-
 extension-heading = Kelola ekstensi Anda
 theme-heading = Kelola tema Anda
 plugin-heading = Kelola plugin Anda
@@ -434,41 +312,28 @@ addons-heading-search-input =
     .placeholder = Cari addons.mozilla.org
 addon-page-options-button =
     .title = Alat untuk semua pengaya
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (string) - Application version.
-details-notification-incompatible = { $name } tidak kompatibel dengan { -brand-short-name } { $version }.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } tidak kompatibel dengan { -brand-short-name } { $version }.
-details-notification-incompatible-link = Informasi Lebih Lanjut
-details-notification-unsigned-and-disabled = { $name } tidak dapat diverifikasi untuk digunakan di { -brand-short-name } dan telah dinonaktifkan.
 details-notification-unsigned-and-disabled2 =
     .message = { $name } tidak dapat diverifikasi untuk digunakan di { -brand-short-name } dan telah dinonaktifkan.
-details-notification-unsigned-and-disabled-link = Informasi Lebih Lanjut
-details-notification-unsigned = { $name } tidak dapat diverifikasi untuk digunakan di { -brand-short-name }. Lanjutkan dengan hati-hati.
 details-notification-unsigned2 =
     .message = { $name } tidak dapat diverifikasi untuk digunakan di { -brand-short-name }. Lanjutkan dengan hati-hati.
-details-notification-unsigned-link = Informasi Lebih Lanjut
-details-notification-blocked = { $name } telah dimatikan karena masalah keamanan atau kestabilan.
-details-notification-blocked2 =
-    .message = { $name } telah dimatikan karena masalah keamanan atau kestabilan.
-details-notification-blocked-link = Informasi Lebih Lanjut
-details-notification-softblocked = { $name } telah dikenali mengakibatkan masalah keamanan atau kestabilan.
-details-notification-softblocked2 =
-    .message = { $name } telah dikenali mengakibatkan masalah keamanan atau kestabilan.
-details-notification-softblocked-link = Informasi Lebih Lanjut
-details-notification-gmp-pending = { $name } akan diinstal sebentar lagi.
+details-notification-hard-blocked-extension =
+    .message = Ekstensi ini diblokir karena melanggar kebijakan Mozilla dan telah dinonaktifkan.
+details-notification-hard-blocked-other =
+    .message = Pengaya ini diblokir karena melanggar kebijakan Mozilla dan telah dinonaktifkan.
+details-notification-blocked-link2 = Lihat Detail
+details-notification-soft-blocked-extension-disabled =
+    .message = Ekstensi ini dibatasi karena melanggar kebijakan Mozilla dan telah dinonaktifkan. Anda dapat mengaktifkannya, tetapi ini mungkin berisiko.
+details-notification-soft-blocked-extension-enabled =
+    .message = Ekstensi ini melanggar kebijakan Mozilla. Menggunakannya mungkin berisiko.
+details-notification-soft-blocked-other-disabled =
+    .message = Pengaya ini dibatasi karena melanggar kebijakan Mozilla dan telah dinonaktifkan. Anda dapat mengaktifkannya, tetapi ini mungkin berisiko.
+details-notification-soft-blocked-other-enabled =
+    .message = Pengaya ini melanggar kebijakan Mozilla. Menggunakannya mungkin berisiko.
+details-notification-softblocked-link2 = Lihat Detail
 details-notification-gmp-pending2 =
     .message = { $name } akan diinstal sebentar lagi.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = Informasi lisensi
 plugins-gmp-privacy-info = Informasi Privasi
 plugins-openh264-name = Codec Video OpenH264 disediakan oleh Cisco Systems, Inc.

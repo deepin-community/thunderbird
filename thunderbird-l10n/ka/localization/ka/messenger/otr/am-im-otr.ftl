@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = გამჭოლი დაშიფვრა
 account-otr-label = არასაჯარო მიმოწერა, Off-the-Record (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     არ გამოჩნდება ჩვეულებრივ საუბრებში და არც აღირიცხება.
 otr-verify-nudge =
     .label = დამოწმების შეხსენება ყოველთვის, დაუმოწმებელი პირების შემთხვევაში.
-
 otr-not-yet-available = ჯერ არაა ხელმისაწვდომი
-

@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Ynghylch Cofnodi
 about-logging-page-title = Logging manager
 about-logging-current-log-file = Ffeil Cofnodi Cyfredol:
 about-logging-new-log-file = Ffeil cofnod newydd:
 about-logging-currently-enabled-log-modules = Modiwlau cofnod wedi'u galluogi ar hyn o bryd:
 about-logging-log-tutorial = Gw <a data-l10n-name="logging">HTTP Logging</a> am wybodaeth ar sut i ddefnyddio'r teclyn hwn.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Agor y cyfeiriadur
 about-logging-set-log-file = Gosod Ffeil Cofnodi
 about-logging-set-log-modules = Gosod Modiwlau Cofnodi
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Dim
 about-logging-no-log-file = Dim
 about-logging-logging-preset-selector-text = Rhagosodiad cofnodi:
 about-logging-with-profiler-stacks-checkbox = Galluogi olion stac ar gyfer negeseuon cofnodion
-
-## Logging presets
-
 about-logging-preset-networking-label = Rhwydweithio
 about-logging-preset-networking-description = Cofnodi modiwlau er mwyn datrys materion rhwydweithio
 about-logging-preset-networking-cookie-label = Cwcis
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Modiwlau cofnodi i wneud diagnosis o faterion WebGPU
 about-logging-preset-gfx-label = Graffigau
 about-logging-preset-gfx-description = Modiwlau cofnodi i wneud diagnosis o broblemau graffigau
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Cofnodi modiwlau i wneud diagnosis o faterion sy'n benodol i Microsoft Windows
 about-logging-preset-custom-label = Cyfaddas
 about-logging-preset-custom-description = Modiwlau cofnodion wedi'u dewis â llaw
-# Error handling
 about-logging-error = Gwall:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Gwerth annilys “{ $v }“ ar gyfer allwedd “{ $k }“
 about-logging-unknown-logging-preset = Rhagosodiad cofnodi anhysbys “{ $v }“
 about-logging-unknown-profiler-preset = Rhagosodiad proffiliwr anhysbys “{ $v }“

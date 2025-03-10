@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Неможливо встановити безпечне з'єднання через те, що протокол SSL вимкнено.
 psmerr-ssl2-disabled = Неможливо встановити безпечне з'єднання через те, що сайт використовує стару, ненадійну версію протоколу SSL.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Ви отримали недійсний сертифікат. Зверніться до адміністратора сервера чи адресата і передайте їм таку інформацію:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Сервер представив 
 mozilla-pkix-error-empty-issuer-name = Сервер представив сертифікат із порожньою розпізнаваною назвою видавця.
 mozilla-pkix-error-additional-policy-constraint-failed = Під час перевірки цього сертифіката виявлено порушення обмежень додаткової політики.
 mozilla-pkix-error-self-signed-cert = Сертифікат не є надійним, оскільки він самопідписаний.
+mozilla-pkix-error-issuer-no-longer-trusted = Центр сертифікації, який видав сертифікат, не був довіреним під час видачі сертифіката.
 xp-java-remove-principal-error = Не вдалося вилучити довірителя
 xp-java-delete-privilege-error = Не вдалося вилучити привілей
 xp-java-cert-not-exists-error = Цей довіритель не має сертифіката

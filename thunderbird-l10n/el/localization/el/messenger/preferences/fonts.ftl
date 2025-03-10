@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Γραμματοσειρές
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Προεπιλογή ({ $name })
 fonts-label-default-unnamed =
     .label = Προεπιλογή
-fonts-encoding-dialog-title =
-    .title = Γραμματοσειρές και κωδικοποίηση
 fonts-language-legend =
     .value = Γραμματοσειρές για:
     .accesskey = τ
 fonts-proportional-label =
     .value = Μεταβλητού πλάτους:
     .accesskey = β
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Λατινικά
 font-language-group-japanese =
@@ -30,7 +16,7 @@ font-language-group-japanese =
 font-language-group-trad-chinese =
     .label = Παραδοσιακά Κινεζικά (Ταϊβάν)
 font-language-group-simpl-chinese =
-    .label = Απλοποιημένα Κινεζικά
+    .label = Κινεζικά (Απλοποιημένα)
 font-language-group-trad-chinese-hk =
     .label = Παραδοσιακά Κινεζικά (Χονγκ Κονγκ)
 font-language-group-korean =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Σινχάλα
 font-language-group-tibetan =
     .label = Θιβετιανά
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = χ
 min-size-none =
     .label = Κανένα
-
-## Fonts in message
-
 font-control-legend = Έλεγχος γραμματοσειράς
 use-document-fonts-checkbox =
     .label = Να επιτρέπεται στα μηνύματα η χρήση άλλων γραμματοσειρών
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Χρήση γραμματοσειράς σταθερού πλάτους για μηνύματα απλού κειμένου
     .accesskey = ρ
-
-## Language settings
-
 text-encoding-legend = Κωδικοποίηση κειμένου
 text-encoding-description = Ρύθμιση της προεπιλεγμένης κωδικοποίησης χαρακτήρων για την αποστολή και λήψη αλληλογραφίας
 font-outgoing-email-label =

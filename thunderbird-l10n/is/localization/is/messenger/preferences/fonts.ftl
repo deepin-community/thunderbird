@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Leturgerðir
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Sjálfgefið ({ $name })
 fonts-label-default-unnamed =
     .label = Sjálfgefið
-fonts-encoding-dialog-title =
-    .title = Leturgerð og stafatöflur
 fonts-language-legend =
     .value = Letur fyrir:
     .accesskey = t
 fonts-proportional-label =
     .value = Hlutfallslegt:
     .accesskey = H
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latneskt
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Sinhala
 font-language-group-tibetan =
     .label = Tíbetskt
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = g
 min-size-none =
     .label = Engin
-
-## Fonts in message
-
 font-control-legend = Stjórna leturgerð
 use-document-fonts-checkbox =
     .label = Leyfa póstum að nota aðrar leturgerðir
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Nota leturgerð með fasta breidd fyrir venjuleg textaskilaboð
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Textakóðun
 text-encoding-description = Skilgreina sjálfgefna textakóðun fyrir útsendan og móttekin póst
 font-outgoing-email-label =

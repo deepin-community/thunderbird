@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 accounts-title = Cuentas de correo y noticias
 show-private-data-main-text = Incluye nombres de cuenta
 show-private-data-explanation-text = (posiblemente información de identificación)
@@ -16,6 +12,7 @@ accounts-default = ¿Predeterminado?
 identity-name = Identidad
 send-via-email = Enviar por correo electrónico
 app-basics-telemetry = Datos de telemetría
+app-basics-glean = Datos Glean
 app-basics-cache-use = Uso de caché
 mail-libs-title = Bibliotecas
 libs-table-heading-library = Biblioteca
@@ -27,3 +24,5 @@ libs-rnp-status-ok = Aceptar
 libs-rnp-status-load-failed = Falló al cargar. OpenPGP no funcionará.
 libs-rnp-status-incompatible = Versión incompatible. OpenPGP no funcionará.
 libs-rnp-status-unofficial = Versión no oficial. OpenPGP podría no funcionar como se esperaba.
+libs-otr-status-ok = Aceptar
+libs-otr-status-error = Imposible cargar. El cifrado del chat OTR no funcionará.

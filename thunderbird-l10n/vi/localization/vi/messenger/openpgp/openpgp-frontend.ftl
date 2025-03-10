@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Trình quản lý khóa OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Xác minh chữ ký
     .accesskey = V
 openpgp-has-sender-key = Thư này chứa khóa công khai OpenPGP của người gửi.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Cảnh báo: Khóa công khai OpenPGP mới trong thông báo này khác với các khóa công khai mà trước đây bạn đã chấp nhận cho { $email }.
 openpgp-import-sender-key =
     .label = Nhập…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Thư này đã được ký bằng một khóa mà bạn chưa có.
 openpgp-search-signature-key =
     .label = Khám phá…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Đây là thông báo OpenPGP dường như đã bị MS-Exchange làm hỏng và không thể sửa được thông báo này vì được mở từ một tập tin cục bộ. Sao chép thư vào một thư mục thư để thử sửa chữa tự động.
 openpgp-broken-exchange-info = Đây là thông báo OpenPGP dường như đã bị hỏng bởi MS-Exchange. Nếu nội dung thư không được hiển thị như mong đợi, bạn có thể thử sửa chữa tự động.
 openpgp-broken-exchange-repair =

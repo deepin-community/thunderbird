@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Talɣut ɣef izerfan-ik
 rights-intro = { -brand-full-name } d aseɣẓan ilelli yeldin, mahlent yifḍan n imţekkiyen deg umaḍal. Atan wayen issefk ad teẓreḍ:
 rights-intro-point-1 = { -brand-short-name } yellan akken llant tiskarin n<a data-l10n-name="mozilla-public-license-link">Turagt tazayezt n Mozilla</a>. Aya yebɣa ad d-yini tzemreḍ ad tqedceḍ, ad tneɣleḍ u ad tzuzreḍ { -brand-short-name } i wiyaḍ.  Tzemreḍ daɣen ad tesnifleḍ tangalt aɣbalu n { -brand-short-name } akken tesriḍ. Turagt tazayezt n Mozilla ad k-teǧǧ daɣen ad tzuzreḍ ileqman ittusniflen.

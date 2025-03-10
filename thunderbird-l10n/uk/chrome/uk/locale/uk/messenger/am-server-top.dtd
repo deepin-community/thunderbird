@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Сховище повідомлень">
 <!ENTITY securitySettings.label "Налаштування захисту">
 <!ENTITY serverSettings.label "Параметри сервера">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Порт:">
 <!ENTITY port.accesskey "П">
 <!ENTITY serverPortDefault.label "Типово:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Перевіряти наявність нових повідомлень кожні">
 <!ENTITY biffStart.accesskey "е">
 <!ENTITY biffEnd.label "хвилин">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Безпека з'єднання:">
 <!ENTITY connectionSecurity.accesskey "Б">
 <!ENTITY connectionSecurityType-0.label "Жодної">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, якщо є">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Метод автентифікації:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "у">
 <!ENTITY modelDeleteImmediately.label "Вилучити його одразу">
 <!ENTITY modelDeleteImmediately.accesskey "о">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Стискати теку «Вхідні» при виході">
 <!ENTITY expungeOnExit.accesskey "т">
 <!ENTITY emptyTrashOnExit.label "Очищати смітник під час виходу">
 <!ENTITY emptyTrashOnExit.accesskey "ч">
 <!ENTITY loginAtStartup.label "Перевіряти повідомлення під час запуску">
 <!ENTITY loginAtStartup.accesskey "в">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Питати перед завантаженням понад">
 <!ENTITY maxMessagesStart.accesskey "П">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "повідомлень">
 <!ENTITY alwaysAuthenticate.label "Завжди вимагати автентифікацію при з'єднанні з цим сервером">
 <!ENTITY alwaysAuthenticate.accesskey "З">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "О">
 <!ENTITY browseNewsrc.label "Огляд…">
 <!ENTITY browseNewsrc.accesskey "О">
-
 <!ENTITY accountTitle.label "Налаштування облікового запису">
 <!ENTITY accountSettingsDesc.label "Це особливий обліковий запис.  З ним не пов'язано жодних особистих даних.">
 <!ENTITY storeType.label "Тип зберігання повідомлень:">

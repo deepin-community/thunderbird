@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Upravitelj ključev OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Preveri veljavnost podpisa
     .accesskey = v
 openpgp-has-sender-key = To sporočilo naj bi vsebovalo pošiljateljev javni ključ OpenPGP.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Pozor: novi javni ključ OpenPGP v tem sporočilu se razlikuje od javnih ključev, ki ste jih doslej sprejemali za { $email }.
 openpgp-import-sender-key =
     .label = Uvozi …
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = To sporočilo je podpisano s ključem, ki ga še nimate.
 openpgp-search-signature-key =
     .label = Odkrij …
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = To je sporočilo OpenPGP, ki ga je očitno poškodoval MS-Exchange in ga ni mogoče popraviti, ker je bilo odprto iz krajevne datoteke. Kopirajte sporočilo v poštno mapo in poskusite s samodejnim popravilom.
 openpgp-broken-exchange-info = To je sporočilo OpenPGP, ki ga je očitno poškodoval MS-Exchange. Če vsebina sporočila ni prikazana po pričakovanju, lahko poskusite s samodejnim popravilom.
 openpgp-broken-exchange-repair =

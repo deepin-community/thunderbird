@@ -1,31 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Трака менија
     .accesskey = н
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Подешавања
     .accesskey = е
 menu-addons-and-themes =
     .label = Додаци и теме
     .accesskey = Д
-
-## Help Menu
-
 menu-help-help-title =
     .label = Помоћ
     .accesskey = { "" }
 menu-help-get-help =
     .label = Потражи помоћ
     .accesskey = { "" }
-menu-help-explore-features =
-    .label = Истражи могућности
-    .accesskey = м
 menu-help-shortcuts =
     .label = Пречице на тастатури
     .accesskey = ц
@@ -50,7 +37,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = О програму { -brand-short-name }
     .accesskey = п
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -62,7 +48,6 @@ menu-quit =
             [windows] з
            *[other] у
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Изађи из програма { -brand-shorter-name }
 system-tray-menu-quit =
@@ -71,14 +56,8 @@ system-tray-menu-quit =
             [windows] Изађи из { -brand-full-name }
            *[other] Затвори { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Непожељно
     .tooltiptext = Обележи изабране поруке као непожељне
@@ -91,21 +70,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Поништи брисање
     .tooltiptext = Поништи брисање изабраних порука
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Поправи кодирање текста
     .accesskey = к
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Заглавље површи фасцикли
     .accesskey = г
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Заглавље списка порука
     .accesskey = г
@@ -136,9 +106,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Просторна трака
     .accesskey = к
-
-## File
-
 file-new-newsgroup-account =
     .label = Налог новинске групе…
     .accesskey = у

@@ -1,10 +1,9 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Om skyfspasie te bespaar, moenie aflaai nie:">
 <!ENTITY doNotDownloadNntp.label "Om skyfspasie te bespaar, moenie vir aflyngebruik aflaai nie:">
 <!ENTITY doNotDownloadImap.label "Om skyfspasie te bespaar kan u stel watter grootte of ouderdom boodskappe van die bediener afgelaai word en as plaaslike kopieë gehou word.">
+<!ENTITY allFoldersOffline2.label "Keep messages in all folders for this account on this computer">
+<!ENTITY allFoldersOffline2.accesskey "o">
+<!ENTITY allFoldersOfflineNote.label "Note: Changing this affects all folders in this account. To set individual folders, use the Advanced… button.">
 <!ENTITY offlineNotDownload.label "Boodskappe groter as">
 <!ENTITY offlineNotDownload.accesskey "B">
 <!ENTITY autosyncNotDownload.label "Moenie boodskappe aflaai groter as">
@@ -35,24 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "G">
 <!ENTITY syncGroupTitle.label "Boodskapsinchronisering">
 <!ENTITY diskspaceGroupTitle.label "Skyfspasie">
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-
-<!ENTITY allAutosync.label               "Sinchroniseer alle boodskappe plaaslik, ongeag ouderdom">
-<!ENTITY allAutosync.accesskey           "c">
-<!ENTITY ageAutosyncBefore.label         "Sinchroniseer die mees onlangse">
-<!ENTITY ageAutosync.accesskey           "S">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Dae">
-<!ENTITY weekAgeInterval.label           "Weke">
-<!ENTITY monthAgeInterval.label          "Maande">
-<!ENTITY yearAgeInterval.label           "Jare">
-<!ENTITY ageAutosyncAfter.label          "">
-
-<!ENTITY allFoldersOffline2.label "Keep messages in all folders for this account on this computer">
-<!ENTITY allFoldersOffline2.accesskey "o">
-<!ENTITY allFoldersOfflineNote.label "Note: Changing this affects all folders in this account. To set individual folders, use the Advanced… button.">
+<!ENTITY allAutosync.label "Sinchroniseer alle boodskappe plaaslik, ongeag ouderdom">
+<!ENTITY allAutosync.accesskey "c">
+<!ENTITY ageAutosyncBefore.label "Sinchroniseer die mees onlangse">
+<!ENTITY ageAutosync.accesskey "S">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Dae">
+<!ENTITY weekAgeInterval.label "Weke">
+<!ENTITY monthAgeInterval.label "Maande">
+<!ENTITY yearAgeInterval.label "Jare">
+<!ENTITY ageAutosyncAfter.label "">

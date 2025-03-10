@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Đóng
 preferences-doc-title2 = Cài đặt
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Đồng bộ hóa
 category-sync =
     .tooltiptext = Đồng bộ hóa
+pane-qr-export-title = Xuất sang di động
+category-qr-export =
+    .tooltiptext = Xuất sang di động
 general-language-and-appearance-header = Ngôn ngữ & giao diện
 general-incoming-mail-header = Thư đến:
 general-files-and-attachment-header = Tập tin & đính kèm
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Cho phép { -brand-short-name } gửi dữ liệu kỹ thuật và tương tác tới { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Tìm hiểu thêm
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Dữ liệu báo cáo bị vô hiệu hóa với cấu hình này
 collection-backlogged-crash-reports =
     .label = Cho phép { -brand-short-name } thay bạn gửi các báo cáo sự cố còn tồn đọng
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Khởi động lại { -brand-short-name } để áp dụng những thay đổi này
 confirm-messenger-language-change-button = Áp dụng và khởi động lại
 update-setting-write-failure-title = Lỗi khi lưu tùy chọn cập nhật
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } đã gặp lỗi và đã không lưu thay đổi này. Lưu ý rằng thiết lập tùy chọn cập nhật này yêu cầu quyền ghi vào tập tin bên dưới. Bạn hoặc quản trị viên hệ thống có thể giải quyết lỗi bằng cách cấp cho nhóm người dùng toàn quyền kiểm soát tập tin này.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Đang cập nhật
 update-in-progress-message = Bạn có muốn { -brand-short-name } tiếp tục với bản cập nhật này không?
 update-in-progress-ok-button = &Loại bỏ
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Tiếp tục
 account-button = Cài đặt tài khoản
 open-addons-sidebar-button = Tiện ích mở rộng và chủ đề
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Để tạo mật khẩu chính, hãy nhập thông tin đăng nhập Windows của bạn. Điều này giúp bảo vệ tính bảo mật của tài khoản của bạn.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = tạo một mật khẩu chính
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Thêm nhà cung cấp OpenSearch
 add-opensearch-provider-text = Nhập URL của nhà cung cấp OpenSearch để thêm. Sử dụng URL trực tiếp của dập tin mô tả OpenSearch, hoặc một URL mànó có thể được tự động phát hiện.
 adding-opensearch-provider-failed-title = Thêm nhà cung cấp OpenSearch không thành công
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Không thể thêm nhà cung cấp OpenSearch cho { $url }.
 minimize-to-tray-label =
     .label = Khi { -brand-short-name } đã thu nhỏ, di chuyển nó vào khay
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Kiểm tra ngay…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Xác nhận đã nhận thư…
     .accesskey = R
 update-app-legend = Cập nhật { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Phiên bản { $version }
 allow-description = Cho phép { -brand-short-name }
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = b
 compact-folder-size =
     .value = MB tổng cộng
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Sử dụng tối đa
     .accesskey = U
 use-cache-after = MB dung lượng đĩa cho bộ đệm
-
-##
-
 smart-cache-label =
     .label = Ghi đè quản lý bộ đệm tự động
     .accesskey = v
@@ -304,7 +269,6 @@ color-options-button =
     .label = Màu sắc…
     .accesskey = C
 display-width-legend = Thư văn bản thuần túy
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Hiển thị biểu tượng cảm xúc dưới dạng đồ họa
     .accesskey = e
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Xem tập tin đính kèm nội tuyến
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Sau khi hiển thị
     .accesskey = d
 seconds-label = giây
-
-##
-
 open-msg-label =
     .value = Mở thư trong:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Đóng cửa sổ thư/thẻ khi di chuyển hoặc xóa
     .accesskey = C
-display-name-label =
-    .value = Tên hiển thị:
 address-display-legend = Danh sách thư
 address-display-description = Định dạng hiển thị địa chỉ ưa thích:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Chỉ hiển thị tên cho những người trong sổ địa chỉ của tôi
     .accesskey = S
-
-## Compose Tab
-
+table-layout-legend = Chế độ xem bảng
+table-layout-horizontal-scroll-label =
+    .label = Cho phép cuộn ngang
+    .accesskey = h
+conversation-view-legend = Chế độ xem hội thoại
+conversation-view-checkbox-label =
+    .label = Bật chế độ xem hội thoại
+    .accesskey = c
+conversation-view-checkbox-description = Tính năng thử nghiệm dựa trên Gloda, bạn tự chịu rủi ro khi sử dụng
+label-experiment = Thử nghiệm
+account-hub-legend = Trung tâm tài khoản
+account-hub-checkbox-label =
+    .label = Thêm tài khoản trong trung tâm tài khoản mới
+    .accesskey = C
+account-hub-checkbox-description = Thử nghiệm giao diện thêm tài khoản thư mới
 forward-label =
     .value = Chuyển tiếp thư:
     .accesskey = y
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = thêm phần mở rộng cho tên tập tin
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Tự động lưu mỗi
     .accesskey = A
 auto-save-end = phút
-
-##
-
 warn-on-send-accel-key =
     .label = Xác nhận khi sử dụng phím tắt để gửi thư
     .accesskey = C
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Tìm thêm nhà cung cấp…
 cloud-account-description = Thêm dịch vụ lưu trữ Filelink mới
-
-## Privacy Tab
-
 mail-content = Nội dung thư
 remote-content-label =
     .label = Cho phép nội dung từ xa trong thư
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Hiện cookie…
     .accesskey = S
-do-not-track-label =
-    .label = Gửi tín hiệu “Không theo dõi” tới trang web để cho biết bạn không muốn bị theo dõi
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Yêu cầu trang web không bán hoặc chia sẻ dữ liệu của tôi
     .accesskey = n
-dnt-learn-more-button =
-    .value = Tìm hiểu thêm
+do-not-track-removal = Chúng tôi không còn hỗ trợ tín hiệu “Không theo dõi”
 passwords-description = { -brand-short-name } có thể ghi nhớ mật khẩu cho tất cả tài khoản của bạn.
 passwords-button =
     .label = Mật khẩu đã lưu…
@@ -571,7 +528,6 @@ primary-password-description = Mật khẩu chính bảo vệ tất cả mật k
 primary-password-label =
     .label = Sử dụng mật khẩu chính
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Yêu cầu thiết bị đăng nhập để điền và quản lý mật khẩu
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Bạn hiện đang ở chế độ FIPS. FIPS yêu cầu tính năng mật khẩu chính.
 forms-master-pw-fips-desc = Thay đổi mật khẩu không thành công
 junk-description = Đặt cài đặt thư rác mặc định của bạn. Cài đặt thư rác dành riêng cho tài khoản có thể được định cấu hình trong cài đặt tài khoản.
-junk-label =
-    .label = Khi tôi đánh dấu thư là thư rác:
-    .accesskey = W
 junk-marked-label =
     .label = Khi thư được đánh dấu là thư rác:
     .accesskey = W
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Xóa chúng
     .accesskey = D
-junk-read-label =
-    .label = Đánh dấu thư được xác định là thư rác khi đọc
-    .accesskey = M
 junk-read-description = Đánh dấu thư là đã đọc
 junk-read-manual-label =
     .label = Khi được đánh dấu thủ công là rác
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Các quyết định tự động có thể bị ghi đè bằng cách bật hoặc tắt mã hóa theo cách thủ công khi soạn thư.
     Lưu ý: mã hóa luôn được bật tự động khi trả lời thư được mã hóa.
-
-## Chat Tab
-
 startup-label =
     .value = Khi { -brand-short-name } khởi động:
     .accesskey = s
@@ -661,20 +608,10 @@ offline-label =
     .label = Giữ tài khoản trò chuyện của tôi ngoại tuyến
 auto-connect-label =
     .label = Tự động kết nối tài khoản trò chuyện của tôi
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Hãy để những người liên hệ của tôi biết rằng tôi đang nhàn rỗi sau
     .accesskey = I
 idle-time-label = phút không hoạt động
-
-##
-
 away-message-label =
     .label = và đặt trạng thái của tôi thành vắng với thông báo trạng thái này:
     .accesskey = A
@@ -736,41 +673,21 @@ no-preview-description = Chủ đề này không hợp lệ hoặc hiện không
 chat-variant-label =
     .value = Biến thể:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Tìm trong Cài đặt
-
-## Settings UI Search Results
-
 search-results-header = Kết quả tìm kiếm
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Xin lỗi! Không có kết quả nào trong Tùy chọn cho “<span data-l10n-name="query"></span>”.
        *[other] Xin lỗi! Không có kết quả nào trong Cài đặt cho “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Cần trợ giúp? Đi đến <a data-l10n-name="url">Hỗ trợ { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Mang trang web theo bạn
 sync-signedout-description = Đồng bộ hóa tài khoản, sổ địa chỉ, lịch, tiện ích mở rộng và cài đặt trên tất cả các thiết bị của bạn.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Đăng nhập để đồng bộ hóa…
 sync-pane-header = Đồng bộ hóa
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” chưa được xác minh.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Vui lòng đăng nhập để kết nối lại “{ $userEmail }”
 sync-pane-resend-verification = Gửi lại xác minh
 sync-pane-sign-in = Đăng nhập
@@ -800,3 +717,33 @@ synced-acount-item-filters = Bộ lọc
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Đồng bộ hóa tài khoản email, sổ địa chỉ, lịch và danh tính trên tất cả các thiết bị của bạn.
 sync-disconnected-turn-on-sync = Bật Đồng bộ hóa…
+qr-export-pane-header = Xuất tài khoản sang { -brand-product-name } di động
+qr-export-description = Nhanh chóng chuyển cài đặt tài khoản của bạn từ máy tính để bàn sang thiết bị di động bằng cách tạo mã QR. Chọn những tài khoản sẽ bao gồm, quyết định xem bạn có muốn chuyển mật khẩu của mình hay không và quét mã bằng thiết bị di động của bạn. Nhanh chóng, an toàn và đơn giản.
+qr-export-get-app = Chưa có { -brand-product-name } trên di động? <a data-l10n-name="app-link">Tải nó trên Google Play</a>
+qr-export-create = Tạo một mã QR để xuất tài khoản của bạn
+qr-export-select-accounts = Chọn tài khoản để xuất:
+qr-export-no-accounts = Không thấy tất cả tài khoản của bạn? Một số tài khoản có thể bị vô hiệu hóa vì chúng không được hỗ trợ bởi { -brand-product-name } trên Android. <a data-l10n-name="account-support-link">Hỗ trợ</a>
+qr-export-accounts-legend = Tài khoản email
+qr-export-select-all-accounts = Chọn tất cả
+qr-export-security-legend = Bảo mật
+qr-export-include-passwords = Bao gồm tất cả mật khẩu tài khoản
+qr-export-oauth-warning = Một số tài khoản của bạn sử dụng phương thức xác minh có thể yêu cầu xác minh lại trên thiết bị di động của bạn. Bạn có thể cần phải nhập lại mật khẩu của mình trong quá trình này.
+qr-export-security-hint = Bằng cách quét các mã QR sau, cài đặt tài khoản của bạn—bao gồm email và mật khẩu của bạn—sẽ được di chuyển một cách an toàn. Chúng tôi không thu thập, lưu trữ hoặc chia sẻ bất kỳ dữ liệu nào trong quá trình này. Việc chuyển giao xảy ra trực tiếp giữa các thiết bị của bạn.
+qr-export-security-warning = Để bảo mật cho bạn, vui lòng đảm bảo bạn đang ở chế độ riêng tư và chỉ quét mã QR từ các nguồn đáng tin cậy.
+qr-export-start-export = Xuất
+qr-export-scan-progress = { $step } trong số { $count } mã QR
+qr-export-scan-description = Quét mã QR bằng { -brand-product-name } trên thiết bị di động của bạn
+qr-export-scan-step1 = Mở { -brand-product-name } trên thiết bị di động của bạn
+qr-export-scan-step2 = Đi đến cài đặt
+qr-export-scan-step3 = Chọn <strong>Nhập cài đặt</strong>
+qr-export-scan-step4-revision = Nhấn <strong>Quét mã QR</strong> và giữ camera của điện thoại của bạn vào mã này
+qr-export-back = Quay lại
+qr-export-next = Tiếp
+qr-export-done = Xong
+qr-export-summary-description = Đã xuất tài khoản. Tiếp tục trên thiết bị di động của bạn.
+qr-export-summary-title = Tóm tắt xuất:
+qr-export-summary-qr-count = { $count } mã QR đã được tạo
+qr-export-summary-accounts = { $count } tài khoản đã xuất:
+qr-export-summary-passwords-included = Đã bao gồm mật khẩu
+qr-export-summary-passwords-excluded = Đã loại trừ mật khẩu
+qr-export-more-accounts = Xuất tài khoản khác

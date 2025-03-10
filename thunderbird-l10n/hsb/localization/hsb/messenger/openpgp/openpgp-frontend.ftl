@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Zrjadowak OpenPGP-klučow
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Signaturu přepruwować
     .accesskey = S
 openpgp-has-sender-key = Tuta powěsć twjerdźi, zo zjawny OpenPGP-kluč wotpósłowarja wobsahuje.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Warnowanje: Nowy zjawny OpenPGP-kluč w tutej powěsći so wot zjawnych klučow rozeznawa, kotrež sće do toho za { $email } akceptował.
 openpgp-import-sender-key =
     .label = Importować…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Tuta powěsć je so z klučom signowała, kotryž hišće nimaće.
 openpgp-search-signature-key =
     .label = Namakać…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = To je powěsć OpenPGP, kotraž je so po wšěm zdaću přez MS-Exchange wobškodźiła a njeda so porjedźić, dokelž je so z lokalneje dataje wočiniła. Kopěrujće powěsć do póstoweho rjadowaka, zo byšće awtomatiske porjedźenje spytał.
 openpgp-broken-exchange-info = To je OpenPGP-powěsć, kotraž je so po zdaću přez MS-Exchange wobškodźiła. Jeli wobsah powěsće so kaž wočakowane njepokazuje, móžeće awtomatiske porjedźenje spytać.
 openpgp-broken-exchange-repair =

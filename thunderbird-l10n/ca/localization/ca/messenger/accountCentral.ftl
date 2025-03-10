@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Us donem la benvinguda al { -brand-full-name }
 account-settings = Paràmetres del compte
-#   $accounts (Number) - the number of configured accounts
 setup-title =
     { $accounts ->
         [0] Trieu què voleu configurar
@@ -41,7 +36,6 @@ import-label = Importa
     .aria-label = Importeu dades d'altres programes
 about-paragraph = El Thunderbird és el gestor de correu i calendari líder de codi obert, multiplataforma i gratuït per a ús comercial i personal. Volem garantir-ne la seguretat i millorar-lo. Un donatiu ens permetrà contractar desenvolupadors, pagar la infraestructura i seguir millorant.
 about-paragraph-consider-donation = <b>El Thunderbird se subvenciona mitjançant els donatius dels usuaris. Si us agrada el Thunderbird, considereu fer un donatiu.</b> La millor forma de garantir la continuïtat del Thunderbird és <a data-l10n-name="donation-link">fent un donatiu</a>.
-explore-link = Exploreu les funcions
 support-link = Assistència
 involved-link = Col·laboreu-hi
 developer-link = Documentació per a desenvolupadors

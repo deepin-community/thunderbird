@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = afarščina
 language-name-ab = abhaščina
 language-name-ach = ačolijščina
@@ -207,7 +203,7 @@ language-name-vo = volapuk
 language-name-wa = valonščina
 language-name-wen = lužiščina
 language-name-wo = volofščina
-language-name-xh = koščina
+language-name-xh = kojsanščina
 language-name-yi = jidiš
 language-name-yo = jorubščina
 language-name-za = džuanščina

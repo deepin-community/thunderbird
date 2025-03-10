@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-crashreporter-title = Nosozlik xabarchisi
-crashreporter-crash-message = { -brand-short-name }da muammo mavjud, shuning uchun nosozlik yuz berdi.
 crashreporter-plea = Tashxis qo‘yishimiz va muammoni hal qilishimiz uchun bizga nosozlik ma’lumotini jo‘natishingiz kerak.
-# $details (String) - the reason that a crash report cannot be submitted
-crashreporter-error-details = Batafsil ma’lumotlar: { $details }
 crashreporter-no-run-message = Ilova dasturi nosozlikdan so‘ng ushbu muammo haqida dastur ishlab chiqaruvchiga xabar berish uchun ishga tushirilgan. U to‘g‘ridan to‘g‘ri ishga tushirilmasligi kerak.
 crashreporter-button-details = Tafsilotlar...
 crashreporter-view-report-title = Hisobot tarkibi
@@ -21,8 +13,4 @@ crashreporter-button-quit = { -brand-short-name }dan chiqish
 crashreporter-button-restart = { -brand-short-name }ni qayta ishga tushirish
 crashreporter-button-ok = OK
 crashreporter-button-close = Yopish
-# $id (String) - the crash id from the server, typically a UUID
 crashreporter-crash-identifier = Nosozlik ID raqami: { $id }
-
-# Error strings
-

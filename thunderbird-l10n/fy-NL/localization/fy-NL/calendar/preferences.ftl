@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Aginda
 calendar-title-reminder = Omtinkens
 calendar-title-notification = Meldingen
@@ -9,10 +5,8 @@ calendar-title-category = Kategoryen
 dateformat-label =
     .value = Datumtekstformaat:
     .accesskey = f
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Lang: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Koart: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Freegje eardat barrens en taken fuort te smiten.
     .accesskey = g
-accessibility-legend = Tagonklikheid
-accessibility-colors-label =
-    .label = Kleuren optimalisearje foar tagonklikheid
-    .accesskey = o
 reminder-legend = As in alarm ôfgiet:
 reminder-play-checkbox =
     .label = In lûd ôfspylje

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Преместване нагоре
     .accesskey = П
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Добавяне
     .accesskey = Д
-messenger-languages-window2 =
-    .title = Настройки на езика на { -brand-short-name }
 messenger-languages-dialog-title = Настройки на езика на { -brand-short-name }
 messenger-languages-description = { -brand-short-name } ще използва първия език от списъка като език по подразбиране, а останалите при необходимост в зададения ред.
 messenger-languages-search = Търсене на други езици…

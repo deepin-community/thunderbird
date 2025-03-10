@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Zapri iskanje dogodkov in seznam dogodkov
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Ime koledarja
     .tooltiptext = Razvrsti po imenu koledarja
 calendar-event-listing-column-category =
     .label = Kategorija
     .tooltiptext = Razvrsti po kategoriji
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Končano
     .tooltiptext = Razvrsti po dokončanju
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Naziv
     .tooltiptext = Razvrsti po nazivu
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Dogodki v preteklosti
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Dogodki prihodnjih 6 mesecev
 calendar-event-listing-interval-next-12-months =
     .label = Dogodki prihodnjih 12 mesecev
+calendar-event-listing-interval-future =
+    .label = Vsi prihodnji dogodki
 calendar-event-listing-interval-all =
     .label = Vsi dogodki
 calendar-event-listing-interval-selected-day =

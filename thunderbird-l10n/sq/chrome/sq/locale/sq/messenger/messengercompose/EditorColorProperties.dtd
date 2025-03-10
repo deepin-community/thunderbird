@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Ngjyra dhe Sfond Faqeje">
 <!ENTITY pageColors.label "Ngjyra Faqeje">
 <!ENTITY defaultColorsRadio.label "Ngjyrat parazgjedhje të lexuesit (Mos cakto ngjyra për faqen)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Përdor ngjyra vetjake:">
 <!ENTITY customColorsRadio.accessKey "P">
 <!ENTITY customColorsRadio.tooltip "Këto ngjyra veprojnë tej rregullimeve të lexuesit për shfletuesin">
-
 <!ENTITY normalText.label "Tekst normal">
 <!ENTITY normalText.accessKey "N">
 <!ENTITY linkText.label "Tekst lidhjeje">

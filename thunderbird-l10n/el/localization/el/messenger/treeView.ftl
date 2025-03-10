@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Πλαίσιο επιλογής για εναλλαγή επιλογής της τρέχουσας γραμμής
     .title = Επιλογή της τρέχουσας γραμμής
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Επαναφορά της τρέχουσας γραμμής
 tree-list-view-column-picker =
     .title = Επιλέξτε στήλες προς εμφάνιση
-tree-list-view-column-picker-restore =
-    .label = Επαναφορά σειράς στηλών
 tree-list-view-column-picker-restore-default-columns =
     .label = Επαναφορά προεπιλεγμένων στηλών
 tree-list-view-row-thread-button =

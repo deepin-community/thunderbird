@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "צבעים ורקע של הדף">
 <!ENTITY pageColors.label "צבעי הדף">
 <!ENTITY defaultColorsRadio.label "צבעי ברירת המחדל של הקורא (אל תגדיר צבעים בדף)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "השתמש בצבעים מותאמים אישית:">
 <!ENTITY customColorsRadio.accessKey "מ">
 <!ENTITY customColorsRadio.tooltip "הגדרות צבעים אלו גוברות על הגדרות הדפדפן של הצופה">
-
 <!ENTITY normalText.label "טקסט רגיל">
 <!ENTITY normalText.accessKey "N">
 <!ENTITY linkText.label "טקסט קישור">

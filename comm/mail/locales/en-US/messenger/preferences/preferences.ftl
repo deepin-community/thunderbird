@@ -14,6 +14,10 @@ pane-general-title = General
 category-general =
     .tooltiptext = { pane-general-title }
 
+pane-appearance-title = Appearance
+category-appearance =
+    .tooltiptext = { pane-appearance-title }
+
 pane-compose-title = Composition
 category-compose =
     .tooltiptext = Composition
@@ -33,6 +37,10 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sync
+
+pane-qr-export-title = Export for Mobile
+category-qr-export =
+    .tooltiptext = Export for Mobile
 
 general-language-and-appearance-header = Language & Appearance
 
@@ -534,6 +542,41 @@ condensed-addresses-label =
     .label = Show only display name for people in my address book
     .accesskey = S
 
+table-layout-legend = Table View
+
+table-layout-horizontal-scroll-label =
+    .label = Allow horizontal scroll
+    .accesskey = h
+
+conversation-view-legend = Conversation view
+
+conversation-view-checkbox-label =
+    .label = Enable conversation view
+    .accesskey = c
+conversation-view-checkbox-description = Experimental feature based on Gloda, use it at your own risk
+
+label-experiment = Experimental
+
+dark-message-mode-legend = Message reader style
+
+dark-message-mode-checkbox-label =
+    .label = Enable dark message mode
+    .accesskey = d
+dark-message-mode-checkbox-description = Experimental feature to make the message body follow dark themes
+
+dark-message-mode-toggle-label =
+    .label = Show dark message mode toggle
+    .accesskey = t
+dark-message-mode-toggle-description = Show a toggle in the message header to quickly disable the dark message mode
+
+account-hub-legend = Account hub
+
+account-hub-checkbox-label =
+    .label = Create accounts in the new Account Hub
+    .accesskey = C
+
+account-hub-checkbox-description = Experimental new mail account creation flow
+
 ## Compose Tab
 
 forward-label =
@@ -728,12 +771,16 @@ cookies-button =
     .label = Show Cookies…
     .accesskey = S
 
-do-not-track-label =
-    .label = Send websites a “Do Not Track” signal that you don’t want to be tracked
+# Do not translate.
+# "Global Privacy Control" or "GPC" are a web platform feature name and abbreviation
+# included to facilitate power-user search of the about:preferences page.
+global-privacy-control-search = Global Privacy Control (GPC)
+
+global-privacy-control-description =
+    .label = Tell websites not to sell or share my data
     .accesskey = n
 
-dnt-learn-more-button =
-    .value = Learn more
+do-not-track-removal = We no longer support the “Do Not Track” signal
 
 passwords-description = { -brand-short-name } can remember passwords for all of your accounts.
 
@@ -1047,3 +1094,207 @@ synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Synchronize your email accounts, address books, calendars, and identities across all your devices.
 
 sync-disconnected-turn-on-sync = Turn on Syncing…
+
+## Mobile QR Export Pane
+
+qr-export-pane-header = Export accounts to { -brand-product-name } Mobile
+
+qr-export-description = Quickly transfer your account settings from desktop to mobile by generating a QR code. Select which accounts to include, decide if you want to transfer your password, and scan the code with your mobile device. Fast, secure, and simple.
+
+qr-export-get-app = Don’t have { -brand-product-name } on mobile yet? <a data-l10n-name="app-link">Get it on Google Play</a>
+
+qr-export-create = Create a QR code to export your accounts
+
+qr-export-select-accounts = Select which accounts to export:
+
+qr-export-no-accounts = Not seeing all your accounts? Some accounts may be disabled because they are not supported by { -brand-product-name } for Android. <a data-l10n-name="account-support-link">Support</a>
+
+qr-export-accounts-legend = Email accounts
+
+qr-export-select-all-accounts = Select all
+
+qr-export-security-legend = Security
+
+qr-export-include-passwords = Include all accounts passwords
+
+qr-export-oauth-warning = Some of your accounts use an authentication method that may require re-authentication on your mobile device. You may need to enter your passwords again during this process.
+
+qr-export-security-hint = By scanning the following QR codes, your account settings—including your email and password—will be transferred securely. We do not collect, store, or share any of this data during the process. The transfer occurs directly between your devices.
+
+qr-export-security-warning = For your security, please ensure you are in a private setting and only scan QR codes from trusted sources.
+
+qr-export-start-export = Export
+
+# Variables:
+# $count (Number) - Total number of QR codes to step through.
+# $step (Number) - Current step number of the QR code displayed.
+qr-export-scan-progress = { $count ->
+    [one] { $step } of { $count } QR code
+    *[other] { $step } of { $count } QR codes
+}
+
+# Variables:
+# $count (Number) - Total number of QR codes to step through.
+qr-export-scan-description = { $count ->
+    [one] Scan QR code with { -brand-product-name } on your mobile device
+    *[other] Scan QR codes with { -brand-product-name } on your mobile device
+}
+
+qr-export-scan-step1 = Open { -brand-product-name } on your mobile device
+qr-export-scan-step2 = Go to settings
+
+# The strong label should match https://hosted.weblate.org/translate/tb-android/settings-import/en/?checksum=bd1817a6fc9f758b&sort_by=-priority,position#translations
+qr-export-scan-step3 = Select <strong>Import settings</strong>
+
+# The strong label should match https://hosted.weblate.org/translate/tb-android/settings-import/en/?checksum=0db0b6c1d176a59b&sort_by=-priority,position#translations
+qr-export-scan-step4-revision = Tap <strong>Scan QR code</strong> and hold your phone over this code
+
+qr-export-back = Back
+
+qr-export-next = Next
+
+qr-export-done = Done
+
+qr-export-summary-description = Accounts exported. Continue on your mobile device.
+
+qr-export-summary-title = Export summary:
+
+# Variables:
+# $count (Number) - Total number of QR codes shown to the user.
+qr-export-summary-qr-count = { $count ->
+    [one] { $count } QR code generated
+    *[other] { $count } QR codes generated
+}
+
+# Variables:
+# $count (Number) - Number of accounts included in the export.
+qr-export-summary-accounts = { $count ->
+    [one] { $count } account exported:
+    *[other] { $count } accounts exported:
+}
+
+qr-export-summary-passwords-included = Passwords included
+
+qr-export-summary-passwords-excluded = Passwords excluded
+
+qr-export-more-accounts = Export more accounts
+
+## Appearance Tab
+
+appearance-category-header = Appearance
+
+default-message-list-legend = Message List
+
+default-message-list-description = Define the default sorting and threading options for newly created folders.
+
+default-flag-label =
+    .value = Default Threading:
+
+default-flag-unthreaded =
+    .label = Unthreaded
+
+default-flag-threaded =
+    .label = Threaded
+
+default-flag-grouped =
+    .label = Grouped by Sort
+
+default-sort-label = Default Sort by:
+
+default-sort-date =
+    .label = Date
+
+default-sort-subject =
+    .label = Subject
+
+default-sort-from =
+    .label = From
+
+default-sort-id =
+    .label = ID
+
+default-sort-thread =
+    .label = Thread
+
+default-sort-priority =
+    .label = Priority
+
+default-sort-status =
+    .label = Status
+
+default-sort-size =
+    .label = Size
+
+default-sort-star =
+    .label = Star
+
+default-sort-unread =
+    .label = Read
+
+default-sort-recipient =
+    .label = Recipient
+
+default-sort-location =
+    .label = Location
+
+default-sort-tags =
+    .label = Tags
+
+default-sort-spam =
+    .label = Spam Status
+
+default-sort-attachments =
+    .label = Attachments
+
+default-sort-account =
+    .label = Account
+
+default-sort-received =
+    .label = Order Received
+
+default-sort-correspondents =
+    .label = Correspondents
+
+default-order-label = Default Sort Order:
+
+default-sort-ascending =
+    .label = Ascending
+
+default-sort-ascending-description = New messages at the bottom
+
+default-sort-descending =
+    .label = Descending
+
+default-sort-descending-description = New messages at the top
+
+apply-sort-label = Apply these settings to:
+
+apply-sort-to-all-button =
+    .label = All existing folders
+    .accesskey = A
+
+choose-apply-sort-button =
+    .label = Choose…
+    .accesskey = C
+
+apply-current-view-to-folder =
+    .label = Folder…
+
+apply-current-view-to-folder-children =
+    .label = Folder and its children…
+
+apply-changes-prompt-title = Apply Changes?
+
+apply-changes-prompt-message = Apply the current threading and sorting settings to all folders?
+
+# Variables:
+#  $name (String): The name of the folder to apply to.
+apply-changes-prompt-folder-message = Apply the current threading and sorting settings to “{ $name }”?
+
+# Variables:
+#  $name (String): The name of the folder to apply to.
+apply-changes-prompt-folder-children-message = Apply the current threading and sorting settings to “{ $name }” and its children?
+
+apply-current-view-error = Unable to apply current view settings
+
+apply-current-view-success = Current view settings applied successfully

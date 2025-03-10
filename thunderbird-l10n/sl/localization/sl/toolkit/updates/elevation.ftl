@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-# This is temporary until bug 1521632 is fixed
-
 elevation-update-wizard =
     .title = Posodobitev programske opreme
 elevation-details-link-label =
@@ -20,3 +15,8 @@ elevation-more-elevated =
     nameščena, ko se { -brand-short-name } naslednjič zažene. { -brand-short-name }
     lahko ponovno zaženete zdaj, nadaljujete z delom in ga ponovno zaženete
     pozneje ali zavrnete to posodobitev.
+sandbox-missing-unprivileged-namespaces = Nekatere varnostne funkcije { -brand-short-name(sklon: "rodilnik") } lahko v trenutnem operacijskem sistemu nudijo manjšo zaščito.
+sandbox-unprivileged-namespaces-dismiss-button =
+    .label = Ne prikazuj več
+    .accesskey = N
+sandbox-unprivileged-namespaces-howtofix = Kako odpraviti to težavo

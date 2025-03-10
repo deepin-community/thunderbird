@@ -1,70 +1,246 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Send Format
-
-# Addressing widget
-
-#   $type (String) - the type of the addressing row
-#   $count (Number) - the number of address pills currently present in the addressing row
+compose-send-format-menu =
+    .label = Format Pengiriman
+    .accesskey = F
+compose-send-auto-menu-item =
+    .label = Otomatis
+    .accesskey = a
+compose-send-both-menu-item =
+    .label = Baik HTML maupun Teks Polos
+    .accesskey = B
+compose-send-html-menu-item =
+    .label = Hanya HTML
+    .accesskey = H
+compose-send-plain-menu-item =
+    .label = Hanya Teks Polos
+    .accesskey = P
+remove-address-row-button =
+    .title = Hapus bidang { $type }
 address-input-type-aria-label =
     { $count ->
        *[other] { $type } dengan { $count } alamat, gunakan panah kiri untuk memfokuskan.
     }
-
-#   $email (String) - the email address
-#   $count (Number) - the number of address pills currently present in the addressing row
 pill-aria-label =
     { $count ->
        *[other] { $email }, 1 dari { $count }: tekan Enter untuk mengedit, Delete untuk menghapus.
     }
-
+pill-tooltip-invalid-address = { $email } bukan alamat surel yang valid
+pill-tooltip-not-in-address-book = { $email } tidak ada dalam buku alamat Anda
 pill-action-edit =
     .label = Edit Alamat
     .accesskey = E
-
+pill-action-select-all-sibling-pills =
+    .label = Pilih Semua Alamat di { $type }
+    .accesskey = A
+pill-action-select-all-pills =
+    .label = Pilih Semua Alamat
+    .accesskey = S
 pill-action-move-to =
     .label = Pindahkan ke Kepada
     .accesskey = k
-
 pill-action-move-cc =
     .label = Pindahkan ke CC
     .accesskey = C
-
 pill-action-move-bcc =
     .label = Pindahkan ke BCC
     .accesskey = B
-
-# Attachment widget
-
-# Reorder Attachment Panel
-
+pill-action-expand-list =
+    .label = Bentangkan Daftar
+    .accesskey = e
+ctrl-cmd-shift-pretty-prefix =
+    { PLATFORM() ->
+        [macos] ⇧ ⌘{ " " }
+       *[other] Ctrl+Shift+
+    }
+trigger-attachment-picker-key = L
+toggle-attachment-pane-key = M
+menuitem-toggle-attachment-pane =
+    .label = Panel Lampiran
+    .accesskey = m
+    .acceltext = { ctrl-cmd-shift-pretty-prefix } { toggle-attachment-pane-key }
+toolbar-button-add-attachment =
+    .label = Lampirkan
+    .tooltiptext = Tambahkan Lampiran ({ ctrl-cmd-shift-pretty-prefix } { trigger-attachment-picker-key })
+add-attachment-notification-reminder2 =
+    .label = Tambahkan Lampiran…
+    .accesskey = a
+    .tooltiptext = { toolbar-button-add-attachment.tooltiptext }
+menuitem-attach-files =
+    .label = Berkas…
+    .accesskey = B
+    .acceltext = { ctrl-cmd-shift-pretty-prefix } { trigger-attachment-picker-key }
+context-menuitem-attach-files =
+    .label = Lampirkan Berkas…
+    .accesskey = B
+    .acceltext = { ctrl-cmd-shift-pretty-prefix } { trigger-attachment-picker-key }
+context-menuitem-attach-vcard =
+    .label = vCard saya
+    .accesskey = C
+context-menuitem-attach-openpgp-key =
+    .label = Kunci Publik OpenPGP Saya
+    .accesskey = K
+attachment-bucket-count-value =
+    { $count ->
+        [1] { $count } Lampiran
+       *[other] { $count } Lampiran
+    }
+attachment-area-show =
+    .title = Tampilkan panel lampiran ({ ctrl-cmd-shift-pretty-prefix } { toggle-attachment-pane-key })
+attachment-area-hide =
+    .title = Sembunyikan panel lampiran ({ ctrl-cmd-shift-pretty-prefix } { toggle-attachment-pane-key })
+drop-file-label-attachment = Tambahkan sebagai lampiran
+drop-file-label-inline = Sisipkan ke baris
+move-attachment-first-panel-button =
+    .label = Pindahkan Pertama
+move-attachment-left-panel-button =
+    .label = Pindah ke Kiri
+move-attachment-right-panel-button =
+    .label = Pindahkan ke Kanan
+move-attachment-last-panel-button =
+    .label = Pindahkan Terakhir
 button-return-receipt =
     .label = Tanda Terima
     .tooltiptext = Minta tanda terima untuk pesan ini
-
-# Encryption
-
-# Addressing Area
-
-
-## Notifications
-
-## Editing
-
-# Tools
-
-## Filelink
-
-# Placeholder file
-
-# Template
-
-# Messages
-
-## Link Preview
-
-## Dictionary selection popup
-
+encryption-menu =
+    .label = Keamanan
+    .accesskey = K
+encryption-toggle =
+    .label = Enkripsi
+    .tooltiptext = Gunakan enkripsi ujung-ke-ujung untuk pesan ini
+encryption-options-openpgp =
+    .label = OpenPGP
+    .tooltiptext = Lihat atau ubah pengaturan enkripsi OpenPGP
+encryption-options-smime =
+    .label = S/MIME
+    .tooltiptext = Lihat atau ubah pengaturan enkripsi S/MIME
+signing-toggle =
+    .label = Tandatangani
+    .tooltiptext = Pakai penanda tanganan dijital untuk pesan ini
+menu-openpgp =
+    .label = OpenPGP
+    .accesskey = O
+menu-smime =
+    .label = S/MIME
+    .accesskey = S
+menu-encrypt =
+    .label = Enkripsikan
+    .accesskey = E
+menu-encrypt-subject =
+    .label = Enkripsikan Subjek
+    .accesskey = b
+menu-sign =
+    .label = Tandatangani Secara Dijital
+    .accesskey = i
+menu-manage-keys =
+    .label = Asisten Kunci
+    .accesskey = A
+menu-view-certificates =
+    .label = Lihat Sertifikat Penerima
+    .accesskey = f
+menu-open-key-manager =
+    .label = Manajer Kunci
+    .accesskey = M
+openpgp-key-issue-notification-from = Anda tidak menyiapkan untuk mengirim pesan terenkripsi ujung ke ujung dari { $addr }.
+openpgp-key-issue-notification-single = Enkripsi ujung-ke-ujung memerlukan penyelesaian masalah utama untuk { $addr }.
+openpgp-key-issue-notification-multi = Enkripsi ujung-ke-ujung memerlukan penyelesaian masalah utama untuk { $count } penerima.
+smime-cert-issue-notification-single = Enkripsi ujung-ke-ujung memerlukan penyelesaian masalah sertifikat untuk { $addr }.
+smime-cert-issue-notification-multi = Enkripsi ujung-ke-ujung memerlukan penyelesaian masalah sertifikat untuk { $count } penerima.
+key-notification-disable-encryption =
+    .label = Jangan Enkripsi
+    .accesskey = J
+    .tooltiptext = Nonaktifkan enkripsi ujung ke ujung
+key-notification-resolve =
+    .label = Selesaikan…
+    .accesskey = S
+    .tooltiptext = Buka Asisten Kunci OpenPGP
+can-encrypt-smime-notification = Enkripsi ujung-ke-ujung S/MIME dimungkinkan.
+can-encrypt-openpgp-notification = Enkripsi ujung-ke-ujung OpenPGP dimungkinkan.
+can-e2e-encrypt-button =
+    .label = Enkripsikan
+    .accesskey = E
+to-address-row-label =
+    .value = Kepada
+show-to-row-main-menuitem =
+    .label = Bidang Kepada
+    .accesskey = K
+    .acceltext = { ctrl-cmd-shift-pretty-prefix } { $key }
+show-to-row-extra-menuitem =
+    .label = Kepada
+    .accesskey = K
+show-to-row-button = Kepada
+    .title = Tampilkan Bidang Kepada ({ ctrl-cmd-shift-pretty-prefix } { $key })
+cc-address-row-label =
+    .value = Cc
+show-cc-row-main-menuitem =
+    .label = Bidang Cc
+    .accesskey = C
+    .acceltext = { ctrl-cmd-shift-pretty-prefix } { $key }
+show-cc-row-extra-menuitem =
+    .label = Cc
+    .accesskey = C
+show-cc-row-button = Cc
+    .title = Tampilkan Bidang Cc ({ ctrl-cmd-shift-pretty-prefix }{ $key })
+bcc-address-row-label =
+    .value = Bcc
+show-bcc-row-main-menuitem =
+    .label = Bidang Bcc
+    .accesskey = B
+    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
+show-bcc-row-extra-menuitem =
+    .label = Bcc
+    .accesskey = B
+show-bcc-row-button = Bcc
+    .title = Tampilkan Bidang Bcc ({ ctrl-cmd-shift-pretty-prefix }{ $key })
+extra-address-rows-menu-button =
+    .title = Bidang pengalamatan lainnya untuk ditampilkan
+public-recipients-notice-single = Pesan Anda memiliki penerima yang publik. Anda dapat menghindari pengungkapan penerima dengan menggunakan Bcc.
+public-recipients-notice-multi = { $count } penerima di To dan Cc akan melihat alamat masing-masing. Anda dapat menghindari pengungkapan penerima dengan menggunakan Bcc.
+many-public-recipients-bcc =
+    .label = Gunakan Bcc Sebagai Pengganti
+    .accesskey = u
+many-public-recipients-ignore =
+    .label = Tetap Publikasikan Penerima
+    .accesskey = k
+many-public-recipients-prompt-title = Terlalu Banyak Penerima Publik
+many-public-recipients-prompt-msg = Pesan Anda memiliki { $count } penerima publik, yang akan dapat melihat alamat satu sama lain. Ini mungkin masalah privasi. Anda dapat menghindari pengungkapan penerima dengan memindahkan penerima dari Kepada/Cc ke Bcc.
+many-public-recipients-prompt-cancel = Batalkan Pengiriman
+many-public-recipients-prompt-send = Tetap Kirim
+compose-missing-identity-warning = Identitas unik yang cocok dengan alamat Dari tidak ditemukan. Pesan akan dikirim menggunakan bidang Dari saat ini dan pengaturan dari identitas { $identity }.
+encrypted-bcc-warning = Saat mengirim pesan terenkripsi, penerima di Bcc tidak sepenuhnya disembunyikan. Semua penerima mungkin dapat mengidentifikasi mereka.
+encrypted-bcc-ignore-button = Dipahami
+auto-disable-e2ee-warning = Enkripsi ujung-ke-ujung untuk pesan ini secara otomatis dinonaktifkan.
+compose-tool-button-remove-text-styling =
+    .tooltiptext = Hapus Gaya Teks
+cloud-file-unknown-account-tooltip = Diunggah ke akun Filelink yang tidak dikenal.
+cloud-file-placeholder-title = { $filename } - Lampiran Filelink
+cloud-file-placeholder-intro = Berkas { $filename } dilampirkan sebagai Tautan Berkas. Itu dapat diunduh dari tautan di bawah ini.
+cloud-file-count-header = Saya telah menautkan { $count } berkas ke surel ini:
+cloud-file-service-provider-footer-single = Pelajari lebih lanjut tentang { $link }.
+cloud-file-service-provider-footer-multiple = Pelajari lebih lanjut tentang { $firstLinks } dan { $lastLink }.
+cloud-file-tooltip-password-protected-link = Tautan yang dilindungi kata sandi
+cloud-file-template-service-name = Layanan Tautan Berkas:
+cloud-file-template-size = Ukuran:
+cloud-file-template-link = Tautan:
+cloud-file-template-password-protected-link = Tautan Dilindungi Sandi:
+cloud-file-template-expiry-date = Tanggal Kedaluwarsa:
+cloud-file-template-download-limit = Batas Unduh:
+cloud-file-connection-error-title = Galat Koneksi
+cloud-file-connection-error = { -brand-short-name } sedang luring. Tidak dapat tersambung ke { $provider }.
+cloud-file-upload-error-with-custom-message-title = Gagal Mengunggah { $filename } ke { $provider }
+cloud-file-rename-error-title = Galat Ganti Nama
+cloud-file-rename-error = Terjadi masalah saat mengganti nama { $filename } pada { $provider }.
+cloud-file-rename-error-with-custom-message-title = Gagal Mengganti Nama { $filename } pada { $provider }
+cloud-file-rename-not-supported = { $provider } tidak mendukung penggantian nama berkas yang sudah diunggah.
+cloud-file-attachment-error-title = Kesalahan Lampiran Filelink
+cloud-file-attachment-error = Gagal memperbarui lampiran Filelink { $filename }, karena berkas lokalnya telah dipindahkan atau dihapus.
+cloud-file-account-error-title = Kesalahan Akun Filelink
+cloud-file-account-error = Gagal memperbarui lampiran Filelink { $filename }, karena akun Filelink-nya telah dihapus.
+link-preview-title = Pratinjau Tautan
+link-preview-description = { -brand-short-name } dapat menambahkan pratinjau tersemat saat menempelkan tautan.
+link-preview-autoadd = Tambahkan pratinjau tautan secara otomatis jika memungkinkan
+link-preview-replace-now = Tambahkan Pratinjau Tautan untuk tautan ini?
+link-preview-yes-replace = Ya
+spell-add-dictionaries =
+    .label = Tambah Kamus…
+    .accesskey = a
+subject-encription-icon =
+    .title = Subjek tidak akan dienkripsi

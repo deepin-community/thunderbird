@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Tentang Jaringan
 about-networking-http = HTTP
 about-networking-sockets = Soket
@@ -45,9 +41,3 @@ about-networking-rcwn-avg-long = Purata Panjang
 about-networking-rcwn-std-dev-long = Sisihan Piawai Panjang
 about-networking-rcwn-cache-slow = Kiraan perlahan cache
 about-networking-rcwn-cache-not-slow = Kiraan tidak perlahan cache
-
-## Link is intended as "network link"
-
-
-##
-

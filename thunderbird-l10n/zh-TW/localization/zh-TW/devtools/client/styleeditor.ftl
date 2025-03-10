@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = 建立並將新的樣式表擴充至文件尾端
     .accesskey = N
@@ -21,8 +17,6 @@ styleeditor-save-button = 儲存
 styleeditor-options-button =
     .tooltiptext = 樣式編輯器選項
 styleeditor-at-rules = @ 規則
-styleeditor-editor-textbox =
-    .data-placeholder = 在此輸入 CSS。
 styleeditor-no-stylesheet = 這個頁面沒有樣式表。
 styleeditor-no-stylesheet-tip = 也許您想要 <a data-l10n-name="append-new-stylesheet">附加全新的樣式表</a>?
 styleeditor-open-link-new-tab =
@@ -38,15 +32,9 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = 跳到某行…
     .accesskey = J
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = 找不到符合的樣式表。
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count = { $ruleCount } 條規則。
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Pretty print 樣式表
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = 只能 Pretty Print CSS 檔案

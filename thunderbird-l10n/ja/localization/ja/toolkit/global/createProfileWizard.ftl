@@ -1,13 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 create-profile-window2 =
     .title = プロファイル作成ウィザード
     .style = min-width: 45em; min-height: 32em;
-
-## First wizard page
-
 create-profile-first-page-header2 =
     { PLATFORM() ->
         [macos] はじめに
@@ -21,9 +14,6 @@ profile-creation-explanation-4 =
         [macos] プロファイルを作成するには [続ける] をクリックしてください。
        *[other] プロファイルを作成するには [次へ] をクリックしてください。
     }
-
-## Second wizard page
-
 create-profile-last-page-header2 =
     { PLATFORM() ->
         [macos] 完了

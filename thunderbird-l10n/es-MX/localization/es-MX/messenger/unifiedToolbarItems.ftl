@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Espacio flexible
 search-bar-label = Buscar
 toolbar-write-message-label = Redactar
@@ -59,8 +52,6 @@ toolbar-junk-label = Basura
 toolbar-junk =
     .title = Marcar los mensajes seleccionados como basura
 toolbar-delete-label = Eliminar
-toolbar-delete =
-    .title = Eliminar mensajes o carpetas seleccionadas
 toolbar-compact-label = Compactar
 toolbar-compact =
     .title = Quitar mensajes borrados de la carpeta seleccionada

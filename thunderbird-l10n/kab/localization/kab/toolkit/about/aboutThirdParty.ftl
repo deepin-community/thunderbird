@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Talɣut n uzegrir n wis kraḍ
 third-party-section-title = Tabdart n yizegrar n wis kraḍ deg { -brand-short-name }
 third-party-intro =
@@ -43,12 +39,6 @@ third-party-button-reload = Ales asali s telɣut n unagraw
     .title = Ales asali s telɣut n unagraw
 third-party-button-open =
     .title = Ldi ideg n ufaylu…
-third-party-button-to-block =
-    .title = Sewḥel azegrir-a
-    .aria-label = Sewḥel azegrir-a
-third-party-button-to-unblock =
-    .title = Yemdel akka tura. Sit i wakken ad as-tserḥeḍ.
-    .aria-label = Yemdel akka tura. Sit i wakken ad as-tserḥeḍ.
 third-party-button-to-block-module = Sewḥel azegrir-a
     .title = Sewḥel azegrir-a
     .aria-label = Sewḥel azegrir-a

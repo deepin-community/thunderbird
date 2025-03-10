@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Information om tredjepartsmoduler
 third-party-section-title = Lista över moduler från tredje part i { -brand-short-name }
 third-party-intro =
@@ -47,19 +43,6 @@ third-party-button-reload = Ladda om med systeminformation
     .title = Ladda om med systeminformation
 third-party-button-open =
     .title = Öppna filplats…
-third-party-button-to-block =
-    .title = Blockera denna modul
-    .aria-label = Blockera denna modul
-third-party-button-to-unblock =
-    .title = För närvarande blockerad. Klicka för att avblockera den.
-    .aria-label = För närvarande blockerad. Klicka för att avblockera den.
-third-party-button-to-unblock-disabled =
-    .title =
-        Markeras för närvarande som blockerad, även om blockeringslistan är inaktiverad för denna körning
-        av { -brand-short-name }. Klicka för att avblockera den.
-    .aria-label =
-        Markeras för närvarande som blockerad, även om blockeringslistan är inaktiverad för denna körning
-        av { -brand-short-name }. Klicka för att avblockera den.
 third-party-button-to-block-module = Blockera denna modul
     .title = Blockera denna modul
     .aria-label = Blockera denna modul

@@ -1,10 +1,9 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Bo‘sh joyni asramoqchi bo‘lsangiz, yuklab olmang:">
 <!ENTITY doNotDownloadNntp.label "Bo‘sh joyni asramoqchi bo‘lsangiz, oflayn foydalanish uchun yuklab olmang:">
 <!ENTITY doNotDownloadImap.label "Bo‘sh joyni asrash uchun, serverdan xabarlarni yuklab olish va oflayn foydalanish uchun kompyurga nusxalarni saqlashga hajmi yoki sanasi bo‘yicha cheklov o‘rnatishingiz mumkin.">
+<!ENTITY allFoldersOffline2.label "Keep messages in all folders for this account on this computer">
+<!ENTITY allFoldersOffline2.accesskey "o">
+<!ENTITY allFoldersOfflineNote.label "Note: Changing this affects all folders in this account. To set individual folders, use the Advanced… button.">
 <!ENTITY offlineNotDownload.label "Ushbudan katta xabarlar">
 <!ENTITY offlineNotDownload.accesskey "x">
 <!ENTITY autosyncNotDownload.label "Ushbudan katta xabarlar yuklab olinmasin">
@@ -35,24 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "Q">
 <!ENTITY syncGroupTitle.label "Xabarni sinxronlash">
 <!ENTITY diskspaceGroupTitle.label "Diskdagi joy">
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-
-<!ENTITY allAutosync.label               "Muddatidan qat’i nazar kompyuterdagi barcha xabarlar sinxronlansin">
-<!ENTITY allAutosync.accesskey           "s">
-<!ENTITY ageAutosyncBefore.label         "Eng so‘nggi xabarlar sinxronlansin">
-<!ENTITY ageAutosync.accesskey           "z">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Kunlik">
-<!ENTITY weekAgeInterval.label           "Haftalik">
-<!ENTITY monthAgeInterval.label          "Oylik">
-<!ENTITY yearAgeInterval.label           "Yillik">
-<!ENTITY ageAutosyncAfter.label          "">
-
-<!ENTITY allFoldersOffline2.label "Keep messages in all folders for this account on this computer">
-<!ENTITY allFoldersOffline2.accesskey "o">
-<!ENTITY allFoldersOfflineNote.label "Note: Changing this affects all folders in this account. To set individual folders, use the Advanced… button.">
+<!ENTITY allAutosync.label "Muddatidan qat’i nazar kompyuterdagi barcha xabarlar sinxronlansin">
+<!ENTITY allAutosync.accesskey "s">
+<!ENTITY ageAutosyncBefore.label "Eng so‘nggi xabarlar sinxronlansin">
+<!ENTITY ageAutosync.accesskey "z">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Kunlik">
+<!ENTITY weekAgeInterval.label "Haftalik">
+<!ENTITY monthAgeInterval.label "Oylik">
+<!ENTITY yearAgeInterval.label "Yillik">
+<!ENTITY ageAutosyncAfter.label "">

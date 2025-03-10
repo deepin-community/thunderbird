@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Đóng tìm kiếm và danh sách sự kiện
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Tên Lịch
     .tooltiptext = Sắp xếp theo tên lịch
 calendar-event-listing-column-category =
     .label = Danh mục
     .tooltiptext = Sắp xếp theo danh mục
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Xong
     .tooltiptext = Sắp xếp theo hoàn thành
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Tiêu đề
     .tooltiptext = Sắp xếp theo tiêu đề
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Sự kiện trong quá khứ
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Sự kiện trong 6 tháng tiếp theo
 calendar-event-listing-interval-next-12-months =
     .label = Sự kiện trong 12 tháng tiếp theo
+calendar-event-listing-interval-future =
+    .label = Tất cả sự kiện trong tương lai
 calendar-event-listing-interval-all =
     .label = Tất cả sự kiện
 calendar-event-listing-interval-selected-day =

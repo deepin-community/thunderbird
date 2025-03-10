@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menüsor
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Beállítások
     .accesskey = B
 menu-addons-and-themes =
     .label = Kiegészítők és témák
     .accesskey = K
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exportálás mobilra…
+    .accesskey = p
 menu-help-help-title =
     .label = Súgó
     .accesskey = S
 menu-help-get-help =
     .label = Segítség kérése
     .accesskey = S
-menu-help-explore-features =
-    .label = Funkciók felfedezése
-    .accesskey = F
 menu-help-get-release-help =
     .label = Kapjon segítséget a { -brand-short-name }höz
     .accesskey = K
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = A { -brand-short-name } névjegye
     .accesskey = n
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] K
            *[other] K
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Kilépés a { -brand-shorter-name }ból
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Kilépés a { -brand-full-name }ból
            *[other] Kilépés a { -brand-full-name }ból
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Levélszemét
     .tooltiptext = A kijelölt üzenetek megjelölése szemétként
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Törlés visszavonása
     .tooltiptext = Kijelölt üzenetek törlésének visszavonása
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Szövegkódolás javítása
     .accesskey = k
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Mappa ablaktábla fejléce
     .accesskey = a
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Üzenetlista fejléce
     .accesskey = f
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Helyek eszköztár
     .accesskey = H
-
-## File
-
 file-new-email-account =
     .label = E-mail-fiók…
     .accesskey = E

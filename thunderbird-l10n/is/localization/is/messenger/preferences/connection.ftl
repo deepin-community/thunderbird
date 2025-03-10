@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Nota þjónustuveitu
     .accesskey = o
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (sjálfgefið)
     .tooltiptext = Nota sjálfgefnu URL-slóðina til að leysa DNS yfir HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = S
     .tooltiptext = Settu inn valda URL-slóð til að leysa DNS yfirr HTTPS
 connection-dns-over-https-custom-label = Sérsniðið
-connection-dialog-window2 =
-    .title = Stillingar tengingar
 connection-dialog-title = Stillingar tengingar
 disable-extension-button = Slökkva á viðbót
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Viðbótin <img data-l10n-name="icon"/> { $name }, er að stjórna hvernig { -brand-short-name } tengist við Internetið.
 connection-proxy-legend = Stilla milliþjóna (proxy) til að tengjast internetinu
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Engir milliþjónar fyrir:
     .accesskey = n
 no-proxy-example = T.d.: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Tengingar við localhost, 127.0.0.1, og :: 1 nota aldrei milliþjóna.
 proxy-password-prompt =
     .label = Ekki spyrja um auðkenningu ef búið er að vista lykilorð

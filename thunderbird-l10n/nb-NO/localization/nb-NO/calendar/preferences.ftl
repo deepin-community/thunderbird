@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Kalender
 calendar-title-reminder = Påminnelser
 calendar-title-notification = Varsler
@@ -9,10 +5,8 @@ calendar-title-category = Kategorier
 dateformat-label =
     .value = Datoformat:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Lang: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Kort: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Spør før du sletter hendelser og oppgaver.
     .accesskey = p
-accessibility-legend = Tilgjengelighet
-accessibility-colors-label =
-    .label = Optimaliser farger for tilgjengelighet
-    .accesskey = O
 reminder-legend = Når en alarm går av:
 reminder-play-checkbox =
     .label = Spill av en lyd

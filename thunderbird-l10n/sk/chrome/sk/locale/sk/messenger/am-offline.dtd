@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Kvôli úspore miesta na disku nesťahovať:">
 <!ENTITY doNotDownloadNntp.label "Kvôli úspore miesta na disku nesťahovať pre použitie v režime offline:">
 <!ENTITY doNotDownloadImap.label "Kvôli úspore miesta je možné sťahovanie správ zo servera a ukladanie ich lokálnych kópii pre použitie v režime offline obmedziť podľa veku alebo veľkosti správ.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "z">
 <!ENTITY syncGroupTitle.label "Synchronizácia správ">
 <!ENTITY diskspaceGroupTitle.label "Miesto na disku">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Synchronizovať všetky správy nezávisle na ich veku">
-<!ENTITY allAutosync.accesskey           "n">
-<!ENTITY ageAutosyncBefore.label         "Synchronizovať správy za posledných">
-<!ENTITY ageAutosync.accesskey           "S">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "dní">
-<!ENTITY weekAgeInterval.label           "týždňov">
-<!ENTITY monthAgeInterval.label          "mesiacov">
-<!ENTITY yearAgeInterval.label           "rokov">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Synchronizovať všetky správy nezávisle na ich veku">
+<!ENTITY allAutosync.accesskey "n">
+<!ENTITY ageAutosyncBefore.label "Synchronizovať správy za posledných">
+<!ENTITY ageAutosync.accesskey "S">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "dní">
+<!ENTITY weekAgeInterval.label "týždňov">
+<!ENTITY monthAgeInterval.label "mesiacov">
+<!ENTITY yearAgeInterval.label "rokov">
+<!ENTITY ageAutosyncAfter.label "">

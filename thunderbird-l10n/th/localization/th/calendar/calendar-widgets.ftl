@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = ปฏิทินทั้งหมดถูกปิดใช้งานในขณะนี้ ให้เปิดใช้งานปฏิทินที่มีอยู่หรือเพิ่มปฏิทินใหม่เพื่อสร้างและแก้ไขเหตุการณ์
 calendar-deactivated-notification-tasks = ปฏิทินทั้งหมดถูกปิดใช้งานในขณะนี้ ให้เปิดใช้งานปฏิทินที่มีอยู่หรือเพิ่มปฏิทินใหม่เพื่อสร้างและแก้ไขงาน
 calendar-notifications-label = แสดงการแจ้งเตือนสำหรับเหตุการณ์ที่กำลังจะเกิดขึ้น
 calendar-add-notification-button =
     .label = เพิ่มการแจ้งเตือน
-
-## Side panel
-
 calendar-list-header = ปฏิทิน
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = ปฏิทิน { $calendarName } ได้ถูกปิดแจ้งเตือนแล้ว
 calendar-enable-button = เปิดใช้งาน
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = ตัวเลือกปฏิทิน { $calendarName }
 calendar-import-new-calendar = ปฏิทินใหม่…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = โหลดปฏิทินทั้งหมดใหม่และประสานการเปลี่ยนแปลง
 calendar-new-event-primary-button = เหตุการณ์ใหม่
 calendar-new-task-primary-button = งานใหม่
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = วันก่อน
     .accesskey = s
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = หลายสัปดาห์
     .title = สลับเป็นมุมมองหลายสัปดาห์
 calendar-view-toggle-month = เดือน
     .title = สลับเป็นมุมมองเดือน
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = ตัวเลือกเค้าโครงปฏิทิน
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = กำหนดวันทำงาน
 calendar-show-tasks-calendar-option =
     .label = แสดงงานในปฏิทิน
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = วันก่อนหน้า
     .accesskey = น

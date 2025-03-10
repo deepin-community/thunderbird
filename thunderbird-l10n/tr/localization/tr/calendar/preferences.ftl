@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Takvim
 calendar-title-reminder = Anımsatıcılar
 calendar-title-notification = Bildirimler
@@ -9,10 +5,8 @@ calendar-title-category = Kategoriler
 dateformat-label =
     .value = Tarih metni biçemi:
     .accesskey = T
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Uzun: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Kısa: { $date }
 use-system-timezone-radio-button =

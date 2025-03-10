@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = კალენდარი
 calendar-title-reminder = შეხსენებები
 calendar-title-notification = შეტყობინებები
@@ -9,10 +5,8 @@ calendar-title-category = კატეგორიები
 dateformat-label =
     .value = თარიღის ტექსტური ფორმატი:
     .accesskey = თ
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = სრული: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = მოკლე: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = დასტურის მოთხოვნა, ღონისძიებებისა და დავალებების წაშლამდე.
     .accesskey = ტ
-accessibility-legend = დამხმარე საშუალებები
-accessibility-colors-label =
-    .label = ფერების ოპტიმიზაცია
-    .accesskey = ფ
 reminder-legend = შეხსენებისას:
 reminder-play-checkbox =
     .label = ხმოვანი სიგნალი

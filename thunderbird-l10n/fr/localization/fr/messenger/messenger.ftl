@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Window controls
-
 messenger-window-minimize-button =
     .tooltiptext = Réduire
 messenger-window-maximize-button =
@@ -13,76 +6,48 @@ messenger-window-restore-down-button =
     .tooltiptext = Restaurer
 messenger-window-close-button =
     .tooltiptext = Fermer
-# Variables:
-# $count (Number) - Number of unread messages.
 unread-messages-os-tooltip =
     { $count ->
         [one] 1 message non lu
        *[other] { $count } messages non lus
     }
 about-rights-notification-text = { -brand-short-name } est un logiciel libre et open source, réalisé par une communauté internationale de milliers de personnes.
-
-## Content tabs
-
 content-tab-page-loading-icon =
     .alt = Chargement de la page
 content-tab-security-high-icon =
     .alt = La connexion est sécurisée
 content-tab-security-broken-icon =
     .alt = La connexion n’est pas sécurisée
-
-# Back
-
-# Variables
-#   $shortcut (String) - A keyboard shortcut for the Go Back command.
 content-tab-menu-back =
     .tooltiptext = Reculer d’une page ({ $shortcut })
     .aria-label = Page précédente
     .accesskey = u
-# This menuitem is only visible on macOS
 content-tab-menu-back-mac =
     .label = Page précédente
     .accesskey = P
-
-# Forward
-
-# Variables
-#   $shortcut (String) - A keyboard shortcut for the Go Forward command.
 content-tab-menu-forward =
     .tooltiptext = Avancer d’une page ({ $shortcut })
     .aria-label = Page suivante
     .accesskey = p
-# This menuitem is only visible on macOS
 content-tab-menu-forward-mac =
     .label = Page suivante
     .accesskey = s
-
-# Reload
-
 content-tab-menu-reload =
     .tooltiptext = Actualiser la page
     .aria-label = Actualiser
     .accesskey = A
-# This menuitem is only visible on macOS
 content-tab-menu-reload-mac =
     .tooltiptext = Actualiser la page
     .label = Actualiser
     .accesskey = A
-
-# Stop
-
 content-tab-menu-stop =
     .tooltiptext = Arrêter le chargement de la page
     .aria-label = Arrêter
     .accesskey = A
-# This menuitem is only visible on macOS
 content-tab-menu-stop-mac =
     .tooltiptext = Arrêter le chargement de la page
     .label = Arrêter
     .accesskey = A
-
-## Toolbar
-
 addons-and-themes-toolbarbutton =
     .label = Modules complémentaires et thèmes
     .tooltiptext = Gestion de vos modules complémentaires
@@ -92,18 +57,12 @@ quick-filter-toolbarbutton =
 redirect-msg-button =
     .label = Rediriger
     .tooltiptext = Rediriger le message sélectionné
-
-## Folder Pane
-
 folder-pane-toolbar =
     .toolbarname = Barre d’outils du panneau des dossiers
     .accesskey = d
 folder-pane-toolbar-options-button =
     .tooltiptext = Options du panneau des dossiers
 folder-pane-header-label = Dossiers
-
-## Folder Toolbar Header Popup
-
 folder-toolbar-hide-toolbar-toolbarbutton =
     .label = Masquer la barre d’outils
     .accesskey = M
@@ -128,23 +87,15 @@ show-tags-folders-label =
 folder-toolbar-toggle-folder-compact-view =
     .label = Affichage compact
     .accesskey = c
-
-## File Menu
-
 menu-file-save-as-file =
     .label = Fichier…
     .accesskey = F
-
-## Edit Menu
-
 menu-edit-delete-folder =
     .label = Supprimer le dossier
     .accesskey = d
 menu-edit-unsubscribe-newsgroup =
     .label = Se désabonner du groupe de discussion
     .accesskey = S
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-delete-messages =
     .label =
         { $count ->
@@ -152,8 +103,6 @@ menu-edit-delete-messages =
            *[other] Supprimer les messages sélectionnés
         }
     .accesskey = S
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-undelete-messages =
     .label =
         { $count ->
@@ -170,24 +119,15 @@ menu-edit-folder-properties =
 menu-edit-newsgroup-properties =
     .label = Propriétés du groupe
     .accesskey = P
-
-## Message Menu
-
 redirect-msg-menuitem =
     .label = Rediriger
     .accesskey = d
-
-## AppMenu
-
 appmenu-save-as-file =
     .label = Fichier…
 appmenu-settings =
     .label = Paramètres
 appmenu-addons-and-themes =
     .label = Modules complémentaires et thèmes
-
-## Context menu
-
 context-menu-mark-read =
     .aria-label = Marquer comme lu
     .tooltiptext = Marquer comme lu
@@ -203,6 +143,9 @@ context-menu-archive =
 context-menu-mark-junk =
     .aria-label = Marquer comme indésirable
     .tooltiptext = Marquer comme indésirable
+context-menu-mark-not-junk =
+    .aria-label = Marquer comme acceptable
+    .tooltiptext = Marquer comme acceptable
 mail-context-menu-open =
     .label = Ouvrir
     .accesskey = O
@@ -218,8 +161,6 @@ mail-context-menu-forward-forward =
 mail-context-menu-forward-inline =
     .label = Intégré
     .accesskey = I
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-menu-forward-as-attachment =
     .label =
         { $count ->
@@ -235,27 +176,8 @@ mail-context-menu-threads =
     .accesskey = D
 context-menu-redirect-msg =
     .label = Rediriger
-# This menu item is for canceling an NNTP message
 context-menu-cancel-msg =
     .label = Annuler le message
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-delete-messages =
-    .label =
-        { $count ->
-            [one] Supprimer le message
-           *[other] Supprimer les messages sélectionnés
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-undelete-messages =
-    .label =
-        { $count ->
-            [one] Restaurer le message
-           *[other] Restaurer les messages sélectionnés
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-messages-delete =
     .label =
         { $count ->
@@ -263,8 +185,6 @@ mail-context-messages-delete =
            *[other] Supprimer les messages sélectionnés
         }
     .tooltiptext = { mail-context-messages-delete.label }
-# Variables:
-# $count (Number) - Number of selected messages.
 mail-context-messages-undelete =
     .label =
         { $count ->
@@ -275,24 +195,13 @@ mail-context-messages-undelete =
 context-menu-decrypt-to-folder2 =
     .label = Créer une copie déchiffrée vers
     .accesskey = o
-
-## Message header pane
-
 other-action-redirect-msg =
     .label = Rediriger
 message-header-msg-flagged =
     .title = Suivi
     .aria-label = Suivi
-# Variables:
-# $address (String) - The email address of the recipient this picture belongs to.
 message-header-recipient-avatar =
     .alt = Photo de profil de { $address }.
-
-## Message header cutomize panel
-
-
-## Message header customize panel
-
 message-header-customize-panel-title = Paramètres d’en-tête des messages
 message-header-customize-button-style =
     .value = Style du bouton
@@ -322,24 +231,14 @@ message-header-large-subject =
 message-header-all-headers =
     .label = Afficher tous les en-têtes
     .accesskey = t
-
-## Action Button Context Menu
-
 toolbar-context-menu-manage-extension =
     .label = Gérer l’extension
     .accesskey = e
 toolbar-context-menu-remove-extension =
     .label = Supprimer l’extension
     .accesskey = m
-
-## Add-on removal warning
-
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
 addon-removal-title = Supprimer { $name } ?
 addon-removal-confirmation-button = Supprimer
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
 addon-removal-confirmation-message = Supprimer { $name } ainsi que sa configuration et ses données de { -brand-short-name } ?
 caret-browsing-prompt-title = Navigation au curseur
 caret-browsing-prompt-text = L’appui sur F7 active ou désactive la navigation au curseur. Cette fonction place un curseur déplaçable dans certains contenus, permettant de sélectionner du texte au clavier. Désirez-vous activer la navigation au curseur ?
@@ -347,28 +246,14 @@ caret-browsing-prompt-check-text = Ne plus demander à l’avenir.
 repair-text-encoding-button =
     .label = Réparer l’encodage du texte
     .tooltiptext = Détermine l’encodage correct du texte en fonction du contenu
-
-## no-reply handling
-
 no-reply-title = Répondre non pris en charge
-# Variables:
-# $email (String) - Email address the reply will be sent to. Example: "noreply@example.com"
 no-reply-message = L’adresse de réponse ({ $email }) n’apparaît pas être une adresse surveillée. Les messages envoyés à cette adresse ne seront probablement pas lus.
 no-reply-reply-anyway-button = Répondre quand même
-
-## error messages
-
-# Variables:
-# $failures (Number) - Number of messages that could not be decrypted.
-# $total (Number) - Total number of messages that were attempted to be decrypted.
 decrypt-and-copy-failures-multiple =
     { $failures ->
         [one] { $failures } message sur { $total } n’a pas pu être déchiffré et n’a pas été copié.
        *[other] { $failures }  messages sur { $total } n’ont pas pu être déchiffrés et n’ont pas été copiés.
     }
-
-## Spaces toolbar
-
 spaces-toolbar-element =
     .toolbarname = Barre d’espaces
     .aria-label = Barre d’espaces
@@ -395,8 +280,6 @@ spaces-context-new-tab-item =
     .label = Ouvrir dans un nouvel onglet
 spaces-context-new-window-item =
     .label = Ouvrir dans une nouvelle fenêtre
-# Variables:
-# $tabName (String) - The name of the tab this item will switch to.
 spaces-context-switch-tab-item =
     .label = Aller à { $tabName }
 settings-context-open-settings-item2 =
@@ -405,9 +288,6 @@ settings-context-open-account-settings-item2 =
     .label = Paramètres des comptes
 settings-context-open-addons-item2 =
     .label = Modules complémentaires et thèmes
-
-## Spaces toolbar pinned tab menupopup
-
 spaces-toolbar-pinned-tab-button =
     .tooltiptext = Ouvrir le menu des espaces
 spaces-pinned-button-menuitem-mail2 =
@@ -424,55 +304,29 @@ spaces-pinned-button-menuitem-settings2 =
     .label = { spaces-toolbar-button-settings2.title }
 spaces-pinned-button-menuitem-show =
     .label = { spaces-toolbar-button-show.title }
-# Variables:
-# $count (Number) - Number of unread messages.
 chat-button-unread-messages = { $count }
     .title =
         { $count ->
             [one] Un message non lu
            *[other] { $count } messages non lus
         }
-
-## Spaces toolbar customize panel
-
 menuitem-customize-label =
     .label = Personnaliser…
 spaces-customize-panel-title = Paramètres de la barre d’espaces
 spaces-customize-background-color = Couleur du fond
 spaces-customize-icon-color = Couleur des boutons
-# The background color used on the buttons of the spaces toolbar when they are
-# `current`, meaning the related space/tab is active and visible.
 spaces-customize-accent-background-color = Couleur de fond du bouton sélectionné
-# The icon color used on the buttons of the spaces toolbar when they are
-# `current`, meaning the related space/tab is active and visible.
 spaces-customize-accent-text-color = Couleur du bouton sélectionné
 spaces-customize-button-restore = Configuration par défaut
     .accesskey = C
 customize-panel-button-save = Terminé
     .accesskey = T
-
-## Quick Filter Bar
-
-# The label to display for the "View... Toolbars..." menu item that controls
-# whether the quick filter bar is visible.
 quick-filter-bar-toggle =
     .label = Barre de filtre rapide
     .accesskey = f
-# This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-search-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
-
-## OpenPGP
-
 openpgp-forget = Oublier les phrases de passe OpenPGP
-
-## Quota panel.
-
-# Variables:
-#   $percent (Number) - Usage percentage of the assigned IMAP quota.
-#   $usage (String) - Current quota usage (may include unit)
-#   $limit (String) - Current quota limit (may include unit)
 quota-panel-percent-used =
     { $percent ->
         [one] { $percent } % utilisé

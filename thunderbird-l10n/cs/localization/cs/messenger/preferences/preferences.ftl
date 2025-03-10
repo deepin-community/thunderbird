@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Zavřít
 preferences-doc-title2 = Nastavení
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Synchronizace
 category-sync =
     .tooltiptext = Synchronizace
+pane-qr-export-title = Export pro mobilní zařízení
+category-qr-export =
+    .tooltiptext = Exportovat pro mobilní zařízení
 general-language-and-appearance-header = Zobrazení a jazyk stránek
 general-incoming-mail-header = Příchozí pošta
 general-files-and-attachment-header = Soubory a přílohy
@@ -66,8 +65,6 @@ collection-health-report =
         }
     .accesskey = r
 collection-health-report-link = Zjistit více
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Odesílání dat je zakázáno konfigurací tohoto sestavení
 collection-backlogged-crash-reports =
     .label =
@@ -100,19 +97,25 @@ confirm-messenger-language-change-description =
     }
 confirm-messenger-language-change-button = Potvrdit a restartovat
 update-setting-write-failure-title = Chyba při ukládání nastavení aktualizací
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name.gender ->
-        [masculine] { -brand-short-name } zaznamenal
-        [feminine] { -brand-short-name } zanamenala
-        [neuter] { -brand-short-name } zaznamenalo
-       *[other] Aplikace { -brand-short-name } zaznamenala
-    } problém při ukládání změny nastavení. Změna těchto nastavení vyžaduje oprávnění k zápisu do níže uvedeného souboru. Vy nebo správce vašeho systému můžete tento problém vyřešit přidělením úplných oprávnění k tomuto souboru pro skupinu Users.
-    
-    Není možný zápis do souboru: { $path }
+        [masculine]
+            { -brand-short-name } zaznamenal problém při ukládání změny nastavení. Změna těchto nastavení vyžaduje oprávnění k zápisu do níže uvedeného souboru. Vy nebo správce vašeho systému můžete tento problém vyřešit přidělením úplných oprávnění k tomuto souboru pro skupinu Users.
+            
+            Není možný zápis do souboru: { $path }
+        [feminine]
+            { -brand-short-name } zanamenala problém při ukládání změny nastavení. Změna těchto nastavení vyžaduje oprávnění k zápisu do níže uvedeného souboru. Vy nebo správce vašeho systému můžete tento problém vyřešit přidělením úplných oprávnění k tomuto souboru pro skupinu Users.
+            
+            Není možný zápis do souboru: { $path }
+        [neuter]
+            { -brand-short-name } zaznamenalo problém při ukládání změny nastavení. Změna těchto nastavení vyžaduje oprávnění k zápisu do níže uvedeného souboru. Vy nebo správce vašeho systému můžete tento problém vyřešit přidělením úplných oprávnění k tomuto souboru pro skupinu Users.
+            
+            Není možný zápis do souboru: { $path }
+       *[other]
+            Aplikace { -brand-short-name } zaznamenala problém při ukládání změny nastavení. Změna těchto nastavení vyžaduje oprávnění k zápisu do níže uvedeného souboru. Vy nebo správce vašeho systému můžete tento problém vyřešit přidělením úplných oprávnění k tomuto souboru pro skupinu Users.
+            
+            Není možný zápis do souboru: { $path }
+    }
 update-in-progress-title = Probíhá aktualizace
 update-in-progress-message =
     { -brand-short-name.gender ->
@@ -122,26 +125,12 @@ update-in-progress-message =
        *[other] Chcete, aby aplikace { -brand-short-name } pokračovala v aktualizaci?
     }
 update-in-progress-ok-button = &Nepokračovat
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Pokračovat
 account-button = Nastavení účtu
 open-addons-sidebar-button = Doplňky a vzhledy
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Pro nastavení hlavního hesla prosím zadejte své přihlašovací údaje k systému Windows. Toto opatření pomáhá v zabezpečení vašich účtů.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = vytvořit hlavní heslo
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -174,17 +163,15 @@ remove-search-engine =
 add-opensearch-provider-title = Přidat poskytovatele OpenSearch
 add-opensearch-provider-text = Zadejte URL adresu poskytovatele OpenSearch, kterého chcete přidat. Použijte buď přímou adresu popisného souboru OpenSearch, nebo adresu, kde ho lze automaticky zjistit.
 adding-opensearch-provider-failed-title = Přidání poskytovatele OpenSearch se nezdařilo
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Poskytovatele OpenSearch pro { $url } nelze přidat.
 minimize-to-tray-label =
     .label =
-        Při minimalizaci { -brand-short-name.gender ->
-            [masculine] { -brand-short-name(case: "gen") } ho
-            [feminine] { -brand-short-name(case: "gen") } ji
-            [neuter] { -brand-short-name(case: "gen") } ho
-           *[other] aplikace jo
-        } přesunout do oznamovací oblasti
+        { -brand-short-name.gender ->
+            [masculine] Při minimalizaci { -brand-short-name(case: "gen") } ho přesunout do oznamovací oblasti
+            [feminine] Při minimalizaci { -brand-short-name(case: "gen") } ji přesunout do oznamovací oblasti
+            [neuter] Při minimalizaci { -brand-short-name(case: "gen") } ho přesunout do oznamovací oblasti
+           *[other] Při minimalizaci aplikace jo přesunout do oznamovací oblasti
+        }
     .accesskey = o
 new-message-arrival = Při přijetí nové zprávy:
 mail-play-sound-label =
@@ -271,8 +258,6 @@ always-check-default =
 check-default-button =
     .label = Zkontrolovat…
     .accesskey = Z
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -294,8 +279,6 @@ update-app-legend =
         [with-cases] Aktualizace { -brand-short-name(case: "gen") }
        *[no-cases] Aktualizace aplikace { -brand-short-name }
     }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Verze { $version }
 allow-description =
     { -brand-short-name.case-status ->
@@ -342,18 +325,10 @@ offline-compact-folder-automatically =
     .accesskey = b
 compact-folder-size =
     .value = MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Použít maximálně
     .accesskey = P
 use-cache-after = MB diskové mezipaměti
-
-##
-
 smart-cache-label =
     .label = Nepoužívat automatickou správu mezipaměti
     .accesskey = e
@@ -377,7 +352,6 @@ color-options-button =
     .label = Barvy…
     .accesskey = B
 display-width-legend = Zobrazení prostých textových zpráv a článků
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Zobrazit smajlíky jako ikony
     .accesskey = Z
@@ -445,17 +419,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Zobrazovat přílohy v textu
     .accesskey = v
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Až po
     .accesskey = p
 seconds-label = sekundách od zobrazení
-
-##
-
 open-msg-label =
     .value = Otevírat zprávy v:
 open-msg-tab =
@@ -470,8 +437,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Při přesunutí nebo smazání zprávy zavřít panel/okno
     .accesskey = s
-display-name-label =
-    .value = Zobrazované jméno:
 address-display-legend = Seznam zpráv
 address-display-description = Preferovaný formát zobrazení adresy:
 address-display-full =
@@ -486,9 +451,21 @@ address-display-name =
 condensed-addresses-label =
     .label = U lidí z mých kontaktů zobrazovat pouze jméno
     .accesskey = U
-
-## Compose Tab
-
+table-layout-legend = Zobrazení tabulky
+table-layout-horizontal-scroll-label =
+    .label = Povolit vodorovné posouvání
+    .accesskey = p
+conversation-view-legend = Zobrazení Konverzace
+conversation-view-checkbox-label =
+    .label = Povolit zobrazení Konverzace
+    .accesskey = k
+conversation-view-checkbox-description = Experimentální funkce založená na Gloda, používejte ji na vlastní nebezpečí
+label-experiment = Experimentální
+account-hub-legend = Centrum účtů
+account-hub-checkbox-label =
+    .label = Účty vytvářet v novém centru účtů
+    .accesskey = t
+account-hub-checkbox-description = Experimentální vytváření nových poštovních účtů
 forward-label =
     .value = Přeposílat zprávy:
     .accesskey = s
@@ -499,17 +476,10 @@ as-attachment-label =
 extension-label =
     .label = Přidat k názvu souboru příponu
     .accesskey = d
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Automaticky ukládat každých
     .accesskey = A
 auto-save-end = minut
-
-##
-
 warn-on-send-accel-key =
     .label = Při odeslání zprávy pomocí klávesové zkratky požadovat potvrzení
     .accesskey = i
@@ -600,9 +570,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Najít další poskytovatele…
 cloud-account-description = Přidat nové webové úložiště pro odesílání příloh
-
-## Privacy Tab
-
 mail-content = Obsah e-mailu
 remote-content-label =
     .label = Povolit vzdálený obsah ve zprávách
@@ -631,11 +598,11 @@ third-party-visited =
 cookies-button =
     .label = Správce cookies…
     .accesskey = S
-do-not-track-label =
-    .label = Říci webovým stránkám pomocí signálu Do Not Track, že nechcete být sledováni
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Říkat stránkám, aby neprodávaly a nesdílely vaše data
     .accesskey = n
-dnt-learn-more-button =
-    .value = Zjistit více
+do-not-track-removal = Funkce „Do Not Track“ už není podporována
 passwords-description = { -brand-short-name } si může pamatovat vaše přihlašovací údaje pro jednotlivé účty, takže je nebudete muset znovu zadávat.
 passwords-button =
     .label = Zobrazit hesla…
@@ -644,7 +611,6 @@ primary-password-description = Hlavní heslo, je-li nastaveno, chrání všechna
 primary-password-label =
     .label = Použít hlavní heslo
     .accesskey = P
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = K vyplňování a správě hesel vyžadovat přihlášení se do zařízení
 primary-password-button =
@@ -653,9 +619,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Momentálně jste v režimu FIPS, který vyžaduje neprázdné hlavní heslo.
 forms-master-pw-fips-desc = Neúspěšná změna hesla
 junk-description = Další nastavení nevyžádané pošty lze provést v dialogu Nastavení účtu.
-junk-label =
-    .label = Pokud ručně označím zprávy jako nevyžádané:
-    .accesskey = r
 junk-marked-label =
     .label = Když jsou zprávy označeny jako nevyžádané:
     .accesskey = K
@@ -665,9 +628,6 @@ junk-move-label =
 junk-delete-label =
     .label = Smazat
     .accesskey = S
-junk-read-label =
-    .label = Označit zprávy rozpoznané jako nevyžádaná pošta jako přečtené
-    .accesskey = O
 junk-read-description = Označovat zprávy jako přečtené
 junk-read-manual-label =
     .label = Při ručním označení jako nevyžádané
@@ -724,9 +684,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Automatická rozhodnutí lze potlačit ručním povolením nebo zakázáním šifrování při psaní zprávy.
     Poznámka: šifrování je vždy automaticky povoleno při odpovědi na zašifrovanou zprávu.
-
-## Chat Tab
-
 startup-label =
     .value =
         { -brand-short-name.case-status ->
@@ -738,20 +695,10 @@ offline-label =
     .label = Ponechat mé účty chatu offline
 auto-connect-label =
     .label = Automaticky připojit mé účty chatu
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Zobrazit se mým kontaktům jako Nečinný po
     .accesskey = N
 idle-time-label = minutách nečinnosti
-
-##
-
 away-message-label =
     .label = a nastavit stav Pryč s touto zprávou:
     .accesskey = r
@@ -813,41 +760,21 @@ no-preview-description = Tento motiv vzhledu není platný, nebo je momentálně
 chat-variant-label =
     .value = Varianta:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Najít nastavení
-
-## Settings UI Search Results
-
 search-results-header = Výsledky vyhledávání
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 = Je nám líto, pro „<span data-l10n-name="query"></span>“ jsme v nastavení nic nenašli.
 search-results-help-link =
     { -brand-short-name.case-status ->
         [with-cases] Potřebujete pomoc? Navštivte <a data-l10n-name="url">Podporu { -brand-short-name(case: "gen") }</a>
        *[no-cases] Potřebujete pomoc? Navštivte <a data-l10n-name="url">Podporu aplikace { -brand-short-name }</a>
     }
-
-## Sync Tab
-
 sync-signedout-caption = Vezměte si web s sebou
 sync-signedout-description = Synchronizujte své účty, kontakty, kalendáře, doplňky a nastavení ve všech svých zařízeních.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Přihlásit se k synchronizaci…
 sync-pane-header = Synchronizace
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = Účet { $email } není ověřen.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Pro opětovné připojení účtem { $email } se přihlaste
 sync-pane-resend-verification = Znovu odeslat ověření
 sync-pane-sign-in = Přihlásit se
@@ -877,3 +804,57 @@ synced-acount-item-filters = Filtry
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Synchronizujte své e-mailové účty, kontakty, kalendáře, doplňky a identity ve všech svých zařízeních.
 sync-disconnected-turn-on-sync = Zapnout synchronizaci…
+qr-export-pane-header = Exportovat účty do aplikace { -brand-product-name } pro mobily
+qr-export-description = Rychle přeneste nastavení účtu z počítače do mobilu vygenerováním QR kódu. Vyberte, které účty chcete zahrnout, rozhodněte, zda chcete přenést heslo, a naskenujte kód pomocí mobilního zařízení. Rychlé, bezpečné a jednoduché.
+qr-export-get-app = Ještě nemáte { -brand-product-name } v mobilu? <a data-l10n-name="app-link">Stáhněte si ji z Google Play</a>
+qr-export-create = Vytvoření QR kódu pro export účtů
+qr-export-select-accounts = Vyberte, které účty chcete exportovat:
+qr-export-no-accounts = Nevidíte všechny své účty? Některé účty mohou být zakázány, protože je { -brand-product-name } pro Android nepodporuje. <a data-l10n-name="account-support-link">Podpora</a>
+qr-export-accounts-legend = E-mailové účty
+qr-export-select-all-accounts = Vybrat vše
+qr-export-security-legend = Zabezpečení
+qr-export-include-passwords = Zahrnout hesla všech účtů
+qr-export-oauth-warning = Některé vaše účty používají metodu ověřování, která může vyžadovat opětovné ověření na vašem mobilním zařízení. Během tohoto procesu může být nutné znovu zadat hesla.
+qr-export-security-hint = Naskenováním následujících QR kódů se bezpečně přenesou nastavení vašeho účtu včetně e-mailu a hesla. Během tohoto procesu neshromažďujeme, neukládáme ani nesdílíme žádné z těchto údajů. Přenos probíhá přímo mezi vašimi zařízeními.
+qr-export-security-warning = V zájmu své bezpečnosti se ujistěte, že jste v soukromí, a skenujte pouze QR kódy z důvěryhodných zdrojů.
+qr-export-start-export = Exportovat
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } z { $count } QR kódu
+        [few] { $step } ze { $count } QR kódů
+        [many] { $step } z { $count } QR kódů
+       *[other] { $step } z { $count } QR kódů
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Naskenujte QR kód v aplikaci { -brand-product-name } na svém mobilním zařízení
+        [few] Naskenujte QR kódy v aplikaci { -brand-product-name } na svém mobilním zařízení
+        [many] Naskenujte QR kódy v aplikaci { -brand-product-name } na svém mobilním zařízení
+       *[other] Naskenujte QR kódy v aplikaci { -brand-product-name } na svém mobilním zařízení
+    }
+qr-export-scan-step1 = Otevřete aplikaci { -brand-product-name } na svém mobilním zařízení
+qr-export-scan-step2 = Přejít do nastavení
+qr-export-scan-step3 = Vyberte možnost <strong>Importovat nastavení</strong>
+qr-export-scan-step4-revision = Klepněte na <strong>Naskenovat QR kód</strong> a podržte telefon nad tímto kódem.
+qr-export-back = Zpět
+qr-export-next = Další
+qr-export-done = Hotovo
+qr-export-summary-description = Účty byly exportovány. Pokračujte na svém mobilním zařízení.
+qr-export-summary-title = Souhrn exportu:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] Vygenerován { $count } QR kód
+        [few] Vygenerovány { $count } QR kódy
+        [many] Vygenerováno { $count } QR kódů
+       *[other] Vygenerováno { $count } QR kódů
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] Exportován { $count } účet:
+        [few] Exportovány { $count } účty:
+        [many] Exportováno { $count } účtů:
+       *[other] Exportováno { $count } účtů:
+    }
+qr-export-summary-passwords-included = Včetně hesel
+qr-export-summary-passwords-excluded = Hesla vynechána
+qr-export-more-accounts = Exportovat více účtů

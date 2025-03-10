@@ -20,21 +20,25 @@ ChromeUtils.defineESModuleGetters(lazy, {
 class FolderTreeRow extends HTMLLIElement {
   /**
    * The name of the folder tree mode this row belongs to.
+   *
    * @type {string}
    */
   modeName;
   /**
    * The URI of the folder represented by this row.
+   *
    * @type {string}
    */
   uri;
   /**
    * How many times this row is nested. 1 or greater.
+   *
    * @type {integer}
    */
   depth;
   /**
    * The sort order of this row's associated folder.
+   *
    * @type {integer}
    */
   folderSortOrder;
@@ -159,6 +163,10 @@ class FolderTreeRow extends HTMLLIElement {
   set totalCount(value) {
     this.classList.toggle("total", value > 0);
     this.totalCountLabel.textContent = value;
+    this.totalCountLabel.hidden = !lazy.XULStoreUtils.isItemVisible(
+      "messenger",
+      "totalMsgCount"
+    );
     this.#updateAriaLabel();
   }
 
@@ -173,6 +181,10 @@ class FolderTreeRow extends HTMLLIElement {
 
   set folderSize(value) {
     this.folderSizeLabel.textContent = value;
+    this.folderSizeLabel.hidden = !lazy.XULStoreUtils.isItemVisible(
+      "messenger",
+      "folderPaneFolderSize"
+    );
     this.#updateAriaLabel();
   }
 

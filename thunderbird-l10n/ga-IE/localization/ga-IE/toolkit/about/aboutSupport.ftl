@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Fabhtcheartú
 page-subtitle = Ar an leathanach seo tá eolas teicniúil a d'fhéadfadh a bheith úsáideach agus tú ag iarraidh fadhb a réiteach. Má tá freagraí á lorg agat ar cheisteanna coitianta maidir le { -brand-short-name }, féach ar ár <a data-l10n-name="support-link">suíomh tacaíochta</a>.
-
 crashes-title = Tuairiscí Tuairteála
 crashes-id = Aitheantas na Tuairisce
 crashes-send-date = Seolta
@@ -29,7 +24,6 @@ app-basics-profile-dir =
         [linux] Comhadlann Phróifíle
        *[other] Fillteán Próifíle
     }
-app-basics-enabled-plugins = Forlíontáin Chumasaithe
 app-basics-build-config = Cumraíocht an Leagain
 app-basics-user-agent = Gníomhaire Úsáideora
 app-basics-os = CO
@@ -40,7 +34,6 @@ app-basics-profiles = Próifílí
 app-basics-multi-process-support = Fuinneoga Ilphróisis
 app-basics-key-mozilla = Eochair Sheirbhís Geoshuite Mozilla
 app-basics-safe-mode = Mód Slán
-
 show-dir-label =
     { PLATFORM() ->
         [macos] Taispeáin san Aimsitheoir
@@ -83,30 +76,7 @@ sandbox-sys-call-tid = TID
 sandbox-sys-call-proc-type = Cineál an Phróisis
 sandbox-sys-call-number = Glao ar an gcóras
 sandbox-sys-call-args = Argóintí
-
-## Media titles
-
 audio-backend = Inneall Fuaime
-
-## Codec support table
-
-##
-
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Tuairiscí Tuairteála sa { $days } lá is déanaí
@@ -115,9 +85,6 @@ report-crash-for-days =
         [many] Tuairiscí Tuairteála sa { $days } lá is déanaí
        *[other] Tuairiscí Tuairteála sa { $days } lá is déanaí
     }
-
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } nóiméad ó shin
@@ -126,9 +93,6 @@ crashes-time-minutes =
         [many] { $minutes } nóiméad ó shin
        *[other] { $minutes } nóiméad ó shin
     }
-
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } uair ó shin
@@ -137,9 +101,6 @@ crashes-time-hours =
         [many] { $hours } n-uaire ó shin
        *[other] { $hours } uair ó shin
     }
-
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } lá ó shin
@@ -148,9 +109,6 @@ crashes-time-days =
         [many] { $days } lá ó shin
        *[other] { $days } lá ó shin
     }
-
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Gach Tuairisc Tuairteála (le { $reports } tuairt sa raon ama seo ar feitheamh)
@@ -159,37 +117,21 @@ pending-reports =
         [many] Gach Tuairisc Tuairteála (le { $reports } dtuairt sa raon ama seo ar feitheamh)
        *[other] Gach Tuairisc Tuairteála (le { $reports } tuairt sa raon ama seo ar feitheamh)
     }
-
 raw-data-copied = Cóipeáladh na hamhshonraí go dtí an ghearrthaisce
 text-copied = Cóipeáladh an téacs go dtí an ghearrthaisce
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Chuir thiománaí do chárta grafaice cosc air.
 blocked-gfx-card = Chuir tiománaí do chárta grafaice cosc air mar gheall ar fhadhbanna gan réiteach leis an tiománaí.
 blocked-os-version = Níl sé ar fáil ar do chóras oibriúcháin.
 blocked-mismatched-version = Coiscthe do do thiománaí grafaice: ní ionann an leagan sa chlárlann agus leagan an DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Chuir thiománaí do chárta grafaice cosc air. Bain triail as leagan { $driverVersion } nó níos nuaí den tiománaí.
-
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Paraiméadair ClearType
-
 compositing = Cumasc
 hardware-h264 = Díchódú Crua-Earraí H264
 main-thread-no-omtc = príomhshnáithe, gan OMTC
 yes = Tá
 no = Níl
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Aimsithe
 missing = Ar iarraidh
-
 gpu-description = Cur Síos
 gpu-vendor-id = Aitheantas an tSoláthraí
 gpu-device-id = Aitheantas Gléis
@@ -209,21 +151,14 @@ webgl2-renderer = Rindreálaí an Tiománaí WebGL 2
 webgl2-version = Leagan an Tiománaí WebGL 2
 webgl2-driver-extensions = Eisínteachtaí an Tiománaí WebGL 2
 webgl2-extensions = Eisínteachtaí WebGL 2
-
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Ar an liosta blocála; cód teipthe { $failureCode }
-
 d3d11layers-crash-guard = Eagraí D3D11
 glcontext-crash-guard = OpenGL
-
 reset-on-next-restart = Athshocrú ar an chéad atosú eile
 gpu-process-kill-button = Cuir deireadh le próiseas GPU
 gpu-device-reset-button = Cuir tús le hatosú an ghléis
-
 min-lib-versions = Leagan is sine a rabhthas ag súil leis
 loaded-lib-versions = Leagan in úsáid
-
 has-seccomp-bpf = Seccomp-BPF (Scagadh Glaonna Córais)
 has-seccomp-tsync = Sioncronú Snáitheanna Seccomp
 has-user-namespaces = Ainmspásanna Úsáideora
@@ -234,28 +169,12 @@ content-sandbox-level = Leibhéal Bosca Gainimh don Phróiseas Ábhair
 effective-content-sandbox-level = Fíorleibhéal Bosca Gainimh don Phróiseas Ábhair
 sandbox-proc-type-content = ábhar
 sandbox-proc-type-media-plugin = forlíontán meáin
-
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-
 async-pan-zoom = Peanáil/Zúmáil Aisioncronach
 apz-none = faic
 wheel-enabled = ionchur rotha cumasaithe
 touch-enabled = ionchur tadhaill cumasaithe
 drag-enabled = tarraingt an scrollbharra cumasaithe
 keyboard-enabled = méarchlár cumasaithe
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = díchumasaíodh ionchur rotha aisioncronach mar gheall ar shainrogha gan tacaíocht: { $preferenceKey }
 touch-warning = díchumasaíodh ionchur tadhaill aisioncronach mar gheall ar shainrogha gan tacaíocht: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
-## Printing section
-
-## Normandy sections
-

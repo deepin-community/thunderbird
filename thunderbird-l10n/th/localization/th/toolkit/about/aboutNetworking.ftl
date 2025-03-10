@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = เกี่ยวกับเครือข่าย
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = ล้างแคช HTTP
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = จำนวนแคชที่หน่ว
 about-networking-rcwn-cache-not-slow = จำนวนแคชที่ไม่ได้หน่วงเวลา
 about-networking-networkid = ID เครือข่าย
 about-networking-networkid-id = ID เครือข่าย
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = หน้านี้ถูกย้ายไปที่ <a data-l10n-name="about-logging-url">about:logging</a> แล้ว
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = ลิงก์ถูกเชื่อมต่อแล้ว
 about-networking-networkid-status-known = ทราบสถานะลิงก์แล้ว
-
-##
-

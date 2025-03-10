@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY pane.title "Staðfesting á lestri">
 <!ENTITY useGlobalPrefs.label "Nota aðalstillingu á staðfestingu á lestri fyrir þennan reikning">
 <!ENTITY useGlobalPrefs.accesskey "u">
@@ -14,7 +10,6 @@
 <!ENTITY receiptArrive.label "Ef kvittun er móttekin:">
 <!ENTITY leaveIt.label "Skilja hana eftir í innhólfi">
 <!ENTITY leaveIt.accesskey "i">
-<!-- LOCALIZATION NOTE moveToSent.label Translate: 'Sent' according to Netscape glossary -->
 <!ENTITY moveToSent.label "Færa yfir í &quot;Sent&quot;-möppuna mína">
 <!ENTITY moveToSent.accesskey "m">
 <!ENTITY requestMDN.label "Þegar ég móttek beiðni um staðfestingu á lestri:">

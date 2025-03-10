@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Kan ikkje kopla til trygt, fordi SSL-protokollen er slått av.
 psmerr-ssl2-disabled = Kan ikkje kople til trygt, fordi nettstaden brukar ein eldre, utrygg versjon av SSL-protokollen.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Du har motteke eit ugyldig sertifikat. Kontakt den ansvarlige for tenaren, eller e-postmottakaren, og gje dei følgande informasjon:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Tenaren spesifiserte eit sertifika
 mozilla-pkix-error-empty-issuer-name = Serveren presenterte eit sertifikat med eit tomt unikt utskrivarnamn.
 mozilla-pkix-error-additional-policy-constraint-failed = Ei ytterlegare policy-avgrensing mislykkast ved validering av dette sertifikatet.
 mozilla-pkix-error-self-signed-cert = Sertifikatet er ikkje tiltrudd fordi det er sjølvsignert.
+mozilla-pkix-error-issuer-no-longer-trusted = Sertifiseringsstyresmakta som skreiv ut sertifikatet vart mistrudd før sertifikatet vart skrive ut.
 xp-java-remove-principal-error = Klarte ikkje å fjerne kontohavar
 xp-java-delete-privilege-error = Klarte ikkje å slette privilegiet
 xp-java-cert-not-exists-error = Denne principalen har ikkje eit sertifikat

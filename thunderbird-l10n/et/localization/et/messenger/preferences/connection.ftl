@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Teenusepakkuja
     .accesskey = T
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (vaikimisi)
     .tooltiptext = Kasuta üle HTTPSi töötava DNSi puhul vaikeaadressi
@@ -15,11 +9,6 @@ connection-dns-over-https-url-custom =
     .tooltiptext = Sisesta üle HTTPSi töötava DNSi jaoks oma eelistatud URL
 connection-dns-over-https-custom-label = Kohandatud
 disable-extension-button = Keela laiendus
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Laiendus <img data-l10n-name="extension-icon" alt="" />{ $name } kontrollib seda, kuidas { -brand-short-name } ühendub internetti.
 connection-proxy-legend = Interneti puhverserveri häälestamine
 proxy-type-no =
@@ -71,7 +60,6 @@ no-proxy-label =
     .value = Erandid:
     .accesskey = d
 no-proxy-example = Näide: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Ühendusi järgnevatele aadressidele ei suunata kunagi puhverserverisse: localhost, 127.0.0.1/8 ja ::1.
 proxy-password-prompt =
     .label = Salvestatud paroolide korral autentimist ei küsita

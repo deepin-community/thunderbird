@@ -1,17 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Side panel
-
 calendar-list-header = Taq cholb'äl q'ij
 calendar-enable-button = Titzij
 calendar-new-event-primary-button = K'ak'a' Molojri'ïl
 calendar-new-task-primary-button = K'ak'a' Samaj
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Jun Kan Q'ij
     .accesskey = n
@@ -46,12 +36,6 @@ calendar-view-toggle-multiweek = K'ïy wuqq'ij
     .title = Tijal rutz'etik pa k'ïy wuqq'ij
 calendar-view-toggle-month = Ik'
     .title = Tijal rutz'etik ik' ik'
-
-## Menu on calendar control bar
-
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Jun Kan Q'ij
     .accesskey = K

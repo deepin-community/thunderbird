@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 text-action-undo =
     .label = Болдырмау
     .accesskey = Б
@@ -22,11 +18,9 @@ text-action-copy =
     .accesskey = К
 text-action-copy-shortcut =
     .key = C
-# This command copies the link, removing additional
-# query parameters used to track users across sites.
-text-action-strip-on-share =
-    .label = Сайт бақылаусыз көшіру
-    .accesskey = з
+text-action-copy-clean-link =
+    .label = Таза сілтемені көшіру
+    .accesskey = с
 text-action-paste =
     .label = Кірістіру
     .accesskey = р
@@ -38,6 +32,9 @@ text-action-paste-shortcut =
 text-action-delete =
     .label = Өшіру
     .accesskey = ш
+text-action-reveal-password =
+    .label = Парольді көрсету
+    .accesskey = т
 text-action-select-all =
     .label = Барлығын ерекшелеу
     .accesskey = е

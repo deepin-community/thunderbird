@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 accounts-title = メールとニュースアカウント
 show-private-data-main-text = アカウント名を含める
 show-private-data-explanation-text = (個人を特定可能な情報です)

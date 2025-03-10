@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "สีและพื้นหลังของหน้า">
 <!ENTITY pageColors.label "สีของหน้า">
 <!ENTITY defaultColorsRadio.label "สีเริ่มต้นของตัวอ่าน (ไม่ตั้งค่าสีในหน้า)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "ใช้สีที่กำหนดเอง:">
 <!ENTITY customColorsRadio.accessKey "ส">
 <!ENTITY customColorsRadio.tooltip "การตั้งค่าสีเหล่านี้จะแทนที่การตั้งค่าเบราว์เซอร์ของตัวดู">
-
 <!ENTITY normalText.label "ข้อความปกติ">
 <!ENTITY normalText.accessKey "ป">
 <!ENTITY linkText.label "ข้อความลิงก์">

@@ -9,6 +9,13 @@
 // Wrap in a block to prevent leaking to window scope.
 {
   var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
+
+  const lazy = {};
+  ChromeUtils.defineLazyGetter(
+    lazy,
+    "l10n",
+    () => new Localization(["calendar/calendar.ftl"], true)
+  );
   /**
    * The MozCalendarEditableItem widget is used as a full day event item in the
    * Day and Week views of the calendar. It displays the event name, alarm icon
@@ -101,9 +108,15 @@
         }
       });
 
-      // We have two event listeners for dragstart. This event listener is for the bubbling phase.
       this.addEventListener("dragstart", event => {
-        if (document.monthDragEvent?.localName == "calendar-event-box") {
+        let target = event.target;
+        if (target?.nodeType == Node.TEXT_NODE) {
+          target = target.parentNode;
+        }
+        if (!target.closest(`[draggable="true"]`)) {
+          // Day/week view items (except all-day items) do not have the
+          // draggable attribute, because the day view does dragging with
+          // mouse event handlers instead of drag event handlers.
           return;
         }
         const item = this.occurrence;
@@ -119,7 +132,7 @@
         if (!this.selected) {
           this.select(event);
         }
-        invokeEventDragSession(item, this);
+        invokeEventDragSession(event, item);
       });
     }
 
@@ -127,6 +140,8 @@
       if (this.delayConnectedCallback() || this.hasChildNodes()) {
         return;
       }
+      MozXULElement.insertFTLIfNeeded("calendar/calendar.ftl");
+
       this.appendChild(
         MozXULElement.parseXULToFragment(`
           <html:div class="calendar-item-flex">
@@ -134,7 +149,7 @@
             <html:div class="event-name-label"></html:div>
             <html:input class="plain event-name-input"
                         hidden="hidden"
-                        placeholder='${cal.l10n.getCalString("newEvent")}'/>
+                        data-l10n-id="new-event"/>
             <html:div class="alarm-icons-box"></html:div>
             <html:img class="item-classification-icon" />
             <html:img class="item-recurrence-icon" />
@@ -145,18 +160,6 @@
       );
 
       this.classList.add("calendar-color-box", "calendar-item-container");
-
-      // We have two event listeners for dragstart. This event listener is for the capturing phase
-      // where we are setting up the document.monthDragEvent which will be used in the event listener
-      // in the bubbling phase.
-      this.addEventListener(
-        "dragstart",
-        () => {
-          document.monthDragEvent = this;
-        },
-        true
-      );
-
       this.style.pointerEvents = "auto";
       this.setAttribute("tooltip", "itemTooltip");
       this.setAttribute("tabindex", "-1");
@@ -245,9 +248,12 @@
     setEditableLabel() {
       const label = this.eventNameLabel;
       const item = this.mOccurrence;
-      label.textContent = item.title
-        ? item.title.replace(/\n/g, " ")
-        : cal.l10n.getCalString("eventUntitled");
+      if (item.title) {
+        delete label.dataset.l10nId;
+        label.textContent = item.title.replace(/\n/g, " ");
+      } else {
+        document.l10n.setAttributes(label, "event-untitled");
+      }
     }
 
     setLocationLabel() {
@@ -444,7 +450,7 @@
           this.mOccurrence,
           null,
           null,
-          this.eventNameTextbox.value || cal.l10n.getCalString("eventUntitled")
+          this.eventNameTextbox.value || lazy.l10n.formatValueSync("event-untitled")
         );
 
         // Note that as soon as we do the modifyItem, this element ceases to exist,

@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Naudoti teikėją
     .accesskey = N
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (numatytasis)
     .tooltiptext = Numatytoji URI serverių paieškai (DNS) HTTPS protokolu
@@ -64,7 +58,6 @@ no-proxy-label =
     .value = Tiesiogiai jungtis prie šių sričių:
     .accesskey = š
 no-proxy-example = Pavyzdys: .mozilla.org, .lrs.lt, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Prisijungimai prie „localhost“, 127.0.0.1, ir ::1 niekada neina per įgaliotąjį serverį.
 proxy-password-prompt =
     .label = Neprašyti tapatybės patvirtinimo, jeigu slaptažodis įrašytas

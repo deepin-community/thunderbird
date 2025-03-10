@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Шрифты
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = По умолчанию ({ $name })
 fonts-label-default-unnamed =
     .label = По умолчанию
-fonts-encoding-dialog-title =
-    .title = Шрифты и кодировки
 fonts-language-legend =
     .value = Шрифты для набора символов:
     .accesskey = ф
 fonts-proportional-label =
     .value = Пропорциональный:
     .accesskey = р
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Латиница
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Сингальский
 font-language-group-tibetan =
     .label = Тибетский
-
-## Default font type
-
 default-font-serif =
     .label = С засечками
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = и
 min-size-none =
     .label = Нет
-
-## Fonts in message
-
 font-control-legend = Управление шрифтами
 use-document-fonts-checkbox =
     .label = Разрешить сообщениям использовать другие шрифты
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Использовать моноширинный шрифт для простых текстовых сообщений
     .accesskey = н
-
-## Language settings
-
 text-encoding-legend = Кодировка текста
 text-encoding-description = Установить кодировку текста по умолчанию для входящих и исходящих сообщений
 font-outgoing-email-label =

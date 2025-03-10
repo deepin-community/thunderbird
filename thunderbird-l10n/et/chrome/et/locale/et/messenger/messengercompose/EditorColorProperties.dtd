@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Lehe värvid ja taust">
 <!ENTITY pageColors.label "Lehe värvid">
 <!ENTITY defaultColorsRadio.label "Lugeja vaikimisi värvid (lehele ei määrata värve)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Kasuta kohandatud värve:">
 <!ENTITY customColorsRadio.accessKey "k">
 <!ENTITY customColorsRadio.tooltip "Nende sätete puhul vaataja sätted ei rakendu">
-
 <!ENTITY normalText.label "Tavaline tekst">
 <!ENTITY normalText.accessKey "N">
 <!ENTITY linkText.label "Lingi tekst">

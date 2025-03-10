@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Zavře hledání a seznam událostí
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Název kalendáře
     .tooltiptext = Seřadíte podle názvu kalendáře
 calendar-event-listing-column-category =
     .label = Kategorie
     .tooltiptext = Seřadíte podle kategorie
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Hotovo
     .tooltiptext = Seřadíte podle dokončení
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Název
     .tooltiptext = Seřadíte podle názvu
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Události v minulosti
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Události v příštích 6 měsících
 calendar-event-listing-interval-next-12-months =
     .label = Události v příštích 12 měsících
+calendar-event-listing-interval-future =
+    .label = Všechny budoucí události
 calendar-event-listing-interval-all =
     .label = Všechny události
 calendar-event-listing-interval-selected-day =

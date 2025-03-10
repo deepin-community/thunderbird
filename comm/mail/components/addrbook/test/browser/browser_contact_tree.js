@@ -2,6 +2,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
+add_setup(async () => {
+  const account = MailServices.accounts.createAccount();
+  const identity = MailServices.accounts.createIdentity();
+  identity.email = "mochitest@localhost";
+  account.addIdentity(identity);
+  account.incomingServer = MailServices.accounts.createIncomingServer(
+    "user",
+    "test",
+    "pop3"
+  );
+  MailServices.accounts.defaultAccount = account;
+  registerCleanupFunction(() => {
+    MailServices.accounts.removeAccount(account, true);
+  });
+});
+
 /**
  * Tests that additions and removals are accurately displayed, or not
  * displayed if they happen outside the current address book.
@@ -1138,6 +1154,7 @@ add_task(async function test_list_table_layout() {
   await TestUtils.waitForCondition(
     () => !cardsHeader.querySelector(`[id="addrbook"]`).hidden
   );
+  await new Promise(resolve => abWindow.requestAnimationFrame(resolve));
 
   // Check for the contact that the column is shown.
   Assert.ok(
@@ -1201,6 +1218,7 @@ add_task(async function test_list_all_address_book() {
   await TestUtils.waitForCondition(
     () => !cardsHeader.querySelector(`[id="addrbook"]`).hidden
   );
+  await new Promise(resolve => abWindow.requestAnimationFrame(resolve));
 
   Assert.ok(
     cardsList

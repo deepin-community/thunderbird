@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 e2e-intro-description = Airson teachdaireachdan crioptaichte a chur no feadhainn ris a bheil soidhneadh digiteach, feumaidh tu teicneolas crioptachaidh a rèiteachadh, can OpenPGP no S/MIME.
 e2e-intro-description-more = Tagh an iuchair phearsanta agad airson cleachadh OpenPGP a chur an comas no an teisteanas pearsanta agad airson cleachdadh S/MIME a chur an comas. A thaobh iuchrach no teisteanais phearsanta, ’s ann agad-sa ’s a tha an iuchair rùin cho-cheangailte.
 e2e-signing-description = Leigidh soidhneadh digiteach leis na faightearan dearbhadh gur e thu fhèin a chuir e agus nach deach an t-susbaint atharrachadh. Bidh soidhneadh ri teachdaireachdan crioptaichte a ghnàth an-còmhnaidh.
@@ -25,7 +21,6 @@ e2e-encrypt-subject =
 e2e-encrypt-drafts =
     .label = Glèidh dreachdan theachdaireachdan ann am fòrmat crioptaichte
     .accesskey = r
-# Do not translate "Autocrypt", it's the name of a standard.
 e2e-autocrypt-headers =
     .label = Cuir iuchraichean poblach OpenPGP ann am bannan-cinn puist-d airson co-chòrdalachd le Autocrypt
     .accesskey = t
@@ -35,9 +30,6 @@ openpgp-key-expiry-label =
     .label = Falbhadh an ùine air
 openpgp-key-id-label =
     .label = ID na h-iuchrach
-openpgp-cannot-change-expiry = Seo iuchair aig a bheil structar toinnte, chan urrainn dhut an ceann-là a dh’fhalbhas an ùine air atharrachadh.
-openpgp-key-man-title =
-    .title = Manaidsear iuchraichean OpenPGP
 openpgp-key-man-dialog-title = Manaidsear iuchraichean OpenPGP
 openpgp-key-man-generate =
     .label = Paidhir iuchraichean ùr
@@ -45,8 +37,6 @@ openpgp-key-man-generate =
 openpgp-key-man-gen-revoke =
     .label = Teisteanas ais-ghairm
     .accesskey = T
-openpgp-key-man-ctx-gen-revoke-label =
-    .label = Gin ⁊ sàbhail an teisteanas ais-ghairm
 openpgp-key-man-file-menu =
     .label = Faidhle
     .accesskey = F
@@ -93,11 +83,7 @@ openpgp-key-man-publish-cmd =
 openpgp-key-publish = Foillsich
 openpgp-key-man-discover-prompt = Airson iuchraichean OpenPGP fhidreadh air loidhne, air frithealaichean iuchraichean no leis a’ phròtacal WKD, cuir a-steach seòladh puist-d no ID iuchrach.
 openpgp-key-man-discover-progress = A’ lorg…
-# Variables:
-# $keyserver (String) - The address of a server that contains a directory of OpenPGP public keys
 openpgp-key-publish-ok = Chaidh an iuchair phoblach a chur gu “{ $keyserver }”.
-# Variables:
-# $keyserver (String) - The address of a server that contains a directory of OpenPGP public keys
 openpgp-key-publish-fail = Cha b’ urrainn dhuinn an iuchair phoblach agad a chur gu “{ $keyserver }”.
 openpgp-key-copy-key =
     .label = Dèan lethbhreac dhen iuchair phoblach
@@ -111,8 +97,6 @@ openpgp-key-backup-key =
 openpgp-key-send-key =
     .label = Cuir iuchair phoblach air a’ phost-d
     .accesskey = s
-openpgp-key-man-ctx-expor-to-file-label =
-    .label = Às-phortaich iuchraichean ann am faidhle
 openpgp-key-man-ctx-copy =
     .label = Lethbhreac
     .accesskey = L
@@ -249,13 +233,7 @@ openpgp-passphrase-set = Suidhich an abairt-fhaire
 openpgp-passphrase-change = Atharraich an abairt-fhaire
 openpgp-copy-cmd-label =
     .label = Dèan lethbhreac
-
-## e2e encryption settings
-
-#   $identity (String) - the email address of the currently selected identity
 openpgp-description-no-key = Chan eil iuchair phearsanta OpenPGP aig { -brand-short-name } airson <b>{ $identity }</b>
-#   $count (Number) - the number of configured keys associated with the current identity
-#   $identity (String) - the email address of the currently selected identity
 openpgp-description-has-keys =
     { $count ->
         [one] Lorg { -brand-short-name } { $count } iuchair phearsanta OpenPGP a tha co-cheangailte ri <b>{ $identity }</b>
@@ -263,9 +241,7 @@ openpgp-description-has-keys =
         [few] Lorg { -brand-short-name } { $count } iuchraichean pearsanta OpenPGP a tha co-cheangailte ri <b>{ $identity }</b>
        *[other] Lorg { -brand-short-name } { $count } iuchair phearsanta OpenPGP a tha co-cheangailte ri <b>{ $identity }</b>
     }
-#   $key (String) - the currently selected OpenPGP key
 openpgp-selection-status-have-key = Tha an rèiteachadh làithreach agad a’ cleachdadh ID iuchair <b>{ $key }</b>
-#   $key (String) - the currently selected OpenPGP key
 openpgp-selection-status-error = Tha an rèiteachadh làithreach agad a’ cleachdadh ID iuchair <b>{ $key }</b> ach dh’fhalbh an ùine air.
 openpgp-add-key-button =
     .label = Cuir iuchair ris…
@@ -274,18 +250,13 @@ e2e-learn-more = Barrachd fiosrachaidh
 openpgp-keygen-success = Chaidh an iuchair OpenPGP a chruthachadh!
 openpgp-keygen-import-success = Chaidh an iuchair OpenPGP ion-phortadh!
 openpgp-keygen-external-success = Chaidh ID iuchair GnuPG air an taobh a-muigh a shàbhaladh!
-
-## OpenPGP Key selection area
-
 openpgp-radio-none =
     .label = Chan eil gin
 openpgp-radio-none-desc = Na cleachd OpenPGP mu choinneamh na dearbh-aithne seo.
 openpgp-radio-key-not-usable = Cha ghabh an iuchair seo a chleachdadh mar iuchair phearsanta a chionn ’s gu bheil an iuchair rùin a dhìth!
 openpgp-radio-key-not-accepted = Mus urrainn dhut an iuchair seo a chleachdadh, feumaidh tu aontachadh ris mar iuchair phearsanta!
 openpgp-radio-key-not-found = Cha b’ urrainn dhuinn an iuchair a lorg! Ma tha thu airson a chleachdadh, feumaidh tu ion-phortadh gu { -brand-short-name }.
-#   $date (String) - the future expiration date of when the OpenPGP key will expire
 openpgp-radio-key-expires = Falbhaidh an ùine air: { $date }
-#   $date (String) - the past expiration date of when the OpenPGP key expired
 openpgp-radio-key-expired = Dh’fhalbh an ùine air: { $date }
 openpgp-key-expires-within-6-months-icon =
     .title = Falbhaidh an ùine air an iuchair ann an nas lugha na 6 mìosan
@@ -305,9 +276,6 @@ openpgp-key-remove-external =
     .label = Thoir air falbh ID na h-iuchrach air an taobh a-muigh
     .accesskey = h
 key-external-label = Iuchair GnuPG air an taobh a-muigh
-
-## Strings in keyDetailsDlg.xhtml
-
 key-type-public = iuchair phoblach
 key-type-primary = prìomh-iuchair
 key-type-subkey = fo-iuchair
@@ -318,25 +286,13 @@ key-usage-sign = Soidhnich
 key-usage-certify = Teisteanaich
 key-usage-authentication = Dearbhadh
 key-does-not-expire = Chan fhalbh an ùine air an iuchair
-# Variables:
-# $keyExpiry (String) - Date the key expired on.
 key-expired-date = Dh’fhalbh an ùine air { $keyExpiry }
 key-expired-simple = Dh’fhalbh an ùine air an iuchair
 key-revoked-simple = Chaidh an iuchair a ghairm air ais
 key-do-you-accept = A bheil thu a’ gabhail ris an iuchair seo airson soidhnidhean digiteach a dhearbhadh agus airson teachdaireachdan a chrioptachadh?
-# Variables:
-# $addr (String) - Email address the key claims it belongs to.
 key-verification = Dearbh lorg-meòir na h-iuchrach slighe seanail conaltraidh thèarainte seach post-d a dhèanamh cinnteach gu e an iuchair aig { $addr } a th’ ann an da-rìribh.
-
-## Strings enigmailMsgComposeOverlay.js
-
-# Variables:
-# $problem (String) - Error message from key usability check.
 cannot-use-own-key-because = Chan urrainn dhuinn an teachdaireachd a chur a chionn ’s gu bheil duilgheadas leis an iuchair phearsanta agad. { $problem }
 window-locked = Tha an uinneag sgrìobhaidh glaiste; sguireadh dhen chur
-
-## Strings in keyserver.jsm
-
 keyserver-error-aborted = Sguireadh dheth
 keyserver-error-unknown = Thachair mearachd neo-aithnichte
 keyserver-error-server-error = Rinn am frithealaiche iuchraichean aithris air mearachd.
@@ -345,103 +301,14 @@ keyserver-error-unavailable = Chan eil am frithealaiche iuchraichean ri làimh.
 keyserver-error-security-error = Chan eil am frithealaiche iuchraichean a’ cur taic ri inntrigeadh crioptaichte.
 keyserver-error-certificate-error = Chan eil teisteanas an fhrithealaiche iuchraichean dligheach.
 keyserver-error-unsupported = Chan eil taic ris an fhrithealaiche iuchraichean.
-
-## Strings in mimeWkdHandler.jsm
-
 wkd-message-body-req =
     Dhèilig an solaraiche puist-d agad ris an iarrtas agad agus luchdaich e suas an iuchair phoblach agad gu eòlaire iuchraichean-lìn OpenPGP.
     Dèan dearbhadh gu bheil thu airson foillseachadh na h-iuchrach phoblach agad a choileanadh.
 wkd-message-body-process =
     Seo post-d co-cheangailte ri pròiseasadh fèin-obrachail airson an iuchair phoblach agad a luchdadh suas gu eòlaire iuchraichean-lìn OpenPGP.
     Cha leig thu leas dad a dhèanamh de làimh aig an ìre-sa.
-
-## Strings in persistentCrypto.jsm
-
-# Variables:
-# $subject (String) - Subject of the message.
 converter-decrypt-body-failed =
     Cha b’ urrainn dhuinn an teachdaireachd aig a bheil an cuspair
     { $subject }.
     a dhì-chrioptachadh. A bheil thu airson feuchainn ris a-rithist le abairt-fhaire eile no a bheil thu airson leum a ghearradh seachad air an teachdaireachd?
-
-## Strings filters.jsm
-
 filter-folder-required = Feumaidh tu pasgan targaide a thaghadh.
-
-## Strings filtersWrapper.jsm
-
-
-## Strings in enigmailKeyImportInfo.js
-
-
-## Strings in enigmailKeyManager.js
-
-
-## Account settings export output
-
-
-## Strings in keyObj.jsm
-## Variables:
-## $userId (String) - The name and/or email address that is mentioned in the key's information.
-## $keyId (String) - Key id for the key entry.
-
-
-## Strings in gnupg-keylist.jsm
-
-
-## Strings in key.jsm
-
-
-## Strings in keyRing.jsm & decryption.jsm
-
-
-## Strings used in errorHandling.jsm
-
-
-## Strings used in enigmailKeyManager.js & windows.jsm
-
-
-## Strings used in keyRing.jsm & keyLookupHelper.jsm
-
-
-## Strings used in keyRing.jsm & GnuPGCryptoAPI.jsm
-
-
-## Strings used in keyRing.jsm
-
-
-## Strings used in trust.jsm
-
-
-## Strings used in commonWorkflows.js
-
-
-## Strings used in enigmailKeygen.js
-
-
-## Strings used in enigmailMessengerOverlay.js
-
-
-## Strings used in enigmailMsgComposeOverlay.js
-
-
-## Strings used in decryption.jsm
-
-
-## Strings used in enigmailMsgHdrViewOverlay.js
-
-
-## Strings used in encryption.jsm
-
-
-## Strings used in windows.jsm
-
-
-## Strings used in dialog.jsm
-
-
-## Strings used in persistentCrypto.jsm
-
-
-## Strings used in enigmailMsgBox.js
-

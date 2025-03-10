@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-telemetry-ping-data-source = Ping データソース:
 about-telemetry-show-current-data = 現在のデータ
 about-telemetry-show-archived-ping-data = 保存された Ping データ
@@ -40,84 +36,43 @@ about-telemetry-raw = 生の JSON 形式
 about-telemetry-full-sql-warning = 注記: 動作の遅い SQL のデバッグが有効です。SQL 全文が以下に表示されますが Telemetry には送信されません。
 about-telemetry-fetch-stack-symbols = スタックの関数名を読み込む
 about-telemetry-hide-stack-symbols = 生のスタックデータを表示する
-# Selects the correct release version
-# Variables:
-#   $channel (string) - Represents the corresponding release data string
 about-telemetry-data-type =
     { $channel ->
         [release] release データ
        *[prerelease] pre-release データ
     }
-# Selects the correct upload string
-# Variables:
-#   $uploadcase (string) - Represents a corresponding upload string
 about-telemetry-upload-type =
     { $uploadcase ->
         [enabled] 有効
        *[disabled] 無効
     }
-# Example Output: 1 sample, average = 0, sum = 0
-# Variables:
-#   $sampleCount (number) - Amount of histogram samples
-#   $prettyAverage (number) - Average of histogram samples
-#   $sum (number) - Sum of histogram samples
 about-telemetry-histogram-stats = サンプル数 { $sampleCount }、平均 = { $prettyAverage }、合計 = { $sum }
-# Variables:
-#   $telemetryServerOwner (string) - the value of the toolkit.telemetry.server_owner preference. Typically "Mozilla"
 about-telemetry-page-subtitle = このページは、Telemetry によって収集されたパフォーマンスとハードウェア、使用状況、カスタマイズについての情報を表示します。この情報は、{ -brand-full-name } の改善のため { $telemetryServerOwner } に送信されます。
 about-telemetry-settings-explanation = Telemetry は { about-telemetry-data-type }を収集しています。アップロードは<a data-l10n-name="upload-link">{ about-telemetry-upload-type }</a>です。
-# Variables:
-#   $name (string) - Ping name, e.g. “saved-session”
-#   $timestamp (string) - Ping localized timestamp, e.g. “2017/07/08 10:40:46”
 about-telemetry-ping-details = 情報の各ピースは “<a data-l10n-name="ping-link">ping</a>” にバンドルして送信されます。あなたは { $name }、{ $timestamp } の ping を調べています。
 about-telemetry-data-details-current = 情報の各ピースは “<a data-l10n-name="ping-link">ping</a>” にバンドルして送信されます。あなたは現在のデータを調べています。
-# string used as a placeholder for the search field
-# More info about it can be found here:
-# https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/main-ping.html
-# Variables:
-#   $selectedTitle (string) - The section name from the structure of the ping.
 about-telemetry-filter-placeholder =
     .placeholder = { $selectedTitle } 内を検索
 about-telemetry-filter-all-placeholder =
     .placeholder = 全セクション内を検索
-# Variables:
-#   $searchTerms (string) - The searched terms
 about-telemetry-results-for-search = “{ $searchTerms }” の検索結果
-# More info about it can be found here: https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/main-ping.html
-# Variables:
-#   $sectionName (string) - The section name from the structure of the ping.
-#   $currentSearchText (string) - The current text in the search input
 about-telemetry-no-search-results = { $sectionName } セクションに “{ $currentSearchText }” は見つかりませんでした。
-# Variables:
-#   $searchTerms (string) - The searched terms
 about-telemetry-no-search-results-all = どのセクションにも “{ $searchTerms }” は見つかりませんでした。
-# This message is displayed when a section is empty.
-# Variables:
-#   $sectionName (string) - Is replaced by the section name.
 about-telemetry-no-data-to-display = 現在 “{ $sectionName }” に利用可能なデータがありません。
-# used as a tooltip for the “current” ping title in the sidebar
 about-telemetry-current-data-sidebar = 現在のデータ
-# used in the “Ping Type” select
 about-telemetry-telemetry-ping-type-all = すべて
-# button label to copy the histogram
 about-telemetry-histogram-copy = コピー
-# these strings are used in the “Slow SQL Statements” section
 about-telemetry-slow-sql-main = メインスレッド上の動作の遅い SQL 文
 about-telemetry-slow-sql-other = ヘルパースレッド上の動作の遅い SQL 文
 about-telemetry-slow-sql-hits = ヒット数
 about-telemetry-slow-sql-average = 平均タイム (ms)
 about-telemetry-slow-sql-statement = 文
-# these strings are used in the “Add-on Details” section
 about-telemetry-addon-table-id = アドオン ID
 about-telemetry-addon-table-details = 詳細
-# Variables:
-#   $addonProvider (string) - The name of an Add-on Provider (e.g. “XPI”, “Plugin”)
 about-telemetry-addon-provider = { $addonProvider } プロバイダー
 about-telemetry-keys-header = プロパティ
 about-telemetry-names-header = 名前
 about-telemetry-values-header = 値
-# Variables:
-#   $lateWriteCount (number) - The number of the late writes
 about-telemetry-late-writes-title = 遅延書き込み #{ $lateWriteCount }
 about-telemetry-stack-title = スタック:
 about-telemetry-memory-map-title = メモリーマップ:
@@ -127,6 +82,4 @@ about-telemetry-category-header = カテゴリー
 about-telemetry-method-header = メソッド
 about-telemetry-object-header = オブジェクト
 about-telemetry-extra-header = 特別
-# Variables:
-#   $process (string) - Type of process in subsection headers ( e.g. "content", "parent" )
 about-telemetry-process = { $process } プロセス

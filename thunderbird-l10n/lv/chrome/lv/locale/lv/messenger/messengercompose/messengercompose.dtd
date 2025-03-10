@@ -1,16 +1,10 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!--LOCALIZATION NOTE messengercompose.dtd Main UI for message composition -->
 <!ENTITY msgComposeWindow.title "Rakstīt: (nav tēmas)">
-
-<!-- File Menu -->
 <!ENTITY fileMenu.label "Fails">
 <!ENTITY fileMenu.accesskey "F">
 <!ENTITY newMenu.label "Jauns">
 <!ENTITY newMenu.accesskey "J">
 <!ENTITY newMessage.label "Vēstule">
+<!ENTITY newMessage.accesskey "M">
 <!ENTITY newMessageCmd2.key "N">
 <!ENTITY newContact.label "Adrešu grāmatas kontakts...">
 <!ENTITY newContact.accesskey "g">
@@ -45,8 +39,6 @@
 <!ENTITY printCmd.label "Drukāt…">
 <!ENTITY printCmd.key "P">
 <!ENTITY printCmd.accesskey "D">
-
-<!-- Edit Menu -->
 <!ENTITY editMenu.label "Rediģēt">
 <!ENTITY editMenu.accesskey "R">
 <!ENTITY undoCmd.label "Atsaukt">
@@ -85,24 +77,13 @@
 <!ENTITY findPrevCmd.accesskey "i">
 <!ENTITY findPrevCmd.key "G">
 <!ENTITY findPrevCmd.key2 "VK_F3">
-
-<!-- Reorder Attachment Panel -->
 <!ENTITY reorderAttachmentsPanel.label "Pārkārtot pielikumus">
 <!ENTITY moveAttachmentBundleUpPanelBtn.label "Pārvietot kopā">
-
-<!-- LOCALIZATION NOTE (sortAttachmentsPanelBtn.Sort.AZ.label):
-     Please ensure that this translation matches
-     sortAttachmentsPanelBtn.Sort.ZA.label, except for the sort direction. -->
 <!ENTITY sortAttachmentsPanelBtn.Sort.AZ.label "Kārtot: A - Z">
 <!ENTITY sortAttachmentsPanelBtn.Sort.ZA.label "Kārtot: Z - A">
-<!-- LOCALIZATION NOTE (sortAttachmentsPanelBtn.SortSelection.AZ.label):
-     Please ensure that this translation matches
-     sortAttachmentsPanelBtn.SortSelection.ZA.label, except for the sort direction. -->
 <!ENTITY sortAttachmentsPanelBtn.SortSelection.AZ.label "Kārtot atlasi: A - Z">
 <!ENTITY sortAttachmentsPanelBtn.SortSelection.ZA.label "Kārtot atlasi: Z - A">
 <!ENTITY sortAttachmentsPanelBtn.key "y">
-
-<!-- View Menu -->
 <!ENTITY viewMenu.label "Skats">
 <!ENTITY viewMenu.accesskey "S">
 <!ENTITY viewToolbarsMenuNew.label "Rīkjoslas">
@@ -117,15 +98,10 @@
 <!ENTITY showTaskbarCmd.accesskey "S">
 <!ENTITY customizeToolbar.label "Pielāgot…">
 <!ENTITY customizeToolbar.accesskey "P">
-
 <!ENTITY addressSidebar.label "Kontaktu sānjosla">
 <!ENTITY addressSidebar.accesskey "K">
-
-<!-- Format Menu -->
 <!ENTITY formatMenu.label "Formatēt">
 <!ENTITY formatMenu.accesskey "F">
-
-<!-- Options Menu -->
 <!ENTITY optionsMenu.label "Iestatījumi">
 <!ENTITY optionsMenu.accesskey "I">
 <!ENTITY checkSpellingCmd2.label "Pārbaudīt rakstību…">
@@ -136,11 +112,8 @@
 <!ENTITY enableInlineSpellChecker.accesskey "r">
 <!ENTITY quoteCmd.label "Citēt vēstuli">
 <!ENTITY quoteCmd.accesskey "C">
-
-<!--LOCALIZATION NOTE attachVCard.label Don't translate the term 'vCard' -->
 <!ENTITY attachVCard.label "Pievienot personisko karti (vCard)">
 <!ENTITY attachVCard.accesskey "P">
-
 <!ENTITY returnReceiptMenu.label "Saņemšanas apliecinājums">
 <!ENTITY returnReceiptMenu.accesskey "S">
 <!ENTITY dsnMenu.label "Piegādes statusa paziņojums">
@@ -163,8 +136,6 @@
 <!ENTITY fileCarbonCopyCmd.label "Sūtīt kopiju uz">
 <!ENTITY fileCarbonCopyCmd.accesskey "S">
 <!ENTITY fileHereMenu.label "Fails šeit">
-
-<!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Rīki">
 <!ENTITY tasksMenu.accesskey "R">
 <!ENTITY messengerCmd.label "Pasts &amp; Ziņu grupas">
@@ -176,37 +147,27 @@
 <!ENTITY accountManagerCmd2.label "Konta iestatījumi">
 <!ENTITY accountManagerCmd2.accesskey "K">
 <!ENTITY accountManagerCmdUnix2.accesskey "K">
-
-<!--  Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.key "m">
 <!ENTITY minimizeWindow.label "Minimizēt">
 <!ENTITY bringAllToFront.label "Novietot visu priekšā">
 <!ENTITY zoomWindow.label "Mērogs">
 <!ENTITY windowMenu.label "Logs">
-
-<!-- Mail Toolbar -->
 <!ENTITY sendButton.label "Sūtīt">
 <!ENTITY quoteButton.label "Citēt">
 <!ENTITY addressButton.label "Kontakti">
 <!ENTITY spellingButton.label "Pareizrakstība">
 <!ENTITY saveButton.label "Saglabāt">
 <!ENTITY printButton.label "Drukāt">
-
-<!-- Mail Toolbar Tooltips -->
 <!ENTITY sendButton.tooltip "Sūtīt šo vēstuli tagad">
 <!ENTITY sendlaterButton.tooltip "Sūtīt šo vēstuli vēlāk">
 <!ENTITY quoteButton.tooltip "Citēt iepriekšējo vēstuli">
 <!ENTITY addressButton.tooltip "Izvēlieties adresātu no adrešu grāmatas">
 <!ENTITY spellingButton.tooltip "Pārbaudīt atlases vai visas vēstules pareizrakstību">
 <!ENTITY saveButton.tooltip "Saglabāt šo vēstuli">
-<!ENTITY cutButton.tooltip              "Izgriezt">
-<!ENTITY copyButton.tooltip             "Kopēt">
-<!ENTITY pasteButton.tooltip            "Ielīmēt">
+<!ENTITY cutButton.tooltip "Izgriezt">
+<!ENTITY copyButton.tooltip "Kopēt">
+<!ENTITY pasteButton.tooltip "Ielīmēt">
 <!ENTITY printButton.tooltip "Drukāt šo vēstuli">
-
-<!-- Headers -->
-<!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
-    Subject: rows. It should be larger than the largest Header label  -->
 <!ENTITY headersSpace2.style "width: 8em;">
 <!ENTITY fromAddr2.label "No">
 <!ENTITY fromAddr.accesskey "N">
@@ -216,8 +177,6 @@
 <!ENTITY subject2.label "Tēma">
 <!ENTITY subject.accesskey "T">
 <!ENTITY attachmentBucketCloseButton.tooltip "Slēpt pielikumu rūti">
-
-<!-- Format Toolbar, imported from editorAppShell.xhtml -->
 <!ENTITY SmileButton.tooltip "Ievietot smaidiņu">
 <!ENTITY smiley1Cmd.label "Smaids">
 <!ENTITY smiley2Cmd.label "Saraukta piere">
@@ -235,8 +194,6 @@
 <!ENTITY smiley14Cmd.label "Nevainīgs">
 <!ENTITY smiley15Cmd.label "Raudošs">
 <!ENTITY smiley16Cmd.label "Aizzīmogotas lūpas">
-
-<!-- Message Pane Context Menu -->
 <!ENTITY spellCheckNoSuggestions.label "Ieteikumi nav atrasti">
 <!ENTITY spellCheckIgnoreWord.label "Ignorēt vārdu">
 <!ENTITY spellCheckIgnoreWord.accesskey "I">
@@ -252,8 +209,6 @@
 <!ENTITY paste.accesskey "l">
 <!ENTITY pasteQuote.label "Ievietot kā citātu">
 <!ENTITY pasteQuote.accesskey "c">
-
-<!-- Attachment Item and List Context Menus -->
 <!ENTITY openAttachment.label "Atvērt">
 <!ENTITY openAttachment.accesskey "A">
 <!ENTITY delete.label "Dzēst">
@@ -278,30 +233,13 @@
 <!ENTITY convertRegularAttachment.accesskey "p">
 <!ENTITY attachPage.label "Pievienot tīmekļa lapu…">
 <!ENTITY attachPage.accesskey "l">
-
-<!-- Attachment Pane Header Bar Context Menu -->
-<!-- LOCALIZATION NOTE (initiallyShowAttachmentPane.label):
-     Should use the same wording as startExpandedCmd.label
-     in msgHdrViewOverlay.dtd. -->
 <!ENTITY initiallyShowAttachmentPane.label "Sākotnēji rādīt pielikumu rūti">
 <!ENTITY initiallyShowAttachmentPane.accesskey "S">
-
-<!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Pievienot vārdnīcas…">
 <!ENTITY spellAddDictionaries.accesskey "P">
-
-<!-- Title for the address picker panel -->
 <!ENTITY addressesSidebarTitle.label "Kontakti">
-
-<!-- Identity popup customize menuitem -->
 <!ENTITY customizeFromAddress.label "Pielāgot no adreses…">
 <!ENTITY customizeFromAddress.accesskey "P">
-
-<!-- Accessibility name for the document -->
 <!ENTITY aria.message.bodyName "Vēstules pamatteksts">
-
-<!-- Status Bar -->
 <!ENTITY languageStatusButton.tooltip "Rakstības pārbaudes valoda">
 <!ENTITY encodingStatusPanel.tooltip "Teksta kodējums">
-
-<!ENTITY newMessage.accesskey "M">

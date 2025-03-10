@@ -1,13 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Autentimise sätted
 account-channel-title = Vaikekanalid
-
 chat-autologin =
     .label = Käivitumisel logitakse sisse
-
 chat-encryption-generic = Üldine
 chat-encryption-log =
     .label = otspunktkrüptitud sõnumid kaasatakse vestluste logidesse

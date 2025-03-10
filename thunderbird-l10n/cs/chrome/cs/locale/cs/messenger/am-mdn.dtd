@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY pane.title "Potvrzení o přečtení">
 <!ENTITY useGlobalPrefs.label "Použít pro tento účet globální nastavení potvrzení o přečtení">
 <!ENTITY useGlobalPrefs.accesskey "u">
@@ -14,7 +10,6 @@
 <!ENTITY receiptArrive.label "Při přijetí potvrzení:">
 <!ENTITY leaveIt.label "Ponechat ve složce „Doručená pošta“">
 <!ENTITY leaveIt.accesskey "D">
-<!-- LOCALIZATION NOTE moveToSent.label Translate: 'Sent' according to Netscape glossary -->
 <!ENTITY moveToSent.label "Přesunout do složky „Odeslaná pošta“">
 <!ENTITY moveToSent.accesskey "O">
 <!ENTITY requestMDN.label "Pokud zpráva obsahuje žádost potvrzení o přečtení:">

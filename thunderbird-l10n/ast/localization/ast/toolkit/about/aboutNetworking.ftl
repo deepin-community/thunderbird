@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-http = HTTP
 about-networking-sockets = Ralures
 about-networking-dns = DNS
@@ -34,9 +30,3 @@ about-networking-rcwn-status = Estáu de RCWN
 about-networking-rcwn-operation = Operación de la caché
 about-networking-rcwn-avg-short = Media curtia
 about-networking-rcwn-avg-long = Media llarga
-
-## Link is intended as "network link"
-
-
-##
-

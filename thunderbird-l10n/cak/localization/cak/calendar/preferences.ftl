@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Cholb'äl q'ij
 calendar-title-reminder = Taq Natab'äl:
 calendar-title-notification = Taq rutzijol
 calendar-title-category = Taq ruwäch
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Raqän: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Kut: { $date }
 timezone-label =
@@ -87,7 +81,6 @@ task-start-4-label =
     .label = Chwa'q
 task-start-5-label =
     .label = Jun Chik Apo Wuqq'ij
-accessibility-legend = Okel
 reminder-play-checkbox =
     .label = Titzij jun k'oxom
     .accesskey = k

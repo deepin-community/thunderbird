@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-telemetry-ping-data-source = Zdroj údajov pre ping:
 about-telemetry-show-current-data = Aktuálne údaje
 about-telemetry-show-archived-ping-data = Archivované údaje príkazu ping
@@ -40,89 +36,48 @@ about-telemetry-raw = Dáta JSON v nespracovanom tvare
 about-telemetry-full-sql-warning = Poznámka: Je zapnuté ladenie pomalých výrazov SQL. Nižšie môžu byť zobrazené celé výrazy SQL, avšak tieto nebudú odosielané pomocou telemetrie.
 about-telemetry-fetch-stack-symbols = Získať názvy funkcií pre zásobníky zlyhaní
 about-telemetry-hide-stack-symbols = Zobraziť nespracované údaje zásobníka
-# Selects the correct release version
-# Variables:
-#   $channel (String): represents the corresponding release data string
 about-telemetry-data-type =
     { $channel ->
         [release] informácie o vydaní
        *[prerelease] informácie pred vydaním
     }
-# Selects the correct upload string
-# Variables:
-#   $uploadcase (String): represents a corresponding upload string
 about-telemetry-upload-type =
     { $uploadcase ->
         [enabled] povolené
        *[disabled] zakázané
     }
-# Example Output: 1 sample, average = 0, sum = 0
-# Variables:
-#   $sampleCount (Integer): amount of histogram samples
-#   $prettyAverage (Integer): average of histogram samples
-#   $sum (Integer): sum of histogram samples
 about-telemetry-histogram-stats =
     { $sampleCount ->
         [one] { $sampleCount } vzorka, priemer = { $prettyAverage }, súhrnne = { $sum }
         [few] { $sampleCount } vzorky, priemer = { $prettyAverage }, súhrnne = { $sum }
        *[other] { $sampleCount } vzoriek, priemer = { $prettyAverage }, súhrnne = { $sum }
     }
-# Variables:
-#   $telemetryServerOwner (String): the value of the toolkit.telemetry.server_owner preference. Typically "Mozilla"
 about-telemetry-page-subtitle = Táto stránka zobrazuje údaje o výkonnosti a využívaní funkcií zozbierané pomocou telemetrie. Informácie sú anonymne odosielané spoločnosti { $telemetryServerOwner } s cieľom vylepšiť program { -brand-full-name }.
 about-telemetry-settings-explanation = Telemetria zbiera { about-telemetry-data-type } a odosielanie je <a data-l10n-name="upload-link">{ about-telemetry-upload-type }</a>.
-# Variables:
-#   $name (String): ping name, e.g. “saved-session”
-#   $timeStamp (String): ping localized timestamp, e.g. “2017/07/08 10:40:46”
 about-telemetry-ping-details = Všetky informácie sú odosielané ako súčasť “<a data-l10n-name="ping-link">pings</a>”. Teraz sa pozeráte na ping { $name }, { $timestamp }.
 about-telemetry-data-details-current = Všetky informácie sú odosielané ako súčasť  “<a data-l10n-name="ping-link">pingov</a>“. Teraz sa pozeráte na aktuálne údaje.
-# string used as a placeholder for the search field
-# More info about it can be found here:
-# https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/main-ping.html
-# Variables:
-#   $selectedTitle (String): the section name from the structure of the ping.
 about-telemetry-filter-placeholder =
     .placeholder = Hľadať v sekcii { $selectedTitle }
 about-telemetry-filter-all-placeholder =
     .placeholder = Hľadať vo všetkých sekciách
-# Variables:
-#   $searchTerms (String): the searched terms
 about-telemetry-results-for-search = Výsledky vyhľadávania pre “{ $searchTerms }”
-# More info about it can be found here: https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/main-ping.html
-# Variables:
-#   $sectionName (String): the section name from the structure of the ping.
-#   $currentSearchText (String): the current text in the search input
 about-telemetry-no-search-results = Mrzí nás to, no pre hľadaný výraz “{ $currentSearchText }” sme v sekcii { $sectionName } nič nenašli
-# Variables:
-#   $searchTerms (String): the searched terms
 about-telemetry-no-search-results-all = Mrzí nás to, no pre hľadaný výraz “{ $searchTerms }” sme v žiadnej sekcii nič nenašli
-# This message is displayed when a section is empty.
-# Variables:
-#   $sectionName (String): is replaced by the section name.
 about-telemetry-no-data-to-display = Mrzí nás to, no v sekcii “{ $sectionName }” nie sú dostupné žiadne údaje
-# used as a tooltip for the “current” ping title in the sidebar
 about-telemetry-current-data-sidebar = súčasné údaje
-# used in the “Ping Type” select
 about-telemetry-telemetry-ping-type-all = všetko
-# button label to copy the histogram
 about-telemetry-histogram-copy = Kopírovať
-# these strings are used in the “Slow SQL Statements” section
 about-telemetry-slow-sql-main = Pomalé výrazy SQL v hlavnom vlákne
 about-telemetry-slow-sql-other = Pomalé výrazy SQL v pomocných vláknach
 about-telemetry-slow-sql-hits = Počet
 about-telemetry-slow-sql-average = Priem. čas (ms)
 about-telemetry-slow-sql-statement = Výraz
-# these strings are used in the “Add-on Details” section
 about-telemetry-addon-table-id = Identifikátor doplnku
 about-telemetry-addon-table-details = Podrobnosti
-# Variables:
-#   $addonProvider (String): the name of an Add-on Provider (e.g. “XPI”, “Plugin”)
 about-telemetry-addon-provider = Poskytovateľ { $addonProvider }
 about-telemetry-keys-header = Kľúč
 about-telemetry-names-header = Názov
 about-telemetry-values-header = Hodnota
-# Variables:
-#   $lateWriteCount (Integer): the number of the late writes
 about-telemetry-late-writes-title = Neskorý zápis #{ $lateWriteCount }
 about-telemetry-stack-title = Zásobník:
 about-telemetry-memory-map-title = Mapa pamäte:
@@ -132,6 +87,4 @@ about-telemetry-category-header = kategória
 about-telemetry-method-header = metóda
 about-telemetry-object-header = objekt
 about-telemetry-extra-header = extra
-# Variables:
-#  $process (String): type of process in subsection headers ( e.g. "content", "parent" )
 about-telemetry-process = typ procesu: { $process }

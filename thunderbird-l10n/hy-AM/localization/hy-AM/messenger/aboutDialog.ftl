@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-update-whats-new = Ինչն է նոր
 about-dialog-title = { -brand-full-name }-ի մասին
 release-notes-link = Թողարկման նշումներ
@@ -21,22 +17,13 @@ update-other-instance-handling-updates = Թարմացվում է { -brand-short-
 update-manual = Թարմացումները հասանելի են <a data-l10n-name="manual-link"/>-ում
 update-unsupported = Չեք կարող կատարել հետագա թարմացումները այս համակարգում: <a data-l10n-name="unsupported-link">Մանրամասն</a>
 update-restarting = Վերամեկնարկում...
-# Variables:
-#   $channel (String): description of the update channel (e.g. "release", "beta", "nightly" etc.)
 channel-description = Դուք այժմ գտնվում եք <span data-l10n-name="current-channel">{ $channel }</span> թարմացումների ալիքում:
 warning-desc-version = { -brand-short-name }-ն փորձնական է և կայուն չի աշխատի:
 warning-desc-telemetry = Միանգամից ուղարկում է տեղեկատվություն սարքակազմի, օգտագործման և նախապատվությունների մասին { -vendor-short-name }-ին՝ { -brand-short-name }-ն էլ ավելի լավը դարձնելու համար:
-# Example of resulting string: 66.0.1 (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 66.0.1
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version = { $version } ({ $bits }-բիթ)
-# Example of resulting string: 66.0a1 (2019-01-16) (64-bit)
-# Variables:
-#   $version (String): version of Thunderbird for Daily builds, e.g. 66.0a1
-#   $isodate (String): date in ISO format, e.g. 2019-01-16
-#   $bits (Number): bits of the architecture (32 or 64)
 aboutDialog-version-nightly = { $version } ({ $isodate }) ({ $bits }-բիթ)
+aboutdialog-version-arch = { $version } ({ $arch })
+aboutdialog-version-arch-nightly = { $version } ({ $isodate }) ({ $arch })
 aboutdialog-update-checking-failed = Չի ստացվում ստուգել թարմացումների առկայությունը
 community-experimental = <a data-l10n-name="community-exp-mozilla-link">{ -vendor-short-name }-ը</a> ստեղծել է <a data-l10n-name="community-exp-credits-link">գլոբալ համայնք, </a> որն աշխատում է մեկ նպատակով՝ ապահովել համացանցի հասանելիությունը բոլորի համար:
 community-desc = { -brand-short-name }-ը ստեղծել է <a data-l10n-name="community-mozilla-link">{ -vendor-short-name }-ն</a>,<a data-l10n-name="community-credits-link">գլոբալ համայնք, </a> որն աշխատում է մեկ նպատակով՝ ապահովել համացանցի հասանելիությունը բոլորի համար:

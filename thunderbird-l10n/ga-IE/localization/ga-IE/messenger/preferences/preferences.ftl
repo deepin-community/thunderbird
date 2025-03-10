@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Dún
 preferences-doc-title2 = Socruithe
@@ -42,8 +38,6 @@ collection-description = Déanaimid ár ndícheall roghanna a thabhairt duit agu
 collection-privacy-notice = Fógra Príobháideachais
 collection-health-report-telemetry-disabled-link = Tuilleadh eolais
 collection-health-report-link = Tuilleadh eolais
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Díchumasaíodh tuairisciú sonraí don chumraíocht leagain seo
 collection-backlogged-crash-reports =
     .label = Lig do { -brand-short-name } seantuairiscí tuairteála a sheoladh ar do shon
@@ -59,18 +53,9 @@ chat-notifications-title = Fógraí
 confirm-messenger-language-change-button = Cuir i bhFeidhm agus Atosaigh
 update-in-progress-title = Nuashonrú ar Siúl
 update-in-progress-ok-button = &Cuileáil
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Ar Aghaidh
 account-button = Socruithe Cuntais
-
-## OS Authentication dialog
-
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -146,8 +131,6 @@ always-check-default =
 check-default-button =
     .label = Seiceáil Anois…
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotsolas
@@ -165,8 +148,6 @@ return-receipts-button =
     .label = Admhálacha Léite…
     .accesskey = L
 update-app-legend = Nuashonruithe { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Leagan { $version }
 automatic-updates-label =
     .label = Suiteáil nuashonruithe go huathoibríoch (molta: slándáil níos fearr)
@@ -196,18 +177,10 @@ offline-compact-folder =
     .accesskey = a
 compact-folder-size =
     .value = MB iomlán
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Úsáid suas le
     .accesskey = s
 use-cache-after = MB spás don taisce
-
-##
-
 smart-cache-label =
     .label = Sáraigh bainistíocht uathoibríoch na taisce
     .accesskey = b
@@ -228,7 +201,6 @@ color-options-button =
     .label = Dathanna…
     .accesskey = D
 display-width-legend = Teachtaireachtaí Gnáth-théacs
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Taispeáin straoiseoga mar ghraificí
     .accesskey = s
@@ -290,17 +262,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Chomh luath agus a thaispeántar iad
     .accesskey = o
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Tar éis iad a thaispeáint ar feadh
     .accesskey = t
 seconds-label = soicind
-
-##
-
 open-msg-label =
     .value = Oscail teachtaireachtaí:
 open-msg-tab =
@@ -315,14 +280,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Dún fuinneog/cluaisín na teachtaireachta tar éis a bhogtha nó scriosta
     .accesskey = c
-display-name-label =
-    .value = Ainm taispeána:
 condensed-addresses-label =
     .label = Ná taispeáin ach an t-ainm taispeána le haghaidh daoine atá i mo leabhar seoltaí
     .accesskey = s
-
-## Compose Tab
-
 forward-label =
     .value = Cuir teachtaireachtaí ar aghaidh:
     .accesskey = g
@@ -333,17 +293,10 @@ as-attachment-label =
 extension-label =
     .label = Cuir iarmhír le hainm an chomhaid
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Sábháil go huathoibríoch gach
     .accesskey = a
 auto-save-end = nóiméad
-
-##
-
 warn-on-send-accel-key =
     .label = Deimhnigh agus aicearra méarchláir á úsáid chun teachtaireacht a sheoladh
     .accesskey = c
@@ -410,9 +363,6 @@ remove-cloud-account =
     .label = Bain
     .accesskey = B
 cloud-account-description = Cuir seirbhís stórála Filelink leis
-
-## Privacy Tab
-
 mail-content = Ábhar Ríomhphoist
 remote-content-label =
     .label = Ceadaigh ábhar i gcéin i dteachtaireachtaí
@@ -438,15 +388,6 @@ third-party-never =
     .label = Riamh
 third-party-visited =
     .label = Ó shuímh fheicthe
-keep-label =
-    .value = Coinnigh:
-    .accesskey = o
-keep-expire =
-    .label = go dtí go mbeidh siad caite
-keep-close =
-    .label = go dtí go ndúnaim { -brand-short-name }
-keep-ask =
-    .label = fiafraigh díom i gcónaí
 cookies-button =
     .label = Taispeáin Fianáin…
     .accesskey = s
@@ -455,18 +396,12 @@ passwords-button =
     .label = Focail Fhaire Sábháilte…
     .accesskey = S
 junk-description = Socraigh na réamhshocruithe dramhphoist. Téigh go Socruithe an Chuntais chun socruithe dramhphoist do chuntas áirithe a chumrú.
-junk-label =
-    .label = Agus teachtaireachtaí marcáilte mar dhramhphost agam:
-    .accesskey = A
 junk-move-label =
     .label = Bog go dtí fillteán "Dramhphost" an chuntais iad
     .accesskey = o
 junk-delete-label =
     .label = Scrios iad
     .accesskey = d
-junk-read-label =
-    .label = Marcáil teachtaireachtaí ar Dramhphost iad mar léite
-    .accesskey = M
 junk-log-label =
     .label = Cumasaigh logáil don scagaire dramhphoist
     .accesskey = C
@@ -494,9 +429,6 @@ certificate-ask =
 ocsp-label =
     .label = Iarr ar fhreastalaí freagróra OCSP bailíocht teastais a dheimhniú
     .accesskey = O
-
-## Chat Tab
-
 startup-label =
     .value = Agus { -brand-short-name } á thosú:
     .accesskey = u
@@ -504,20 +436,10 @@ offline-label =
     .label = Coinnigh mo Chuntais Chomhrá as líne
 auto-connect-label =
     .label = Ceangail mo chuntais chomhrá go huathoibríoch
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Abair le mo chairde go bhfuilim díomhaoin tar éis
     .accesskey = A
 idle-time-label = nóiméad gan gníomh
-
-##
-
 away-message-label =
     .label = agus socraigh go bhfuilim Amuigh, leis an teachtaireacht stádais seo:
     .accesskey = A
@@ -557,7 +479,4 @@ style-dark =
 style-simple =
     .label = Simplí
 preview-label = Réamhamharc:
-
-## Settings UI Search Results
-
 search-results-header = Torthaí an Chuardaigh

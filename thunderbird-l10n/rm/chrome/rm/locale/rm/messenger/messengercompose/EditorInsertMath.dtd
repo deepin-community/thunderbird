@@ -1,12 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Inserir furmlas matematicas">
-
 <!ENTITY sourceEditField.label "Endatescha il code da funtauna LaTeX:">
-
 <!ENTITY options.label "Opziuns">
 <!ENTITY optionInline.label "Modus integrà">
 <!ENTITY optionInline.accesskey "N">
@@ -16,6 +9,5 @@
 <!ENTITY optionLTR.accesskey "s">
 <!ENTITY optionRTL.label "Direcziun 'da dretg a sanestra'">
 <!ENTITY optionRTL.accesskey "d">
-
 <!ENTITY insertButton.label "Inserir">
 <!ENTITY insertButton.accesskey "I">

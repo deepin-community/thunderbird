@@ -4,9 +4,9 @@
 
 const lazy = {};
 
-import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
 import { EventEmitter } from "resource://gre/modules/EventEmitter.sys.mjs";
 import { ExtensionUtils } from "resource://gre/modules/ExtensionUtils.sys.mjs";
+import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
 import { clearTimeout, setTimeout } from "resource://gre/modules/Timer.sys.mjs";
 
 import {
@@ -42,6 +42,121 @@ XPCOMUtils.defineLazyPreferenceGetter(
   "extensions.webextensions.messagesPerPage",
   100
 );
+
+// Headers holding multiple mailbox strings needs special handling during encoding
+// and decoding. For example, the following TO header
+//   =?UTF-8?Q?H=C3=B6rst=2C_Kenny?= <K.Hoerst@invalid>, new@thunderbird.bug
+// will be wrongly decoded to
+//   Hörst, Kenny <K.Hoerst@invalid>, new@thunderbird.bug
+// The data in the header is no longer usable, because the structure of the first
+// mailbox string has been corrupted.
+export const MAILBOX_HEADERS = [
+  // Addressing headers from RFC 5322:
+  "bcc",
+  "cc",
+  "from",
+  "reply-to",
+  "resent-bcc",
+  "resent-cc",
+  "resent-from",
+  "resent-reply-to",
+  "resent-sender",
+  "resent-to",
+  "sender",
+  "to",
+  // From RFC 5536:
+  "approved",
+  // From RFC 3798:
+  "disposition-notification-to",
+  // Non-standard headers:
+  "delivered-to",
+  "return-receipt-to",
+  // http://cr.yp.to/proto/replyto.html
+  "mail-reply-to",
+  "mail-followup-to",
+];
+
+/**
+ * Creates a raw message string from a WebExtension MessagePart. Fails if the
+ * MessagePart does not contain raw header or raw content data.
+ *
+ * @param {MessagePart} messagePart
+ * @returns {string} The raw message reconstructed from the provided MessagePart.
+ */
+export function messagePartToRaw(messagePart) {
+  if (messagePart.rawHeaders == undefined) {
+    throw new ExtensionError(
+      "Failed to create message from MessagePart due to missing raw headers."
+    );
+  }
+
+  // Skip the outer RFC822 MessagePart envelope and merge its headers into the
+  // first real part. This envelope is a historic speciality of our MessagePart
+  // and removing it here simplifies the following process.
+  if (
+    messagePart.contentType == "message/rfc822" &&
+    messagePart.partName == ""
+  ) {
+    messagePart.parts[0].rawHeaders = {
+      ...messagePart.rawHeaders,
+      ...messagePart.parts[0].rawHeaders,
+    };
+    messagePart = messagePart.parts[0];
+    // Follow convention to include multi-part message text description.
+    if (
+      messagePart.contentType.startsWith("multipart/") &&
+      !messagePart.rawBody
+    ) {
+      messagePart.rawBody = "This is a multi-part message in MIME format.\r\n";
+    }
+  }
+
+  if (messagePart.body) {
+    throw new ExtensionError(
+      "Failed to create message from MessagePart due to missing raw part content."
+    );
+  }
+
+  let msg = "";
+  const rawHeaders = Object.entries(messagePart.rawHeaders);
+  if (rawHeaders.length > 0) {
+    for (const [name, value] of rawHeaders) {
+      const formattedName = name.replace(/^.|(-.)/g, function (match) {
+        return match.toUpperCase();
+      });
+
+      // Note: value is an array holding multiple entries for the same header.
+      const headers = value.map(v => `${formattedName}: ${v}`).join("\r\n");
+      msg += headers;
+      if (!msg.endsWith("\r\n")) {
+        msg += "\r\n";
+      }
+    }
+    msg += "\r\n";
+  }
+
+  if (messagePart.rawBody) {
+    msg += messagePart.rawBody;
+  }
+
+  if (messagePart.parts && messagePart.parts.length > 0) {
+    const contentTypeHeader = messagePart.rawHeaders["content-type"].join("");
+    const boundary = lazy.MimeParser.getParameter(
+      contentTypeHeader,
+      "boundary"
+    );
+    for (const part of messagePart.parts) {
+      msg += `--${boundary}\r\n`;
+      msg += messagePartToRaw(part);
+      if (msg.search(/[\r\n]$/) < 0) {
+        msg += "\r\n";
+      }
+      msg += "\r\n";
+    }
+    msg += `--${boundary}--\r\n`;
+  }
+  return msg;
+}
 
 /**
  * Parse an address header containing one or more email addresses, and return an
@@ -173,6 +288,9 @@ function getParentMsgInfo(msgHdr) {
 class WebExtMimeTreeEmitter extends MimeTreeEmitter {
   getAttachmentName(mimeTreePart) {
     const getName = header => {
+      if (!header) {
+        return "";
+      }
       const filename = lazy.MimeParser.getParameter(header, "filename");
       if (filename) {
         return filename;
@@ -189,20 +307,17 @@ class WebExtMimeTreeEmitter extends MimeTreeEmitter {
       return "";
     };
 
-    if (
-      mimeTreePart.headers &&
-      mimeTreePart.headers.has("content-disposition")
-    ) {
-      const contentDisposition = mimeTreePart.headers.get(
-        "content-disposition"
-      )[0];
+    const contentDisposition = mimeTreePart.headers.has("content-disposition")
+      ? mimeTreePart.headers.get("content-disposition")[0]
+      : undefined;
 
-      // Forwarded messages are sometimes inlined, but we consider them as
-      // attachments.
-      if (
-        /^inline/i.test(contentDisposition) &&
-        mimeTreePart.headers.contentType.type == "message/rfc822"
-      ) {
+    // Forwarded messages are sometimes not marked as attachments, but we always
+    // consider them as such.
+    if (
+      contentDisposition ||
+      mimeTreePart.headers.contentType.type == "message/rfc822"
+    ) {
+      if (mimeTreePart.headers.contentType.type == "message/rfc822") {
         return getName(contentDisposition) || "ForwardedMessage.eml";
       }
 
@@ -244,7 +359,7 @@ class WebExtMimeTreeEmitter extends MimeTreeEmitter {
  */
 
 /**
- * @typedef MimeTreeParserOptions
+ * @typedef {object} MimeTreeParserOptions
  *
  * @param {string} [pruneat=""] - Treat the message as starting at the given part
  *   number, so that no parts above the specified parts are returned.
@@ -264,16 +379,31 @@ export class MsgHdrProcessor {
   #originalTree;
   #decryptedTree;
 
+  // Options for parser.
+  #strFormat;
+  #bodyFormat;
+  #stripContinuations;
+
   // Keep track of encryption status, to skip encryption if known to be not
   // needed.
   #hasEncryptedParts;
 
   /**
    * @param {nsIMsgDBHdr} msgHdr
+   * @param {object} parserOptions
+   * @param {string} parserOptions.strFormat - Either binarystring, unicode or
+   *    typedarray. See jsmime.mjs for more details.
+   * @param {string} parserOptions.bodyFormat - Either none, raw, nodecode or
+   *    decode. See jsmime.mjs for more details.
+   * @param {boolean} parserOptions.stripContinuations - Whether to remove line
+   *    breaks in headers.
    */
-  constructor(msgHdr) {
+  constructor(msgHdr, parserOptions) {
     this.#msgHdr = msgHdr;
     this.#msgUri = getMsgStreamUrl(msgHdr);
+    this.#bodyFormat = parserOptions?.bodyFormat ?? "decode";
+    this.#strFormat = parserOptions?.strFormat ?? "unicode";
+    this.#stripContinuations = parserOptions?.stripContinuations ?? true;
   }
 
   /**
@@ -290,13 +420,11 @@ export class MsgHdrProcessor {
     const excludeAttachmentData =
       emitterOptions?.excludeAttachmentData ?? false;
     const decodeSubMessages = parserOptions?.decodeSubMessages ?? false;
-    // jsmime uses "$." as sub-message deliminator.
+    // The partNames of the messages API always start with "1." for the root part,
+    // jsmime however skips this root level. Adjust the provided pruneat value
+    // accordingly.
     const pruneat = parserOptions?.pruneat
-      ? parserOptions.pruneat
-          .split(".")
-          .slice(1)
-          .join(".")
-          .replaceAll(".1.", "$.")
+      ? parserOptions.pruneat.split(".").slice(1).join(".")
       : "";
 
     const emitter = new WebExtMimeTreeEmitter({
@@ -306,10 +434,10 @@ export class MsgHdrProcessor {
       excludeAttachmentData,
     });
     lazy.MimeParser.parseSync(rawMessage, emitter, {
-      strformat: "unicode",
-      bodyformat: "decode",
+      strformat: this.#strFormat,
+      bodyformat: this.#bodyFormat,
       decodeSubMessages,
-      stripcontinuations: true,
+      stripcontinuations: this.#stripContinuations,
       pruneat,
     });
     const mimeTree = emitter.mimeTree.subParts[0];
@@ -393,12 +521,29 @@ export class MsgHdrProcessor {
     const parentMsgInfo = getParentMsgInfo(this.#msgHdr);
     if (parentMsgInfo) {
       const msgHdrProcessor = new MsgHdrProcessor(parentMsgInfo.msgHdr);
-      const attachment = await msgHdrProcessor.getAttachmentPart(
-        parentMsgInfo.partName,
-        {
-          includeRaw: true,
+      let partName = parentMsgInfo.partName;
+
+      // The returned partName may need to be adjusted for jsmime x-ray vision,
+      // which needs nested messages to be identified by a $ in the partName.
+      if (partName.split(".").length > 2) {
+        const attachments = await msgHdrProcessor.getAttachmentParts({
+          includeNestedAttachments: true,
+        });
+        const adjustedPartNames = new Map(
+          attachments.map(attachment => [
+            attachment.partNum.replaceAll("$.", ".1."),
+            attachment.partNum,
+          ])
+        );
+        // Convert 1.2.1.3 to 1.2$.3, if 1.2$.3 exists.
+        if (adjustedPartNames.has(partName)) {
+          partName = adjustedPartNames.get(partName);
         }
-      );
+      }
+
+      const attachment = await msgHdrProcessor.getAttachmentPart(partName, {
+        includeRaw: true,
+      });
       this.#originalMessage = attachment.body;
       return this.#originalMessage;
     }
@@ -485,6 +630,7 @@ export class MsgHdrProcessor {
 
   /**
    * Returns the parsed original MimeTreePart. Throws if message could not be read.
+   *
    * @returns {Promise<MimeTreePart>}
    */
   async getOriginalTree() {
@@ -510,6 +656,7 @@ export class MsgHdrProcessor {
 
   /**
    * Returns the decrypted MimeTreePart. Throws if message could not be read.
+   *
    * @returns {Promise<MimeTreePart>}
    */
   async getDecryptedTree() {
@@ -558,6 +705,7 @@ export class MsgHdrProcessor {
   /**
    * Gets the decrypted message as a binary string. Throws if message could not
    * be read or decrypted.
+   *
    * @returns {Promise<string>}
    */
   async getDecryptedMessage() {
@@ -711,12 +859,36 @@ export function getMessagesInFolder(folder) {
 }
 
 /**
- * Class for cached message headers to reduce XPCOM requests and to cache msgHdr
- * of file and attachment messages.
+ * Map() that automatically removes added entries after 60s.
+ */
+export class TemporaryCacheMap extends Map {
+  set(key, value) {
+    super.set(key, value);
+    // Remove the value from the cache after 60s.
+    setTimeout(() => this.delete(key), 1000 * 60);
+  }
+}
+
+/**
+ * Class for cached message headers to reduce XPCOM requests and to cache a real
+ * or dummy msgHdr (file or attachment message).
  */
 export class CachedMsgHeader {
-  constructor(msgHdr) {
+  #id;
+
+  /**
+   * @param {MessageTracker} messageTracker - reference to global MessageTracker
+   * @param {nsIMsgDBHdr} [msgHdr] - a msgHdr to cache
+   * @param {object} [options]
+   * @param {boolean} [options.addToMessageTracker=true] - Whether to automatically
+   *    add the cached msgHdr to the messageTracker and generate a WebExtension
+   *    message ID. Ignored if no msgHdr was provided. An untracked cached msgHdr
+   *    will forcefully be added to the messageTracker if its ID is requested.
+   */
+  constructor(messageTracker, msgHdr, options) {
+    const addToMessageTracker = options?.addToMessageTracker ?? true;
     this.mProperties = {};
+    this.messageTracker = messageTracker;
 
     // Properties needed by MessageManager.convert().
     this.author = null;
@@ -737,9 +909,9 @@ export class CachedMsgHeader {
 
     if (msgHdr) {
       // Cache all elements which are needed by MessageManager.convert().
-      this.author = msgHdr.mime2DecodedAuthor;
+      this.author = msgHdr.author;
       this.subject = msgHdr.mime2DecodedSubject;
-      this.recipients = msgHdr.mime2DecodedRecipients;
+      this.recipients = msgHdr.recipients;
       this.ccList = msgHdr.ccList;
       this.bccList = msgHdr.bccList;
       this.messageId = msgHdr.messageId;
@@ -749,6 +921,9 @@ export class CachedMsgHeader {
       this.isFlagged = msgHdr.isFlagged;
       this.messageSize = msgHdr.messageSize;
       this.folder = msgHdr.folder;
+
+      // Also cache the additional elements.
+      this.accountKey = msgHdr.accountKey;
 
       this.mProperties.junkscore = msgHdr.getStringProperty("junkscore");
       this.mProperties.keywords = msgHdr.getStringProperty("keywords");
@@ -762,9 +937,34 @@ export class CachedMsgHeader {
         );
       }
 
-      // Also cache the additional elements.
-      this.accountKey = msgHdr.accountKey;
+      if (addToMessageTracker) {
+        this.addToMessageTracker();
+      }
     }
+  }
+
+  get hasId() {
+    return !!this.#id;
+  }
+
+  get id() {
+    if (!this.#id) {
+      this.addToMessageTracker();
+    }
+    if (!this.#id) {
+      throw new Error("Failed to add cached header to the MessageTracker.");
+    }
+    return this.#id;
+  }
+
+  addToMessageTracker() {
+    if (this.#id) {
+      return;
+    }
+    if (!this.messageTracker) {
+      throw new Error("Missing MessageTracker.");
+    }
+    this.#id = this.messageTracker.getId(this);
   }
 
   getProperty(aProperty) {
@@ -792,20 +992,25 @@ export class CachedMsgHeader {
     this.mProperties[aProperty] = aVal.toString();
   }
   markHasAttachments() {}
-  get mime2DecodedAuthor() {
-    return this.author;
-  }
   get mime2DecodedSubject() {
     return this.subject;
-  }
-  get mime2DecodedRecipients() {
-    return this.recipients;
   }
 
   QueryInterface() {
     return this;
   }
 }
+
+/**
+ * @typedef {object} MsgIdentifier - An object with information needed to identify
+ *    a specific message.
+ * @property {boolean} [folderURI] - folder URI of the real message
+ * @property {integer} [messageKey] - messageKey of the real message
+ * @property {string}  [dummyMsgUrl] - dummyMsgUrl of the dummy message (mostly
+ *    a file:// URL)
+ * @property {integer} [dummyMsgLastModifiedTime] - the time the dummy message
+ *    was last modified, to distinguish different revisions of the same message
+ */
 
 /**
  * A map of numeric identifiers to messages for easy reference.
@@ -824,6 +1029,8 @@ export class MessageTracker extends EventEmitter {
     this._pendingKeyChanges = new Map();
     this._dummyMessageHeaders = new Map();
     this._windowTracker = windowTracker;
+    this._headerPromises = new Map();
+    this._msgHdrCache = new TemporaryCacheMap();
 
     // nsIObserver
     Services.obs.addObserver(this, "quit-application-granted");
@@ -832,12 +1039,14 @@ export class MessageTracker extends EventEmitter {
     MailServices.mailSession.AddFolderListener(
       this,
       Ci.nsIFolderListener.propertyFlagChanged |
-        Ci.nsIFolderListener.intPropertyChanged
+        Ci.nsIFolderListener.intPropertyChanged |
+        Ci.nsIFolderListener.removed
     );
     // nsIMsgFolderListener
     MailServices.mfn.addListener(
       this,
       MailServices.mfn.msgsJunkStatusChanged |
+        MailServices.mfn.msgAdded |
         MailServices.mfn.msgsDeleted |
         MailServices.mfn.msgsMoveCopyCompleted |
         MailServices.mfn.msgKeyChanged
@@ -857,7 +1066,7 @@ export class MessageTracker extends EventEmitter {
   /**
    * Generates a hash for the given msgIdentifier.
    *
-   * @param {object} msgIdentifier
+   * @param {MsgIdentifier} msgIdentifier
    * @returns {string}
    */
   getHash(msgIdentifier) {
@@ -868,10 +1077,10 @@ export class MessageTracker extends EventEmitter {
   }
 
   /**
-   * Maps the provided message identifier to the given messageTracker id.
+   * Maps the provided internal message identifier to the given messageTracker id.
    *
    * @param {integer} id - messageTracker id of the message
-   * @param {object} msgIdentifier - msgIdentifier of the message
+   * @param {MsgIdentifier} msgIdentifier - msgIdentifier of the message
    * @param {nsIMsgDBHdr} [msgHdr] - optional msgHdr of the message, will be
    *   added to the cache if it is a non-file dummy msgHdr, which cannot be
    *   retrieved later (for example an attached message)
@@ -888,16 +1097,18 @@ export class MessageTracker extends EventEmitter {
     ) {
       this._dummyMessageHeaders.set(
         msgIdentifier.dummyMsgUrl,
-        msgHdr instanceof Ci.nsIMsgDBHdr ? new CachedMsgHeader(msgHdr) : msgHdr
+        msgHdr instanceof CachedMsgHeader
+          ? msgHdr
+          : new CachedMsgHeader(this, msgHdr)
       );
     }
   }
 
   /**
-   * Lookup the messageTracker id for the given message identifier, return null
-   * if not known.
+   * Lookup the messageTracker id for the given internal message identifier,
+   * return null if not known.
    *
-   * @param {object} msgIdentifier - msgIdentifier of the message
+   * @param {MsgIdentifier} msgIdentifier - msgIdentifier of the message
    * @returns {integer} The messageTracker id of the message.
    */
   _get(msgIdentifier) {
@@ -909,9 +1120,9 @@ export class MessageTracker extends EventEmitter {
   }
 
   /**
-   * Removes the provided message identifier from the messageTracker.
+   * Removes the provided internal message identifier from the messageTracker.
    *
-   * @param {object} msgIdentifier - msgIdentifier of the message
+   * @param {MsgIdentifier} msgIdentifier - msgIdentifier of the message
    */
   _remove(msgIdentifier) {
     const hash = this.getHash(msgIdentifier);
@@ -922,38 +1133,65 @@ export class MessageTracker extends EventEmitter {
   }
 
   /**
-   * Finds a message in the messageTracker or adds it.
+   * Decouple the provided message identifier from the ID it is currently
+   * associated with and remove its tracker entries.
    *
-   * @param {nsIMsgDBHdr} - msgHdr of the requested message
-   * @returns {integer} The messageTracker id of the message.
+   * @param {MsgIdentifier} msgIdentifier - msgIdentifier of the message
    */
-  getId(msgHdr) {
-    let msgIdentifier;
+  _decouple(msgIdentifier) {
+    const hash = this.getHash(msgIdentifier);
+    this._messageIds.delete(hash);
+    this._dummyMessageHeaders.delete(msgIdentifier.dummyMsgUrl);
+  }
+
+  /**
+   * Returns the internal message identifier for the given message.
+   *
+   * @param {nsIMsgDBHdr} msgHdr - The requested message.
+   * @returns {object} The msgIdentifier of the message.
+   */
+  getIdentifier(msgHdr) {
+    if (msgHdr instanceof CachedMsgHeader && msgHdr.hasId) {
+      return this._messages.get(msgHdr.id);
+    }
+
     if (msgHdr.folder) {
-      msgIdentifier = {
+      return {
         folderURI: msgHdr.folder.URI,
         messageKey: msgHdr.messageKey,
       };
-    } else {
-      // Normalize the dummyMsgUrl by sorting its parameters and striping them
-      // to a minimum.
-      const url = new URL(msgHdr.getStringProperty("dummyMsgUrl"));
-      const parameters = Array.from(url.searchParams, p => p[0]).filter(
-        p => !["group", "number", "key", "part"].includes(p)
-      );
-      for (const parameter of parameters) {
-        url.searchParams.delete(parameter);
-      }
-      url.searchParams.sort();
+    }
+    // Normalize the dummyMsgUrl by sorting its parameters and striping them
+    // to a minimum.
+    const url = new URL(msgHdr.getStringProperty("dummyMsgUrl"));
+    const parameters = Array.from(url.searchParams, p => p[0]).filter(
+      p => !["group", "number", "key", "part"].includes(p)
+    );
+    for (const parameter of parameters) {
+      url.searchParams.delete(parameter);
+    }
+    url.searchParams.sort();
 
-      msgIdentifier = {
-        dummyMsgUrl: url.href,
-        dummyMsgLastModifiedTime: msgHdr.getUint32Property(
-          "dummyMsgLastModifiedTime"
-        ),
-      };
+    return {
+      dummyMsgUrl: url.href,
+      dummyMsgLastModifiedTime: msgHdr.getUint32Property(
+        "dummyMsgLastModifiedTime"
+      ),
+    };
+  }
+
+  /**
+   * Finds a message in the messageTracker or adds it.
+   *
+   * @param {nsIMsgDBHdr} msgHdr - The requested message.
+   * @returns {integer} The messageTracker id of the message.
+   */
+  getId(msgHdr) {
+    if (msgHdr instanceof CachedMsgHeader && msgHdr.hasId) {
+      return msgHdr.id;
     }
 
+    const msgIdentifier = this.getIdentifier(msgHdr);
     let id = this._get(msgIdentifier);
     if (id) {
       return id;
@@ -967,7 +1205,7 @@ export class MessageTracker extends EventEmitter {
   /**
    * Check if the provided msgIdentifier belongs to a modified file message.
    *
-   * @param {object} msgIdentifier - msgIdentifier object of the message
+   * @param {MsgIdentifier} msgIdentifier - msgIdentifier object of the message
    * @returns {boolean}
    */
   isModifiedFileMsg(msgIdentifier) {
@@ -1036,8 +1274,44 @@ export class MessageTracker extends EventEmitter {
     return null;
   }
 
-  // nsIFolderListener
+  /**
+   * Finds all folders with new messages in the specified changedFolder and
+   * emits a "messages-received" event for them.
+   *
+   * @param {nsIMsgFolder} changedFolder
+   * @see MailNotificationManager._getFirstRealFolderWithNewMail()
+   */
+  findNewMessages(changedFolder) {
+    const folders = changedFolder.descendants;
+    folders.unshift(changedFolder);
+    for (const folder of folders) {
+      const numNewMessages = folder.getNumNewMessages(false);
+      if (!numNewMessages) {
+        continue;
+      }
+      const msgDb = folder.msgDatabase;
+      const newMsgKeys = msgDb.getNewList().slice(-numNewMessages);
+      if (newMsgKeys.length == 0) {
+        continue;
+      }
+      this.emit(
+        "messages-received",
+        folder,
+        newMsgKeys.map(key => msgDb.getMsgHdrForKey(key))
+      );
+    }
+  }
 
+  // Implements nsIFolderListener.
+
+  /**
+   * Implements nsIFolderListener.onFolderPropertyFlagChanged().
+   *
+   * @param {nsIMsgDBHdr} item
+   * @param {string} property
+   * @param {integer} oldFlag
+   * @param {integer} newFlag
+   */
   onFolderPropertyFlagChanged(item, property, oldFlag, newFlag) {
     const changes = {};
     switch (property) {
@@ -1065,6 +1339,14 @@ export class MessageTracker extends EventEmitter {
     }
   }
 
+  /**
+   * Implements nsIFolderListener.onFolderIntPropertyChanged().
+   *
+   * @param {nsIMsgFolder} folder
+   * @param {string} property
+   * @param {integer} oldValue
+   * @param {integer} newValue
+   */
   onFolderIntPropertyChanged(folder, property, oldValue, newValue) {
     switch (property) {
       case "BiffState":
@@ -1081,102 +1363,209 @@ export class MessageTracker extends EventEmitter {
   }
 
   /**
-   * Finds all folders with new messages in the specified changedFolder and
-   * returns those.
+   * Implements nsIFolderListener.onMessageRemoved().
    *
-   * @see MailNotificationManager._getFirstRealFolderWithNewMail()
+   * @param {nsIMsgFolder} folder
+   * @param {nsIMsgDBHdr} msgHdr
    */
-  findNewMessages(changedFolder) {
-    const folders = changedFolder.descendants;
-    folders.unshift(changedFolder);
-    for (const folder of folders) {
-      const numNewMessages = folder.getNumNewMessages(false);
-      if (!numNewMessages) {
-        continue;
-      }
-      const msgDb = folder.msgDatabase;
-      const newMsgKeys = msgDb.getNewList().slice(-numNewMessages);
-      if (newMsgKeys.length == 0) {
-        continue;
-      }
-      this.emit(
-        "messages-received",
-        folder,
-        newMsgKeys.map(key => msgDb.getMsgHdrForKey(key))
-      );
-    }
+  onMessageRemoved(folder, msgHdr) {
+    // An IMAP move operation may not get this information in time, cache it.
+    const hash = `folderURI: ${folder.URI}, messageKey: ${msgHdr.messageKey}`;
+    // Do not add the cached header of the deleted message unnecessarily to the
+    // message tracker. It will be added once it is actually used.
+    const cachedHdr = new CachedMsgHeader(this, msgHdr, {
+      addToMessageTracker: false,
+    });
+    // Since this message is removed, it will have certain flags set which will
+    // prevent it from being returned to the caller. For the purpose of this cache,
+    // this needs to be ignored.
+    cachedHdr.flags &= ~(
+      Ci.nsMsgMessageFlags.IMAPDeleted | Ci.nsMsgMessageFlags.Expunged
+    );
+    this._msgHdrCache.set(hash, cachedHdr);
   }
 
-  // nsIMsgFolderListener
+  // Implements nsIMsgFolderListener.
 
+  /**
+   * Implements nsIMsgFolderListener.msgsJunkStatusChanged().
+   *
+   * @param {nsIMsgDBHdr[]} messages
+   */
   msgsJunkStatusChanged(messages) {
     for (const msgHdr of messages) {
       const junkScore =
         parseInt(msgHdr.getStringProperty("junkscore"), 10) || 0;
-      this.emit("message-updated", new CachedMsgHeader(msgHdr), {
+      this.emit("message-updated", new CachedMsgHeader(this, msgHdr), {
         junk: junkScore >= lazy.gJunkThreshold,
       });
     }
   }
 
+  /**
+   * Implements nsIMsgFolderListener.msgsDeleted().
+   *
+   * @param {nsIMsgDBHdr[]} deletedMsgs
+   */
   msgsDeleted(deletedMsgs) {
     if (deletedMsgs.length > 0) {
-      this.emit(
-        "messages-deleted",
-        deletedMsgs.map(msgHdr => new CachedMsgHeader(msgHdr))
+      const cachedDeletedMsgs = deletedMsgs.map(
+        msgHdr => new CachedMsgHeader(this, msgHdr)
       );
+      cachedDeletedMsgs
+        .map(msgHdr => this.getIdentifier(msgHdr))
+        .forEach(msgIdentifier => this._remove(msgIdentifier));
+      this.emit("messages-deleted", cachedDeletedMsgs);
     }
   }
 
-  msgsMoveCopyCompleted(move, srcMsgs, dstFolder, dstMsgs) {
-    if (srcMsgs.length > 0 && dstMsgs.length > 0) {
-      const emitMsg = move ? "messages-moved" : "messages-copied";
-      this.emit(
-        emitMsg,
-        srcMsgs.map(msgHdr => new CachedMsgHeader(msgHdr)),
-        dstMsgs.map(msgHdr => new CachedMsgHeader(msgHdr))
-      );
+  /**
+   * Implements nsIMsgFolderListener.msgAdded().
+   *
+   * @param {nsIMsgDBHdr} msgHdr
+   */
+  msgAdded(msgHdr) {
+    // An IMAP copy/move operation may be waiting for a newly added header.
+    const hash = `folderURI: ${msgHdr.folder.URI}, headerMessageId: ${msgHdr.messageId}`;
+    if (this._headerPromises.has(hash)) {
+      this._headerPromises.get(hash).resolve(new CachedMsgHeader(this, msgHdr));
+      this._headerPromises.delete(hash);
     }
   }
 
+  /**
+   * Implements nsIMsgFolderListener.msgsMoveCopyCompleted().
+   *
+   * @param {boolean} move - whether this is a move or a copy operation
+   * @param {nsIMsgDBHdr[]} srcMsgs
+   * @param {nsIMsgFolder} dstFolder
+   * @param {nsIMsgDBHdr[]} dstMsgs
+   */
+  async msgsMoveCopyCompleted(move, srcMsgs, dstFolder, dstMsgs) {
+    if (srcMsgs.length == 0) {
+      return;
+    }
+
+    const emitMsg = move ? "messages-moved" : "messages-copied";
+    const cachedSrcMsgs = srcMsgs.map(msgHdr => {
+      // Some move operations will have an invalid src msgHdr (message is already
+      // gone), extract the header from _msgHdrCache.
+      if (!msgHdr.messageId) {
+        const hash = `folderURI: ${msgHdr.folder.URI}, messageKey: ${msgHdr.messageKey}`;
+        if (this._msgHdrCache.has(hash)) {
+          const cachedHdr = this._msgHdrCache.get(hash);
+          // Manually add the cached header to the tracker, which was skipped
+          // during its creation to prevent needlessly tracked headers. If the
+          // message is already known, the existing ID is re-used. This must be
+          // done before the information of the deleted message is purged from
+          // the tracker, otherwise a new message ID will be assigned.
+          cachedHdr.addToMessageTracker();
+          return cachedHdr;
+        }
+      }
+      return new CachedMsgHeader(this, msgHdr);
+    });
+    if (move) {
+      cachedSrcMsgs
+        .map(msgHdr => this.getIdentifier(msgHdr))
+        .forEach(msgIdentifier => this._remove(msgIdentifier));
+    }
+
+    // If messages are moved or copied to IMAP servers, the dstMsgs array can be
+    // empty. In these cases we trigger an update of the destination folder and
+    // wait for the msgAdded event.
+    if (cachedSrcMsgs.length > 0 && dstMsgs.length == 0) {
+      // Create Promises for new messages to appear in the destination folder
+      // with the expected headerMessageId.
+      const dstMsgsPromises = cachedSrcMsgs.map(msgHdr => {
+        const hash = `folderURI: ${dstFolder.URI}, headerMessageId: ${msgHdr.messageId}`;
+        const deferred = Promise.withResolvers();
+        this._headerPromises.set(hash, deferred);
+        return deferred.promise;
+      });
+
+      dstFolder.updateFolder(null);
+      const deferredDstMsgs = await Promise.all(dstMsgsPromises);
+      this.emit(emitMsg, cachedSrcMsgs, deferredDstMsgs);
+    } else {
+      const cachedDstMsgs = dstMsgs.map(
+        msgHdr => new CachedMsgHeader(this, msgHdr)
+      );
+      this.emit(emitMsg, cachedSrcMsgs, cachedDstMsgs);
+    }
+  }
+
+  /**
+   * Implements nsIMsgFolderListener.msgKeyChanged().
+   *
+   * Updates the mapping of message keys to WebExtension message IDs in the message
+   * tracker: For IMAP messages there is a delayed update of database keys and if
+   * those keys change, the messageTracker needs to update its maps, otherwise
+   * wrong messages will be returned.
+   *
+   * @param {nsMsgKey} oldKey - The previous message key of the updated message.
+   * @param {nsIMsgDBHdr} newMsgHdr - The updated message metadata.
+   */
   msgKeyChanged(oldKey, newMsgHdr) {
-    // For IMAP messages there is a delayed update of database keys and if those
-    // keys change, the messageTracker needs to update its maps, otherwise wrong
-    // messages will be returned. Key changes are replayed in multi-step swaps.
     const newKey = newMsgHdr.messageKey;
 
-    // Replay pending swaps.
-    while (this._pendingKeyChanges.has(oldKey)) {
+    // In some cases, the new key is already used by another message, and the keys
+    // have to be swapped in the message tracker. When this occurs, we immediately
+    // update both associated tracker entries. However, IMAP will send this event
+    // for both updates and we need to catch the second call and avoid reverting
+    // the mapping. Note: In some cases the swap sequence may involve multiple
+    // steps:
+    //                                                                                     A: 6  B: 5  C: 4  D: 3  E: 2  F: 1  G:34  H:33  I:32  J:31  K:30  L:29
+    // keyChange: 33 -> [ 1]                                          add pending  1->33   A: 6  B: 5  C: 4  D: 3  E: 2  F:33  G:34  H: 1  I:32  J:31  K:30  L:29
+    // keyChange: 32 -> [ 2]                                          add pending  2->32   A: 6  B: 5  C: 4  D: 3  E:32  F:33  G:34  H: 1  I: 2  J:31  K:30  L:29
+    // keyChange: 31 -> [ 3]                                          add pending  3->31   A: 6  B: 5  C: 4  D:31  E:32  F:33  G:34  H: 1  I: 2  J: 3  K:30  L:29
+    // keyChange: 30 -> [ 4]                                          add pending  4->30   A: 6  B: 5  C:30  D:31  E:32  F:33  G:34  H: 1  I: 2  J: 3  K: 4  L:29
+    // keyChange: 29 -> [ 5]                                          add pending  5->29   A: 6  B:29  C:30  D:31  E:32  F:33  G:34  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange: 34 -> [ 6]                                          add pending  6->34   A:34  B:29  C:30  D:31  E:32  F:33  G: 6  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange:  6 -> [29]  replayed as  6->34 & 34->[29]           add pending 29->34   A:29  B:34  C:30  D:31  E:32  F:33  G: 6  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange:  5 -> [30]  replayed as  5->29 & 29->34 & 34->[30]  add pending 30->34   A:29  B:30  C:34  D:31  E:32  F:33  G: 6  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange:  4 -> [31]  replayed as  4->30 & 30->34 & 34->[31]  add pending 31->34   A:29  B:30  C:31  D:34  E:32  F:33  G: 6  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange:  3 -> [32]  replayed as  3->31 & 31->34 & 34->[32]  add pending 32->34   A:29  B:30  C:31  D:32  E:34  F:33  G: 6  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange:  2 -> [33]  replayed as  2->32 & 32->34 & 34->[33]  add pending 33->34   A:29  B:30  C:31  D:32  E:33  F:34  G: 6  H: 1  I: 2  J: 3  K: 4  L: 5
+    // keyChange:  1 -> [34]  replayed as  1->33 & 33->34 & 34->[34]  NO-OP
+    while (oldKey != newKey && this._pendingKeyChanges.has(oldKey)) {
       const next = this._pendingKeyChanges.get(oldKey);
       this._pendingKeyChanges.delete(oldKey);
       oldKey = next;
-
-      // Check if we are left with a no-op swap and exit early.
-      if (oldKey == newKey) {
-        this._pendingKeyChanges.delete(oldKey);
-        return;
-      }
     }
 
-    if (oldKey != newKey) {
-      // New key swap, log the mirror swap as pending.
-      this._pendingKeyChanges.set(newKey, oldKey);
+    // Check if we are left with a no-op swap and exit early.
+    if (oldKey == newKey) {
+      this._pendingKeyChanges.delete(oldKey);
+      return;
+    }
 
-      // Swap tracker entries.
-      const oldId = this._get({
-        folderURI: newMsgHdr.folder.URI,
-        messageKey: oldKey,
-      });
-      const newId = this._get({
-        folderURI: newMsgHdr.folder.URI,
-        messageKey: newKey,
-      });
-      this._set(oldId, { folderURI: newMsgHdr.folder.URI, messageKey: newKey });
-      this._set(newId, { folderURI: newMsgHdr.folder.URI, messageKey: oldKey });
+    const createIdentifier = messageKey => ({
+      folderURI: newMsgHdr.folder.URI,
+      messageKey,
+    });
+
+    const idAssociatedWithOldKey = this._get(createIdentifier(oldKey));
+    const idAssociatedWithNewKey = this._get(createIdentifier(newKey));
+
+    // Update the tracker entries for the ID associated with the old key and make
+    // it point to the new key.
+    this._set(idAssociatedWithOldKey, createIdentifier(newKey));
+
+    if (idAssociatedWithNewKey) {
+      // If the new key was already in use, make its associated ID point to the
+      // old key (swapping the keys).
+      this._set(idAssociatedWithNewKey, createIdentifier(oldKey));
+      // Log the executed mirror swap as pending.
+      this._pendingKeyChanges.set(newKey, oldKey);
+    } else {
+      // Decouple the obsolete message identifier for the old key from the ID it
+      // was associated with and remove it from the tracker.
+      this._decouple(createIdentifier(oldKey));
     }
   }
 
-  // nsIObserver
+  // Implements nsIObserver.
 
   /**
    * Observer to update message tracker if a message has received a new key due
@@ -1185,18 +1574,19 @@ export class MessageTracker extends EventEmitter {
   observe(subject, topic, data) {
     if (topic == "attachment-delete-msgkey-changed") {
       data = JSON.parse(data);
-
       if (data && data.folderURI && data.oldMessageKey && data.newMessageKey) {
-        const id = this._get({
+        const createIdentifier = messageKey => ({
           folderURI: data.folderURI,
-          messageKey: data.oldMessageKey,
+          messageKey,
         });
+
+        const id = this._get(createIdentifier(data.oldMessageKey));
         if (id) {
-          // Replace tracker entries.
-          this._set(id, {
-            folderURI: data.folderURI,
-            messageKey: data.newMessageKey,
-          });
+          // Update the tracker entry for ID to point to the new key.
+          this._set(id, createIdentifier(data.newMessageKey));
+          // Decouple the obsolete message identifier from the ID it was associated
+          // with and remove it from the tracker.
+          this._decouple(createIdentifier(data.oldMessageKey));
         }
       }
     } else if (topic == "quit-application-granted") {
@@ -1373,7 +1763,7 @@ export class MessageListTracker {
    * Takes an array or enumerator of messages and returns a Promise for the first
    * page.
    *
-   * @param {nsIMsgDBHdr[]} Array or enumerator of messages.
+   * @param {nsIMsgDBHdr[]} messages - Array or enumerator of messages.
    * @param {ExtensionData} extension
    *
    * @returns {Promise<MessageList>}
@@ -1393,8 +1783,8 @@ export class MessageListTracker {
    * Add messages to a messageList and finalize the list once all messages have
    * been added.
    *
-   * @param {nsIMsgDBHdr[]} Array or enumerator of messages.
-   * @param {MessageList}
+   * @param {nsIMsgDBHdr[]|Iterator} messages - Array or enumerator of messages.
+   * @param {MessageList} messageList
    */
   async _addMessages(messages, messageList) {
     if (messageList.isDone) {
@@ -1405,7 +1795,7 @@ export class MessageListTracker {
     }
     while (messages.hasMoreElements()) {
       const next = messages.getNext();
-      await messageList.addMessage(next.QueryInterface(Ci.nsIMsgDBHdr));
+      await messageList.addMessage(next);
     }
     messageList.done();
   }
@@ -1448,6 +1838,8 @@ export class MessageListTracker {
   /**
    * Returns the messageList object for a given id.
    *
+   * @param {string} messageListId
+   * @param {ExtensionData} extension
    * @returns {MessageList}
    */
   getList(messageListId, extension) {
@@ -1486,7 +1878,7 @@ export class MessageListTracker {
 }
 
 /**
- * @typedef MessageConvertOptions
+ * @typedef {object} MessageConvertOptions
  * @property {boolean} [skipFolder] - do not include the converted folder
  */
 
@@ -1513,7 +1905,10 @@ export class MessageManager {
     }
 
     // Cache msgHdr to reduce XPCOM requests.
-    const cachedHdr = new CachedMsgHeader(msgHdr);
+    const cachedHdr =
+      msgHdr instanceof CachedMsgHeader
+        ? msgHdr
+        : new CachedMsgHeader(this._messageTracker, msgHdr);
 
     // Skip messages, which are actually deleted.
     if (
@@ -1530,14 +1925,10 @@ export class MessageManager {
       .filter(MailServices.tags.isValidKey);
 
     const messageObject = {
-      id: this._messageTracker.getId(cachedHdr),
+      id: cachedHdr.id,
       date: new Date(Math.round(cachedHdr.date / 1000)),
-      author:
-        parseEncodedAddrHeader(cachedHdr.mime2DecodedAuthor).shift() || "",
-      recipients: parseEncodedAddrHeader(
-        cachedHdr.mime2DecodedRecipients,
-        false
-      ),
+      author: parseEncodedAddrHeader(cachedHdr.author).shift() || "",
+      recipients: parseEncodedAddrHeader(cachedHdr.recipients, false),
       ccList: parseEncodedAddrHeader(cachedHdr.ccList, false),
       bccList: parseEncodedAddrHeader(cachedHdr.bccList, false),
       subject: cachedHdr.mime2DecodedSubject,
@@ -1679,12 +2070,13 @@ export class MessageQuery {
     const allAccounts = getMailAccounts().map(account => ({
       key: account.key,
       rootFolder: account.incomingServer.rootFolder,
+      incomingServer: account.incomingServer,
     }));
 
-    // The queryFolder property is only supported in MV2 and specifies a single
-    // MailFolder. The queryFolderId property specifies one or more MailFolderIds.
-    // When one or more accounts and one or more folders are specified, the accounts
-    // are used as a filter on the specified folders.
+    // The queryInfo.folder property is only supported in MV2 and specifies a
+    // single MailFolder. The queryInfo.folderId property specifies one or more
+    // MailFolderIds. When one or more accounts and one or more folders are
+    // specified, the accounts are used as a filter on the specified folders.
     let queryFolders = null;
     if (this.queryInfo.folder) {
       queryFolders = [getFolder(this.queryInfo.folder)];
@@ -1705,6 +2097,27 @@ export class MessageQuery {
       queryAccounts = accountKeys.map(accountKey =>
         allAccounts.find(account => accountKey == account.key)
       );
+    }
+
+    if (this.queryInfo.online) {
+      if (!this.queryInfo.headerMessageId) {
+        throw new ExtensionError(
+          `Property headerMessageId is required for online queries.`
+        );
+      }
+      const nntpAccounts = (queryAccounts ?? allAccounts).filter(
+        account => account.incomingServer.type == "nntp"
+      );
+      for (const account of nntpAccounts) {
+        const msgHdr = await retrieveMessageFromServer(
+          this.queryInfo.headerMessageId,
+          account.incomingServer
+        );
+        if (msgHdr) {
+          return this.messageListTracker.startList([msgHdr], this.extension);
+        }
+      }
+      return this.messageListTracker.startList([], this.extension);
     }
 
     if (queryFolders) {
@@ -1907,7 +2320,7 @@ export class MessageQuery {
 
     // Check fromMe (case insensitive email address match).
     if (this.queryInfo.fromMe !== null) {
-      const authors = parseEncodedAddrHeader(msgHdr.mime2DecodedAuthor, true);
+      const authors = parseEncodedAddrHeader(msgHdr.author, true);
       if (
         this.queryInfo.fromMe !=
         authors.some(email =>
@@ -1922,7 +2335,7 @@ export class MessageQuery {
     if (
       this.queryInfo.author &&
       !isAddressMatch(this.queryInfo.author, [
-        { addr: msgHdr.mime2DecodedAuthor, doRfc2047: false },
+        { addr: msgHdr.author, doRfc2047: true },
       ])
     ) {
       return false;
@@ -1932,7 +2345,7 @@ export class MessageQuery {
     if (
       this.queryInfo.recipients &&
       !isAddressMatch(this.queryInfo.recipients, [
-        { addr: msgHdr.mime2DecodedRecipients, doRfc2047: false },
+        { addr: msgHdr.recipients, doRfc2047: true },
         { addr: msgHdr.ccList, doRfc2047: true },
         { addr: msgHdr.bccList, doRfc2047: true },
       ])
@@ -1946,9 +2359,9 @@ export class MessageQuery {
       const subjectMatches = msgHdr.mime2DecodedSubject.includes(
         this.queryInfo.fullText
       );
-      const authorMatches = msgHdr.mime2DecodedAuthor.includes(
-        this.queryInfo.fullText
-      );
+      const authorMatches = parseEncodedAddrHeader(msgHdr.author, false)
+        .shift()
+        .includes(this.queryInfo.fullText);
       fullTextBodySearchNeeded = !(subjectMatches || authorMatches);
     }
 
@@ -2088,7 +2501,7 @@ function prepareAddress(displayAddr) {
 /**
  * Check multiple addresses if they match the provided search address.
  *
- * @returns A boolean indicating if search was successful.
+ * @returns {boolean} true if search was successful.
  */
 function searchInMultipleAddresses(searchAddress, addresses) {
   // Return on first positive match.
@@ -2122,7 +2535,7 @@ function searchInMultipleAddresses(searchAddress, addresses) {
  * Substring match on name and exact match on email. If searchTerm
  * includes multiple addresses, all of them must match.
  *
- * @returns A boolean indicating if search was successful.
+ * @returns {boolean} true if search was successful.
  */
 function isAddressMatch(searchTerm, addressObjects) {
   const searchAddresses =
@@ -2158,4 +2571,116 @@ function isAddressMatch(searchTerm, addressObjects) {
   }
 
   return success;
+}
+
+async function retrieveMessageFromServer(mid, server) {
+  const url = new URL(`news://${server.hostName}:${server.port}/${mid}`);
+
+  const tempFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
+  tempFile.append("nntp-downloaded-message.eml");
+  tempFile.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o600);
+  const extAppLauncher = Cc[
+    "@mozilla.org/uriloader/external-helper-app-service;1"
+  ].getService(Ci.nsPIExternalAppLauncher);
+  extAppLauncher.deleteTemporaryFileOnExit(tempFile);
+
+  const messageService = Cc[
+    "@mozilla.org/messenger/messageservice;1?type=news"
+  ].getService(Ci.nsIMsgMessageService);
+  const savedPromise = new Promise(resolve => {
+    messageService.saveMessageToDisk(
+      url.href,
+      tempFile,
+      false,
+      {
+        async OnStopRunningUrl(_url, status) {
+          resolve(status);
+        },
+      },
+      true,
+      null
+    );
+  });
+  const status = await savedPromise;
+  if (!Components.isSuccessCode(status) || tempFile.fileSize <= 0) {
+    console.warn(`Could not open ${url.href}`);
+    return null;
+  }
+
+  const uri = Services.io.newFileURI(tempFile).spec;
+  return MailServices.messageServiceFromURI(uri).messageURIToMsgHdr(uri);
+}
+
+/**
+ * Tracks tags in order to include the new and old value in update events.
+ */
+export class TagTracker extends EventEmitter {
+  #tags;
+  constructor() {
+    super();
+    this.#tags = new Map(
+      MailServices.tags
+        .getAllTags()
+        .map(({ key, tag, color, ordinal }) => [
+          key,
+          { tag, color: color.toUpperCase(), ordinal },
+        ])
+    );
+    Services.prefs.addObserver("mailnews.tags.", this);
+  }
+
+  observe(subject, topic, data) {
+    if (topic != "nsPref:changed") {
+      return;
+    }
+    const [, , key, property] = data.split(".");
+    if (!["tag", "color", "ordinal"].includes(property)) {
+      return;
+    }
+
+    let newValue = Services.prefs.getStringPref(data, null);
+    if (newValue == null) {
+      // Removing a tag. Is fired for each property, handle it only once for the
+      // "tag" property.
+      if (property == "tag") {
+        this.#tags.delete(key);
+        this.emit("tag-deleted", key);
+      }
+      return;
+    }
+
+    const knownEntry = this.#tags.get(key);
+    if (!knownEntry) {
+      // Adding a new tag. The sequence of a new tag being added ends with the
+      // "color" property. Skip all other property notifications.
+      if (property == "color") {
+        const [createdTag] = MailServices.tags
+          .getAllTags()
+          .filter(t => t.key == key)
+          .map(({ tag, color, ordinal }) => ({
+            tag,
+            color: color.toUpperCase(),
+            ordinal,
+          }));
+        this.#tags.set(key, createdTag);
+        this.emit("tag-created", key, createdTag);
+      }
+      return;
+    }
+
+    // Updating the property of an existing tag.
+    if (property == "color") {
+      newValue = newValue.toUpperCase();
+    }
+    const oldValue = knownEntry[property];
+    if (oldValue != newValue) {
+      knownEntry[property] = newValue;
+      this.emit(
+        "tag-updated",
+        key,
+        { [property]: newValue },
+        { [property]: oldValue }
+      );
+    }
+  }
 }

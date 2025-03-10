@@ -1,10 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# Short name of the import module
 thunderbird-import-name = Thunderbird
-# Description of the import module
 thunderbird-import-description = Importar correio de um diretório de perfil do Thunderbird.
 import-from-thunderbird-zip =
     .label = Thunderbird (cópia de segurança do perfil exportada; ficheiro zip menor que 2 GB)

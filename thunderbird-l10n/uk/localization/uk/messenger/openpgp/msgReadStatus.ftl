@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = Ш
-#   $type (String) - the shortcut key defined in the message-header-show-security-info-key
 message-security-button =
     .title =
         { PLATFORM() ->
@@ -21,20 +13,12 @@ openpgp-openpgp = OpenPGP
 openpgp-no-sig = Відсутній цифровий підпис
 openpgp-no-sig-info = Це повідомлення не містить цифрового підпису відправника. Відсутність підпису означає, що повідомлення могло бути надіслане ким-небудь ще, хто прикидається, що це його електронна адреса. Також, можливо, повідомлення було змінене під час передачі мережею.
 openpgp-uncertain-sig = Невстановлений цифровий підпис
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-uncertain-sig-with-date = Невизначений цифровий підпис - Підписано { $date }
 openpgp-invalid-sig = Недійсний цифровий підпис
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Недійсний цифровий підпис - Підписано { $date }
 openpgp-bad-date-sig = Невідповідність дати підпису
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-bad-date-sig-with-date = Невідповідність дати підпису – підписано { $date }
 openpgp-good-sig = Хороший цифровий підпис
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-good-sig-with-date = Хороший цифровий підпис - Підписано { $date }
 openpgp-sig-uncertain-no-key = Це повідомлення містить цифровий підпис, але його правильність не встановлено. Для перевірки підпису потрібно отримати копію відкритого ключа відправника.
 openpgp-sig-uncertain-uid-mismatch = Це повідомлення містить цифровий підпис, але виявлено невідповідність. Його надіслано з електронної адреси, яка не збігається з відкритим ключем підписанта.
@@ -45,19 +29,9 @@ openpgp-sig-invalid-date-mismatch = Це повідомлення містить
 openpgp-sig-valid-unverified = Це повідомлення містить дійсний цифровий підпис від прийнятого вами ключа. Однак, ви ще не підтвердили, що ключ дійсно належить відправнику.
 openpgp-sig-valid-verified = Це повідомлення містить дійсний цифровий підпис від підтвердженого ключа.
 openpgp-sig-valid-own-key = Це повідомлення містить дійсний цифровий підпис від вашого особистого ключа.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = ID ключа підписанта: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = ID ключа підписанта: { $key } (ID внутрішнього ключа: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = ID ключа розшифрування: { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = ID ключа розшифрування: { $key } ( ID внутрішнього ключа: { $subkey })
 openpgp-enc-none = Повідомлення не зашифроване
 openpgp-enc-none-label = Повідомлення не було зашифроване перед надсиланням. Інформацію, надіслану через інтернет без шифрування, може бути прочитано сторонніми людьми під час передачі.
@@ -75,7 +49,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Не вдалося розшифрувати
 openpgp-message-header-signed-ok-icon =
     .alt = Підпис справжній
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Підпис не справжній
 openpgp-message-header-signed-unknown-icon =

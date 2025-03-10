@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Ynghylch Rhwydweithio
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = Clirio'r Storfa HTTP
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Cyfrif araf storfa dros dro
 about-networking-rcwn-cache-not-slow = Cyfrif nid araf storfa dros dro
 about-networking-networkid = ID Rhwydwaith
 about-networking-networkid-id = ID Rhwydwaith
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Mae'r dudalen hon wedi'i symud i <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Mae'r cyswllt ar i fyny
 about-networking-networkid-status-known = Mae statws y cyswllt yn hysbys
-
-##
-

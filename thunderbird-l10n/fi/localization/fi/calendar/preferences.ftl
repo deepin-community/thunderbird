@@ -1,18 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Kalenteri
 calendar-title-reminder = Hälytykset
 calendar-title-notification = Ilmoitukset
 calendar-title-category = Luokat
 dateformat-label =
-    .value = Päiväystekstin formaatti:
+    .value = Päiväystekstin muoto:
     .accesskey = P
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Pitkä: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Lyhyt: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Kysy ennen tapahtumien ja tehtävien poistamista.
     .accesskey = y
-accessibility-legend = Esteettömyys
-accessibility-colors-label =
-    .label = Optimoi värit esteettömyyttä varten
-    .accesskey = v
 reminder-legend = Kun hälytys käynnistyy:
 reminder-play-checkbox =
     .label = Anna äänimerkki

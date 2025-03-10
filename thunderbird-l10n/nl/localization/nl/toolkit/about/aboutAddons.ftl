@@ -1,21 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = Add-onbeheerder
 search-header =
     .placeholder = addons.mozilla.org doorzoeken
     .searchbuttonlabel = Zoeken
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
 list-empty-get-extensions-message = Download extensies en thema’s op <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-dictionaries-message = Download woordenboeken op <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-language-packs-message = Download taalpakketten op <a data-l10n-name="get-extensions">{ $domain }</a>
-
-##
-
 list-empty-installed =
     .value = U hebt geen add-ons van dit type geïnstalleerd
 list-empty-available-updates =
@@ -57,13 +46,9 @@ detail-update-automatic =
 detail-update-manual =
     .label = Uit
     .tooltiptext = Updates niet automatisch installeren
-# Used as a description for the option to allow or block an add-on in private windows.
 detail-private-browsing-label = Uitvoeren in privévensters
-# Some add-ons may elect to not run in private windows by setting incognito: not_allowed in the manifest.  This
-# cannot be overridden by the user.
 detail-private-disallowed-label = Niet toegestaan in privévensters
 detail-private-disallowed-description2 = Deze extensie wordt tijdens privénavigatie niet uitgevoerd. <a data-l10n-name="learn-more">Meer info</a>
-# Some special add-ons are privileged, run in private windows automatically, and this permission can't be revoked
 detail-private-required-label = Vereist toegang tot privévensters
 detail-private-required-description2 = Deze extensie heeft tijdens privénavigatie toegang tot uw online-activiteiten. <a data-l10n-name="learn-more">Meer info</a>
 detail-private-browsing-on =
@@ -151,22 +136,13 @@ addon-category-recent-updates-title =
 addon-category-sitepermission = Websitemachtigingen
 addon-category-sitepermission-title =
     .title = Websitemachtigingen
-# String displayed in about:addons in the Site Permissions section
-# Variables:
-#  $host (string) - DNS host name for which the webextension enables permissions
 addon-sitepermission-host = Websitemachtigingen voor { $host }
-
-## These are global warnings
-
-extensions-warning-safe-mode = Alle add-ons zijn uitgeschakeld door de veilige modus.
-extensions-warning-check-compatibility = Compatibiliteitscontrole voor add-ons is uitgeschakeld. Mogelijk hebt u incompatibele add-ons.
 extensions-warning-safe-mode2 =
     .message = Alle add-ons zijn uitgeschakeld door de veilige modus.
 extensions-warning-check-compatibility2 =
     .message = Compatibiliteitscontrole voor add-ons is uitgeschakeld. Mogelijk hebt u incompatibele add-ons.
 extensions-warning-check-compatibility-button = Inschakelen
     .title = Add-on-compatibiliteitscontrole inschakelen
-extensions-warning-update-security = Beveiligingscontrole voor add-on-updates is uitgeschakeld. Mogelijk loopt u een beveiligingsrisico door updates.
 extensions-warning-update-security2 =
     .message = Beveiligingscontrole voor add-on-updates is uitgeschakeld. Mogelijk loopt u een beveiligingsrisico door updates.
 extensions-warning-update-security-button = Inschakelen
@@ -174,57 +150,32 @@ extensions-warning-update-security-button = Inschakelen
 extensions-warning-imported-addons2 =
     .message = Voltooi de installatie van extensies die zijn geïmporteerd naar { -brand-short-name }.
 extensions-warning-imported-addons-button = Extensies installeren
-
-## Strings connected to add-on updates
-
 addon-updates-check-for-updates = Controleren op updates
     .accesskey = C
 addon-updates-view-updates = Recente updates bekijken
     .accesskey = R
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = Add-ons automatisch bijwerken
     .accesskey = a
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = Alle add-ons terugzetten naar automatisch bijwerken
     .accesskey = t
 addon-updates-reset-updates-to-manual = Alle add-ons terugzetten naar handmatig bijwerken
     .accesskey = t
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = Add-ons worden bijgewerkt
 addon-updates-installed = Uw add-ons zijn bijgewerkt.
 addon-updates-none-found = Geen updates gevonden
 addon-updates-manual-updates-found = Beschikbare updates bekijken
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = Add-on installeren via bestand…
     .accesskey = s
 addon-install-from-file-dialog-title = Add-on voor installatie selecteren
 addon-install-from-file-filter-name = Add-ons
 addon-open-about-debugging = Add-ons debuggen
     .accesskey = b
-
-## Extension shortcut management
-
-# This is displayed in the page options menu
 addon-manage-extensions-shortcuts = Extensiesneltoetsen beheren
     .accesskey = E
 shortcuts-no-addons = U hebt geen extensies ingeschakeld.
 shortcuts-no-commands = De volgende extensies hebben geen sneltoetsen:
 shortcuts-input =
     .placeholder = Typ een sneltoets
-# Accessible name for a trashcan icon button that removes an existent shortcut
 shortcuts-remove-button =
     .aria-label = Snelkoppeling verwijderen
 shortcuts-browserAction2 = Werkbalkknop activeren
@@ -235,23 +186,10 @@ shortcuts-modifier-other = Druk ook op Ctrl of Alt
 shortcuts-invalid = Ongeldige combinatie
 shortcuts-letter = Typ een letter
 shortcuts-system = Kan geen bestaande { -brand-short-name }-sneltoets gebruiken
-# String displayed in warning label when there is a duplicate shortcut
 shortcuts-duplicate = Dubbele snelkoppeling
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
-shortcuts-duplicate-warning-message = { $shortcut } wordt in meer dan een geval als snelkoppeling gebruikt. Dubbele snelkoppelingen kunnen onverwacht gedrag veroorzaken.
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message2 =
     .message = { $shortcut } wordt in meer dan een geval als snelkoppeling gebruikt. Dubbele snelkoppelingen kunnen onverwacht gedrag veroorzaken.
-# String displayed when a keyboard shortcut is already used by another add-on
-# Variables:
-#   $addon (string) - Name of the add-on
 shortcuts-exists = Al in gebruik door { $addon }
-# Variables:
-#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
        *[other] Nog { $numberToShow } tonen
@@ -259,59 +197,32 @@ shortcuts-card-expand-button =
 shortcuts-card-collapse-button = Minder tonen
 header-back-button =
     .title = Terug
-
-## Recommended add-ons page
-
-# Explanatory introduction to the list of recommended add-ons. The action word
-# ("recommends") in the final sentence is a link to external documentation.
-discopane-intro =
-    Extensies en thema’s zijn als apps voor uw browser en zij laten u wachtwoorden
-    beschermen, video’s downloaden, koopjes vinden, vervelende advertenties blokkeren, wijzigen
-    hoe uw browser eruit ziet, en nog veel meer. Deze kleine softwareprogramma’s zijn
-    vaak ontwikkeld door een derde partij. Hier is een selectie die { -brand-product-name }
-    <a data-l10n-name="learn-more-trigger">aanbeveelt</a> voor uitstekende
-    beveiliging, prestaties en functionaliteit.
-# Notice to make user aware that the recommendations are personalized.
-discopane-notice-recommendations =
-    Enkele van deze aanbevelingen zijn gepersonaliseerd. Ze zijn gebaseerd op andere
-    door u geïnstalleerde extensies, profielvoorkeuren en gebruiksstatistieken.
-# Notice to make user aware that the recommendations are personalized.
+discopane-intro2 =
+    Met extensies en thema’s kunt u { -brand-product-name } aanpassen. Ze kunnen privacy,
+    productiviteit en media verbeteren, het uiterlijk van { -brand-product-name } wijzigen, en
+    zo veel meer. Deze kleine softwareprogramma’s worden vaak door een derde partij ontwikkeld. Dit is
+    een selectie die { -brand-product-name } <a data-l10n-name="learn-more-trigger">aanbeveelt</a>
+    voor uitzonderlijke beveiliging, prestaties en functionaliteit.
 discopane-notice-recommendations2 =
     .message =
         Enkele van deze aanbevelingen zijn gepersonaliseerd. Ze zijn gebaseerd op andere
         door u geïnstalleerde extensies, profielvoorkeuren en gebruiksstatistieken.
 discopane-notice-learn-more = Meer info
 privacy-policy = Privacybeleid
-# Refers to the author of an add-on, shown below the name of the add-on.
-# Variables:
-#   $author (string) - The name of the add-on developer.
 created-by-author = door <a data-l10n-name="author">{ $author }</a>
-# Shows the number of daily users of the add-on.
-# Variables:
-#   $dailyUsers (number) - The number of daily users.
 user-count = Gebruikers: { $dailyUsers }
 install-extension-button = Toevoegen aan { -brand-product-name }
 install-theme-button = Thema installeren
-# The label of the button that appears after installing an add-on. Upon click,
-# the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = Beheren
 find-more-addons = Meer add-ons zoeken
 find-more-themes = Meer thema’s zoeken
-# This is a label for the button to open the "more options" menu, it is only
-# used for screen readers.
 addon-options-button =
     .aria-label = Meer opties
-
-## Add-on actions
-
 report-addon-button = Rapporteren
 remove-addon-button = Verwijderen
-# The link will always be shown after the other text.
 remove-addon-disabled-button = Kan niet worden verwijderd <a data-l10n-name="link">Waarom?</a>
 disable-addon-button = Uitschakelen
 enable-addon-button = Inschakelen
-# This is used for the toggle on the extension card, it's a checkbox and this
-# is always its label.
 extension-enable-addon-button-label =
     .aria-label = Inschakelen
 preferences-addon-button =
@@ -341,37 +252,15 @@ addon-detail-version-label = Versie
 addon-detail-last-updated-label = Laatst bijgewerkt
 addon-detail-homepage-label = Startpagina
 addon-detail-rating-label = Waardering
-# Message for add-ons with a staged pending update.
-install-postponed-message = Deze extensie wordt bijgewerkt wanneer { -brand-short-name } herstart.
-# Message for add-ons with a staged pending update.
 install-postponed-message2 =
     .message = Deze extensie wordt bijgewerkt wanneer { -brand-short-name } herstart.
 install-postponed-button = Nu bijwerken
-# The average rating that the add-on has received.
-# Variables:
-#   $rating (number) - A number between 0 and 5. The translation should show at most one digit after the comma.
-five-star-rating =
-    .title = Beoordeeld met { NUMBER($rating, maximumFractionDigits: 1) } van de 5
-# This string is used to show that an add-on is disabled.
-# Variables:
-#   $name (string) - The name of the add-on
 addon-name-disabled = { $name } (uitgeschakeld)
-# The number of reviews that an add-on has received on AMO.
-# Variables:
-#   $numberOfReviews (number) - The number of reviews received
 addon-detail-reviews-link =
     { $numberOfReviews ->
         [one] { $numberOfReviews } beoordeling
        *[other] { $numberOfReviews } beoordelingen
     }
-
-## Pending uninstall message bar
-
-# Variables:
-#   $addon (string) - Name of the add-on
-pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> is verwijderd.
-# Variables:
-#   $addon (string) - Name of the add-on
 pending-uninstall-description2 =
     .message = { $addon } is verwijderd.
 pending-uninstall-undo-button = Ongedaan maken
@@ -381,73 +270,39 @@ addon-detail-updates-radio-on = Aan
 addon-detail-updates-radio-off = Uit
 addon-detail-update-check-label = Controleren op updates
 install-update-button = Bijwerken
-# aria-label associated to the updates row to help screen readers to announce the group
-# of input controls being entered.
 addon-detail-group-label-updates =
     .aria-label = { addon-detail-updates-label }
-# This is the tooltip text for the private browsing badge in about:addons. The
-# badge is the private browsing icon included next to the extension's name.
-addon-badge-private-browsing-allowed2 =
+addon-badge-private-browsing-allowed3 =
     .title = Toegestaan in privévensters
-    .aria-label = { addon-badge-private-browsing-allowed2.title }
 addon-detail-private-browsing-help = Wanneer toegestaan, heeft de extensie toegang tot uw online-activiteiten tijdens privénavigatie. <a data-l10n-name="learn-more">Meer info</a>
 addon-detail-private-browsing-allow = Toestaan
 addon-detail-private-browsing-disallow = Niet toestaan
-# aria-label associated to the private browsing row to help screen readers to announce the group
-# of input controls being entered.
 addon-detail-group-label-private-browsing =
     .aria-label = { detail-private-browsing-label }
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-# Used as a description for the option to allow or block an add-on on quarantined domains.
 addon-detail-quarantined-domains-label = Uitvoeren op websites met beperkingen
-# Used as help text part of the quarantined domains UI controls row.
 addon-detail-quarantined-domains-help = Indien toegestaan, heeft de extensie toegang tot websites die zijn beperkt door { -vendor-short-name }. Sta dit alleen toe als u deze extensie vertrouwt.
-# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
 addon-detail-quarantined-domains-allow = Toestaan
 addon-detail-quarantined-domains-disallow = Niet toestaan
-# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
 addon-detail-group-label-quarantined-domains =
     .aria-label = { addon-detail-quarantined-domains-label }
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-addon-badge-recommended2 =
+addon-badge-recommended3 =
     .title = { -brand-product-name } beveelt alleen extensies aan die voldoen aan onze normen voor beveiliging en prestaties
-    .aria-label = { addon-badge-recommended2.title }
-# We hard code "Mozilla" in the string below because the extensions are built
-# by Mozilla and we don't want forks to display "by Fork".
-addon-badge-line3 =
+addon-badge-line4 =
     .title = Officiële door Mozilla Firefox gebouwde extensie. Voldoet aan beveiligings- en prestatienormen.
-    .aria-label = { addon-badge-line3.title }
-addon-badge-verified2 =
+addon-badge-verified3 =
     .title = Deze extensie is beoordeeld en voldoet aan onze normen voor beveiliging en prestaties
-    .aria-label = { addon-badge-verified2.title }
-
-##
-
 available-updates-heading = Beschikbare updates
 recent-updates-heading = Recente updates
 release-notes-loading = Laden…
 release-notes-error = Sorry, maar er is een fout opgetreden bij het laden van de uitgaveopmerkingen.
-addon-permissions-empty = Voor deze extensie zijn geen toestemmingen vereist
+addon-permissions-empty2 = Voor deze extensie zijn geen toestemmingen vereist.
 addon-permissions-required = Vereiste toestemmingen voor kernfunctionaliteit:
 addon-permissions-optional = Optionele toestemmingen voor extra functionaliteit:
 addon-permissions-learnmore = Meer info over toestemmingen
 recommended-extensions-heading = Aanbevolen extensies
 recommended-themes-heading = Aanbevolen thema’s
-# Variables:
-#   $hostname (string) - Host where the permissions are granted
 addon-sitepermissions-required = Geeft <span data-l10n-name="hostname">{ $hostname }</span> de volgende mogelijkheden:
-# A recommendation for the Firefox Color theme shown at the bottom of the theme
-# list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Voelt u zich creatief? <a data-l10n-name="link"> Bouw uw eigen thema met Firefox Color.</a>
-
-## Page headings
-
 extension-heading = Uw extensies beheren
 theme-heading = Uw thema’s beheren
 plugin-heading = Uw plug-ins beheren
@@ -462,41 +317,28 @@ addons-heading-search-input =
     .placeholder = addons.mozilla.org doorzoeken
 addon-page-options-button =
     .title = Hulpmiddelen voor alle add-ons
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (string) - Application version.
-details-notification-incompatible = { $name } is niet compatibel met { -brand-short-name } { $version }.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } is niet compatibel met { -brand-short-name } { $version }.
-details-notification-incompatible-link = Meer informatie
-details-notification-unsigned-and-disabled = { $name } kon niet worden geverifieerd voor gebruik in { -brand-short-name } en is uitgeschakeld.
 details-notification-unsigned-and-disabled2 =
     .message = { $name } kon niet worden geverifieerd voor gebruik in { -brand-short-name } en is uitgeschakeld.
-details-notification-unsigned-and-disabled-link = Meer informatie
-details-notification-unsigned = { $name } kon niet worden geverifieerd voor gebruik in { -brand-short-name }. Wees voorzichtig als u verdergaat.
 details-notification-unsigned2 =
     .message = { $name } kon niet worden geverifieerd voor gebruik in { -brand-short-name }. Wees voorzichtig als u verdergaat.
-details-notification-unsigned-link = Meer informatie
-details-notification-blocked = { $name } is uitgeschakeld vanwege beveiligings- of stabiliteitsproblemen.
-details-notification-blocked2 =
-    .message = { $name } is uitgeschakeld vanwege beveiligings- of stabiliteitsproblemen.
-details-notification-blocked-link = Meer informatie
-details-notification-softblocked = { $name } staat bekend als veroorzaker van beveiligings- of stabiliteitsproblemen.
-details-notification-softblocked2 =
-    .message = { $name } staat bekend als veroorzaker van beveiligings- of stabiliteitsproblemen.
-details-notification-softblocked-link = Meer informatie
-details-notification-gmp-pending = { $name } zal straks worden geïnstalleerd.
+details-notification-hard-blocked-extension =
+    .message = Deze extensie is geblokkeerd vanwege schending van het beleid van Mozilla en is uitgeschakeld.
+details-notification-hard-blocked-other =
+    .message = Deze add-on is geblokkeerd wegens schending van het beleid van Mozilla en is uitgeschakeld.
+details-notification-blocked-link2 = Details bekijken
+details-notification-soft-blocked-extension-disabled =
+    .message = Deze extensie beperkt wegens schending van het beleid van Mozilla en is uitgeschakeld. U kunt hem inschakelen, maar dit kan riskant zijn.
+details-notification-soft-blocked-extension-enabled =
+    .message = Deze extensie schendt het beleid van Mozilla. Het gebruik ervan kan riskant zijn.
+details-notification-soft-blocked-other-disabled =
+    .message = Deze add-on is beperkt wegens schending van het beleid van Mozilla en is uitgeschakeld. U kunt hem inschakelen, maar dit kan riskant zijn.
+details-notification-soft-blocked-other-enabled =
+    .message = Deze add-on schendt het beleid van Mozilla. Het gebruik ervan kan riskant zijn.
+details-notification-softblocked-link2 = Details bekijken
 details-notification-gmp-pending2 =
     .message = { $name } zal straks worden geïnstalleerd.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = Licentie-informatie
 plugins-gmp-privacy-info = Privacyverklaring
 plugins-openh264-name = OpenH264-videocodec, aangeboden door Cisco Systems, Inc.

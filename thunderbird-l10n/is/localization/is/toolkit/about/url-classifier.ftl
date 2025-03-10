@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Upplýsingar um URL flokkara
 url-classifier-search-title = Leita
 url-classifier-search-result-title = Niðurstöður
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = Listi yfir töflur: { $list }
 url-classifier-search-input = Slóð
 url-classifier-search-error-invalid-url = Ógild slóð (URL)
@@ -53,9 +45,5 @@ url-classifier-disabled = Óvirkt
 url-classifier-updating = uppfæri
 url-classifier-cannot-update = get ekki uppfært
 url-classifier-success = tókst
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = uppfærslu villa ({ $error })
 url-classifier-download-error = niðurhalsvilla ({ $error })

@@ -8,14 +8,19 @@ const { MailServices } = ChromeUtils.importESModule(
 
 import { TreeViewTableRow } from "chrome://messenger/content/tree-view.mjs";
 
+const tagsMoreFormatter = new Intl.NumberFormat(undefined, {
+  signDisplay: "always",
+});
+const tagsTitleFormatter = new Intl.ListFormat();
+
 /**
  * The tr element row of the TreeView table for the cards view layout.
+ * NOTE: The main child is a clone of the `#threadPaneCardTemplate` template.
  *
- * @note The main child is a clone of the `#threadPaneCardTemplate` template.
- * @extends TreeViewTableRow
- * @tagname thread-row
+ * tagname: thread-row
+ *
+ * @augments {TreeViewTableRow}
  */
-
 class ThreadCard extends TreeViewTableRow {
   static ROW_HEIGHT = 46;
 
@@ -44,12 +49,8 @@ class ThreadCard extends TreeViewTableRow {
     this.sortHeaderDetails = this.querySelector(".sort-header-details");
   }
 
-  get index() {
-    return super.index;
-  }
-
-  set index(index) {
-    super.index = index;
+  _fillRow() {
+    super._fillRow();
 
     // XPCOM calls here must be keep to a minimum. Collect all of the
     // required data in one go.
@@ -57,7 +58,7 @@ class ThreadCard extends TreeViewTableRow {
     const threadLevel = {};
 
     const cellTexts = this.view.cellDataForColumns(
-      index,
+      this._index,
       window.threadPane.cardColumns,
       properties,
       threadLevel
@@ -68,7 +69,7 @@ class ThreadCard extends TreeViewTableRow {
     const ariaLabelPromises = [];
     // Use static mapping instead of threadPane.cardColumns since the name of
     // the sender column changes. (see getProperSenderForCardsView)
-    const KEYS = ["subject", "sender", "date", "tags", "total", "unread"];
+    const KEYS = ["subject", "sender", "date", "tagKeys", "total", "unread"];
     const data = Object.fromEntries(KEYS.map((key, i) => [key, cellTexts[i]]));
 
     if (threadLevel.value) {
@@ -111,38 +112,37 @@ class ThreadCard extends TreeViewTableRow {
     this.senderLine.title = data.sender;
     this.dateLine.textContent = data.date;
 
-    let tagColor;
-    const matchesTags = [];
-    const matchesColors = [];
-    for (const tag of MailServices.tags.getAllTags()) {
-      if (data.tags.includes(tag.tag)) {
-        matchesTags.push(tag.tag);
-        tagColor = tag.color;
-        matchesColors.push(tagColor);
+    const matchedKeys = [];
+    const matchedTags = [];
+    for (const key of data.tagKeys.split(" ")) {
+      try {
+        const tag = MailServices.tags.getTagForKey(key);
+        matchedKeys.push(key);
+        matchedTags.push(tag);
+      } catch (ex) {
+        // `getTagForKey` throws if the tag doesn't exist.
       }
     }
-    this.threadCardTagsInfo.title = matchesTags.join(", ");
+    this.threadCardTagsInfo.title = tagsTitleFormatter.format(matchedTags);
 
     // Clears the text span displaying the extra amount of the tags to prevent stale content.
-    const tagCount = matchesTags.length;
+    const tagCount = matchedTags.length;
     this.tagsMore.hidden = tagCount <= 3;
 
     // Show or hide tags based on its index and the amount of tags.
     for (const [tagIndex, tag] of this.tagIcons.entries()) {
       tag.hidden = tagIndex >= tagCount;
       // If any tag is active, we reset the tags colors.
-      tag.style.setProperty("--tag-color", matchesColors[tagIndex]);
+      tag.style.setProperty(
+        "--tag-color",
+        `var(--tag-${CSS.escape(matchedKeys[tagIndex])}-backcolor)`
+      );
     }
 
     // Updates the text span displaying the extra amount of the tags
     if (tagCount > 3) {
       this.tagsMore.hidden = false;
-      this.tagsMore.textContent = new Intl.NumberFormat(
-        Services.locale.appLocaleAsBCP47,
-        {
-          signDisplay: "always",
-        }
-      ).format(tagCount - 3);
+      this.tagsMore.textContent = tagsMoreFormatter.format(tagCount - 3);
     }
 
     // Follow the layout order.

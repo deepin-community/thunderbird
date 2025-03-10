@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,14 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = ลงชื่อออก…
     .accesskey = อ
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = บัญชีใหม่
 appmenu-new-account-panel =
     .label = บัญชีใหม่
     .accesskey = ม
-appmenu-create-new-mail-account =
-    .label = รับอีเมลใหม่
-    .accesskey = ร
-appmenu-new-mail-account =
-    .label = อีเมลที่มีอยู่
-    .accesskey = ย
+appmenu-new-email-account =
+    .label = อีเมล
+    .accesskey = อ
 appmenu-new-calendar =
     .label = ปฏิทิน
     .accesskey = ป
@@ -53,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = กลุ่มข่าว
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = สมุดรายชื่อใหม่
 appmenu-newab-panel =
@@ -70,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = สมุดรายชื่อ LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = สร้าง
 appmenu-create-panel =
@@ -90,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = ผู้ติดต่อ
     .accesskey = ผ
-
-## Open
-
 appmenu-open-file-panel =
     .label = เปิดจากไฟล์
     .accesskey = ป
@@ -104,14 +82,13 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = ปฏิทิน…
     .accesskey = ป
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = มุมมอง
 appmenu-view-panel =
     .label = มุมมอง
     .accesskey = ม
+appmenuitem-toggle-thread-pane-header =
+    .label = ส่วนหัวรายชื่อข้อความ
 appmenu-font-size-value = ขนาดตัวหนังสือ
 appmenu-mail-uidensity-value = ความหนาแน่น
 appmenu-uidensity-compact =
@@ -124,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = เพิ่มขนาดแบบอักษร
 appmenuitem-font-size-reduce =
     .tooltiptext = ลดขนาดตัวอักษร
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = รีเซ็ตขนาดอักษร
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = เครื่องมือ
 appmenu-tools-panel =
@@ -143,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = ส่งออก
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = ส่งออกสำหรับมือถือ
+    .accesskey = ส
 appmenu-tools-message-search =
     .label = ค้นหาข้อความ
     .accesskey = ค
@@ -158,17 +133,14 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = เครื่องมือนักพัฒนา
     .accesskey = เ
-
-## Help
-
 appmenu-help-panel-title =
     .title = ช่วยเหลือ
 appmenu-help-get-help =
     .label = รับความช่วยเหลือ
     .accesskey = ช
-appmenu-help-explore-features =
-    .label = สำรวจคุณลักษณะ
-    .accesskey = ล
+appmenu-help-get-release-help =
+    .label = รับความช่วยเหลือสำหรับ { -brand-short-name }
+    .accesskey = ช
 appmenu-help-shortcuts =
     .label = แป้นพิมพ์ลัด
     .accesskey = ป
@@ -193,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = เกี่ยวกับ { -brand-short-name }
     .accesskey = ก
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = กำลังดาวน์โหลดการอัปเดต { -brand-shorter-name }
 appmenuitem-banner-update-available =

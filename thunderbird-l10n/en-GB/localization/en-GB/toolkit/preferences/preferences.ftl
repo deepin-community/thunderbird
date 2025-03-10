@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (not set)
 failed-pp-change = Unable to change Primary Password.
@@ -21,7 +17,6 @@ set-password-new-password = Enter new password:
 set-password-reenter-password = Re-enter password:
 set-password-meter = Password quality meter
 set-password-meter-loading = Loading
-primary-password-admin = Your administrator requires that you have a Primary Password set in order to save logins and passwords.
 primary-password-required-by-policy = Your organisation requires that you have a Primary Password set in order to save logins and passwords.
 primary-password-description = A Primary Password is used to protect some sensitive information, like logins and passwords, on this device. If you create a Primary Password you will be asked to enter it once per session when { -brand-short-name } retrieves saved information protected by the password.
 primary-password-warning = Please make sure you remember the Primary Password you have set. If you forget your Primary Password, you will be unable to access any of the information protected by it on this device.

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Mu dhèidhinn lìonraidhean
 about-networking-http = HTTP
 about-networking-sockets = Socaidean
@@ -56,13 +52,6 @@ about-networking-rcwn-cache-slow = Cache slow count
 about-networking-rcwn-cache-not-slow = Cache not slow count
 about-networking-networkid = ID an lìonraidh
 about-networking-networkid-id = ID an lìonraidh
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = This page has been moved to <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Tha an ceangal ag obair
 about-networking-networkid-status-known = Tha sinn eòlach air staid a’ cheangail
-
-##
-

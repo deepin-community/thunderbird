@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Czcionki
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Domyślna ({ $name })
 fonts-label-default-unnamed =
     .label = Domyślna
-fonts-encoding-dialog-title =
-    .title = Czcionki i zestawy znaków
 fonts-language-legend =
     .value = Czcionki:
     .accesskey = C
 fonts-proportional-label =
     .value = Proporcjonalna:
     .accesskey = a
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Łacińskie
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Syngaleskie
 font-language-group-tibetan =
     .label = Tybetańskie
-
-## Default font type
-
 default-font-serif =
     .label = Szeryfowa
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = M
 min-size-none =
     .label = Brak
-
-## Fonts in message
-
 font-control-legend = Zasady używania czcionek
 use-document-fonts-checkbox =
     .label = Zezwalaj na używanie czcionek zadeklarowanych w wiadomościach
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Używaj czcionki o stałej szerokości dla wiadomości wysyłanych jako zwykły tekst
     .accesskey = U
-
-## Language settings
-
 text-encoding-legend = Kodowanie tekstu
 text-encoding-description = Ustawienia domyślnego kodowania tekstu wysyłanych i odbieranych wiadomości
 font-outgoing-email-label =

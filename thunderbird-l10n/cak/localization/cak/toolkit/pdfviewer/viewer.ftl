@@ -1,26 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Main toolbar buttons (tooltips and alt text for images)
-
 pdfjs-previous-button =
     .title = Jun kan ruxaq
 pdfjs-previous-button-label = Jun kan
 pdfjs-next-button =
     .title = Jun chik ruxaq
 pdfjs-next-button-label = Jun chik
-# .title: Tooltip for the pageNumber input.
 pdfjs-page-input =
     .title = Ruxaq
-# Variables:
-#   $pagesCount (Number) - the total number of pages in the document
-# This string follows an input field with the number of the page currently displayed.
 pdfjs-of-pages = richin { $pagesCount }
-# Variables:
-#   $pageNumber (Number) - the currently visible page
-#   $pagesCount (Number) - the total number of pages in the document
 pdfjs-page-of-pages = ({ $pageNumber } richin { $pagesCount })
 pdfjs-zoom-out-button =
     .title = Tich'utinirisäx
@@ -43,9 +29,6 @@ pdfjs-save-button =
     .title = Tiyak
 pdfjs-save-button-label = Tiyak
 pdfjs-bookmark-button-label = Ruxaq k'o wakami
-
-##  Secondary toolbar and context menu
-
 pdfjs-tools-button =
     .title = Samajib'äl
 pdfjs-tools-button-label = Samajib'äl
@@ -88,32 +71,17 @@ pdfjs-spread-odd-button-label = Man K'ulaj Ta Rub'eyal
 pdfjs-spread-even-button =
     .title = Ke'atunu' ri taq ruxaq rik'in natikirisaj rik'in jun k'ulaj rajilab'al
 pdfjs-spread-even-button-label = K'ulaj Rub'eyal
-
-## Document properties dialog
-
 pdfjs-document-properties-button =
     .title = Taq richinil wuj…
 pdfjs-document-properties-button-label = Taq richinil wuj…
 pdfjs-document-properties-file-name = Rub'i' yakb'äl:
 pdfjs-document-properties-file-size = Runimilem yakb'äl:
-# Variables:
-#   $size_kb (Number) - the PDF file size in kilobytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-kb = { $size_kb } KB ({ $size_b } bytes)
-# Variables:
-#   $size_mb (Number) - the PDF file size in megabytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-mb = { $size_mb } MB ({ $size_b } bytes)
 pdfjs-document-properties-title = B'i'aj:
 pdfjs-document-properties-author = B'anel:
 pdfjs-document-properties-subject = Taqikil:
 pdfjs-document-properties-keywords = Kixe'el taq tzij:
 pdfjs-document-properties-creation-date = Ruq'ijul xtz'uk:
 pdfjs-document-properties-modification-date = Ruq'ijul xjalwachïx:
-# Variables:
-#   $date (Date) - the creation/modification date of the PDF file
-#   $time (Time) - the creation/modification time of the PDF file
-pdfjs-document-properties-date-string = { $date }, { $time }
 pdfjs-document-properties-creator = Q'inonel:
 pdfjs-document-properties-producer = PDF b'anöy:
 pdfjs-document-properties-version = PDF ruwäch:
@@ -127,38 +95,17 @@ pdfjs-document-properties-page-size-name-a-three = A3
 pdfjs-document-properties-page-size-name-a-four = A4
 pdfjs-document-properties-page-size-name-letter = Loman wuj
 pdfjs-document-properties-page-size-name-legal = Taqanel tzijol
-
-## Variables:
-##   $width (Number) - the width of the (current) page
-##   $height (Number) - the height of the (current) page
-##   $unit (String) - the unit of measurement of the (current) page
-##   $name (String) - the name of the (current) page
-##   $orientation (String) - the orientation of the (current) page
-
 pdfjs-document-properties-page-size-dimension-string = { $width } × { $height } { $unit } ({ $orientation })
 pdfjs-document-properties-page-size-dimension-name-string = { $width } × { $height } { $unit } ({ $name }, { $orientation })
-
-##
-
-# The linearization status of the document; usually called "Fast Web View" in
-# English locales of Adobe software.
 pdfjs-document-properties-linearized = Anin Rutz'etik Ajk'amaya'l:
 pdfjs-document-properties-linearized-yes = Ja'
 pdfjs-document-properties-linearized-no = Mani
 pdfjs-document-properties-close-button = Titz'apïx
-
-## Print
-
 pdfjs-print-progress-message = Ruchojmirisaxik wuj richin nitz'ajb'äx…
-# Variables:
-#   $progress (Number) - percent value
 pdfjs-print-progress-percent = { $progress }%
 pdfjs-print-progress-close-button = Tiq'at
 pdfjs-printing-not-supported = Rutzijol k'ayewal: Ri rutz'ajb'axik man koch'el ta ronojel pa re okik'amaya'l re'.
 pdfjs-printing-not-ready = Rutzijol k'ayewal: Ri PDF man xusamajij ta ronojel richin nitz'ajb'äx.
-
-## Tooltips and alt text for side panel toolbar buttons
-
 pdfjs-toggle-sidebar-button =
     .title = Tijal ri ajxikin kajtz'ik
 pdfjs-toggle-sidebar-notification-button =
@@ -183,20 +130,10 @@ pdfjs-findbar-button =
     .title = Tikanöx chupam ri wuj
 pdfjs-findbar-button-label = Tikanöx
 pdfjs-additional-layers = Tz'aqat ta Kuchuj
-
-## Thumbnails panel item (tooltip and alt text for images)
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-title =
     .title = Ruxaq { $page }
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-canvas =
     .aria-label = Ruch'utinirisaxik ruxaq { $page }
-
-## Find panel button title and messages
-
 pdfjs-find-input =
     .title = Tikanöx
     .placeholder = Tikanöx pa wuj…
@@ -213,79 +150,37 @@ pdfjs-find-entire-word-checkbox-label = Tz'aqät taq tzij
 pdfjs-find-reached-top = Xb'eq'i' ri rutikirib'al wuj, xtikanöx k'a pa ruk'isib'äl
 pdfjs-find-reached-bottom = Xb'eq'i' ri ruk'isib'äl wuj, xtikanöx pa rutikirib'al
 pdfjs-find-not-found = Man xilitäj ta ri pajtzij
-
-## Predefined zoom values
-
 pdfjs-page-scale-width = Ruwa ruxaq
 pdfjs-page-scale-fit = Tinuk' ruxaq
 pdfjs-page-scale-auto = Yonil chi nimilem
 pdfjs-page-scale-actual = Runimilem Wakami
-# Variables:
-#   $scale (Number) - percent value for page scale
 pdfjs-page-scale-percent = { $scale }%
-
-## PDF page
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-page-landmark =
     .aria-label = Ruxaq { $page }
-
-## Loading indicator messages
-
 pdfjs-loading-error = Xk'ulwachitäj jun sach'oj toq xnuk'ux ri PDF .
 pdfjs-invalid-file-error = Man oke ta o yujtajinäq ri PDF yakb'äl.
 pdfjs-missing-file-error = Man xilitäj ta ri PDF yakb'äl.
 pdfjs-unexpected-response-error = Man oyob'en ta tz'olin rutzij ruk'u'x samaj.
 pdfjs-rendering-error = Xk'ulwachitäj jun sachoj toq ninuk'wachij ri ruxaq.
-
-## Annotations
-
-# Variables:
-#   $date (Date) - the modification date of the annotation
-#   $time (Time) - the modification time of the annotation
-pdfjs-annotation-date-string = { $date }, { $time }
-# .alt: This is used as a tooltip.
-# Variables:
-#   $type (String) - an annotation type from a list defined in the PDF spec
-# (32000-1:2008 Table 169 – Annotation types).
-# Some common types are e.g.: "Check", "Text", "Comment", "Note"
 pdfjs-text-annotation-type =
     .alt = [{ $type } Tz'ib'anïk]
-
-## Password
-
 pdfjs-password-label = Tatz'ib'aj ri ewan tzij richin najäq re yakb'äl re' pa PDF.
 pdfjs-password-invalid = Man okel ta ri ewan tzij: Tatojtob'ej chik.
 pdfjs-password-ok-button = Ütz
 pdfjs-password-cancel-button = Tiq'at
 pdfjs-web-fonts-disabled = E chupül ri taq ajk'amaya'l tz'ib': man tikirel ta nokisäx ri taq tz'ib' PDF pa ch'ikenïk
-
-## Editing
-
 pdfjs-editor-free-text-button =
     .title = Rucholajem tz'ib'
 pdfjs-editor-free-text-button-label = Rucholajem tz'ib'
 pdfjs-editor-ink-button =
     .title = Tiwachib'ëx
 pdfjs-editor-ink-button-label = Tiwachib'ëx
-# Editor Parameters
 pdfjs-editor-free-text-color-input = B'onil
 pdfjs-editor-free-text-size-input = Nimilem
 pdfjs-editor-ink-color-input = B'onil
 pdfjs-editor-ink-thickness-input = Rupimil
 pdfjs-editor-ink-opacity-input = Q'equmal
-pdfjs-free-text =
-    .aria-label = Nuk'unel tz'ib'atzij
-pdfjs-free-text-default-content = Titikitisäx rutz'ib'axik…
 pdfjs-ink =
     .aria-label = Nuk'unel wachib'äl
 pdfjs-ink-canvas =
     .aria-label = Wachib'äl nuk'un ruma okisaxel
-
-## Alt-text dialog
-
-
-## Editor resizers
-## This is used in an aria label to help to understand the role of the resizer.
-

@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = 保存されたログイン情報
-window-close =
-    .key = w
 saved-logins-title = 保存されたログイン情報
 focus-search-primary-shortcut =
     .key = f
@@ -69,22 +61,10 @@ remove-all-shown =
 remove-all-passwords-prompt = 本当にすべてのパスワードを消去しますか？
 remove-all-passwords-title = すべてのパスワードを消去
 no-master-password-prompt = パスワードを表示しますか？
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = 保存されたパスワードを開示するため、あなたのアカウントを検証します。
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = 保存されたパスワードを開示
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
-# This message can be seen when attempting to disable osauth in about:preferences.
-# (^m^) [macos] Thunderbird が...しようとしています。
-password-os-auth-change-dialog-message=
+password-os-auth-change-dialog-message =
     { PLATFORM() ->
         [macos] パスワード設定を変更
        *[other] { -brand-short-name } がパスワード設定を変更しようとしています。許可するには端末のログイン情報を使用してください。

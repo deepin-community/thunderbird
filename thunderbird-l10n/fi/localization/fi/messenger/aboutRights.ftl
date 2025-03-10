@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Tietoa oikeuksistasi
 rights-intro = { -brand-full-name } on ilmainen, avoimen lähdekoodin ohjelmisto, jonka tekijäyhteisö koostuu tuhansista ympäri maailmaa asuvista ihmisistä. Seuraavat seikat on hyvä tietää:
 rights-intro-point-1 = { -brand-short-name } on annettu sinulle <a data-l10n-name="mozilla-public-license-link">Mozillan julkisen lisenssin (Mozilla Public License)</a> ehdoilla. Lisenssissä annetaan sinulle oikeus käyttää, kopioida ja levittää { -brand-short-name }ia. Sinulla on myös halutessasi oikeus muokata ja muuttaa { -brand-short-name }in lähdekoodia omien tarpeittesi mukaisesti. Mozillan julkinen lisenssi antaa sinulle myös oikeuden levittää näitä muokkaamiasi versioita.

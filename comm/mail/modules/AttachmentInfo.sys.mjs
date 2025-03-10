@@ -64,7 +64,7 @@ export class AttachmentInfo {
    *   been detached to file or is a link attachment.
    * @param {object} options.message - The message object associated to this
    *   attachment.
-   * @param {Function} [updateAttachmentsDisplayFn] - An optional callback
+   * @param {Function} [options.updateAttachmentsDisplayFn] - An optional callback
    *   function that is called to update the attachment display at appropriate
    *   times.
    */
@@ -135,9 +135,8 @@ export class AttachmentInfo {
   /**
    * Open this attachment.
    *
-   * @param {integer} [browsingContextId]
-   *   The browsingContext of the browser that this attachment is being opened
-   *   from.
+   * @param {BrowsingContext} browsingContext - The browsingContext of the
+   *   browser that this attachment is being opened from.
    */
   async open(browsingContext) {
     if (!this.hasFile) {
@@ -179,8 +178,8 @@ export class AttachmentInfo {
           if (!tabmail) {
             // If no tabmail available in this window, try and find it in
             // another.
-            const win = Services.wm.getMostRecentWindow("mail:3pane");
-            tabmail = win?.document.getElementById("tabmail");
+            const win2 = Services.wm.getMostRecentWindow("mail:3pane");
+            tabmail = win2?.document.getElementById("tabmail");
           }
           if (tabmail) {
             tabmail.openTab("contentTab", {
@@ -195,11 +194,15 @@ export class AttachmentInfo {
         }
       }
 
-      // Just use the old method for handling messages, it works.
-
       let { name, url } = this;
 
-      url += url.includes("?") ? "&outputformat=raw" : "?outputformat=raw";
+      if (
+        this.contentType == "message/rfc822" ||
+        /[?&]filename=.*\.eml(&|$)/.test(url)
+      ) {
+        url += url.includes("?") ? "&outputformat=raw" : "?outputformat=raw";
+      }
+
       const sourceURI = Services.io.newURI(url);
 
       async function saveToFile(path, isTmp = false) {
@@ -245,7 +248,16 @@ export class AttachmentInfo {
         let tempFile = this.#temporaryFiles.get(url);
         if (!tempFile?.exists()) {
           tempFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
-          tempFile.append("subPart.eml");
+          // Try to use the name of the attachment for the temporary file, so
+          // that the name is included in the URI of the message that is
+          // opened, and possibly saved as a file later by the user.
+          let sanitizedName = lazy.DownloadPaths.sanitize(this.name);
+          if (!sanitizedName) {
+            sanitizedName = "message.eml";
+          } else if (!/\.eml$/i.test(sanitizedName)) {
+            sanitizedName += ".eml";
+          }
+          tempFile.append(sanitizedName);
           tempFile.createUnique(0, 0o600);
           await saveToFile(tempFile.path, true);
 
@@ -287,7 +299,7 @@ export class AttachmentInfo {
 
       name = lazy.DownloadPaths.sanitize(name);
 
-      const createTemporaryFileAndOpen = async mimeInfo => {
+      const createTemporaryFileAndOpen = async fileMimeInfo => {
         const tmpPath = PathUtils.join(
           Services.dirsvc.get("TmpD", Ci.nsIFile).path,
           "pid-" + Services.appinfo.processID
@@ -310,17 +322,17 @@ export class AttachmentInfo {
         // Before opening from the temp dir, make the file read-only so that
         // users don't edit and lose their edits...
         await IOUtils.setPermissions(tempFile.path, 0o400); // Set read-only
-        this._openFile(mimeInfo, tempFile);
+        this._openFile(fileMimeInfo, tempFile);
       };
 
-      const openLocalFile = mimeInfo => {
+      const openLocalFile = fileMimeInfo => {
         const fileHandler = Services.io
           .getProtocolHandler("file")
           .QueryInterface(Ci.nsIFileProtocolHandler);
 
         try {
           const externalFile = fileHandler.getFileFromURLSpec(this.displayUrl);
-          this._openFile(mimeInfo, externalFile);
+          this._openFile(fileMimeInfo, externalFile);
         } catch (ex) {
           console.error(
             "AttachmentInfo.open: file - " + this.displayUrl + ", " + ex
@@ -445,7 +457,7 @@ export class AttachmentInfo {
   /**
    * This method checks whether the attachment has been deleted or not.
    *
-   * @returns true if the attachment has been deleted, false otherwise.
+   * @returns {boolean} true if the attachment has been deleted, false otherwise.
    */
   get isDeleted() {
     return this.contentType == "text/x-moz-deleted";
@@ -454,7 +466,7 @@ export class AttachmentInfo {
   /**
    * This method checks whether the attachment is a detached file.
    *
-   * @returns true if the attachment is a detached file, false otherwise.
+   * @returns {boolean} true if the attachment is a detached file, false otherwise.
    */
   get isFileAttachment() {
     return this.isExternalAttachment && this.url.startsWith("file:");
@@ -463,7 +475,7 @@ export class AttachmentInfo {
   /**
    * This method checks whether the attachment is an http link.
    *
-   * @returns true if the attachment is an http link, false otherwise.
+   * @returns {boolean} true if the attachment is an http link, false otherwise.
    */
   get isLinkAttachment() {
     return this.isExternalAttachment && /^https?:/.test(this.url);
@@ -474,7 +486,7 @@ export class AttachmentInfo {
    * Deleted attachments or detached attachments with missing external files
    * do *not* have a file.
    *
-   * @returns true if the attachment has an associated file, false otherwise.
+   * @returns {boolean} true if the attachment has an associated file, false otherwise.
    */
   get hasFile() {
     if (this.sizeResolved && this.size == -1) {

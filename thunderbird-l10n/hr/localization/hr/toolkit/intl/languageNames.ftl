@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = Afarski
 language-name-ab = Abkhazijski
 language-name-ach = Ačolski
@@ -158,12 +154,15 @@ language-name-ro = Rumunjski
 language-name-ru = Ruski
 language-name-rw = Kinjarvandski
 language-name-sa = Sanskrt
+language-name-sat = Santali
 language-name-sc = Sardinijski
+language-name-sco = Škotski
 language-name-sd = Sindski
 language-name-se = Sjeverni samijski
 language-name-sg = Sangonski
 language-name-si = Singaleški
 language-name-sk = Slovački
+language-name-skr = Saraiki
 language-name-sl = Slovenski
 language-name-sm = Samoanski
 language-name-sn = Shonajski

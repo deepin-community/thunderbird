@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = 关于网络连接
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = 清除 HTTP 缓存
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = 缓存较慢次数
 about-networking-rcwn-cache-not-slow = 缓存非慢次数
 about-networking-networkid = 网络 ID
 about-networking-networkid-id = 网络 ID
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = 此页面已移动至 <a data-l10n-name="about-logging-url">about:logging</a>。
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = 网络已连接
 about-networking-networkid-status-known = 已知网络连接状态
-
-##
-

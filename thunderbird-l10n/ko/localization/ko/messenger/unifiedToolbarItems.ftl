@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = 유동 공간
 search-bar-label = 검색
 toolbar-write-message-label = 쓰기
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = 가져오기
 toolbar-import-contacts =
     .title = 파일에서 연락처 가져오기
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = 로컬 주소록 추가
 toolbar-new-address-book-popup-add-carddav-address-book =

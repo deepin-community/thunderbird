@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "הגדרות חשבון מתקדמות">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "ספריית שרת IMAP:‏">
 <!ENTITY serverDirectory.accesskey "I">
 <!ENTITY usingSubscription.label "להציג רק תיקיות להן אני מנוי">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "ת">
 <!ENTITY maximumConnectionsNumber.label "מספר מרבי של חיבורי שרת אל המטמון">
 <!ENTITY maximumConnectionsNumber.accesskey "ט">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "העדפות אלו מציינות את מרחבי השמות על שרת ה־IMAP שלך">
 <!ENTITY personalNamespace.label "מרחב שמות אישי:">
 <!ENTITY personalNamespace.accesskey "P">

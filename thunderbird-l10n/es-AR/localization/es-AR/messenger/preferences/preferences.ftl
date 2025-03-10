@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Cerrar
 preferences-doc-title2 = Ajustes
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sincronizar
 category-sync =
     .tooltiptext = Sincronizar
+pane-qr-export-title = Exportar para dispositivos móviles
+category-qr-export =
+    .tooltiptext = Exportar para dispositivos móviles
 general-language-and-appearance-header = Idioma y apariencia
 general-incoming-mail-header = Correos electrónicos entrantes
 general-files-and-attachment-header = Archivos y adjuntos
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Permitir que { -brand-short-name } envíe información técnica y de interacción a { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Conocer más
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = El informe de datos está deshabilitado para esta configuración de compilación
 collection-backlogged-crash-reports =
     .label = Permitir que { -brand-short-name } envíe informes de fallos pendientes en su nombre
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Reinicie { -brand-short-name } para aplicar estos cambios
 confirm-messenger-language-change-button = Aplicar y reiniciar
 update-setting-write-failure-title = Error al guardar las preferencias de actualización
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } encontró un error y no guardó este cambio. Tenga en cuenta que la configuración de esta preferencia de actualización requiere permiso para escribir en el archivo que se encuentra a continuación. Es posible que usted o un administrador del sistema puedan resolver el error otorgando el control total de este archivo al grupo de Usuarios.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Actualización en progreso
 update-in-progress-message = ¿Quiere que { -brand-short-name } continúe con esta actualización?
 update-in-progress-ok-button = &Descartar
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Continuar
 account-button = Configuración de la cuenta
 open-addons-sidebar-button = Complementos y temas
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Para crear su contraseña maestra, ingrese sus credenciales de inicio de sesión de Windows. Esto ayuda a proteger la seguridad de sus cuentas.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = crear una contraseña maestra
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Agregar proveedor OpenSearch
 add-opensearch-provider-text = Ingrese URL del proveedor OpenSearch para agregar. Puede usar la URL directa del archivo de descripción OpenSearch o una URL dónde puede descubrirse automáticamente.
 adding-opensearch-provider-failed-title = No se pudo agregar el proveedor OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = No se pudo agregar el proveedor OpenSearch para { $url }.
 minimize-to-tray-label =
     .label = Cuando { -brand-short-name } está minimizado, muévalo a la bandeja
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Verificar ahora…
     .accesskey = V
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Acuses de recibo…
     .accesskey = r
 update-app-legend = Actualizaciones de { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versión { $version }
 allow-description = Permitir que { -brand-short-name }
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = d
 compact-folder-size =
     .value = MB en total
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Usar hasta
     .accesskey = U
 use-cache-after = MB de espacio para caché
-
-##
-
 smart-cache-label =
     .label = Anular administración automática de caché
     .accesskey = u
@@ -304,7 +269,6 @@ color-options-button =
     .label = Colores…
     .accesskey = C
 display-width-legend = Mensajes de texto plano
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Mostrar emoticones como gráficos
     .accesskey = g
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Ver adjuntos integrados
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Después de mostrar por
     .accesskey = D
 seconds-label = segundos
-
-##
-
 open-msg-label =
     .value = Abrir mensajes en:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Cerrar ventana/pestaña de mensaje al mover o borrar
     .accesskey = C
-display-name-label =
-    .value = Nombre para mostrar:
 address-display-legend = Lista de mensajes
 address-display-description = Formato preferido para mostrar la dirección:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Ver solamente el nombre a mostrar para personas en mi libreta de direcciones
     .accesskey = S
-
-## Compose Tab
-
+table-layout-legend = Vista de tabla
+table-layout-horizontal-scroll-label =
+    .label = Permitir desplazamiento horizontal
+    .accesskey = z
+conversation-view-legend = Vista de conversación
+conversation-view-checkbox-label =
+    .label = Habilitar vista de conversación
+    .accesskey = c
+conversation-view-checkbox-description = Función experimental basada en Gloda, úsela bajo su propio riesgo
+label-experiment = Experimental
+account-hub-legend = Centro de cuentas
+account-hub-checkbox-label =
+    .label = Crear cuentas en el nuevo centro de cuentas
+    .accesskey = C
+account-hub-checkbox-description = Flujo de creación de cuentas de correo (experimental)
 forward-label =
     .value = Reenviar mensajes:
     .accesskey = m
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = Agregar la extensión al nombre de archivo
     .accesskey = n
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Guardar todo automáticamente cada
     .accesskey = u
 auto-save-end = minutos
-
-##
-
 warn-on-send-accel-key =
     .label = Confirmar cuando se usan atajos de teclados para enviar mensajes
     .accesskey = C
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Buscar más proveedores…
 cloud-account-description = Agregar un nuevo servicio de almacenamiento Filelink
-
-## Privacy Tab
-
 mail-content = Contenido de correo
 remote-content-label =
     .label = Permitir contenido remoto en mensajes
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Mostrar cookies…
     .accesskey = S
-do-not-track-label =
-    .label = Enviar a los sitios una señal de “No rastrear” indicando que no quiere ser rastreado
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Decirle a los sitios web que no vendan ni compartan mis datos
     .accesskey = n
-dnt-learn-more-button =
-    .value = Conocer más
+do-not-track-removal = Ya no soportamos la señal “No rastrear”
 passwords-description = { -brand-short-name } puede recordar las contraseñas para todas sus cuentas.
 passwords-button =
     .label = Contraseñas guardadas…
@@ -571,7 +528,6 @@ primary-password-description = Una contraseña maestra protege todas sus contras
 primary-password-label =
     .label = Usar una contraseña maestra
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Requerir inicio de sesión en el dispositivo para completar y administrar contraseñas
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Se encuentra actualmente en modo FIPS. FIPS requiere una contraseña maestra no vacía.
 forms-master-pw-fips-desc = Cambio de contraseña fallido
 junk-description = Configuración predeterminada de correo basura. Las configuraciones específicas de cada cuenta deben ser realizadas en Configuración de cuentas.
-junk-label =
-    .label = Cuando marque mensajes como basura:
-    .accesskey = C
 junk-marked-label =
     .label = Cuando los mensajes se marcan como basura:
     .accesskey = u
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Borrarlos
     .accesskey = B
-junk-read-label =
-    .label = Marcar los mensajes determinados como basura como ya leídos
-    .accesskey = a
 junk-read-description = Marcar mensajes como leídos
 junk-read-manual-label =
     .label = Cuando se marca manualmente como basura
@@ -647,9 +597,6 @@ email-e2ee-auto-off =
 email-e2ee-auto-off-notify =
     .label = Mostrar una notificación cuando el cifrado se deshabilite automáticamente
 email-e2ee-automatism-post = Las decisiones automáticas se pueden anular habilitando o deshabilitando manualmente el cifrado al redactar un mensaje.Nota: el cifrado siempre está activado automáticamente al responder a un mensaje cifrado.
-
-## Chat Tab
-
 startup-label =
     .value = Al iniciar { -brand-short-name }:
     .accesskey = A
@@ -657,20 +604,10 @@ offline-label =
     .label = Mantener mis cuentas de chat desconectadas
 auto-connect-label =
     .label = Conectar mis cuentas de chat automáticamente
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Dejar que mis contactos sepan que estoy inactivo después de
     .accesskey = i
 idle-time-label = minutos de inactividad
-
-##
-
 away-message-label =
     .label = y establecer mi estado como Ausente con el siguiente mensaje de estado:
     .accesskey = A
@@ -732,41 +669,21 @@ no-preview-description = Este tema no es válido o actualmente no está disponib
 chat-variant-label =
     .value = Variante:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Buscar en Ajustes
-
-## Settings UI Search Results
-
 search-results-header = Resultados de búsqueda
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] ¡Lo sentimos! No hay resultados en Opciones para “<span data-l10n-name="query">”.
        *[other] ¡Lo sentimos! No hay resultados en Ajustes para “<span data-l10n-name="query">”.
     }
 search-results-help-link = ¿Necesita ayuda? Visite <a data-l10n-name="url">Ayuda de { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Llévese la web con usted
 sync-signedout-description = Sincronice cuentas, libretas de direcciones, calendarios, complementos y configuración en todos sus dispositivos.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Iniciar sesión para sincronizar…
 sync-pane-header = Sincronizar
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” no está verificado.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Vuelva a iniciar sesión para reconectar “{ $userEmail }”
 sync-pane-resend-verification = Reenviar verificación
 sync-pane-sign-in = Iniciar sesión
@@ -796,3 +713,49 @@ synced-acount-item-filters = Filtros
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Sincronice cuentas de correo electrónico, libretas de direcciones, calendarios e identidades en todos sus dispositivos.
 sync-disconnected-turn-on-sync = Habilitar sincronización…
+qr-export-pane-header = Exportar cuentas a { -brand-product-name } móvil
+qr-export-description = Transfiera rápidamente la configuración de la cuenta desde el escritorio al dispositivo móvil generando un código QR. Seleccione qué cuentas incluir, decida si quiere transferir su contraseña y escanee el código con su dispositivo móvil. Rápido, seguro y sencillo.
+qr-export-get-app = ¿Todavía no tiene { -brand-product-name } en dispositivos móviles? <a data-l10n-name="app-link">Consígalo en Google Play</a>
+qr-export-create = Crear un código QR para exportar cuentas
+qr-export-select-accounts = Seleccione qué cuentas exportar:
+qr-export-no-accounts = ¿No ve todas sus cuentas? Algunas cuentas pueden estar deshabilitadas porque no son compatibles con { -brand-product-name } para Android. <a data-l10n-name="account-support-link">Ayuda</a>
+qr-export-accounts-legend = Cuentas de correo
+qr-export-select-all-accounts = Seleccionar todo
+qr-export-security-legend = Seguridad
+qr-export-include-passwords = Incluir todas las contraseñas de las cuentas
+qr-export-oauth-warning = Algunas de sus cuentas usan un método de autenticación que puede necesitar la re autenticación en su dispositivo móvil. Puede resultar necesario que ingrese sus contraseñas nuevamente durante este proceso.
+qr-export-security-hint = Al escanear los siguientes códigos QR, la configuración de la cuenta, incluyendo correo electrónico y contraseña, se transferirá de forma segura. No recopilamos, almacenamos ni compartimos ninguno de estos datos durante el proceso. La transferencia se produce directamente entre sus dispositivos.
+qr-export-security-warning = Por su seguridad, asegúrese de estar en un entorno privado y escanear solo códigos QR de fuentes confiables.
+qr-export-start-export = Exportar
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } de { $count } código QR
+       *[other] { $step } de { $count } códigos QR
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Escanee el código QR con { -brand-product-name } en su dispositivo móvil
+       *[other] Escanee códigos QR con { -brand-product-name } en su dispositivo móvil
+    }
+qr-export-scan-step1 = Abrir { -brand-product-name } en el dispositivo móvil
+qr-export-scan-step2 = Ir a Ajustes
+qr-export-scan-step3 = Seleccione <strong>Importar configuración</strong>
+qr-export-scan-step4-revision = Toque <strong>Escanear código QR</strong> y coloque su teléfono sobre este código
+qr-export-back = Atrás
+qr-export-next = Siguiente
+qr-export-done = Listo
+qr-export-summary-description = Cuentas exportadas. Continúe en su dispositivo móvil.
+qr-export-summary-title = Exportar resumen:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } código QR generado
+       *[other] { $count } códigos QR generados
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } cuenta exportada:
+       *[other] { $count } cuentas exportadas:
+    }
+qr-export-summary-passwords-included = Contraseñas incluidas
+qr-export-summary-passwords-excluded = Contraseñas excluidas
+qr-export-more-accounts = Exportar más cuentas
