@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Tentang Hak Anda
 rights-intro = { -brand-full-name } adalah perangkat lunak bebas dan terbuka yang dibangun oleh ribuan anggota komunitas dari berbagai penjuru dunia. Ada beberapa hal yang perlu Anda ketahui:
 rights-intro-point-1 = { -brand-short-name } disediakan berdasarkan persyaratan dalam lisensi <a data-l10n-name="mozilla-public-license-link">Mozilla Public License</a>. Ini berarti Anda dapat menggunakan, menyalin, dan mendistribusikan { -brand-short-name } kepada pihak lain. Anda juga dapat memodifikasi kode sumber program { -brand-short-name } sesuai dengan kebutuhan Anda. Lisensi Mozilla Public License memberi hak kepada Anda untuk mendistribusikan versi yang telah Anda modifikasi.
@@ -13,6 +9,15 @@ rights-intro-point-5 = Sebagian fitur { -brand-short-name } menggunakan layanan 
 rights-intro-point-5-unbranded = Jika produk ini menyertakan layanan web, seluruh ketentuan layanan tersebut akan ditaut ke bagian <a data-l10n-name="mozilla-website-services-link">Layanan Situs Web</a>.
 rights-intro-point-6 = Untuk memutar jenis konten video tertentu, { -brand-short-name } mengunduh modul dekripsi konten tertentu dari pihak ketiga.
 rights-webservices-header = Layanan Informasi Berbasis Web { -brand-full-name }
+rights-webservices2 =
+    { -brand-full-name } menggunakan layanan informasi berbasis web (“Layanan”)
+    untuk menyediakan beberapa fitur yang disediakan untuk Anda gunakan
+    dengan versi biner ini dari { -brand-short-name } dengan persyaratan yang
+    dijelaskan di bawah. Jika tidak ingin menggunakan satu atau lebih Layanan 
+    atau ketentuan di bawah tidak dapat diterima, Anda dapat menonaktifkan fitur
+    atau Layanan. Petunjuk cara menonaktifkan fitur atau Layanan tertentu dapat
+    ditemukan <a data-l10n-name="mozilla-disable-service-link">di sini</a>. Fitur
+    dan Layanan lainnya dapat dinonaktifkan di pengaturan aplikasi.
 rights-locationawarebrowsing = <strong>Penjelajahan Berbasis Lokasi: </strong>selalu bersifat dapat dipilih. Tidak ada informasi lokasi yang akan dikirim tanpa seizin Anda. Jika Anda ingin mematikannya secara keseluruhan, ikuti petunjuk berikut:
 rights-locationawarebrowsing-term-1 = Pada bilah URL, ketikkan <code>about:config</code>
 rights-locationawarebrowsing-term-2 = Ketikkan geo.enabled

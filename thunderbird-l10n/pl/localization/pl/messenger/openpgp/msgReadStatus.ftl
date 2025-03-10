@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = S
-#   $type (String) - the shortcut key defined in the message-header-show-security-info-key
 message-security-button =
     .title =
         { PLATFORM() ->
@@ -21,20 +13,12 @@ openpgp-openpgp = OpenPGP
 openpgp-no-sig = Brak podpisu cyfrowego
 openpgp-no-sig-info = Wiadomość nie zawiera podpisu cyfrowego nadawcy. Brak podpisu cyfrowego może oznaczać, że wiadomość została wysłana przez kogoś kto udaje, że posługuje się tym adresem e-mail. Jest także możliwe, że wiadomość została zmieniona podczas przesyłania przez sieć Internet.
 openpgp-uncertain-sig = Niepewny podpis cyfrowy
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-uncertain-sig-with-date = Niepewny podpis cyfrowy – podpisany w dniu { $date }
 openpgp-invalid-sig = Nieprawidłowy podpis cyfrowy
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Nieprawidłowy podpis cyfrowy – podpisany w dniu { $date }
 openpgp-bad-date-sig = Niezgodność daty podpisu
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-bad-date-sig-with-date = Niezgodność daty podpisu – podpisany w dniu { $date }
 openpgp-good-sig = Dobry podpis cyfrowy
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-good-sig-with-date = Dobry podpis cyfrowy – podpisany w dniu { $date }
 openpgp-sig-uncertain-no-key = Ta wiadomość zawiera podpis cyfrowy, ale nie ma pewności, czy jest on właściwy. Aby zweryfikować ten podpis, musisz uzyskać kopię klucza publicznego nadawcy.
 openpgp-sig-uncertain-uid-mismatch = Ta wiadomość zawiera podpis cyfrowy, ale wykryto niezgodność. Wiadomość została wysłana z adresu e-mail, który nie zgadza się z kluczem publicznym osoby podpisującej.
@@ -45,19 +29,9 @@ openpgp-sig-invalid-date-mismatch = Ta wiadomość zawiera podpis cyfrowy, ale n
 openpgp-sig-valid-unverified = Ta wiadomość zawiera prawidłowy podpis cyfrowy z klucza, który już zaakceptowano. Nie zweryfikowano jednak jeszcze, czy klucz jest rzeczywiście własnością nadawcy.
 openpgp-sig-valid-verified = Ta wiadomość zawiera prawidłowy podpis cyfrowy ze zweryfikowanego klucza.
 openpgp-sig-valid-own-key = Ta wiadomość zawiera prawidłowy podpis cyfrowy z własnego klucza osobistego.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = Identyfikator klucza osoby podpisującej: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = Identyfikator klucza osoby podpisującej: { $key } (identyfikator klucza podrzędnego: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = Identyfikator Twojego klucza odszyfrowywania: { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = Identyfikator Twojego klucza odszyfrowywania: { $key } (identyfikator klucza podrzędnego: { $subkey })
 openpgp-enc-none = Wiadomość nie jest zaszyfrowana
 openpgp-enc-none-label = Wiadomość nie została zaszyfrowana przed wysłaniem. Informacje przesyłane przez Internet bez uprzedniego szyfrowania mogą zostać odczytane przez inne osoby.
@@ -75,7 +49,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Odszyfrowanie się nie powiodło
 openpgp-message-header-signed-ok-icon =
     .alt = Dobry podpis
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Błędny podpis
 openpgp-message-header-signed-unknown-icon =

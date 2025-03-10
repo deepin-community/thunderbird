@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Disk alanı tasarrufu için şunları indirme:">
 <!ENTITY doNotDownloadNntp.label "Disk alanı tasarrufu için şunları çevrimdışı kullanılmak üzere indirme:">
 <!ENTITY doNotDownloadImap.label "Disk alanından tasarruf etmek için sunucudaki iletilerin indirilmesini ve çevrimdışı kullanım amacıyla yerel kopyalarının tutulmasını boyut veya zamanla sınırlandırabilirsiniz.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "G">
 <!ENTITY syncGroupTitle.label "İleti eşitleme">
 <!ENTITY diskspaceGroupTitle.label "Disk alanı">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Tarihini göz ardı ederek tüm iletileri eşitle">
-<!ENTITY allAutosync.accesskey           "T">
-<!ENTITY ageAutosyncBefore.label         "Son">
-<!ENTITY ageAutosync.accesskey           "o">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "günü eşitle">
-<!ENTITY weekAgeInterval.label           "haftayı eşitle">
-<!ENTITY monthAgeInterval.label          "ayı eşitle">
-<!ENTITY yearAgeInterval.label           "yılı eşitle">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Tarihini göz ardı ederek tüm iletileri eşitle">
+<!ENTITY allAutosync.accesskey "T">
+<!ENTITY ageAutosyncBefore.label "Son">
+<!ENTITY ageAutosync.accesskey "o">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "günü eşitle">
+<!ENTITY weekAgeInterval.label "haftayı eşitle">
+<!ENTITY monthAgeInterval.label "ayı eşitle">
+<!ENTITY yearAgeInterval.label "yılı eşitle">
+<!ENTITY ageAutosyncAfter.label "">

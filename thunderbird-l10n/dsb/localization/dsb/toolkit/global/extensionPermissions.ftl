@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Cytańske znamjenja cytaś a změniś
 webext-perms-description-browserSettings = Nastajenja wobglědowaka cytaś a změniś
 webext-perms-description-browsingData = Aktualnu pśeglědowańsku historiju, cookieje a pśisłušne daty wulašowaś
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Mějśo pśistup k njedawno zacynjonyn rejta
 webext-perms-description-tabs = Mějśo pśistup k rejtarikam wobglědowaka
 webext-perms-description-tabHide = Rejtariki wobglědowaka schowaś a pokazaś
 webext-perms-description-topSites = Mějśo pśistup k pśeglědowańskej historiji
+webext-perms-description-trialML = Ześěgniśo a wuwjeźćo Modele KI na swójom rěźe
+webext-perms-description-userScripts = Njepśeglědanym skriptam tśeśich póbitowarjow pśistup k wašym datam dowóliś
 webext-perms-description-webNavigation = Mějśo pśistup k aktiwiśe wobglědowaka za nawigaciju
+webext-perms-extra-warning-userScripts-long = Njepśeglědane skripty mógu rizika za wěstotu a priwatnosć byś, gaž na pśikład škódny kode wuwjedu abo aktiwiśe websedłow slěduju. Wuwjeźćo jano skripty z rozšyrjenjow abo žrědłow, kótarymž dowěriśo.
+webext-perms-extra-warning-userScripts-short = Njepśeglědane skripty mógu rizika za wěstotu a priwatnosć byś. Wuwjeźćo jano skripty z rozšyrjenjow abo žrědłow, kótarymž dowěriśo.

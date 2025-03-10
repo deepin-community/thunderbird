@@ -1,3 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+btp-warning-tracker-classified =
+    { $gracePeriodSeconds ->
+       *[other] “{ $siteHost }” はバウンストラッカーとして分類されています。サイトが { $gracePeriodSeconds } 秒以内にユーザー操作を受け付けない場合、このサイトのデータは消去されます。
+    }
+btp-warning-tracker-purged = バウンストラッカーとして検出されたため、“{ $siteHost }” のデータは消去されました。

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Teksts un fons
 text-color-label =
     .value = Teksts:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Apmeklētās saites:
     .accesskey = A
-underline-link-checkbox =
-    .label = Pasvītrot saites
-    .accesskey = P
 override-color-label =
     .value = Pārstatīt saturā norādītās krāsas ar augstākminētām izvēlēm:
     .accesskey = I

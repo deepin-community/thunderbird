@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP anahtar yöneticisi
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = İmzayı doğrula
     .accesskey = d
 openpgp-has-sender-key = Bu ileti, gönderenin OpenPGP ortak anahtarını içerdiğini belirtiyor.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Uyarı: Bu iletideki yeni OpenPGP ortak anahtarı, daha önce { $email } için kabul ettiğiniz ortak anahtarlardan farklı.
 openpgp-import-sender-key =
     .label = İçe aktar…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Bu ileti henüz sahip olmadığınız bir anahtarla imzalandı.
 openpgp-search-signature-key =
     .label = Keşfet…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Bu ileti, görünüşe göre MS-Exchange tarafından bozulmuş bir OpenPGP iletisidir ve yerel bir dosyadan açıldığı için onarılamaz. Otomatik onarmayı denemek için iletiyi bir posta klasörüne kopyalayın.
 openpgp-broken-exchange-info = Bu ileti, görünüşe göre MS-Exchange tarafından bozulmuş bir OpenPGP iletisidir. İleti içeriği beklendiği gibi gösterilmezse otomatik onarmayı deneyebilirsiniz.
 openpgp-broken-exchange-repair =

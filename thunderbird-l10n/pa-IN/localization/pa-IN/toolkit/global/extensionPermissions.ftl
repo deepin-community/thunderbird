@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = ਬੁੱਕਮਾਰਕ ਪੜ੍ਹਨ ਅਤੇ ਸੋਧਣ
 webext-perms-description-browserSettings = ਬਰਾਊਜ਼ਰ ਸੈਟਿੰਗਾਂ ਨੂੰ ਪੜ੍ਹਨ ਅਤੇ ਸੋਧਣ
 webext-perms-description-browsingData = ਤਾਜ਼ਾ ਬਰਾਊਜ਼ਿੰਗ ਅਤੀਤ, ਕੂਕੀਜ਼ ਅਤੇ ਸੰਬੰਧਿਤ ਡਾਟੇ ਨੂੰ ਸਾਫ਼ ਕਰਨ
@@ -30,4 +21,8 @@ webext-perms-description-sessions = ਹੁਣੇ ਹੀ ਬੰਦ ਕੀਤੀ�
 webext-perms-description-tabs = ਬਰਾਊਜ਼ਰ ਟੈਬਾਂ ਲਈ ਪਹੁੰਚ
 webext-perms-description-tabHide = ਬਰਾਊਜ਼ਰ ਟੈਬਾਂ ਨੂੰ ਲੁਕਾਉਣ ਅਤੇ ਵੇਖਾਉਣ
 webext-perms-description-topSites = ਬਰਾਊਜ਼ਰ ਅਤੀਤ ਲਈ ਪਹੁੰਚ
+webext-perms-description-trialML = AI ਮਾਡਲਾਂ ਨੂੰ ਆਪਣੇ ਡਿਵਾਈਸ ਉੱਤੇ ਡਾਊਨਲੋਡ ਕਰਕੇ ਚਲਾਓ
+webext-perms-description-userScripts = ਗ਼ੈਰ-ਤਸਦੀਕ ਕੀਤੀਆਂ ਸੁਤੰਤਰ ਧਿਰ ਦੀਆਂ ਸਕ੍ਰਿਪਟਾਂ ਨੂੰ ਆਪਣੇ ਡਾਟੇ ਲਈ ਪਹੁੰਚ ਦੀ ਮਨਜ਼ੂਰੀ ਦਿਓ
 webext-perms-description-webNavigation = ਨੇਵੀਗੇਸ਼ਨ ਦੌਰਾਨ ਬਰਾਊਜ਼ਰ ਸਰਗਰਮੀ ਲਈ ਪਹੁੰਚ
+webext-perms-extra-warning-userScripts-long = ਗ਼ੈਰ-ਤਸਦੀਕ ਕੀਤੀਆਂ ਸਕ੍ਰਿਪਟਾਂ ਸੁਰੱਖਿਆ ਅਤੇ ਪਰਦੇਦਾਰੀ ਖ਼ਤਰੇ ਹੁੰਦੀਆਂ ਹਨ ਜਿਵੇਂ ਕਿ ਖ਼ਤਰਨਾਕ ਕੋਡ ਚਲਾਉਣਾ ਜਾਂ ਵੈੱਬਸਾਈਟ ਸਰਗਰਮੀ ਨੂੰ ਟਰੈਕ ਕਰਨਾ। ਜਿਨ੍ਹਾਂ ਇਕਸਟੈਨਸ਼ਨਾਂ ਜਾਂ ਸਰੋਤਾਂ ਉੱਤੇ ਤੁਹਾਨੂੰ ਭਰੋਸਾ ਹੋਵੇ, ਉਹੀ ਸਕ੍ਰਿਪਟਾਂ ਨੂੰ ਚਲਾਓ।
+webext-perms-extra-warning-userScripts-short = ਗ਼ੈਰ-ਤਸਦੀਕ ਕੀਤੀਆਂ ਸਕ੍ਰਿਪਟਾਂ ਸੁਰੱਖਿਆ ਅਤੇ ਪਰਦੇਦਾਰੀ ਖ਼ਤਰੇ ਹੁੰਦੀਆਂ ਹਨ। ਜਿਨ੍ਹਾਂ ਇਕਸਟੈਨਸ਼ਨਾਂ ਜਾਂ ਸਰੋਤਾਂ ਉੱਤੇ ਤੁਹਾਨੂੰ ਭਰੋਸਾ ਹੋਵੇ, ਉਹੀ ਸਕ੍ਰਿਪਟਾਂ ਨੂੰ ਚਲਾਓ।

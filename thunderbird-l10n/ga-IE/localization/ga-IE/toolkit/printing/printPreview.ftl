@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 printpreview-simplify-page-checkbox =
     .label = Simpligh an Leathanach
     .accesskey = i
@@ -38,11 +34,6 @@ printpreview-page-setup =
 printpreview-page =
     .value = Leathanach:
     .accesskey = a
-
-## Variables
-## $percent (integer) - menuitem percent label
-## $arrow (String) - UTF-8 arrow character for navigation buttons
-
 printpreview-percentage-value =
     .label = { $percent }%
 printpreview-homearrow =
@@ -57,4 +48,3 @@ printpreview-nextarrow =
 printpreview-endarrow =
     .label = { $arrow }
     .tooltiptext = Leathanach Deireanach
-

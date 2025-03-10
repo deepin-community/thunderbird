@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Zastojnik certifikatow
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Zawěsćeńska dataja PKCS #12 njedajo z njeznatych 
 pkcs12-unknown-err = Operacija PKCS #12 njejo so z njeznatych pśicynow raźiła.
 pkcs12-info-no-smartcard-backup = Njejo móžno, certifikaty z hardwaroweho wěstotnego rěda zawěsćiś, kaž na pś. ze smartkórty.
 pkcs12-dup-data = Certifikat a priwatny kluc južo eksistujotej na wěstotnem rěźe.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Datajowe mě za zawěsćenje
 file-browse-pkcs12-spec = PKCS12-dataje
 choose-p12-restore-file-dialog = Certifikatowa dataja, kótaraž ma se importěrowaś
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Certifikatowe dataje
 import-ca-certs-prompt = Wubjeŕśo dataju, kótaraž wopśimujo certifikaty certifikatoweje awtority za importěrowanje
 import-email-cert-prompt = Wubjeŕśo dataju, kótaraž wopśimujo něcejego e-mailowy certifikat za importěrowanje
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Certifikat "{ $certName }" reprezentěrujo certifikatowu awtoritu.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Waše certifikaty wulašowaś
 delete-user-cert-confirm = Cośo napšawdu toś te certifikaty wulašowaś?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = E-mailowe certifikaty wulašowaś
 delete-email-cert-confirm = Cośo napšawdu e-mailowe certifikaty toś tych luźi lašowaś?
 delete-email-cert-impact = Jolic wulašujośo e-mailowy certifikat někakeje wósoby, njamóžośo wěcej wósobnje skoděrowanu e-mail pósłaś.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Certifikat ze serijowym numerom: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Žeden klientowy certifikat pósłaś
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (Njeskłaźony)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (Nic k dispoziciji)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Trajny
 temporary-override = Nachylny
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Wopytujośo pśepisaś, kak { -brand-short-name } identificěrujo toś to sedło.
 add-exception-invalid-header = Toś to sedło wopytujo se z njepłaśiwymi informacijami identificěrowaś.
 add-exception-domain-mismatch-short = Wopacne sedło
@@ -170,9 +139,6 @@ add-exception-checking-short = Informacije so kontrolěruju
 add-exception-checking-long = Wopytujo se, sedło identificěrowaś…
 add-exception-no-cert-short = Žedne informacije k dispoziciji
 add-exception-no-cert-long = Njejo móžno, status identifikacije za toś to sedło zwěsćiś.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Certifikat do dataje składowaś
 cert-format-base64 = Certifikat X.509 (PEM)
 cert-format-base64-chain = Certifikat X.509 z rjeśazom (PEM)

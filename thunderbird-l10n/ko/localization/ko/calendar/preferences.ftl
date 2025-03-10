@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = 달력
 calendar-title-reminder = 알림
 calendar-title-notification = 알림
@@ -9,10 +5,8 @@ calendar-title-category = 분류
 dateformat-label =
     .value = 날짜 형식:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = 긴 형식: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = 짧은 형식: { $date }
 use-system-timezone-radio-button =
@@ -105,12 +99,15 @@ previous-weeks-label =
     .value = 이전 주 표시:
     .accesskey = P
 todaypane-legend = 오늘 창
-event-task-legend = 이벤트와 할일
+agenda-days =
+    .value = 의제를 표시합니다:
+    .accesskey = g
+event-task-legend = 이벤트 및 작업
 default-length-label =
-    .value = 기본 이벤트와 작업 길이:
+    .value = 기본 이벤트 및 작업 길이:
     .accesskey = E
 task-start-label =
-    .value = 착수일:
+    .value = 시작일:
 task-start-1-label =
     .label = 없음
 task-start-2-label =
@@ -135,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = 이벤트와 태스크를 삭제하기 전에 알립니다.
     .accesskey = V
-accessibility-legend = 접근성
-accessibility-colors-label =
-    .label = 시스템 색상 최적화
-    .accesskey = c
 reminder-legend = 알람 시 동작:
 reminder-play-checkbox =
     .label = 소리 재생

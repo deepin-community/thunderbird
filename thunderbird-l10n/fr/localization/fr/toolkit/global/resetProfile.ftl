@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 refresh-profile-dialog-title = Réparer { -brand-short-name } en rétablissant ses paramètres par défaut ?
 refresh-profile-dialog-button =
     .label = Réparer { -brand-short-name }
@@ -9,7 +5,6 @@ refresh-profile-dialog-description = Recommencez à zéro pour résoudre les pro
 refresh-profile = Donnez un coup de jeune à { -brand-short-name }
 refresh-profile-button = Réparer { -brand-short-name }…
 refresh-profile-learn-more = En savoir plus
-
 refresh-profile-progress =
     .title = Réparer { -brand-short-name }
 refresh-profile-progress-description = Réparation en cours…

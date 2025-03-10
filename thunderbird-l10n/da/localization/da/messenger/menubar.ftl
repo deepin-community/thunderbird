@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menulinje
     .accesskey = e
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Indstillinger
     .accesskey = n
 menu-addons-and-themes =
     .label = Tilføjelser og temaer
     .accesskey = T
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Eksporter til Mobile...
+    .accesskey = p
 menu-help-help-title =
     .label = Hjælp
     .accesskey = H
 menu-help-get-help =
     .label = Få hjælp
     .accesskey = h
-menu-help-explore-features =
-    .label = Udforsk funktioner
-    .accesskey = r
 menu-help-get-release-help =
     .label = Få hjælp til { -brand-short-name }
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Om { -brand-short-name }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,17 +54,16 @@ menu-quit =
             [windows] A
            *[other] A
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Afslut { -brand-shorter-name }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Afslut { -brand-full-name }
+           *[other] Afslut { -brand-full-name }
+        }
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Spam
     .tooltiptext = Marker den valgte meddelelse som spam
@@ -88,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Fortryd sletning
     .tooltiptext = Fortryd sletning af valgte meddelelser
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Reparer tegnkodning
     .accesskey = R
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Mapperudeoverskrift
     .accesskey = M
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Overskrift på meddelelsesliste
     .accesskey = O
@@ -133,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Værktøjslinjen områder
     .accesskey = o
-
-## File
-
 file-new-email-account =
     .label = Mailkonto…
     .accesskey = a

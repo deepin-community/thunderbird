@@ -1,31 +1,24 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-##
-## Localization for remote types defined in RemoteType.h
-##
-
 process-type-web = محتوى الوِب
-
+process-type-privilegedabout = امتياز حول
+process-type-privilegedmozilla = محتوى موزيلا ذو الامتياز
 process-type-extension = امتداد
-
-# process used to open file:// URLs
 process-type-file = ملف محلي
-
-# process used to isolate a webpage from other web pages
-# to improve security
+process-type-forkserver = خادم الاشتقاق
 process-type-webisolated = محتوى وِب معزول
-
-##
-## Localization for Gecko process types defined in GeckoProcessTypes.h
-##
-
-# process used to communicate with the GPU for
-# graphics acceleration
+process-type-webserviceworker = عامل الخدمة المعزول
+process-type-prealloc = مُخصص مسبقًا
+process-type-default = رئيسي
+process-type-tab = ↤
 process-type-gpu = المعالج الرسومي
-
-##
-## Other
-##
-
+process-type-socket = مقبس
+process-type-rdd = RDD
+process-type-inference = الاستدلال
+process-type-utility = IPC Actor معزول
+process-type-utility-actor-audio-decoder-generic = أداة فك ترميز الصوت العامة
+process-type-utility-actor-audio-decoder-applemedia = أداة AppleMedia
+process-type-utility-actor-audio-decoder-wmf = أداة Windows Media Foundation
+process-type-utility-actor-mf-media-engine = محرك مؤسسة الوسائط المتعددة
+process-type-utility-actor-js-oracle = أداة JavaScript Oracle
+process-type-utility-actor-windows-utils = أدوات مساعدة لنظام التشغيل ونيدوز
+process-type-utility-actor-windows-file-dialog = مربع حوار ملف أداة ويندوز
+process-type-unknown = غير معروف

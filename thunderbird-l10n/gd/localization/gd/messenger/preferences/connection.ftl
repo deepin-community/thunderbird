@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Cleachd solaraiche
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (bun-roghainn)
     .tooltiptext = Cleachd an URL bunaiteach airson DNS thar HTTPS fhuasgladh
@@ -64,7 +58,6 @@ no-proxy-label =
     .value = Gun phrogsaidh airson:
     .accesskey = n
 no-proxy-example = Ball-sampaill: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Tha ceanglaichean gu localhost, 127.0.0.1/8 agus ::1 gun phrogsaidh an-còmhnaidh.
 proxy-password-prompt =
     .label = Na iarr orm mo dhearbhadh ma chaidh am facal-faire a shàbhaladh ann

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = ข้อมูลโมดูลบุคคลที่สาม
 third-party-section-title = รายการโมดูลบุคคลที่สามใน { -brand-short-name }
 third-party-intro =
@@ -44,19 +40,6 @@ third-party-button-reload = โหลดใหม่ด้วยข้อมู�
     .title = โหลดใหม่ด้วยข้อมูลระบบ
 third-party-button-open =
     .title = เปิดตำแหน่งที่ตั้งไฟล์…
-third-party-button-to-block =
-    .title = ปิดกั้นโมดูลนี้
-    .aria-label = ปิดกั้นโมดูลนี้
-third-party-button-to-unblock =
-    .title = ขณะนี้ถูกปิดกั้นอยู่ คลิกเพื่อเลิกปิดกั้น
-    .aria-label = ขณะนี้ถูกปิดกั้นอยู่ คลิกเพื่อเลิกปิดกั้น
-third-party-button-to-unblock-disabled =
-    .title =
-        ขณะนี้ถูกทำเครื่องหมายว่าปิดกั้นอยู่ แม้ว่ารายการปิดกั้นจะถูกปิดใช้งานในการเรียกใช้
-        { -brand-short-name } ครั้งนี้ก็ตาม คลิกเพื่อเลิกปิดกั้น
-    .aria-label =
-        ขณะนี้ถูกทำเครื่องหมายว่าปิดกั้นอยู่ แม้ว่ารายการปิดกั้นจะถูกปิดใช้งานในการเรียกใช้
-        { -brand-short-name } ครั้งนี้ก็ตาม คลิกเพื่อเลิกปิดกั้น
 third-party-button-to-block-module = ปิดกั้นโมดูลนี้
     .title = ปิดกั้นโมดูลนี้
     .aria-label = ปิดกั้นโมดูลนี้

@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Gunakan Penyedia
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (Baku)
     .tooltiptext = Gunakan URL baku untuk menetapkan DNS lewat HTTPS
@@ -14,6 +8,9 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = Masukkan URL pilihan Anda untuk menetapkan DNS lewat HTTPS
 connection-dns-over-https-custom-label = Ubahsuai
+connection-dialog-title = Pengaturan Sambungan
+disable-extension-button = Nonaktifkan Ekstensi
+proxy-settings-controlled-by-extension = Ekstensi, <img data-l10n-name="extension-icon" alt="" /> { $name }, mengendalikan bagaimana { -brand-short-name } terhubung ke Internet.
 connection-proxy-legend = Atur Proxy untuk Mengakses Internet
 proxy-type-no =
     .label = Tanpa proxy
@@ -64,6 +61,7 @@ no-proxy-label =
     .value = Tidak Perlu Proxy untuk:
     .accesskey = x
 no-proxy-example = Contoh: .mozilla.org, .net.id, 192.168.1.0/24
+connection-proxy-noproxy-localhost-desc-2 = Koneksi ke localhost, 127.0.0.1/8, dan ::1 tidak pernah diproksi.
 proxy-password-prompt =
     .label = Jangan tanyakan otentikasi jika sandinya disimpan
     .accesskey = i

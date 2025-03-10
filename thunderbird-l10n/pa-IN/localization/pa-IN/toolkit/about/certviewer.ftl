@@ -1,25 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = ਸਰਟੀਫਿਕੇਟ
-
-## Error messages
-
 certificate-viewer-error-message = ਅਸੀਂ ਸਰਟੀਫਿਕੇਟ ਜਾਣਕਾਰੀ ਲੱਭਣ ਲਈ ਅਸਮਰੱਥ ਸਾਂ ਜਾਂ ਸਰਟੀਫਿਕੇਟ ਨਿਕਾਰਾ ਹੈ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।
 certificate-viewer-error-title = ਕੁਝ ਗਲਤ ਵਾਪਰਿਆ।
-
-## Certificate information labels
-
 certificate-viewer-algorithm = ਐਲਗੋਰਿਥਮ
 certificate-viewer-certificate-authority = ਸਰਟੀਫਿਕੇਟ ਅਥਾਰਟੀ
 certificate-viewer-cipher-suite = ਸੀਫ਼ਰ ਸੂਟ
 certificate-viewer-common-name = ਆਮ ਨਾਂ
 certificate-viewer-email-address = ਈਮੇਲ ਸਿਰਨਾਵਾਂ
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = { $firstCertName } ਲਈ ਸਰਟੀਫਿਕੇਟ
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-country = ਇੰਕਾ. ਦੇਸ਼
 certificate-viewer-country = ਦੇਸ਼
 certificate-viewer-curve = ਕਰਵ
@@ -32,7 +19,6 @@ certificate-viewer-id = ਪਛਾਣ
 certificate-viewer-key-exchange-group = ਕੁੰਜੀ ਤਬਾਦਲਾ ਗਰੁੱਪ
 certificate-viewer-key-id = ਕੁੰਜੀ ਪਛਾਣ
 certificate-viewer-key-size = ਕੁੰਜੀ ਆਕਾਰ
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-locality = ਸਥਾਪਿਤੀ
 certificate-viewer-locality = ਟਿਕਾਣਾ
 certificate-viewer-location = ਟਿਕਾਣਾ
@@ -52,7 +38,6 @@ certificate-viewer-qualifier = ਯੋਗਤਾ ਵਾਲਾ
 certificate-viewer-qualifiers = ਯੋਗਤਾ ਵਾਲੇ
 certificate-viewer-required = ਚਾਹੀਦਾ
 certificate-viewer-unsupported = &lt;ਗ਼ੈਰ-ਸਹਾਇਕ&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = ਸਥਾਪਿਤੀ ਰਾਜ/ਸੂਬਾ
 certificate-viewer-state-province = ਰਾਜ/ਪ੍ਰਾਂਤ
 certificate-viewer-sha-1 = SHA-1
@@ -81,40 +66,21 @@ certificate-viewer-authority-info-aia = ਅਥਾਰਟੀ ਜਾਣਕਾਰੀ
 certificate-viewer-certificate-policies = ਸਰਟੀਫਿਕੇਟ ਨੀਤੀਆਂ
 certificate-viewer-embedded-scts = ਵਿਚੇ ਸ਼ਾਮਲ SCT
 certificate-viewer-crl-endpoints = CRL ਅੰਤ-ਸਥਾਨ
-
-# This message is used as a row header in the Miscellaneous section.
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = ਡਾਊਨਲੋਡ ਕਰੋ
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] ਹਾਂ
        *[false] ਨਹੀਂ
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (ਸਰਟੀਫਿਕੇਟ)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (ਚੇਨ)
     .download = { $fileName }-chain.pem
-
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = ਇਹ ਇਕਸਟੈਨਸ਼ਨ ਨੂੰ ਗੰਭੀਰ ਵਜੋਂ ਨਿਸ਼ਾਨਬੱਧ ਕੀਤਾ ਹੈ, ਇਸ ਦਾ ਅਰਥ ਹੈ ਕਿ ਕਲਾਈਂਟਾਂ ਨੂੰ ਸਰਟੀਫਿਕੇਟ ਰੱਦ ਕਰ ਦੇਣਾ ਚਾਹੀਦਾ ਹੈ, ਜੇ ਉਹਨਾਂ ਨੂੰ ਇਸ ਬਾਰੇ ਸਮਝ ਨਾ ਹੋਵੇ।
 certificate-viewer-export = ਬਰਾਮਦ
     .download = { $fileName }.pem
-
-##
-
-# Label for a tab where we haven't found a better label:
 certificate-viewer-unknown-group-label = (ਅਣਪਛਾਤਾ)
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = ਤੁਹਾਡੇ ਸਰਟੀਫਿਕੇਟ
 certificate-viewer-tab-people = ਲੋਕ
 certificate-viewer-tab-servers = ਸਰਵਰ

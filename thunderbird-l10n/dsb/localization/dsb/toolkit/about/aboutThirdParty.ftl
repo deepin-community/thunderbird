@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Informacije wó modulu tśeśego póbitowarja
 third-party-section-title = Lisćina modulow tśeśich póbitowarjow w { -brand-short-name }
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = Ze systemowymi informacijami znowego zacytaś
     .title = Ze systemowymi informacijami znowego zacytaś
 third-party-button-open =
     .title = Datajowe městno wócyniś…
-third-party-button-to-block =
-    .title = Toś ten modul blokěrowaś
-    .aria-label = Toś ten modul blokěrowaś
-third-party-button-to-unblock =
-    .title = Tuchylu zablokěrowany. Klikniśo, aby zablokěrowanje wotpórał.
-    .aria-label = Tuchylu zablokěrowany. Klikniśo, aby zablokěrowanje wótpórał.
-third-party-button-to-unblock-disabled =
-    .title =
-        Jo tuchylu ako blokěrowane markěrowane, lěcrownož lisćina blokěrowanjow za toś to
-        pśewjeźenje { -brand-short-name } jo znjemóžnjona. Klikniśo, aby blokěrowanje skóńcył.
-    .aria-label =
-        Jo tuchylu ako blokěrowane markěrowane, lěcrownož lisćina blokěrowanjow za toś to
-        pśewjeźenje { -brand-short-name } jo znjemóžnjona. Klikniśo, aby blokěrowanje skóńcył.
 third-party-button-to-block-module = Toś ten modul blokěrowaś
     .title = Toś ten modul blokěrowaś
     .aria-label = Toś ten modul blokěrowaś

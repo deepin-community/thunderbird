@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL klasifikatoriaus informacija
 url-classifier-search-title = Ieškoti
 url-classifier-search-result-title = Rezultatai
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Saugaus naršymo žurnalo moduliai
 url-classifier-debug-modules = Dabartiniai žurnalo moduliai
 url-classifier-debug-sbjs-modules = Saugaus naršymo JS žurnalas
 url-classifier-debug-file = Dabartinis žurnalo failas
-
 url-classifier-trigger-update = Sukelti atnaujinimą
 url-classifier-not-available = Nėra
 url-classifier-disable-sbjs-log = Išjungti saugaus naršymo JS žurnalą
@@ -50,9 +45,5 @@ url-classifier-disabled = Išjungta
 url-classifier-updating = atnaujinima
 url-classifier-cannot-update = nepavyko atnaujinti
 url-classifier-success = pavyko
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = atnaujinimo klaida ({ $error })
 url-classifier-download-error = atsiuntimo klaida ({ $error })

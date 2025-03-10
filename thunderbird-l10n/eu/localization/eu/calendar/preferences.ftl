@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Egutegia
 calendar-title-reminder = Gogorarazleak
 calendar-title-notification = Jakinarazpenak
@@ -9,10 +5,8 @@ calendar-title-category = Kategoriak
 dateformat-label =
     .value = Data testu formatua:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Luzea: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Laburra: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Galdetu gertaerak eta zereginak ezabatu aurretik.
     .accesskey = G
-accessibility-legend = Erabilgarritasuna
-accessibility-colors-label =
-    .label = Optimizatu koloreak erabilgarritasunerako
-    .accesskey = k
 reminder-legend = Gogorarazle bat muga-egunean denean:
 reminder-play-checkbox =
     .label = Soinu bat jo

@@ -1,9 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- extracted from am-server-top.xul -->
-
-
 <!ENTITY messageStorage.label "Boodskapbewaring">
 <!ENTITY securitySettings.label "Sekuriteitsopstelling">
 <!ENTITY serverSettings.label "Bedieneropstelling">
@@ -15,20 +9,14 @@
 <!ENTITY port.label "Poort:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Verstek:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammer dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Kontroleer vir nuwe boodskappe elke ">
 <!ENTITY biffStart.accesskey "e">
 <!ENTITY biffEnd.label "minute">
-
-
+<!ENTITY useIdleNotifications.label "Allow immediate server notifications when new messages arrive">
+<!ENTITY useIdleNotifications.accesskey "w">
 <!ENTITY connectionSecurity.label "Verbindingsekuriteit:">
 <!ENTITY connectionSecurity.accesskey "V">
 <!ENTITY connectionSecurityType-0.label "Geen">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, indien beskikbaar">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Magtigingmetode:">
@@ -51,50 +39,33 @@
 <!ENTITY modelMarkDeleted.accesskey "M">
 <!ENTITY modelDeleteImmediately.label "Verwyder dit dadelik">
 <!ENTITY modelDeleteImmediately.accesskey "d">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
-
+<!ENTITY expungeOnExit.label "Clean up (&quot;Expunge&quot;) Inbox on Exit">
+<!ENTITY expungeOnExit.accesskey "E">
 <!ENTITY emptyTrashOnExit.label "Maak snippermandjie leeg tydens afsluiting">
 <!ENTITY emptyTrashOnExit.accesskey "a">
 <!ENTITY loginAtStartup.label "Kontroleer vir nuwe boodskappe aan begin">
 <!ENTITY loginAtStartup.accesskey "K">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-   of messages between them
--->
 <!ENTITY maxMessagesStart.label "Vra my voor meer aflaai as">
 <!ENTITY maxMessagesStart.accesskey "v">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "boodskappe">
 <!ENTITY alwaysAuthenticate.label "Versoek altyd magtiging wanneer aan hierdie bediener koppel">
 <!ENTITY alwaysAuthenticate.accesskey "e">
+<!ENTITY newsrcFilePath1.label "News.rc File:">
+<!ENTITY newsrcPicker1.label "Select News.rc File">
 <!ENTITY abbreviate.label "Vertoon nuusgroepname in die posvouer-paneel as:">
 <!ENTITY abbreviateOn.label "Volledige name (byvoorbeeld 'netscape.public.mozilla.mail-news')">
 <!ENTITY abbreviateOff.label "Afgekorte name (byvoorbeeld 'n.p.m.mail-news')">
 <!ENTITY advancedButton.label "Gevorderd…">
 <!ENTITY advancedButton.accesskey "G">
-
+<!ENTITY serverDefaultCharset2.label "Default Text Encoding:">
+<!ENTITY localPath1.label "Local Directory:">
 <!ENTITY localFolderPicker.label "Kies plaaslike gids">
 <!ENTITY browseFolder.label "Blaai…">
 <!ENTITY browseFolder.accesskey "B">
 <!ENTITY browseNewsrc.label "Blaai…">
 <!ENTITY browseNewsrc.accesskey "B">
-
 <!ENTITY accountTitle.label "Rekeningopstelling">
 <!ENTITY accountSettingsDesc.label "Die volgende is 'n spesiale rekening.  Daar word geen identiteit mee geassosieer nie.">
-
-
-
-
-
-<!ENTITY useIdleNotifications.label "Allow immediate server notifications when new messages arrive">
-<!ENTITY useIdleNotifications.accesskey "w">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
-<!ENTITY expungeOnExit.label "Clean up (&quot;Expunge&quot;) Inbox on Exit">
-<!ENTITY expungeOnExit.accesskey "E">
-<!ENTITY newsrcFilePath1.label "News.rc File:">
-<!ENTITY newsrcPicker1.label "Select News.rc File">
-<!ENTITY serverDefaultCharset2.label "Default Text Encoding:">
-<!ENTITY localPath1.label "Local Directory:">
 <!ENTITY storeType.label "Message Store Type:">
 <!ENTITY storeType.accesskey "T">
 <!ENTITY mboxStore2.label "File per folder (mbox)">

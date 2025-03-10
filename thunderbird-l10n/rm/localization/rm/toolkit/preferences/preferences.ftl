@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (betg definì)
 failed-pp-change = Impussibel da midar il pled-clav universal.
@@ -21,7 +17,6 @@ set-password-new-password = Pled-clav nov:
 set-password-reenter-password = Pled-clav nov (repeter):
 set-password-meter = Valitaziun da la qualitad dal pled-clav
 set-password-meter-loading = Chargiar
-primary-password-admin = L'administratur da tes computer pretenda che ti creeschias in pled-clav universal per pudair memorisar infurmaziuns d'annunzia e pleds-clav.
 primary-password-required-by-policy = Tia organisaziun pretenda che ti defineschias in pled-clav primar per pudair memorisar datas d’annunzia e pleds-clav.
 primary-password-description = Il pled-clav universal vegn utilisà per proteger tias datas sensiblas sco infurmaziuns d'annunzia e pleds-clav sin quest apparat. Sche ti defineschas in pled-clav universal, vegns ti dumandà ina giada per sesida d'endatar il pled-clav universal cura che { -brand-short-name } sto avair access a las datas protegidas.
 primary-password-warning = Fa la segira che ti n'emblidas betg il pled-clav universal che ti has definì. Sche ti al emblidas, na vegns ti betg pli pudair acceder a las datas ch'il pled-clav universal protegia sin quest apparat.

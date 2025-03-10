@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Gehitu OpenPGP gako pertsonala { $identity }(e)ntzat
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Erabili zure kanpoko gakoa GnuPG zehar (Adibidez txartel digitala)
     .accesskey = E
-
-## Generate key section
-
 openpgp-generate-key-title = Sortarazi OpenPGP gakoa
 openpgp-keygen-secret-protection = Gako sekretu babesa
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = Zure gakoa askoz jota egun baten balioztatu behark
 openpgp-keygen-ongoing = Gakoaren sorrera abian da!
 openpgp-keygen-error-core = Ezin da abiarazi OpenPGP zerbitzu nagusia
 openpgp-keygen-error-failed = OpenPGP gako sorrera ustekabean huts egin du
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP gakoa ondo sortu da, baina huts egin du errebokazio gakoaren sorrerak { $key } gakoarentzat
 openpgp-keygen-abort-title = Bertan behera utzi sorrera?
 openpgp-keygen-abort = OpenPGP gakoa sortzen ari da, ziur zaude utzi nahi duzula?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Sortu gako publiko eta sekretua { $identity } identitaterako?
-
-## Import Key section
-
 openpgp-import-key-title = Inportatu badagoen OpenPGP gako pertsonala
 openpgp-import-key-legend = Aukeratu aurreko babeskopia fitxategia.
 openpgp-import-key-description = Zuk beste OpenPGP software batekin sortutako gako pertsonalak inportatu ditzakezu.
 openpgp-import-key-info = Beste software batzuk gako pertsonala beste termino batzuekin izendatu dezakete norberaren gakoa, gako pribatua edo gako parea bezalakoak.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } inportatu daitezkeen gako bat aurkitu du.
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = Tratatu gako hau pertsonal gako bezala
 gnupg-file = GnuPG fitxategiak
 import-error-file-size = <b>Errorea!</b> 5MB baino fitxategi handiagoek ez dute euskarririk.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Errorea!</b> Fitxategia inportatzeak huts egin du. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Errorea!</b> Gakoa inportatzeak huts egin du. { $error }
 openpgp-import-identity-label = Identitatea
 openpgp-import-fingerprint-label = Hatz-marka
@@ -122,9 +106,6 @@ openpgp-import-bits-label = bit
 openpgp-import-key-props =
     .label = Gako propietateak
     .accesskey = G
-
-## External Key section
-
 openpgp-external-key-title = Kanpoko GnuPG gakoa
 openpgp-external-key-description = Konfiguratu kanpoko GnuPG gako bat gakoaren ID sartuz
 openpgp-external-key-info = Honez gain, Gako kudeatzailea erabili beharko zenuke dagokion gako publikoa inportatu eta onartzeko.

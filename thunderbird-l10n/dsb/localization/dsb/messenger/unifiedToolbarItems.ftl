@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Fleksibelna prozny rum
 search-bar-label = Pytaś
 toolbar-write-message-label = Pisaś
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Importěrowaś
 toolbar-import-contacts =
     .title = Kontakty z dataje importěrowaś
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Lokalny adresnik pśidaś
 toolbar-new-address-book-popup-add-carddav-address-book =

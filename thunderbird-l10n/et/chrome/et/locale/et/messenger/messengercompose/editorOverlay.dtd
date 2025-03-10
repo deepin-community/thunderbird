@@ -1,17 +1,8 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Attn: Localization - some of the menus in this dialog directly affect mail also. -->
-
-<!-- Edit menu items -->
 <!ENTITY pasteNoFormatting.label "Aseta ilma vorminguta">
 <!ENTITY pasteNoFormatting.accesskey "i">
 <!ENTITY pasteNoFormatting.key "v">
 <!ENTITY pasteAsQuotationCmd.label "Aseta tsitaadina">
 <!ENTITY pasteAsQuotationCmd.accesskey "t">
-
-<!-- Insert menu items -->
 <!ENTITY insertMenu.label "Lisamine">
 <!ENTITY insertMenu.accesskey "L">
 <!ENTITY insertLinkCmd2.label "Link…">
@@ -33,14 +24,10 @@
 <!ENTITY insertCharsCmd.accesskey "T">
 <!ENTITY insertBreakAllCmd.label "Reavahetus pildi (piltide) järel">
 <!ENTITY insertBreakAllCmd.accesskey "h">
-
-<!-- Used just in context popup. -->
 <!ENTITY createLinkCmd.label "Loo link...">
 <!ENTITY createLinkCmd.accesskey "i">
 <!ENTITY editLinkCmd.label "Redigeeri linki uues koostajas">
 <!ENTITY editLinkCmd.accesskey "u">
-
-<!-- Font Face SubMenu -->
 <!ENTITY FontFaceSelect.tooltip "Vali font">
 <!ENTITY fontfaceMenu.label "Font">
 <!ENTITY fontfaceMenu.accesskey "F">
@@ -55,18 +42,15 @@
 <!ENTITY fontTimes.accesskey "T">
 <!ENTITY fontCourier.label "Courier">
 <!ENTITY fontCourier.accesskey "C">
-
-<!-- Font Size SubMenu -->
 <!ENTITY FontSizeSelect.tooltip "Vali fondi suurus">
 <!ENTITY decreaseFontSize.label "Väiksem">
 <!ENTITY decreaseFontSize.accesskey "V">
 <!ENTITY decrementFontSize.key "&lt;">
-<!ENTITY decrementFontSize.key2 ","> <!-- < is above this key on many keyboards -->
+<!ENTITY decrementFontSize.key2 ",">
 <!ENTITY increaseFontSize.label "Suurem">
 <!ENTITY increaseFontSize.accesskey "S">
 <!ENTITY incrementFontSize.key "&gt;">
-<!ENTITY incrementFontSize.key2 "."> <!-- > is above this key on many keyboards -->
-
+<!ENTITY incrementFontSize.key2 ".">
 <!ENTITY fontSizeMenu.label "Suurus">
 <!ENTITY fontSizeMenu.accesskey "u">
 <!ENTITY size-tinyCmd.label "väga väike">
@@ -81,8 +65,6 @@
 <!ENTITY size-extraLargeCmd.accesskey "a">
 <!ENTITY size-hugeCmd.label "ülisuur">
 <!ENTITY size-hugeCmd.accesskey "i">
-
-<!-- Font Style SubMenu -->
 <!ENTITY fontStyleMenu.label "Teksti stiil">
 <!ENTITY fontStyleMenu.accesskey "s">
 <!ENTITY styleBoldCmd.label "Paks">
@@ -118,18 +100,15 @@
 <!ENTITY styleSamp.accesskey "d">
 <!ENTITY styleVar.label "Muutuja">
 <!ENTITY styleVar.accesskey "M">
-
 <!ENTITY formatFontColor.label "Teksti värv...">
 <!ENTITY formatFontColor.accesskey "T">
 <!ENTITY tableOrCellColor.label "Tabeli või lahtri taustavärv...">
 <!ENTITY tableOrCellColor.accesskey "L">
-
 <!ENTITY formatRemoveStyles.key "y">
 <!ENTITY formatRemoveLinks.key "k">
 <!ENTITY formatRemoveNamedAnchors.label "Eemalda nimega ankrud">
 <!ENTITY formatRemoveNamedAnchors.accesskey "m">
 <!ENTITY formatRemoveNamedAnchors2.key "R">
-
 <!ENTITY paragraphMenu.label "Lõik">
 <!ENTITY paragraphMenu.accesskey "i">
 <!ENTITY paragraphParagraphCmd.label "Lõik">
@@ -150,8 +129,6 @@
 <!ENTITY paragraphAddressCmd.accesskey "A">
 <!ENTITY paragraphPreformatCmd.label "Eelvormindatud">
 <!ENTITY paragraphPreformatCmd.accesskey "v">
-
-<!-- List menu items -->
 <!ENTITY formatlistMenu.label "Nimekiri">
 <!ENTITY formatlistMenu.accesskey "N">
 <!ENTITY noneCmd.label "Puudub">
@@ -166,13 +143,9 @@
 <!ENTITY listDefinitionCmd.accesskey "D">
 <!ENTITY listPropsCmd.label "Nimekirja omadused...">
 <!ENTITY listPropsCmd.accesskey "o">
-
 <!ENTITY ParagraphSelect.tooltip "Vali lõigu formaat">
-<!-- Shared in Paragraph, and Toolbar menulist -->
 <!ENTITY bodyTextCmd.label "Sisutekst">
 <!ENTITY bodyTextCmd.accesskey "S">
-
-<!-- Align menu items -->
 <!ENTITY alignMenu.label "Joondus">
 <!ENTITY alignMenu.accesskey "J">
 <!ENTITY alignLeft.label "Vasakule">
@@ -187,33 +160,24 @@
 <!ENTITY alignJustify.label "Rööpselt">
 <!ENTITY alignJustify.accesskey "R">
 <!ENTITY alignJustify.tooltip "Joonda servast servani">
-
 <!ENTITY increaseIndent.label "Suurenda taanet">
 <!ENTITY increaseIndent.accesskey "t">
 <!ENTITY increaseIndent.key "]">
 <!ENTITY decreaseIndent.label "Vähenda taanet">
 <!ENTITY decreaseIndent.accesskey "h">
 <!ENTITY decreaseIndent.key "[">
-
 <!ENTITY colorsAndBackground.label "Lehe värvid ja taust...">
 <!ENTITY colorsAndBackground.accesskey "e">
-
-<!-- Table Menu -->
 <!ENTITY tableMenu.label "Tabel">
 <!ENTITY tableMenu.accesskey "b">
-
-<!-- Select Submenu -->
 <!ENTITY tableSelectMenu.label "Vali">
 <!ENTITY tableSelectMenu.accesskey "l">
-
 <!ENTITY tableSelectMenu2.label "Vali tabel">
 <!ENTITY tableSelectMenu2.accesskey "V">
 <!ENTITY tableInsertMenu2.label "Lisa tabelisse">
 <!ENTITY tableInsertMenu2.accesskey "L">
 <!ENTITY tableDeleteMenu2.label "Kustuta tabelist">
 <!ENTITY tableDeleteMenu2.accesskey "K">
-
-<!-- Insert SubMenu -->
 <!ENTITY tableInsertMenu.label "Lisa">
 <!ENTITY tableInsertMenu.accesskey "L">
 <!ENTITY tableTable.label "Tabel">
@@ -243,15 +207,8 @@
 <!ENTITY tableCellBefore.accesskey "k">
 <!ENTITY tableCellAfter.label "Lahter paremale">
 <!ENTITY tableCellAfter.accesskey "p">
-<!-- Delete SubMenu -->
 <!ENTITY tableDeleteMenu.label "Kustuta">
 <!ENTITY tableDeleteMenu.accesskey "K">
-
-<!-- text for "Join Cells" is in editor.properties
-     ("JoinSelectedCells" and "JoinCellToRight")
-     the access key must exist in both of those strings
-     But value must be set here for accesskey to draw properly
--->
 <!ENTITY tableJoinCells.label "h">
 <!ENTITY tableJoinCells.accesskey "h">
 <!ENTITY tableSplitCell.label "Tükelda lahter">
@@ -260,7 +217,6 @@
 <!ENTITY convertToTable.accesskey "e">
 <!ENTITY tableProperties.label "Tabeli omadused...">
 <!ENTITY tableProperties.accesskey "a">
-
 <!ENTITY imageToolbarCmd.label "Pilt">
 <!ENTITY imageToolbarCmd.tooltip "Redigeeri valitud pildi omadusi või lisa uus pilt">
 <!ENTITY hruleToolbarCmd.label "H.joon">
@@ -273,8 +229,6 @@
 <!ENTITY anchorToolbarCmd.tooltip "Redigeeri valitud ankrut või loo uus">
 <!ENTITY TextColorButton.tooltip "Vali teksti värv">
 <!ENTITY BackgroundColorButton.tooltip "Vali taustavärv">
-
-<!-- Editor toolbar -->
 <!ENTITY absoluteFontSizeToolbarCmd.tooltip "Määra fondi suurus">
 <!ENTITY decreaseFontSizeToolbarCmd.tooltip "Vähenda fondi suurust">
 <!ENTITY increaseFontSizeToolbarCmd.tooltip "Suurenda fondi suurust">
@@ -291,13 +245,11 @@
 <!ENTITY alignCenterButton.tooltip "Joonda tekst keskele">
 <!ENTITY alignRightButton.tooltip "Joonda tekst paremale">
 <!ENTITY alignJustifyButton.tooltip "Joonda tekst servast servani">
-
-<!-- TOC manipulation -->
-<!ENTITY insertTOC.label          "Lisa">
-<!ENTITY insertTOC.accesskey      "L">
-<!ENTITY updateTOC.label          "Uuenda">
-<!ENTITY updateTOC.accesskey      "U">
-<!ENTITY removeTOC.label          "Eemalda">
-<!ENTITY removeTOC.accesskey      "E">
-<!ENTITY tocMenu.label            "Sisukord...">
-<!ENTITY tocMenu.accesskey        "S">
+<!ENTITY insertTOC.label "Lisa">
+<!ENTITY insertTOC.accesskey "L">
+<!ENTITY updateTOC.label "Uuenda">
+<!ENTITY updateTOC.accesskey "U">
+<!ENTITY removeTOC.label "Eemalda">
+<!ENTITY removeTOC.accesskey "E">
+<!ENTITY tocMenu.label "Sisukord...">
+<!ENTITY tocMenu.accesskey "S">

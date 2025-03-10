@@ -1,15 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## The Enterprise Policies feature is aimed at system administrators
-## who want to deploy these settings across several Thunderbird installations
-## all at once. This is traditionally done through the Windows Group Policy
-## feature, but the system also supports other forms of deployment.
-## These are short descriptions for individual policies, to be displayed
-## in the documentation section in about:policies.
-
 policy-3rdparty = WebExtension’ların chrome.storage.managed aracılığıyla ulaşabileceği ilkeleri ayarla.
 policy-AppAutoUpdate = Otomatik uygulama güncellemesini aç veya kapat.
 policy-AppUpdatePin = { -brand-short-name } yazılımının belirtilen sürümün üzerine güncellenmesini engelle.
@@ -43,13 +31,8 @@ policy-DisplayMenuBar = Varsayılan olarak menü çubuğunu göster.
 policy-DNSOverHTTPS = HTTPS üzerinden DNS’i yapılandır.
 policy-DontCheckDefaultClient = Başlangıçta varsayılan istemci kontrolünü devre dışı bırak.
 policy-DownloadDirectory = İndirme dizinini ayarla ve kilitle.
-# “lock” means that the user won’t be able to change this setting
 policy-EnableTrackingProtection = İçerik engellemeyi etkinleştir veya devre dışı bırak ve isteğe bağlı olarak kilitle.
-# “lock” means that the user won’t be able to change this setting
 policy-EncryptedMediaExtensions = Encrypted Media Extensions’ı etkinleştir veya devre dışı bırak ve isteğe bağlı olarak kilitle.
-# A “locked” extension can’t be disabled or removed by the user. This policy
-# takes 3 keys (“Install”, ”Uninstall”, ”Locked”), you can either keep them in
-# English or translate them as verbs.
 policy-Extensions = Uzantıları yükle, kaldır veya kilitle. Yükleme seçeneğinde parametre olarak URL veya yol kullanılır. Kaldırma ve kilitleme seçeneklerinde ise uzantı kimliği kullanılır.
 policy-ExtensionSettings = Uzantı kurulumunun tüm yönlerini yönet.
 policy-ExtensionUpdate = Otomatik uzantı güncellemelerini aç veya kapat.
@@ -57,14 +40,8 @@ policy-Handlers = Varsayılan uygulama işleyicilerini yapılandır.
 policy-HardwareAcceleration = false ise donanım ivmelenmesini kapat.
 policy-InstallAddonsPermission = Belirli websitelerinin eklenti yüklemesine izin ver.
 policy-LegacyProfiles = Her kurulum için ayrı bir profil oluşturmayı zorunlu tutan özelliği devre dışı bırak.
-
-## Do not translate "SameSite", it's the name of a cookie attribute.
-
 policy-LegacySameSiteCookieBehaviorEnabled = Varsayılan eski SameSite çerez davranışı ayarını etkinleştir.
 policy-LegacySameSiteCookieBehaviorEnabledForDomainList = Belirtilen sitelerdeki çerezler için eski SameSite davranışına geri dön.
-
-##
-
 policy-LocalFileLinks = Belirli web sitelerinin yerel dosyalara bağlantı vermesine izin ver.
 policy-ManualAppUpdateOnly = Yalnızca elle güncellemeye izin ver ve kullanıcıyı güncellemeler hakkında bilgilendirme.
 policy-NetworkPrediction = Ağ tahminini (DNS prefetching) aç veya kapat.
@@ -73,7 +50,6 @@ policy-OfferToSaveLoginsDefault = { -brand-short-name } yazılımının kullanı
 policy-OverrideFirstRunPage = İlk açılış sayfasını değiştir. İlk açılış sayfasını devre dışı bırakmak istiyorsanız bu ilkeyi boş olarak ayarlayın.
 policy-OverridePostUpdatePage = Güncelleme sonrası “Yenilikler” sayfasını değiştir. Güncelleme sonrası sayfasını devre dışı bırakmak istiyorsanız bu ilkeyi boş olarak ayarlayabilirsiniz.
 policy-PasswordManagerEnabled = Parolaları parola yöneticisine kaydetmeyi etkinleştir.
-# PDF.js and PDF should not be translated
 policy-PDFjs = Dahili { -brand-short-name } PDF görüntüleyicisi olan PDF.js’i devre dışı bırak veya yapılandır.
 policy-Permissions2 = Kamera, mikrofon, konum, bildirim ve otomatik oynatma izinlerini yapılandır.
 policy-Preferences = Bir tercihler alt kümesinin değerini ayarlayıp kilitle.
@@ -84,11 +60,9 @@ policy-RequestedLocales = Uygulamada kullanılması istenen dilleri tercih sıra
 policy-SanitizeOnShutdown2 = Kapatırken gezinti verilerini temizle.
 policy-SearchEngines = Arama motoru ayarlarını yapılandır. Bu ilke yalnızca Extended Support Release (ESR) sürümünde geçerlidir.
 policy-SearchSuggestEnabled = Arama önerilerini etkinleştir veya devre dışı bırak.
-# For more information, see https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/PKCS11/Module_Installation
 policy-SecurityDevices = PKCS #11 modüllerini yükle.
 policy-SSLVersionMax = Maksimum SSL sürümünü ayarla.
 policy-SSLVersionMin = Minimum SSL sürümünü ayarla.
 policy-SupportMenu = Yardım menüsüne özel bir destek öğesi ekle.
 policy-UserMessaging = Kullanıcıya belirli mesajları gösterme.
-# “format” refers to the format used for the value of this policy.
 policy-WebsiteFilter = Web sitelerinin ziyaret edilmesini engelle. Biçimle ilgili daha fazla bilgi için belgelendirmeye bakın.

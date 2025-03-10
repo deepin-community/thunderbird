@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 archive-options-title = Archiwowe nastajenja
 archive-granularity-prefix-label = Hdyž so powěsće archiwuja, zaměstńće je do:
 archive-flat =
@@ -20,10 +16,8 @@ recreate-inbox =
     .label = Rjadowak dochadneje e-mejle znowa załožić
     .accesskey = R
 archive-example-label = Přikład
-# This should match the default name for the "Archives" folder.
 archive-folder-name =
     .label = Archiwy
-# This should match the default name for the "Inbox" folder.
 inbox-folder-name =
     .label = Póstowy dochad
 child-folder-name =

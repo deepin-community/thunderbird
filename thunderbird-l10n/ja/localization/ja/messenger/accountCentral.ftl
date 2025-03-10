@@ -1,14 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Welcome to { -brand-full-name }
 account-settings = アカウント設定
-#   $accounts (Number) - the number of configured accounts
 setup-title =
     { $accounts ->
-        [0]      セットアップするアカウントを選んでください
-        *[other] 別のアカウントをセットアップ
+        [0] セットアップするアカウントを選んでください
+       *[other] 別のアカウントをセットアップ
     }
 about-title = { -brand-full-name } について
 resources-title = 製品情報
@@ -41,7 +36,6 @@ import-label = データをインポート
     .aria-label = 他のプログラムからデータをインポートします
 about-paragraph = Thunderbird は、オープンソースでクロスプラットフォームを特徴とし、ビジネスでも個人でも無料で利用できる人気のメール・カレンダークライアントです。私たちはそのセキュリティを守りつつ、さらに改善していきたいと考えています。皆さんからの寄付によって、開発者の雇用、インフラストラクチャの購入、改良の継続が可能となります。
 about-paragraph-consider-donation = <b>Thunderbird はあなたのようなユーザーに支えられています！ Thunderbird を気に入っていただけた方は寄付をご検討ください。</b> Thunderbird を存続可能にするため、あなたができる最善の方法は<a data-l10n-name="donation-link">寄付をしていただくこと</a>です。
-explore-link = 機能紹介
 support-link = サポート
 involved-link = 参加協力
 developer-link = 開発者ドキュメント

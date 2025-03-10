@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = ปิดการค้นหาเหตุการณ์และรายการเหตุการณ์
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = ชื่อปฏิทิน
     .tooltiptext = เรียงตามชื่อปฏิทิน
 calendar-event-listing-column-category =
     .label = หมวดหมู่
     .tooltiptext = เรียงตามหมวดหมู่
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = เสร็จสิ้น
     .tooltiptext = เรียงตามความเสร็จสมบูรณ์
@@ -48,9 +39,8 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = ชื่อเรื่อง
     .tooltiptext = เรียงตามชื่อเรื่อง
-
-## Interval dropdown options
-
+calendar-event-listing-interval-past =
+    .label = เหตุการณ์ในอดีต
 calendar-event-listing-interval-calendar-month =
     .label = เหตุการณ์ในเดือนปฏิทินนี้
 calendar-event-listing-interval-current-view =
@@ -65,6 +55,10 @@ calendar-event-listing-interval-next-6-months =
     .label = เหตุการณ์ใน 6 เดือนถัดไป
 calendar-event-listing-interval-next-12-months =
     .label = เหตุการณ์ใน 12 เดือนถัดไป
+calendar-event-listing-interval-future =
+    .label = เหตุการณ์ในอนาคตทั้งหมด
+calendar-event-listing-interval-all =
+    .label = เหตุการณ์ทั้งหมด
 calendar-event-listing-interval-selected-day =
     .label = วันที่เลือกปัจจุบัน
 calendar-event-listing-interval-today =

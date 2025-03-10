@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Barrens sykje en barrenlist slute
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Agindanamme
     .tooltiptext = Sortearje op agindanamme
 calendar-event-listing-column-category =
     .label = Kategory
     .tooltiptext = Sortearje op kategory
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Dien
     .tooltiptext = Sortearje op dien
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Titel
     .tooltiptext = Sortearje op titel
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Barrens yn it ferline
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Barrens yn de kommende 6 moannen
 calendar-event-listing-interval-next-12-months =
     .label = Barrens yn de kommende 12 moannen
+calendar-event-listing-interval-future =
+    .label = Alle kommende barrens
 calendar-event-listing-interval-all =
     .label = Alle barrens
 calendar-event-listing-interval-selected-day =

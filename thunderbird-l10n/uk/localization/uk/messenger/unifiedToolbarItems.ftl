@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Інтервал змінної довжини
 search-bar-label = Пошук
 toolbar-write-message-label = Створити
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Імпорт
 toolbar-import-contacts =
     .title = Імпортувати контакти з файлу
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Додати локальну адресну книгу
 toolbar-new-address-book-popup-add-carddav-address-book =

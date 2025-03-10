@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Manager de chei OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Verifică semnătura
     .accesskey = V
 openpgp-has-sender-key = Mesajul pretinde că include cheia publică OpenPGP a expeditorului.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Avertisment: Cheia publică OpenPGP nouă din acest mesaj diferă de cheile publice pe care le-ai acceptat anterior pentru { $email }.
 openpgp-import-sender-key =
     .label = Importă...
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Mesajul a fost semnat cu o cheie pe care nu o ai încă.
 openpgp-search-signature-key =
     .label = Caută...
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Acesta este un mesaj OpenPGP ce pare că a fost corupt de MS-Exchange și nu poate fi reparat deoarece a fost deschis dintr-un fișier local. Copiază mesajul într-un dosar de poștă electronică pentru a încerca o reparație automată.
 openpgp-broken-exchange-info = Este un mesaj OpenPGP care pare să fi fost corupt de MS-Exchange. În cazul în care conținutul mesajului nu este afișat după cum este de așteptat, poți încerca o reparare automată.
 openpgp-broken-exchange-repair =

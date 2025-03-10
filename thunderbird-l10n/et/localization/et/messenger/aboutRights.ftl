@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Sinu õigustest
 rights-intro = { -brand-full-name } on vaba ja avatud koodiga tarkvara, mille on loonud kogukond, mis moodustub tuhandetest inimestest üle maailma. On mõned asjad, mida sa peaksid teadma:
 rights-intro-point-1 = { -brand-short-name } on tehtud kättesaadavaks järgneva litsentsi all: <a data-l10n-name="mozilla-public-license-link">Mozilla avalik litsents (MPL - Mozilla Public License)</a>. See tähendab, et sa võid { -brand-short-name }i kasutada, kopeerida ja teistele jagada. Sa võid ka igati muuta { -brand-short-name }i lähtekoodi, kui tahad, et see paremini sobiks sinu vajadustega. Samuti annab Mozilla avalik litsents (MPL) sulle õiguse oma muudetud versiooni edasi levitada.

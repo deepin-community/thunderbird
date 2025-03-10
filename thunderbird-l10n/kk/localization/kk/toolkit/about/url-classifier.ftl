@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL классификатор ақпараты
 url-classifier-search-title = Іздеу
 url-classifier-search-result-title = Нәтижелер
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Қауіпсіз шолу журналдау �
 url-classifier-debug-modules = Ағымдағы журналдау модульдері
 url-classifier-debug-sbjs-modules = Қауіпсіз шолу JS журналдауы
 url-classifier-debug-file = Ағымдағы журналдау файлы
-
 url-classifier-trigger-update = Жаңарту күйін ауыстыру
 url-classifier-not-available = Қ/Ж
 url-classifier-disable-sbjs-log = Қауіпсіз шолу JS журналдауын сөндіру
@@ -50,9 +45,5 @@ url-classifier-disabled = Сөндірулі
 url-classifier-updating = жаңарту
 url-classifier-cannot-update = жаңарту мүмкін емес
 url-classifier-success = сәтті
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = жаңарту қатесі ({ $error })
 url-classifier-download-error = жүктеп алу қатесі ({ $error })

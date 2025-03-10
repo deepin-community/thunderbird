@@ -1,12 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 open-preferences-sidebar-button2 = { -brand-short-name } баптаулары
 open-addons-sidebar-button = Қосымшалар және темалар
-account-action-add-newsgroup-account =
-    .label = Жаңалықтар топтары тіркелгісін қосу…
-    .accesskey = л
 account-tree-create-account-button = Жаңа тіркелгі
 account-tree-add-mail-account =
     .label = Эл. пошта тіркелгісі…

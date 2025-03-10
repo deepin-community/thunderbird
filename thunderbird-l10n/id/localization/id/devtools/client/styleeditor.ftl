@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Buat dan tambahkan lembar gaya baru ke dokumen
     .accesskey = B
@@ -21,8 +17,6 @@ styleeditor-save-button = Simpan
 styleeditor-options-button =
     .tooltiptext = Opsi Editor Gaya
 styleeditor-at-rules = Aturan at
-styleeditor-editor-textbox =
-    .data-placeholder = Ketik CSS di sini.
 styleeditor-no-stylesheet = Laman ini tidak memiliki lembar gaya.
 styleeditor-no-stylesheet-tip = Mungkin Anda ingin <a data-l10n-name="append-new-stylesheet">menambahkan lembar gaya baru</a>?
 styleeditor-open-link-new-tab =
@@ -38,10 +32,9 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Loncat ke baris…
     .accesskey = L
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Tidak ditemukan lembar gaya yang cocok.
-
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count = { $ruleCount } aturan.
+styleeditor-pretty-print-button =
+    .title = Cetak rapi lembar gaya
+styleeditor-pretty-print-button-disabled =
+    .title = Hanya bisa mencetak rapi berkas CSS

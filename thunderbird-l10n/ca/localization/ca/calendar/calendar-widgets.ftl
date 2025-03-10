@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Tots els calendaris estan desactivats. Activeu un calendari existent o afegiu-ne un altre per a crear i editar cites.
 calendar-deactivated-notification-tasks = Tots els calendaris estan desactivats. Activeu un calendari existent o afegiu-ne un altre per a crear o editar tasques.
 calendar-notifications-label = Mostra les notificacions de les cites properes
 calendar-add-notification-button =
     .label = Afegeix una notificació
-
-## Side panel
-
 calendar-list-header = Calendaris
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = S'ha silenciat el calendari { $calendarName }
 calendar-enable-button = Habilita
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Opcions de calendari { $calendarName }
 calendar-import-new-calendar = Calendari nou…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Torna a carregar tots els calendaris i sincronitza els canvis
 calendar-new-event-primary-button = Cita nova
 calendar-new-task-primary-button = Tasca nova
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Dia anterior
     .accesskey = r
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Multisetmana
     .title = Canvia a la vista multisetmanal
 calendar-view-toggle-month = Mes
     .title = Canvia a la vista mensual
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Opcions de disseny del calendari
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Defineix els dies feiners
 calendar-show-tasks-calendar-option =
     .label = Mostra les tasques al calendari
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Dia anterior
     .accesskey = a

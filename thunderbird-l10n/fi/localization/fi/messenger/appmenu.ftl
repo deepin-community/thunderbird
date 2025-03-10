@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-signin-panel =
     .label = Kirjaudu Sync-palveluun
     .accesskey = i
@@ -25,20 +18,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Kirjaudu ulos…
     .accesskey = o
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Uusi tili
 appmenu-new-account-panel =
     .label = Uusi tili
     .accesskey = U
-appmenu-create-new-mail-account =
-    .label = Hanki uusi sähköpostiosoite
-    .accesskey = H
-appmenu-new-mail-account =
-    .label = Olemassa oleva sähköpostiosoite
-    .accesskey = E
 appmenu-new-email-account =
     .label = Sähköposti
     .accesskey = S
@@ -54,9 +38,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Keskusteluryhmä
     .accesskey = r
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Uusi osoitekirja
 appmenu-newab-panel =
@@ -71,9 +52,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-osoitekirja
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Luo
 appmenu-create-panel =
@@ -91,9 +69,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Yhteystieto
     .accesskey = Y
-
-## Open
-
 appmenu-open-file-panel =
     .label = Avaa tiedostosta
     .accesskey = v
@@ -105,9 +80,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalenteri…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Näytä
 appmenu-view-panel =
@@ -127,14 +99,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Suurenna fontin kokoa
 appmenuitem-font-size-reduce =
     .tooltiptext = Pienennä fontin kokoa
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Palauta fontin oletuskoko
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Työkalut
 appmenu-tools-panel =
@@ -146,6 +113,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Vienti
     .accesskey = V
+appmenu-export-for-mobile =
+    .label = Vie mobiililaitteelle
+    .accesskey = i
 appmenu-tools-message-search =
     .label = Etsi viesteistä
     .accesskey = s
@@ -161,17 +131,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Kehittäjätyökalut
     .accesskey = ä
-
-## Help
-
 appmenu-help-panel-title =
     .title = Ohje
 appmenu-help-get-help =
     .label = Tuki
     .accesskey = T
-appmenu-help-explore-features =
-    .label = Tutustu ominaisuuksiin
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = Apua { -brand-short-name }in käyttöön
     .accesskey = ä
@@ -199,9 +163,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Tietoja: { -brand-short-name }
     .accesskey = A
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Ladataan { -brand-shorter-name }-päivitystä
 appmenuitem-banner-update-available =

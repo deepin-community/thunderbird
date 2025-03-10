@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Фон та кольори сторінки">
 <!ENTITY pageColors.label "Кольори сторінки">
 <!ENTITY defaultColorsRadio.label "Типові кольори читача (Не встановлювати кольори на сторінці)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Використати власні кольори:">
 <!ENTITY customColorsRadio.accessKey "В">
 <!ENTITY customColorsRadio.tooltip "Ці налаштування кольорів ігнорують налаштування браузера читача">
-
 <!ENTITY normalText.label "Звичайний текст">
 <!ENTITY normalText.accessKey "З">
 <!ENTITY linkText.label "Текст посилання">

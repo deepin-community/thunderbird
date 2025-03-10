@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Criptadi fin-a-fin
 account-otr-label = Messadis off-the-record (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     na vegnan betg mussads sco part da la conversaziun regulara e n'era betg protocollads.
 otr-verify-nudge =
     .label = Adina ma regurdar da verifitgar in contact betg verifitgà
-
 otr-not-yet-available = anc betg disponibel
-

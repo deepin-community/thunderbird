@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Cau
 preferences-doc-title2 = Gosodiadau
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Cydweddu
 category-sync =
     .tooltiptext = Cydweddu
+pane-qr-export-title = Allforio ar gyfer Symudol
+category-qr-export =
+    .tooltiptext = Allforio ar gyfer Symudol
 general-language-and-appearance-header = Iaith a Gwedd
 general-incoming-mail-header = Derbyn E-byst
 general-files-and-attachment-header = Ffeiliau ac Atodiadau
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Caniatáu i { -brand-short-name } anfon data technegol a rhyngweithio i { -vendor-short-name }
     .accesskey = C
 collection-health-report-link = Dysgu rhagor
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Mae adrodd ar ddata wedi ei analluogi ar gyfer ffurfweddiad yr adeiledd hwn
 collection-backlogged-crash-reports =
     .label = Caniatáu i { -brand-short-name } i anfon adroddiadau chwalu wedi eu cadw ar eich rhan
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Ailgychwyn { -brand-short-name } i osod y newidiadau hyn
 confirm-messenger-language-change-button = Gosod ac Ailgychwyn
 update-setting-write-failure-title = Gwall wrth gadw dewisiadau Diweddaru
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     Bu gwall ar { -brand-short-name } ac nid yw wedi cadw'r newid hwn. Noder bod gosod caniatâd ar gyfer y diweddariad hwn yn gofyn am ganiatâd i ysgrifennu at y ffeil isod. Efallai y byddwch chi neu weinyddwr system yn gallu datrys y gwall trwy roi rheolaeth lawn i'r ffeil hon i'r grŵp Defnyddwyr.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Diweddariad ar y Gweill
 update-in-progress-message = Ydych chi eisiau i { -brand-short-name } barhau gyda'r diweddariad hwn?
 update-in-progress-ok-button = &Dileu
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Parhau
 account-button = Gosodiadau Cyfrif
 open-addons-sidebar-button = Ychwanegion a Themâu
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = I greu Prif Gyfrinair, nodwch fanylion eich mewngofnodi Windows. Mae hyn yn helpu i ddiogelu eich cyfrifon.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = creu Prif Gyfrinair
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Ychwanegu Darparwr OpenSearch
 add-opensearch-provider-text = Rhowch URL y darparwr OpenSearch i'w ychwanegu. Naill ai defnyddiwch URL uniongyrchol y ffeil OpenSearch Description, neu URL lle mae modd ei ddarganfod yn awtomatig.
 adding-opensearch-provider-failed-title = Methodd Ychwanegu Darparwr OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Nid oedd modd ychwanegu OpenSearch Provider ar gyfer { $url }.
 minimize-to-tray-label =
     .label = Pan fydd { -brand-short-name } wedi ei leihau, ei symud i'r dror
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Gwiriwch Nawr…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Sbotolau
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Derbynebau Dychwelyd…
     .accesskey = D
 update-app-legend = Diweddariadau { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Fersiwn { $version }
 allow-description = Gadael i { -brand-short-name } wneud
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = G
 compact-folder-size =
     .value = MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Defnyddio hyd at
     .accesskey = D
 use-cache-after = MB o le disg ar gyfer y storfa
-
-##
-
 smart-cache-label =
     .label = Anwybyddu rheolaeth storfa awtomatig
     .accesskey = A
@@ -304,7 +269,6 @@ color-options-button =
     .label = Lliwiau…
     .accesskey = L
 display-width-legend = Negeseuon Testun Plaen
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Dangos gwenogluniau fel graffigau
     .accesskey = g
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Gweld atodiadau mewn llinell
     .accesskey = G
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Ar ôl dangos am
     .accesskey = d
 seconds-label = eiliad
-
-##
-
 open-msg-label =
     .value = Agor neges mewn:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Cau ffenestr/tab neges wrth symud neu ddileu
     .accesskey = C
-display-name-label =
-    .value = Enw dangos:
 address-display-legend = Rhestr Negeseuon
 address-display-description = Fformat dangos y cyfeiriad gorau:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Dangos dim ond enw dangos unigolion yn fy llyfr cyfeiriadau
     .accesskey = D
-
-## Compose Tab
-
+table-layout-legend = Golwg Tabl
+table-layout-horizontal-scroll-label =
+    .label = Caniatáu sgrolio llorweddol
+    .accesskey = l
+conversation-view-legend = Golwg sgwrsio
+conversation-view-checkbox-label =
+    .label = Galluogi golwg sgwrs
+    .accesskey = s
+conversation-view-checkbox-description = Nodwedd arbrofol yn seiliedig ar Gloda, defnyddiwch hi ar eich menter eich hun
+label-experiment = Arbrofol
+account-hub-legend = Canolfan cyfrifon
+account-hub-checkbox-label =
+    .label = Creu cyfrifon yn y Ganolfan Cyfrifon newydd
+    .accesskey = C
+account-hub-checkbox-description = Llif creu cyfrif post newydd arbrofol
 forward-label =
     .value = Anfon negeseuon ymlaen:
     .accesskey = y
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = ychwanegu estyniad i enw ffeil
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Awto Gadw pob
     .accesskey = G
 auto-save-end = munud
-
-##
-
 warn-on-send-accel-key =
     .label = Cadarnhau wrth ddefnyddio llwybr byr bysellfwrdd i anfon neges
     .accesskey = b
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Canfod rhagor o ddarparwyr…
 cloud-account-description = Ychwanegu gwasanaeth storio Filelink newydd
-
-## Privacy Tab
-
 mail-content = Cynnwys E-bost
 remote-content-label =
     .label = Caniatáu cynnwys pell o fewn negeseuon
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Dangos Cwcis…
     .accesskey = D
-do-not-track-label =
-    .label = Anfon neges “Dim Tracio” at wefannau nad ydych am gael eich tracio
+global-privacy-control-search = Rheoli Preifatrwydd Eang (GPC)
+global-privacy-control-description =
+    .label = Dweud wrth wefannau am beidio â gwerthu neu rannu fy nata
     .accesskey = D
-dnt-learn-more-button =
-    .value = Dysgu rhagor
+do-not-track-removal = Nid ydym bellach yn cefnogi'r signal “Peidiwch â Thracio”.
 passwords-description = Mae { -brand-short-name } yn gallu cofio cyfrineiriau eich holl cyfrifon.
 passwords-button =
     .label = Cyfrineiriau sydd wedi'u cadw…
@@ -571,7 +528,6 @@ primary-password-description = Mae Prif Gyfrinair yn diogelu eich holl gyfrineir
 primary-password-label =
     .label = Defnyddio Prif Gyfrinair
     .accesskey = D
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Gofyn am fewngofnodi dyfais i lenwi a rheoli cyfrineiriau
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Rydych ym modd FIPS. Mae FIPS angen Prif Gyfrinair nad yw'n wag.
 forms-master-pw-fips-desc = Methodd Newid eich Cyfrinair
 junk-description = Yma gallwch osod eich gosodiadau sbam rhagosodedig. Mae modd ffurfweddu gosodiadau penodol ar gyfer sbam yn y Gosodiadau Cyfrif.
-junk-label =
-    .label = Pan fyddai'n marcio negeseuon fel sbam:
-    .accesskey = P
 junk-marked-label =
     .label = Pan fydd negeseuon wedi'u marcio fel sbam:
     .accesskey = P
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Eu dileu
     .accesskey = d
-junk-read-label =
-    .label = Marcio negeseuon Sbam fel rhai wedi'u darllen
-    .accesskey = a
 junk-read-description = Marcio negeseuon fel wedi'u darllen
 junk-read-manual-label =
     .label = Pan wedi'i farcio â llaw fel sbam
@@ -647,9 +597,6 @@ email-e2ee-auto-off =
 email-e2ee-auto-off-notify =
     .label = Dangos hysbysiad pryd bynnag mae amgryptio wedi'i analluogi'n awtomatig
 email-e2ee-automatism-post = Gall penderfyniadau awtomatig gael eu diystyru trwy alluogi neu analluogi amgryptio wrth ysgrifennu neges. Nodyn: mae amgryptio bob tro'n cael ei alluogi'n awtomatig wrth ateb neges wedi'i hamgryptio.
-
-## Chat Tab
-
 startup-label =
     .value = Pan fydd { -brand-short-name } yn cychwyn:
     .accesskey = P
@@ -657,20 +604,10 @@ offline-label =
     .label = Cadw fy Nghyfrifon Sgwrsio all-lein
 auto-connect-label =
     .label = Cysylltu â fy nghyfrifon sgwrsio yn awtomatig
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Hysbysu fy nghysylltiadau fy mod yn Segur ar ôl
     .accesskey = S
 idle-time-label = munud o seibiant
-
-##
-
 away-message-label =
     .label = a dynodi fy statws i I Ffwrdd gyda'r neges statws yma:
     .accesskey = F
@@ -732,41 +669,21 @@ no-preview-description = Nid yw'r thema yma'n ddilys nac ar gael ar hyn o bryd (
 chat-variant-label =
     .value = Amrywiad:
     .accesskey = A
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Canfod yn y Gosodiadau
-
-## Settings UI Search Results
-
 search-results-header = Canlyniadau Chwilio
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Ymddiheuriadau! Nid oes canlyniadau yn y Dewisiadau ar gyfer “<span data-l10n-name="query"></span>”.
        *[other] Ymddiheuriadau! Nid oes canlyniadau yn y Dewisiadau ar gyfer “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Angen cymorth? Ewch i <a data-l10n-name="url">Cefnogaeth { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Cymrwch eich Gwe gyda Chi
 sync-signedout-description = Cydweddwch eich cyfrifon, llyfrau cyfeiriadau, calendrau, ychwanegion a gosodiadau ar draws eich holl ddyfeisiau.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Mewngofnodi i Sync…
 sync-pane-header = Cydweddu
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = Nid yw " { $userEmail } " wedi'i wirio.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Mewngofnodwch i ailgysylltu “{ $userEmail }”
 sync-pane-resend-verification = Ail Anfon Dilysiad
 sync-pane-sign-in = Mewngofnodi
@@ -796,3 +713,65 @@ synced-acount-item-filters = Hidlau
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Cydweddwch eich cyfrifon e-bost, llyfrau cyfeiriadau, calendrau a hunaniaethau ar draws eich holl ddyfeisiau.
 sync-disconnected-turn-on-sync = Cychwyn Cydweddu…
+qr-export-pane-header = Allforio cyfrifon i { -brand-product-name } Symudol
+qr-export-description = Trosglwyddwch eich gosodiadau cyfrif yn gyflym o'r bwrdd gwaith i ffôn symudol trwy gynhyrchu cod QR. Dewiswch pa gyfrifon i'w cynnwys, penderfynwch a ydych am drosglwyddo'ch cyfrinair, a sganiwch y cod gyda'ch dyfais symudol. Cyflym, diogel a syml.
+qr-export-get-app = Heb { -brand-product-name } ar eich ffôn symudol eto? <a data-l10n-name="app-link">Ewch ar Google Play i'w gael</a>
+qr-export-create = Crëwch god QR i allforio eich cyfrifon
+qr-export-select-accounts = Dewiswch pa gyfrifon i'w hallforio:
+qr-export-no-accounts = Ddim yn gweld eich holl gyfrifon? Mae'n bosib y bydd rhai cyfrifon yn cael eu hanalluogi oherwydd nad ydyn nhw'n cael eu cefnogi gan { -brand-product-name } Android. <a data-l10n-name="account-support-link">Cymorth</a>
+qr-export-accounts-legend = Cyfrifon e-bost
+qr-export-select-all-accounts = Dewis popeth
+qr-export-security-legend = Diogelwch
+qr-export-include-passwords = Cynnwys gyfrineiriau pob cyfrif
+qr-export-oauth-warning = Mae rhai o'ch cyfrifon yn defnyddio dull dilysu a allai fod angen ei ail-ddilysu ar eich dyfais symudol. Efallai y bydd angen i chi roi'ch cyfrineiriau eto yn ystod y broses hon.
+qr-export-security-hint = Trwy sganio'r codau QR canlynol, bydd gosodiadau eich cyfrif - gan gynnwys eich e-bost a'ch cyfrinair - yn cael eu trosglwyddo'n ddiogel. Nid ydym yn casglu, storio, nac yn rhannu unrhyw ran o'r data hwn yn ystod y broses. Mae'r trosglwyddiad yn digwydd yn uniongyrchol rhwng eich dyfeisiau.
+qr-export-security-warning = Er mwyn eich diogelwch, gwnewch yn siŵr eich bod mewn man preifat a dim ond yn sganio codau QR o ffynonellau dibynadwy.
+qr-export-start-export = Allforio
+qr-export-scan-progress =
+    { $count ->
+        [zero] { $step } o { $count } codau QR
+        [one] { $step } o { $count } cod QR
+        [two] { $step } o { $count } cod QR
+        [few] { $step } o { $count } cod QR
+        [many] { $step } o { $count } cod QR
+       *[other] { $step } o { $count } cod QR
+    }
+qr-export-scan-description =
+    { $count ->
+        [zero] Sganiwch godau QR gyda { -brand-product-name } ar eich dyfais symudol
+        [one] Sganiwch y cod QR gyda { -brand-product-name } ar eich dyfais symudol
+        [two] Sganiwch godau QR gyda { -brand-product-name } ar eich dyfais symudol
+        [few] Sganiwch godau QR gyda { -brand-product-name } ar eich dyfais symudol
+        [many] Sganiwch godau QR gyda { -brand-product-name } ar eich dyfais symudol
+       *[other] Sganiwch godau QR gyda { -brand-product-name } ar eich dyfais symudol
+    }
+qr-export-scan-step1 = Agorwch { -brand-product-name } ar eich dyfais symudol
+qr-export-scan-step2 = Ewch i’r gosodiadau
+qr-export-scan-step3 = Dewiswch <strong>Mewnforio gosodiadau</strong>
+qr-export-scan-step4-revision = Tapiwch <strong>Sganiwch y cod QR</strong> a daliwch eich ffôn dros y cod hwn
+qr-export-back = Nôl
+qr-export-next = Nesaf
+qr-export-done = Gorffen
+qr-export-summary-description = Cyfrifon wedi'u hallforio. Ewch ymlaen ar eich dyfais symudol.
+qr-export-summary-title = Crynodeb allforio:
+qr-export-summary-qr-count =
+    { $count ->
+        [zero] { $count } codau QR wedi'u cynhyrchu
+        [one] { $count } cod QR wedi'i gynhyrchu
+        [two] { $count } god QR wedi'u cynhyrchu
+        [few] { $count } cod QR wedi'u cynhyrchu
+        [many] { $count } cod QR wedi'u cynhyrchu
+       *[other] { $count } cod QR wedi'u cynhyrchu
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [zero] { $count } cyfrifon wedi'u hallforio:
+        [one] { $count } cyfrif wedi'i allforio:
+        [two] { $count } gyfrif wedi'u hallforio:
+        [few] { $count } cyfrif wedi'u hallforio:
+        [many] { $count } chyfrif wedi'u hallforio:
+       *[other] { $count } cyfrif wedi'u hallforio:
+    }
+qr-export-summary-passwords-included = Cyfrineiriau wedi'u cynnwys
+qr-export-summary-passwords-excluded = Cyfrineiriau wedi'u heithrio
+qr-export-more-accounts = Allforio rhagor o gyfrifon

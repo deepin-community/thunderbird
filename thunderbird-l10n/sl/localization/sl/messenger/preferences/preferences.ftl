@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Zapri
 preferences-doc-title2 = Nastavitve
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sinhronizacija
 category-sync =
     .tooltiptext = Sinhronizacija
+pane-qr-export-title = Izvozi za mobilno napravo
+category-qr-export =
+    .tooltiptext = Izvozi za mobilno napravo
 general-language-and-appearance-header = Jezik in videz
 general-incoming-mail-header = Dohodna pošta
 general-files-and-attachment-header = Datoteke in priponke
@@ -50,8 +49,6 @@ collection-health-report =
     .label = { -brand-short-name }u dovoli pošiljanje tehničnih podatkov in podatkov o uporabi organizaciji { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Več o tem
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Pošiljanje podatkov je onemogočeno za to nastavitev graditve
 collection-backlogged-crash-reports =
     .label = { -brand-short-name }u dovoli, da v vašem imenu pošilja poročila o sesutju iz zaloge
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Za uveljavitev sprememb ponovno zaženite { -brand-short-name }
 confirm-messenger-language-change-button = Uporabi in znova zaženi
 update-setting-write-failure-title = Napaka pri shranjevanju nastavitev posodobitev
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } je naletel na napako in te spremembe ni shranil. Upoštevajte, da takšna nastavitev posodobitev zahteva dovoljenje za pisanje v spodnjo datoteko. Napako lahko morda odpravite sami ali vaš skrbnik sistema, tako da skupini Users omogoči popoln dostop do te datoteke.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Posodobitev je v teku
 update-in-progress-message = Želite, da { -brand-short-name } nadaljuje s to posodobitvijo?
 update-in-progress-ok-button = &Opusti
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Nadaljuj
 account-button = Nastavitve računa
 open-addons-sidebar-button = Dodatki in teme
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Če želite ustvariti glavno geslo, vnesite svoje podatke za prijavo v sistem Windows. To pomaga zaščititi varnost vaših računov.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = create a Primary Password
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = D
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Dodaj ponudnika iskanja OpenSearch
 add-opensearch-provider-text = Vnesite URL ponudnika OpenSearch, ki ga želite dodati. Uporabite bodisi neposredni naslov datoteke z opisom OpenSearch bodisi naslov, kjer ga je mogoče samodejno odkriti.
 adding-opensearch-provider-failed-title = Dodajanje ponudnika iskanja OpenSearch neuspešno
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Ponudnika iskanja OpenSearch za { $url } ni bilo mogoče dodati.
 minimize-to-tray-label =
     .label = Ob pomanjšanju premakni { -brand-short-name } v pladenj opravilne vrstice
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Preveri zdaj …
     .accesskey = e
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] iskalniku Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Povratnice …
     .accesskey = P
 update-app-legend = Posodobitve { -brand-short-name(sklon: "rodilnik") }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Različica { $version }
 allow-description = { -brand-short-name } naj
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = V
 compact-folder-size =
     .value = MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Porabi do
     .accesskey = P
 use-cache-after = MB prostora za predpomnjenje.
-
-##
-
 smart-cache-label =
     .label = Prezri samodejno upravljanje predpomnilnika
     .accesskey = r
@@ -304,7 +269,6 @@ color-options-button =
     .label = Barve …
     .accesskey = B
 display-width-legend = Sporočila v golem besedilu
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Prikaži smeške kot grafiko
     .accesskey = r
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Prikaži priponke znotraj sporočila
     .accesskey = z
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = potem, ko so prikazana za
     .accesskey = o
 seconds-label = sekund
-
-##
-
 open-msg-label =
     .value = Odpri sporočila v:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Zapri okno/zavihek s sporočilom ob premikanju ali brisanju
     .accesskey = Z
-display-name-label =
-    .value = Prikazno ime:
 address-display-legend = Seznam sporočil
 address-display-description = Prednostna oblika prikaza naslova:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Za osebe v mojem imeniku prikaži le prikazano ime
     .accesskey = a
-
-## Compose Tab
-
+table-layout-legend = Pogled razpredelnice
+table-layout-horizontal-scroll-label =
+    .label = Dovoli vodoravno drsenje
+    .accesskey = v
+conversation-view-legend = Pogled pogovora
+conversation-view-checkbox-label =
+    .label = Omogoči pogled pogovora
+    .accesskey = p
+conversation-view-checkbox-description = Poskusna možnost, ki temelji na Glodi. Uporabljajte jo na lastno odgovornost
+label-experiment = Poskusno
+account-hub-legend = Središče za račune
+account-hub-checkbox-label =
+    .label = Ustvarjanje računov v novem središču za račune
+    .accesskey = č
+account-hub-checkbox-description = Poskusni nov postopek ustvarjanja novih računov za e-pošto
 forward-label =
     .value = Posreduj sporočila:
     .accesskey = P
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = Dodaj končnico imenu datoteke
     .accesskey = D
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Samodejno shrani vsakih
     .accesskey = S
 auto-save-end = minut
-
-##
-
 warn-on-send-accel-key =
     .label = Potrdi pošiljanje ob pritisku tipkovne bližnjice za pošiljanje sporočila
     .accesskey = o
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Poišči več ponudnikov …
 cloud-account-description = Dodaj novega ponudnika storitve za shranjevanje podatkov Filelink
-
-## Privacy Tab
-
 mail-content = Vsebina pošte
 remote-content-label =
     .label = Dovoli oddaljeno vsebino v sporočilih
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Prikaži piškotke …
     .accesskey = P
-do-not-track-label =
-    .label = S signalom “Brez sledenja” sporočaj spletnim stranem, naj vam ne sledijo
-    .accesskey = b
-dnt-learn-more-button =
-    .value = Več o tem
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Spletnim mestom sporočaj, naj ne prodajajo ali delijo mojih podatkov
+    .accesskey = n
+do-not-track-removal = Signala "Brez sledenja" ne podpiramo več
 passwords-description = { -brand-short-name } si lahko zapomni gesla za vse vaše račune.
 passwords-button =
     .label = Shranjena gesla …
@@ -571,7 +528,6 @@ primary-password-description = Glavno geslo varuje vsa vaša gesla, vendar ga mo
 primary-password-label =
     .label = Uporabi glavno geslo
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Zahtevaj prijavo v napravi za izpolnjevanje in upravljanje gesel
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Trenutno ste v načinu FIPS. FIPS zahteva glavno geslo, ki ni prazno.
 forms-master-pw-fips-desc = Sprememba gesla neuspešna
 junk-description = Nastavite svoje privzete nastavitve za neželeno pošto. Nastavitve neželene pošte za posamezni račun lahko prilagodite v nastavitvah računa.
-junk-label =
-    .label = Ko označim sporočila kot neželena:
-    .accesskey = M
 junk-marked-label =
     .label = Ko so sporočila označena kot neželena:
     .accesskey = K
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = jih izbriši
     .accesskey = b
-junk-read-label =
-    .label = Označi neželena sporočila kot prebrana
-    .accesskey = O
 junk-read-description = Označi jih kot prebrana:
 junk-read-manual-label =
     .label = ko jih ročno označite kot neželena
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Samodejne odločitve lahko preglasite tako, da med sestavljanjem sporočila ročno omogočite ali onemogočite šifriranje.
     Opomba: ob odgovarjanju na šifrirano sporočilo je šifriranje vedno samodejno vključeno.
-
-## Chat Tab
-
 startup-label =
     .value = Ko se { -brand-short-name } zažene:
     .accesskey = K
@@ -661,20 +608,10 @@ offline-label =
     .label = pusti moje račune za klepet nepovezane
 auto-connect-label =
     .label = samodejno poveži moje račune za klepet
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Naj moji stiki vedo, da sem odsoten, po
     .accesskey = N
 idle-time-label = minutah nedejavnosti
-
-##
-
 away-message-label =
     .label = in mojo odsotnost objavi s sporočilom stanja:
     .accesskey = o
@@ -736,41 +673,21 @@ no-preview-description = Ta tema ni veljavna ali trenutno ni na voljo (onemogoč
 chat-variant-label =
     .value = Inačica:
     .accesskey = I
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Najdi v nastavitvah
-
-## Settings UI Search Results
-
 search-results-header = Rezultati iskanja
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Oprostite! V možnostih ni zadetkov za “<span data-l10n-name="query"></span>”.
        *[other] Oprostite! V nastavitvah ni zadetkov za “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Potrebujete pomoč? Obiščite <a data-l10n-name="url">podporo za { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Ponesite svoj splet s seboj
 sync-signedout-description = Sinhronizirajte račune, imenike, koledarje, gesla, dodatke in nastavitve vseh svojih naprav.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Prijava v sinhronizacijo …
 sync-pane-header = Sinhronizacija
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = Naslov "{ $userEmail }" ni potrjen.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Prijavite se za ponovno povezavo računa "{ $userEmail }"
 sync-pane-resend-verification = Ponovno pošlji potrditev
 sync-pane-sign-in = Prijava
@@ -800,3 +717,57 @@ synced-acount-item-filters = Filtri
 synced-acount-item-keys = OpenPGP – S/MIME
 sync-disconnected-text = Sinhronizirajte e-poštne račune, imenike, koledarje, gesla in identitete vseh svojih naprav.
 sync-disconnected-turn-on-sync = Vklopi sinhronizacijo …
+qr-export-pane-header = Izvozi račune v { -brand-product-name } za mobilne naprave
+qr-export-description = S pomočjo kode QR hitro prenesite nastavitve računa z računalnika na mobilno napravo. Izberite, katere račune želite vključiti, odločite se, ali želite prenesti tudi geslo, in z mobilno napravo preberite kodo. Hitro, varno in preprosto.
+qr-export-get-app = Še nimate { -brand-product-name(sklon: "rodilnik") } za mobilne naprave? <a data-l10n-name="app-link">Prenesite ga iz trgovine Google Play</a>
+qr-export-create = Ustvarite kodo QR za izvoz računov
+qr-export-select-accounts = Izberite, katere račune želite izvoziti:
+qr-export-no-accounts = Niso prikazani vsi računi? Nekateri računi so lahko onemogočeni, ker jih { -brand-product-name } za Android ne podpira. <a data-l10n-name="account-support-link">Podpora</a>
+qr-export-accounts-legend = E-poštni računi
+qr-export-select-all-accounts = Izberi vse
+qr-export-security-legend = Varnost
+qr-export-include-passwords = Vključi vsa gesla računov
+qr-export-oauth-warning = Nekateri izmed računov uporabljajo metodo overjanja, ki bo morda zahtevala ponovno overitev na mobilni napravi. Pri tem boste morda morali znova vnesti gesla.
+qr-export-security-hint = Ob skeniranju naslednjih kod QR se bodo nastavitve računa – vključno z e-pošto in geslom – varno prenesle z ene naprave na drugo. Med postopkom se nobeni podatki ne zbirajo, shranjujejo ali delijo z drugimi. Prenos poteka neposredno med vašima napravama.
+qr-export-security-warning = Za lastno varnost se prepričajte, da ste v zasebnem okolju, in skenirajte samo kode QR iz zaupanja vrednih virov.
+qr-export-start-export = Izvozi
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } od { $count } QR-kode
+        [two] { $step } od { $count } QR-kod
+        [few] { $step } od { $count } QR-kod
+       *[other] { $step } od { $count } QR-kod
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skenirajte kodo QR s { -brand-product-name(sklon: "orodnik") } na mobilni napravi
+        [two] Skenirajte kodi QR s { -brand-product-name(sklon: "orodnik") } na mobilni napravi
+        [few] Skenirajte kode QR s { -brand-product-name(sklon: "orodnik") } na mobilni napravi
+       *[other] Skenirajte kode QR s { -brand-product-name(sklon: "orodnik") } na mobilni napravi
+    }
+qr-export-scan-step1 = Odprite { -brand-product-name(sklon: "tozilnik") } na svoji mobilni napravi
+qr-export-scan-step2 = Pojdi v nastavitve
+qr-export-scan-step3 = Izberite <strong>Uvozi nastavitve</strong>
+qr-export-scan-step4-revision = Tapnite <strong>Skeniraj kodo QR</strong> in pridržite telefon nad to kodo
+qr-export-back = Nazaj
+qr-export-next = Naprej
+qr-export-done = Končano
+qr-export-summary-description = Računi so izvoženi. Nadaljujte na mobilni napravi.
+qr-export-summary-title = Povzetek izvoza:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } ustvarjena koda QR
+        [two] { $count } ustvarjeni kodi QR
+        [few] { $count } ustvarjene kode QR
+       *[other] { $count } ustvarjenih kod QR
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } izvožen račun:
+        [two] { $count } izvožena računa:
+        [few] { $count } izvoženi računi:
+       *[other] { $count } izvoženih računov:
+    }
+qr-export-summary-passwords-included = Vključno z gesli
+qr-export-summary-passwords-excluded = Izvzemši gesla
+qr-export-more-accounts = Izvozi več računov

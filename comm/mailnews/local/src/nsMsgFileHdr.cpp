@@ -217,11 +217,12 @@ NS_IMETHODIMP nsMsgFileHdr::GetLineCount(uint32_t* aLineCount) { return NS_OK; }
 
 NS_IMETHODIMP nsMsgFileHdr::SetLineCount(uint32_t aLineCount) { return NS_OK; }
 
-NS_IMETHODIMP nsMsgFileHdr::GetMessageOffset(uint64_t* aMessageOffset) {
+NS_IMETHODIMP nsMsgFileHdr::GetStoreToken(nsACString& result) {
+  result.Truncate();
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgFileHdr::SetMessageOffset(uint64_t aMessageOffset) {
+NS_IMETHODIMP nsMsgFileHdr::SetStoreToken(const nsACString& token) {
   return NS_OK;
 }
 
@@ -233,6 +234,16 @@ NS_IMETHODIMP nsMsgFileHdr::GetOfflineMessageSize(
 NS_IMETHODIMP nsMsgFileHdr::SetOfflineMessageSize(
     uint32_t aOfflineMessageSize) {
   return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgFileHdr::GetUidOnServer(uint32_t* result) {
+  *result = 0;
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgFileHdr::SetUidOnServer(uint32_t uid) {
+  // Message is not linked to an IMAP server, so we should never get here.
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP nsMsgFileHdr::GetDate(PRTime* aDate) {

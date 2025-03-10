@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Tipografía
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Predeterminado ({ $name })
 fonts-label-default-unnamed =
     .label = Predeterminado
-fonts-encoding-dialog-title =
-    .title = Tipografías y codificación
 fonts-language-legend =
     .value = Tipografías para:
     .accesskey = t
 fonts-proportional-label =
     .value = Proporcional:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latino
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Sinhala
 font-language-group-tibetan =
     .label = Tibetano
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = a
 min-size-none =
     .label = Ninguno
-
-## Fonts in message
-
 font-control-legend = Control de tipografía
 use-document-fonts-checkbox =
     .label = Permitir que los mensajes usen otras tipografías
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Usar tipografía de ancho fijo para mensajes de texto plano
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Codificación de texto
 text-encoding-description = Establecer la codificación de caracteres predeterminada para enviar y recibir correo
 font-outgoing-email-label =

@@ -1,7 +1,7 @@
-From b1d9159b3b027d04caf54b3b3119728cf1231459 Mon Sep 17 00:00:00 2001
+From b95dbc1d13aeda3527d320faf52a94561b231e1c Mon Sep 17 00:00:00 2001
 From: Jiangjin Wang <kaymw@aosc.io>
 Date: Tue, 23 Jul 2024 15:31:41 +0800
-Subject: [PATCH 2/3] AOSCOS: comm/botan: add loongarch64 to archinfo
+Subject: [PATCH 2/6] AOSCOS: comm/botan: add loongarch64 to archinfo
 
 Co-authored-by: Jiangjin Wang <kaymw@aosc.io>
 
@@ -46,5 +46,5 @@ index 4de58922fe..3a4bf8eceb 100644
    UNKNOWN
  
 -- 
-2.47.0
+2.48.1
 

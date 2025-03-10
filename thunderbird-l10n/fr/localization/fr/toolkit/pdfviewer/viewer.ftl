@@ -1,26 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Main toolbar buttons (tooltips and alt text for images)
-
 pdfjs-previous-button =
     .title = Page précédente
 pdfjs-previous-button-label = Précédent
 pdfjs-next-button =
     .title = Page suivante
 pdfjs-next-button-label = Suivant
-# .title: Tooltip for the pageNumber input.
 pdfjs-page-input =
     .title = Page
-# Variables:
-#   $pagesCount (Number) - the total number of pages in the document
-# This string follows an input field with the number of the page currently displayed.
 pdfjs-of-pages = sur { $pagesCount }
-# Variables:
-#   $pageNumber (Number) - the currently visible page
-#   $pagesCount (Number) - the total number of pages in the document
 pdfjs-page-of-pages = ({ $pageNumber } sur { $pagesCount })
 pdfjs-zoom-out-button =
     .title = Zoom arrière
@@ -42,18 +28,12 @@ pdfjs-print-button-label = Imprimer
 pdfjs-save-button =
     .title = Enregistrer
 pdfjs-save-button-label = Enregistrer
-# Used in Firefox for Android as a tooltip for the download button (“download” is a verb).
 pdfjs-download-button =
     .title = Télécharger
-# Used in Firefox for Android as a label for the download button (“download” is a verb).
-# Length of the translation matters since we are in a mobile context, with limited screen estate.
 pdfjs-download-button-label = Télécharger
 pdfjs-bookmark-button =
     .title = Page courante (montrer l’adresse de la page courante)
 pdfjs-bookmark-button-label = Page courante
-
-##  Secondary toolbar and context menu
-
 pdfjs-tools-button =
     .title = Outils
 pdfjs-tools-button-label = Outils
@@ -96,32 +76,20 @@ pdfjs-spread-odd-button-label = Doubles pages, impaires à gauche
 pdfjs-spread-even-button =
     .title = Afficher les pages par deux, paires à gauche
 pdfjs-spread-even-button-label = Doubles pages, paires à gauche
-
-## Document properties dialog
-
 pdfjs-document-properties-button =
     .title = Propriétés du document…
 pdfjs-document-properties-button-label = Propriétés du document…
 pdfjs-document-properties-file-name = Nom du fichier :
 pdfjs-document-properties-file-size = Taille du fichier :
-# Variables:
-#   $size_kb (Number) - the PDF file size in kilobytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-kb = { $size_kb } Ko ({ $size_b } octets)
-# Variables:
-#   $size_mb (Number) - the PDF file size in megabytes
-#   $size_b (Number) - the PDF file size in bytes
-pdfjs-document-properties-mb = { $size_mb } Mo ({ $size_b } octets)
+pdfjs-document-properties-size-kb = { NUMBER($kb, maximumSignificantDigits: 3) } Ko ({ $b } octets)
+pdfjs-document-properties-size-mb = { NUMBER($mb, maximumSignificantDigits: 3) } Mo ({ $b } octets)
 pdfjs-document-properties-title = Titre :
 pdfjs-document-properties-author = Auteur :
 pdfjs-document-properties-subject = Sujet :
 pdfjs-document-properties-keywords = Mots-clés :
 pdfjs-document-properties-creation-date = Date de création :
 pdfjs-document-properties-modification-date = Modifié le :
-# Variables:
-#   $date (Date) - the creation/modification date of the PDF file
-#   $time (Time) - the creation/modification time of the PDF file
-pdfjs-document-properties-date-string = { $date } à { $time }
+pdfjs-document-properties-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
 pdfjs-document-properties-creator = Créé par :
 pdfjs-document-properties-producer = Outil de conversion PDF :
 pdfjs-document-properties-version = Version PDF :
@@ -135,38 +103,17 @@ pdfjs-document-properties-page-size-name-a-three = A3
 pdfjs-document-properties-page-size-name-a-four = A4
 pdfjs-document-properties-page-size-name-letter = lettre
 pdfjs-document-properties-page-size-name-legal = document juridique
-
-## Variables:
-##   $width (Number) - the width of the (current) page
-##   $height (Number) - the height of the (current) page
-##   $unit (String) - the unit of measurement of the (current) page
-##   $name (String) - the name of the (current) page
-##   $orientation (String) - the orientation of the (current) page
-
 pdfjs-document-properties-page-size-dimension-string = { $width } × { $height } { $unit } ({ $orientation })
 pdfjs-document-properties-page-size-dimension-name-string = { $width } × { $height } { $unit } ({ $name }, { $orientation })
-
-##
-
-# The linearization status of the document; usually called "Fast Web View" in
-# English locales of Adobe software.
 pdfjs-document-properties-linearized = Affichage rapide des pages web :
 pdfjs-document-properties-linearized-yes = Oui
 pdfjs-document-properties-linearized-no = Non
 pdfjs-document-properties-close-button = Fermer
-
-## Print
-
 pdfjs-print-progress-message = Préparation du document pour l’impression…
-# Variables:
-#   $progress (Number) - percent value
 pdfjs-print-progress-percent = { $progress } %
 pdfjs-print-progress-close-button = Annuler
 pdfjs-printing-not-supported = Attention : l’impression n’est pas totalement prise en charge par ce navigateur.
 pdfjs-printing-not-ready = Attention : le PDF n’est pas entièrement chargé pour pouvoir l’imprimer.
-
-## Tooltips and alt text for side panel toolbar buttons
-
 pdfjs-toggle-sidebar-button =
     .title = Afficher/Masquer le panneau latéral
 pdfjs-toggle-sidebar-notification-button =
@@ -191,20 +138,10 @@ pdfjs-findbar-button =
     .title = Rechercher dans le document
 pdfjs-findbar-button-label = Rechercher
 pdfjs-additional-layers = Calques additionnels
-
-## Thumbnails panel item (tooltip and alt text for images)
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-title =
     .title = Page { $page }
-# Variables:
-#   $page (Number) - the page number
 pdfjs-thumb-page-canvas =
     .aria-label = Vignette de la page { $page }
-
-## Find panel button title and messages
-
 pdfjs-find-input =
     .title = Rechercher
     .placeholder = Rechercher dans le document…
@@ -220,68 +157,33 @@ pdfjs-find-match-diacritics-checkbox-label = Respecter les accents et diacritiqu
 pdfjs-find-entire-word-checkbox-label = Mots entiers
 pdfjs-find-reached-top = Haut de la page atteint, poursuite depuis la fin
 pdfjs-find-reached-bottom = Bas de la page atteint, poursuite au début
-# Variables:
-#   $current (Number) - the index of the currently active find result
-#   $total (Number) - the total number of matches in the document
 pdfjs-find-match-count = Occurrence { $current } sur { $total }
-# Variables:
-#   $limit (Number) - the maximum number of matches
 pdfjs-find-match-count-limit =
     { $limit ->
         [one] Plus d’{ $limit } occurrence
        *[other] Plus de { $limit } occurrences
     }
 pdfjs-find-not-found = Expression non trouvée
-
-## Predefined zoom values
-
 pdfjs-page-scale-width = Pleine largeur
 pdfjs-page-scale-fit = Page entière
 pdfjs-page-scale-auto = Zoom automatique
 pdfjs-page-scale-actual = Taille réelle
-# Variables:
-#   $scale (Number) - percent value for page scale
 pdfjs-page-scale-percent = { $scale } %
-
-## PDF page
-
-# Variables:
-#   $page (Number) - the page number
 pdfjs-page-landmark =
     .aria-label = Page { $page }
-
-## Loading indicator messages
-
 pdfjs-loading-error = Une erreur s’est produite lors du chargement du fichier PDF.
 pdfjs-invalid-file-error = Fichier PDF invalide ou corrompu.
 pdfjs-missing-file-error = Fichier PDF manquant.
 pdfjs-unexpected-response-error = Réponse inattendue du serveur.
 pdfjs-rendering-error = Une erreur s’est produite lors de l’affichage de la page.
-
-## Annotations
-
-# Variables:
-#   $date (Date) - the modification date of the annotation
-#   $time (Time) - the modification time of the annotation
-pdfjs-annotation-date-string = { $date } à { $time }
-# .alt: This is used as a tooltip.
-# Variables:
-#   $type (String) - an annotation type from a list defined in the PDF spec
-# (32000-1:2008 Table 169 – Annotation types).
-# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+pdfjs-annotation-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
 pdfjs-text-annotation-type =
     .alt = [Annotation { $type }]
-
-## Password
-
 pdfjs-password-label = Veuillez saisir le mot de passe pour ouvrir ce fichier PDF.
 pdfjs-password-invalid = Mot de passe incorrect. Veuillez réessayer.
 pdfjs-password-ok-button = OK
 pdfjs-password-cancel-button = Annuler
 pdfjs-web-fonts-disabled = Les polices web sont désactivées : impossible d’utiliser les polices intégrées au PDF.
-
-## Editing
-
 pdfjs-editor-free-text-button =
     .title = Texte
 pdfjs-editor-free-text-button-label = Texte
@@ -298,9 +200,6 @@ pdfjs-highlight-floating-button1 =
     .title = Surligner
     .aria-label = Surligner
 pdfjs-highlight-floating-button-label = Surligner
-
-## Remove button for the various kind of editor.
-
 pdfjs-editor-remove-ink-button =
     .title = Supprimer le dessin
 pdfjs-editor-remove-freetext-button =
@@ -309,10 +208,6 @@ pdfjs-editor-remove-stamp-button =
     .title = Supprimer l’image
 pdfjs-editor-remove-highlight-button =
     .title = Supprimer le surlignage
-
-##
-
-# Editor Parameters
 pdfjs-editor-free-text-color-input = Couleur
 pdfjs-editor-free-text-size-input = Taille
 pdfjs-editor-ink-color-input = Couleur
@@ -321,23 +216,21 @@ pdfjs-editor-ink-opacity-input = Opacité
 pdfjs-editor-stamp-add-image-button =
     .title = Ajouter une image
 pdfjs-editor-stamp-add-image-button-label = Ajouter une image
-# This refers to the thickness of the line used for free highlighting (not bound to text)
 pdfjs-editor-free-highlight-thickness-input = Épaisseur
 pdfjs-editor-free-highlight-thickness-title =
     .title = Modifier l’épaisseur pour le surlignage d’éléments non textuels
-pdfjs-free-text =
+pdfjs-free-text2 =
     .aria-label = Éditeur de texte
-pdfjs-free-text-default-content = Commencer à écrire…
+    .default-content = Commencez à écrire…
 pdfjs-ink =
     .aria-label = Éditeur de dessin
 pdfjs-ink-canvas =
     .aria-label = Image créée par l’utilisateur·trice
-
-## Alt-text dialog
-
-# Alternative text (alt text) helps when people can't see the image.
+pdfjs-editor-alt-text-button =
+    .aria-label = Texte alternatif
 pdfjs-editor-alt-text-button-label = Texte alternatif
-pdfjs-editor-alt-text-edit-button-label = Modifier le texte alternatif
+pdfjs-editor-alt-text-edit-button =
+    .aria-label = Modifier le texte alternatif
 pdfjs-editor-alt-text-dialog-label = Sélectionnez une option
 pdfjs-editor-alt-text-dialog-description = Le texte alternatif est utile lorsque des personnes ne peuvent pas voir l’image ou que l’image ne se charge pas.
 pdfjs-editor-alt-text-add-description-label = Ajouter une description
@@ -347,25 +240,24 @@ pdfjs-editor-alt-text-mark-decorative-description = Cette option est utilisée p
 pdfjs-editor-alt-text-cancel-button = Annuler
 pdfjs-editor-alt-text-save-button = Enregistrer
 pdfjs-editor-alt-text-decorative-tooltip = Marquée comme décorative
-# .placeholder: This is a placeholder for the alt text input area
 pdfjs-editor-alt-text-textarea =
     .placeholder = Par exemple, « Un jeune homme est assis à une table pour prendre un repas »
-
-## Editor resizers
-## This is used in an aria label to help to understand the role of the resizer.
-
-pdfjs-editor-resizer-label-top-left = Coin supérieur gauche — redimensionner
-pdfjs-editor-resizer-label-top-middle = Milieu haut — redimensionner
-pdfjs-editor-resizer-label-top-right = Coin supérieur droit — redimensionner
-pdfjs-editor-resizer-label-middle-right = Milieu droit — redimensionner
-pdfjs-editor-resizer-label-bottom-right = Coin inférieur droit — redimensionner
-pdfjs-editor-resizer-label-bottom-middle = Centre bas — redimensionner
-pdfjs-editor-resizer-label-bottom-left = Coin inférieur gauche — redimensionner
-pdfjs-editor-resizer-label-middle-left = Milieu gauche — redimensionner
-
-## Color picker
-
-# This means "Color used to highlight text"
+pdfjs-editor-resizer-top-left =
+    .aria-label = Coin supérieur gauche — redimensionner
+pdfjs-editor-resizer-top-middle =
+    .aria-label = Milieu haut — redimensionner
+pdfjs-editor-resizer-top-right =
+    .aria-label = Coin supérieur droit — redimensionner
+pdfjs-editor-resizer-middle-right =
+    .aria-label = Milieu droit — redimensionner
+pdfjs-editor-resizer-bottom-right =
+    .aria-label = Coin inférieur droit — redimensionner
+pdfjs-editor-resizer-bottom-middle =
+    .aria-label = Centre bas — redimensionner
+pdfjs-editor-resizer-bottom-left =
+    .aria-label = Coin inférieur gauche — redimensionner
+pdfjs-editor-resizer-middle-left =
+    .aria-label = Milieu gauche — redimensionner
 pdfjs-editor-highlight-colorpicker-label = Couleur de surlignage
 pdfjs-editor-colorpicker-button =
     .title = Changer de couleur
@@ -381,21 +273,61 @@ pdfjs-editor-colorpicker-pink =
     .title = Rose
 pdfjs-editor-colorpicker-red =
     .title = Rouge
-
-## Show all highlights
-## This is a toggle button to show/hide all the highlights.
-
 pdfjs-editor-highlight-show-all-button-label = Tout afficher
 pdfjs-editor-highlight-show-all-button =
     .title = Tout afficher
-
-## New alt-text dialog
-## Group note for entire feature: Alternative text (alt text) helps when people can't see the image. This feature includes a tool to create alt text automatically using an AI model that works locally on the user's device to preserve privacy.
-
-
-## Image alt-text settings
-
+pdfjs-editor-new-alt-text-dialog-edit-label = Modifier le texte alternatif (description de l’image)
+pdfjs-editor-new-alt-text-dialog-add-label = Ajouter du texte alternatif (description de l’image)
+pdfjs-editor-new-alt-text-textarea =
+    .placeholder = Rédigez votre description ici…
+pdfjs-editor-new-alt-text-description = Courte description pour les personnes qui ne peuvent pas voir l’image ou lorsque l’image ne se charge pas.
+pdfjs-editor-new-alt-text-disclaimer1 = Ce texte alternatif a été créé automatiquement et peut être inexact.
+pdfjs-editor-new-alt-text-disclaimer-learn-more-url = En savoir plus
+pdfjs-editor-new-alt-text-create-automatically-button-label = Créer automatiquement le texte alternatif
+pdfjs-editor-new-alt-text-not-now-button = Pas maintenant
+pdfjs-editor-new-alt-text-error-title = Impossible de créer automatiquement le texte alternatif
+pdfjs-editor-new-alt-text-error-description = Veuillez rédiger votre propre texte alternatif ou réessayer plus tard.
+pdfjs-editor-new-alt-text-error-close-button = Fermer
+pdfjs-editor-new-alt-text-ai-model-downloading-progress = Téléchargement du modèle d’IA de texte alternatif ({ $downloadedSize } sur { $totalSize } Mo)
+    .aria-valuetext = Téléchargement du modèle d’IA de texte alternatif ({ $downloadedSize } sur { $totalSize } Mo)
+pdfjs-editor-new-alt-text-added-button =
+    .aria-label = Texte alternatif ajouté
+pdfjs-editor-new-alt-text-added-button-label = Texte alternatif ajouté
+pdfjs-editor-new-alt-text-missing-button =
+    .aria-label = Texte alternatif manquant
+pdfjs-editor-new-alt-text-missing-button-label = Texte alternatif manquant
+pdfjs-editor-new-alt-text-to-review-button =
+    .aria-label = Réviser le texte alternatif
+pdfjs-editor-new-alt-text-to-review-button-label = Réviser le texte alternatif
+pdfjs-editor-new-alt-text-generated-alt-text-with-disclaimer = Créé automatiquement : { $generatedAltText }
+pdfjs-image-alt-text-settings-button =
+    .title = Paramètres du texte alternatif des images
+pdfjs-image-alt-text-settings-button-label = Paramètres du texte alternatif des images
+pdfjs-editor-alt-text-settings-dialog-label = Paramètres du texte alternatif des images
+pdfjs-editor-alt-text-settings-automatic-title = Texte alternatif automatique
+pdfjs-editor-alt-text-settings-create-model-button-label = Créer automatiquement le texte alternatif
+pdfjs-editor-alt-text-settings-create-model-description = Suggère des descriptions pour aider les personnes qui ne peuvent pas voir l’image ou lorsque l’image ne se charge pas.
+pdfjs-editor-alt-text-settings-download-model-label = Modèle d’IA de texte alternatif ({ $totalSize } Mo)
+pdfjs-editor-alt-text-settings-ai-model-description = Fonctionne localement sur votre appareil, vos données restent privées. Obligatoire pour la génération automatique de texte alternatif.
 pdfjs-editor-alt-text-settings-delete-model-button = Supprimer
 pdfjs-editor-alt-text-settings-download-model-button = Télécharger
 pdfjs-editor-alt-text-settings-downloading-model-button = Téléchargement…
+pdfjs-editor-alt-text-settings-editor-title = Éditeur de texte alternatif
+pdfjs-editor-alt-text-settings-show-dialog-button-label = Afficher l’éditeur de texte alternatif immédiatement lors de l’ajout d’une image
+pdfjs-editor-alt-text-settings-show-dialog-description = Vous aide à vous assurer que toutes vos images ont du texte alternatif.
 pdfjs-editor-alt-text-settings-close-button = Fermer
+pdfjs-editor-undo-bar-message-highlight = Surlignage supprimé
+pdfjs-editor-undo-bar-message-freetext = Texte supprimé
+pdfjs-editor-undo-bar-message-ink = Dessin supprimé
+pdfjs-editor-undo-bar-message-stamp = Image supprimée
+pdfjs-editor-undo-bar-message-multiple =
+    { $count ->
+        [one] { $count } annotation supprimée
+       *[other] { $count } annotations supprimées
+    }
+pdfjs-editor-undo-bar-undo-button =
+    .title = Annuler
+pdfjs-editor-undo-bar-undo-button-label = Annuler
+pdfjs-editor-undo-bar-close-button =
+    .title = Fermer
+pdfjs-editor-undo-bar-close-button-label = Fermer

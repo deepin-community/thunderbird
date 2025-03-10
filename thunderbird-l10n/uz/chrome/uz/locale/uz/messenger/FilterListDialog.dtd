@@ -1,14 +1,10 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "Xabar filterlari">
 <!ENTITY nameColumn.label "Filtrning nomi">
 <!ENTITY activeColumn.label "Yoqib qo‘yilgan">
 <!ENTITY newButton.label "Yangi…">
 <!ENTITY newButton.accesskey "Y">
-
-
+<!ENTITY newButton.popupCopy.label "Copy…">
+<!ENTITY newButton.popupCopy.accesskey "C">
 <!ENTITY editButton.label "Tahrirlash…">
 <!ENTITY editButton.accesskey "T">
 <!ENTITY deleteButton.label "O‘chirish">
@@ -36,9 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "T">
 <!ENTITY helpButton.label "Yordam">
 <!ENTITY helpButton.accesskey "Y">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Filterlarni nomi bo‘yicha izlash…">
-
-
-<!ENTITY newButton.popupCopy.label "Copy…">
-<!ENTITY newButton.popupCopy.accesskey "C">

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Syngronisearje
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Ofmelde…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nije account
 appmenu-new-account-panel =
     .label = Nije account
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = In nij e-mailadres krije
-    .accesskey = k
-appmenu-new-mail-account =
-    .label = Besteand e-mailadres
-    .accesskey = B
 appmenu-new-email-account =
     .label = Email
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Nijsgroep
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nij adresboek
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-adresboek
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Oanmeitsje
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Iepenje fan bestân út
     .accesskey = I
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Aginda…
     .accesskey = A
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Byld
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Lettergrutte fergrutsje
 appmenuitem-font-size-reduce =
     .tooltiptext = Lettergrutte ferlytse
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Lettergrutte opnij inisjalisearje
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Ark
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Eksportearje
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = Eksportearje foar mobyl
+    .accesskey = p
 appmenu-tools-message-search =
     .label = Berjochten sykje
     .accesskey = s
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Untwikkelersark
     .accesskey = w
-
-## Help
-
 appmenu-help-panel-title =
     .title = Help
 appmenu-help-get-help =
     .label = Help krije
     .accesskey = H
-appmenu-help-explore-features =
-    .label = Funksjes ferkenne
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = Help krije by { -brand-short-name }
     .accesskey = H
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Oer { -brand-short-name }
     .accesskey = O
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = { -brand-shorter-name }-fernijing wurdt download
 appmenuitem-banner-update-available =

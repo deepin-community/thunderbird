@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Nowu stilowu psedłogu napóraś k dokumentoju pśipowjesyś
     .accesskey = N
@@ -21,8 +17,6 @@ styleeditor-save-button = Składowaś
 styleeditor-options-button =
     .tooltiptext = Nastajenja stilowego editora
 styleeditor-at-rules = @-pšawidła
-styleeditor-editor-textbox =
-    .data-placeholder = Zapišćo how CSS.
 styleeditor-no-stylesheet = Toś ten bok njama stilowu pśedłogu.
 styleeditor-no-stylesheet-tip = Snaź wy by rady <a data-l10n-name="append-new-stylesheet">nowu stilowu pśedłogu pśipowjesył</a>?
 styleeditor-open-link-new-tab =
@@ -38,11 +32,7 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = K slědujucej smužce skócyś…
     .accesskey = l
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Pśigódna stilowa pśedłoga njejo se namakała.
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } pšawidło.
@@ -50,9 +40,7 @@ styleeditor-stylesheet-rule-count =
         [few] { $ruleCount } pšawidła.
        *[other] { $ruleCount } pšawidłow.
     }
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Stilowa pśedłoga za spódobne formatěrowanje
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = Móžo jano CSS-dataje spódobnje formatěrowaś

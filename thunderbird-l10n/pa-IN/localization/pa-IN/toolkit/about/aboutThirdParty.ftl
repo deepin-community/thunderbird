@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = ਸੁਤੰਤਰ-ਧਿਰ ਮੋਡੀਊਲ ਜਾਣਕਾਰੀ
 third-party-section-title = { -brand-short-name } ਵਿੱਚ ਸੁਤੰਤਰ ਧਿਰ ਦੇ ਮੋਡੀਊਲਾਂ ਦੀ ਸੂਚੀ
 third-party-intro = ਇਹ ਸਫ਼ਾ ਤੀਜੀ ਧਿਰ ਦੇ ਮੋਡੀਊਲ, ਜੋ ਕਿ ਤੁਹਾਡੇ { -brand-short-name } ਵਿੱਚ ਪਾਏ ਗਏ ਸਨ, ਨੂੰ ਦਿਖਾਉਂਦਾ ਹੈ। ਕੋਈ ਵੀ ਮੋਡੀਊਲ, ਜੋ ਕਿ Microsoft  ਜਾਂ { -vendor-short-name } ਵਲੋਂ ਸਾਈਨ ਨਾ ਕੀਤੇ ਹੋਣ, ਨੂੰ ਤੀਜੀ ਧਿਰ ਦੇ ਮੋਡੀਊਲ ਵਜੋਂ ਜਾਣਿਆ ਜਾਂਦਾ ਹੈ।
@@ -41,15 +37,6 @@ third-party-button-reload = ਸਿਸਟਮ ਜਾਣਕਾਰੀ ਨਾਲ ਮ�
     .title = ਸਿਸਟਮ ਜਾਣਕਾਰੀ ਨਾਲ ਮੁੜ ਲੋਡ ਕਰੋ
 third-party-button-open =
     .title = …ਫਾਇਲ ਟਿਕਾਣੇ ਨੂੰ ਖੋਲ੍ਹੋ
-third-party-button-to-block =
-    .title = ਇਸ ਮੋਡੀਊਲ ਉੱਤੇ ਪਾਬੰਦੀ ਲਾਓ
-    .aria-label = ਇਸ ਮੋਡੀਊਲ ਉੱਤੇ ਪਾਬੰਦੀ ਲਾਓ
-third-party-button-to-unblock =
-    .title = ਇਸ ਵੇਲੇ ਪਾਬੰਦੀ ਲਾਈ ਹੈ। ਇਸ ਨੂੰ ਪਾਬੰਦੀ ਹਟਾਉਣ ਲਈ ਕਲਿੱਕ ਕਰੋ।
-    .aria-label = ਇਸ ਵੇਲੇ ਪਾਬੰਦੀ ਲਾਈ ਹੈ। ਇਸ ਨੂੰ ਪਾਬੰਦੀ ਹਟਾਉਣ ਲਈ ਕਲਿੱਕ ਕਰੋ।
-third-party-button-to-unblock-disabled =
-    .title = ਇਸ { -brand-short-name } ਲਈ ਪਾਬੰਦੀ-ਸੂਚੀ ਅਸਮਰੱਥ ਹੋਣ ਦੇ ਬਾਵਜੂਦ ਇਸ ਵੇਲੇ ਪਾਬੰਦੀ ਲਾਈ ਵਜੋਂ ਨਿਸ਼ਾਨਬੱਧ ਕੀਤਾ। ਇਸ ਤੋਂ ਪਾਬੰਦੀ ਹਟਾਉਣ ਲਈ ਕਲਿੱਕ ਕਰੋ।
-    .aria-label = ਇਸ { -brand-short-name } ਲਈ ਪਾਬੰਦੀ-ਸੂਚੀ ਅਸਮਰੱਥ ਹੋਣ ਦੇ ਬਾਵਜੂਦ ਇਸ ਵੇਲੇ ਪਾਬੰਦੀ ਲਾਈ ਵਜੋਂ ਨਿਸ਼ਾਨਬੱਧ ਕੀਤਾ। ਇਸ ਤੋਂ ਪਾਬੰਦੀ ਹਟਾਉਣ ਲਈ ਕਲਿੱਕ ਕਰੋ।
 third-party-button-to-block-module = ਇਸ ਮੋਡੀਊਲ ਉੱਤੇ ਪਾਬੰਦੀ ਲਾਓ
     .title = ਇਸ ਮੋਡੀਊਲ ਉੱਤੇ ਪਾਬੰਦੀ ਲਾਓ
     .aria-label = ਇਸ ਮੋਡੀਊਲ ਉੱਤੇ ਪਾਬੰਦੀ ਲਾਓ

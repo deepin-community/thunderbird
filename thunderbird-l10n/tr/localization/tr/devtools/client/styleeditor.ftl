@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Yeni bir stil sayfası oluştur ve belgeye ekle
     .accesskey = Y
@@ -21,8 +17,6 @@ styleeditor-save-button = Kaydet
 styleeditor-options-button =
     .tooltiptext = Stil editörü seçenekleri
 styleeditor-at-rules = “At” kuralları
-styleeditor-editor-textbox =
-    .data-placeholder = CSS’i buraya yazın.
 styleeditor-no-stylesheet = Bu sayfanın stil sayfası yok.
 styleeditor-no-stylesheet-tip = Belki de <a data-l10n-name="append-new-stylesheet">yeni bir stil sayfası eklemek</a> istersiniz?
 styleeditor-open-link-new-tab =
@@ -38,19 +32,13 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Satıra git…
     .accesskey = r
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Eşleşen stil dosyası bulunamadı.
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } kural.
        *[other] { $ruleCount } kural.
     }
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Stil sayfasını güzel yazdır
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = Yalnızca CSS dosyaları güzel yazdırılabilir

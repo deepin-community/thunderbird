@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Notice: If you're updating this list, you should also
-###         update the list in mozIntl.js.
-
 region-name-ad = Andora
 region-name-ae = Ujedinjeni Arapski Emirati
 region-name-af = Afganistan
@@ -34,6 +26,7 @@ region-name-bl = Sveti Barthelemy
 region-name-bm = Bermuda
 region-name-bn = Bruneji
 region-name-bo = Bolivija
+region-name-bq-2018 = Karipska Nizozemska
 region-name-br = Brazil
 region-name-bs = Bahami
 region-name-bt = Butan
@@ -56,9 +49,11 @@ region-name-co = Kolumbija
 region-name-cp = Otok Clipperton
 region-name-cr = Kostarika
 region-name-cu = Kuba
+region-name-cv-2020 = Kapverdski otoci
 region-name-cw = Curaçao
 region-name-cx = Božično Otočje
 region-name-cy = Cipar
+region-name-cz-2019 = Češka
 region-name-de = Njemačka
 region-name-dg = Diego Garcia
 region-name-dj = Djibouti
@@ -147,6 +142,7 @@ region-name-me = Crna Gora
 region-name-mf = Sveti Martin
 region-name-mg = Madagaskar
 region-name-mh = Marshallovo Otočje
+region-name-mk-2019 = Sjeverna Makedonija
 region-name-ml = Mali
 region-name-mm = Burma
 region-name-mn = Mongolija
@@ -219,6 +215,7 @@ region-name-st = Sao Tome i Principe
 region-name-sv = Salvador
 region-name-sx = Sveti Martin
 region-name-sy = Sirija
+region-name-sz-2019 = Eswatini
 region-name-tc = Turks and Caicos Islands
 region-name-td = Čad
 region-name-tf = Francuski južni i antarktički teritoriji

@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Afegiu una clau personal OpenPGP per a { $identity }
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Utilitza la clau externa mitjançant GnuPG (per exemple, des d'una targeta intel·ligent)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Genereu una clau OpenPGP
 openpgp-keygen-secret-protection = Protecció de la clau secreta
 radio-keygen-no-protection =
@@ -38,9 +30,3 @@ openpgp-keygen-cancel =
 openpgp-keygen-import-complete =
     .label = Tanca
     .accesskey = T
-
-## Import Key section
-
-
-## External Key section
-

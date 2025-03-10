@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (njepóstajony)
 failed-pp-change = Njejo móžno, głowne gronidło změniś.
@@ -21,7 +17,6 @@ set-password-new-password = Zapódajśo nowe gronidło:
 set-password-reenter-password = Gronidło wóspjetowaś:
 set-password-meter = Měridło kakosći gronidła
 set-password-meter-loading = Zacytujo se
-primary-password-admin = Waš administrator se pomina, až głowne gronidło nastajaśo, aby pśizjawjenja a gronidła składował.
 primary-password-required-by-policy = Waša organizacija se pomina, až głowne gronidło nastajaśo, aby pśizjawjenja a gronidła składował.
 primary-password-description = Głowne gronidło se wužywa, aby se někotare diskretne informacije kaž pśizjawjenja a gronidła na toś tom rěźe šćitali. Jolic napórajośo głowne gronidło, buźo se was raz na pósejźenje za nim pšašaś, gaž { -brand-short-name } wótwołujo składowane informacije šćitane z toś tym gronidłom.
 primary-password-warning = Pšosym zawěsććo, až markujośo se głowne gronidło, kótarež sćo stajił. Jolic zabydnjośo swoje głowne gronidło, njamóžośo na z tym šćitane informacije na toś tom rěźe pśistup měś.

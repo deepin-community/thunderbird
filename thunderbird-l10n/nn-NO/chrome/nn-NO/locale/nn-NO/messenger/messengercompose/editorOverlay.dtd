@@ -1,17 +1,8 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Attn: Localization - some of the menus in this dialog directly affect mail also. -->
-
-<!-- Edit menu items -->
 <!ENTITY pasteNoFormatting.label "Lim inn utan formatering">
 <!ENTITY pasteNoFormatting.accesskey "o">
 <!ENTITY pasteNoFormatting.key "V">
 <!ENTITY pasteAsQuotationCmd.label "Lim inn som sitat">
 <!ENTITY pasteAsQuotationCmd.accesskey "s">
-
-<!-- Insert menu items -->
 <!ENTITY insertMenu.label "Set inn">
 <!ENTITY insertMenu.accesskey "i">
 <!ENTITY insertLinkCmd2.label "Lenke …">
@@ -33,14 +24,10 @@
 <!ENTITY insertCharsCmd.accesskey "s">
 <!ENTITY insertBreakAllCmd.label "Linjeskift under bilde">
 <!ENTITY insertBreakAllCmd.accesskey "u">
-
-<!-- Used just in context popup. -->
 <!ENTITY createLinkCmd.label "Lag lenke …">
 <!ENTITY createLinkCmd.accesskey "l">
 <!ENTITY editLinkCmd.label "Rediger lenke i nytt nettsideutviklar-vindauge">
 <!ENTITY editLinkCmd.accesskey "i">
-
-<!-- Font Face SubMenu -->
 <!ENTITY FontFaceSelect.tooltip "Vel skrifttype">
 <!ENTITY fontfaceMenu.label "Skrifttype">
 <!ENTITY fontfaceMenu.accesskey "S">
@@ -55,18 +42,15 @@
 <!ENTITY fontTimes.accesskey "T">
 <!ENTITY fontCourier.label "Courier">
 <!ENTITY fontCourier.accesskey "C">
-
-<!-- Font Size SubMenu -->
 <!ENTITY FontSizeSelect.tooltip "Vel skriftstorleik">
 <!ENTITY decreaseFontSize.label "Mindre">
 <!ENTITY decreaseFontSize.accesskey "M">
 <!ENTITY decrementFontSize.key "&lt;">
-<!ENTITY decrementFontSize.key2 ","> <!-- < is above this key on many keyboards -->
+<!ENTITY decrementFontSize.key2 ",">
 <!ENTITY increaseFontSize.label "Større">
 <!ENTITY increaseFontSize.accesskey "S">
 <!ENTITY incrementFontSize.key "&gt;">
-<!ENTITY incrementFontSize.key2 "."> <!-- > is above this key on many keyboards -->
-
+<!ENTITY incrementFontSize.key2 ".">
 <!ENTITY fontSizeMenu.label "Storleik">
 <!ENTITY fontSizeMenu.accesskey "e">
 <!ENTITY size-tinyCmd.label "Ekstra lita">
@@ -81,8 +65,6 @@
 <!ENTITY size-extraLargeCmd.accesskey "k">
 <!ENTITY size-hugeCmd.label "Svær">
 <!ENTITY size-hugeCmd.accesskey "v">
-
-<!-- Font Style SubMenu -->
 <!ENTITY fontStyleMenu.label "Tekststil">
 <!ENTITY fontStyleMenu.accesskey "T">
 <!ENTITY styleBoldCmd.label "Feit">
@@ -118,18 +100,15 @@
 <!ENTITY styleSamp.accesskey "D">
 <!ENTITY styleVar.label "Variabel">
 <!ENTITY styleVar.accesskey "V">
-
 <!ENTITY formatFontColor.label "Tekstfarge …">
 <!ENTITY formatFontColor.accesskey "f">
 <!ENTITY tableOrCellColor.label "Bakgrunnsfarge for tabell eller celle…">
 <!ENTITY tableOrCellColor.accesskey "B">
-
 <!ENTITY formatRemoveStyles.key "y">
 <!ENTITY formatRemoveLinks.key "k">
 <!ENTITY formatRemoveNamedAnchors.label "Fjern namngjevne anker">
 <!ENTITY formatRemoveNamedAnchors.accesskey "n">
 <!ENTITY formatRemoveNamedAnchors2.key "r">
-
 <!ENTITY paragraphMenu.label "Avsnitt">
 <!ENTITY paragraphMenu.accesskey "A">
 <!ENTITY paragraphParagraphCmd.label "Avsnitt">
@@ -150,8 +129,6 @@
 <!ENTITY paragraphAddressCmd.accesskey "A">
 <!ENTITY paragraphPreformatCmd.label "Førehandsformatert">
 <!ENTITY paragraphPreformatCmd.accesskey "f">
-
-<!-- List menu items -->
 <!ENTITY formatlistMenu.label "Liste">
 <!ENTITY formatlistMenu.accesskey "L">
 <!ENTITY noneCmd.label "Ingen">
@@ -166,13 +143,9 @@
 <!ENTITY listDefinitionCmd.accesskey "D">
 <!ENTITY listPropsCmd.label "Listeeigenskapar …">
 <!ENTITY listPropsCmd.accesskey "L">
-
 <!ENTITY ParagraphSelect.tooltip "Vel avsnittsformat">
-<!-- Shared in Paragraph, and Toolbar menulist -->
 <!ENTITY bodyTextCmd.label "Brødtekst">
 <!ENTITY bodyTextCmd.accesskey "B">
-
-<!-- Align menu items -->
 <!ENTITY alignMenu.label "Justering">
 <!ENTITY alignMenu.accesskey "J">
 <!ENTITY alignLeft.label "Venstre">
@@ -187,33 +160,24 @@
 <!ENTITY alignJustify.label "Blokkjustert">
 <!ENTITY alignJustify.accesskey "B">
 <!ENTITY alignJustify.tooltip "Blokkjuster">
-
 <!ENTITY increaseIndent.label "Auk innrykk">
 <!ENTITY increaseIndent.accesskey "A">
 <!ENTITY increaseIndent.key "]">
 <!ENTITY decreaseIndent.label "Reduser innrykk">
 <!ENTITY decreaseIndent.accesskey "R">
 <!ENTITY decreaseIndent.key "[">
-
 <!ENTITY colorsAndBackground.label "Fargar og bakgrunn på sida…">
 <!ENTITY colorsAndBackground.accesskey "F">
-
-<!-- Table Menu -->
 <!ENTITY tableMenu.label "Tabell">
 <!ENTITY tableMenu.accesskey "T">
-
-<!-- Select Submenu -->
 <!ENTITY tableSelectMenu.label "Vel">
 <!ENTITY tableSelectMenu.accesskey "e">
-
 <!ENTITY tableSelectMenu2.label "Merk tabell">
 <!ENTITY tableSelectMenu2.accesskey "M">
 <!ENTITY tableInsertMenu2.label "Set inn tabell">
 <!ENTITY tableInsertMenu2.accesskey "S">
 <!ENTITY tableDeleteMenu2.label "Tabellsletting">
 <!ENTITY tableDeleteMenu2.accesskey "T">
-
-<!-- Insert SubMenu -->
 <!ENTITY tableInsertMenu.label "Set inn">
 <!ENTITY tableInsertMenu.accesskey "i">
 <!ENTITY tableTable.label "Tabell">
@@ -243,15 +207,8 @@
 <!ENTITY tableCellBefore.accesskey "f">
 <!ENTITY tableCellAfter.label "Celle etter">
 <!ENTITY tableCellAfter.accesskey "C">
-<!-- Delete SubMenu -->
 <!ENTITY tableDeleteMenu.label "Slett">
 <!ENTITY tableDeleteMenu.accesskey "S">
-
-<!-- text for "Join Cells" is in editor.properties
-     ("JoinSelectedCells" and "JoinCellToRight")
-     the access key must exist in both of those strings
-     But value must be set here for accesskey to draw properly
--->
 <!ENTITY tableJoinCells.label "j">
 <!ENTITY tableJoinCells.accesskey "j">
 <!ENTITY tableSplitCell.label "Del celle">
@@ -260,7 +217,6 @@
 <!ENTITY convertToTable.accesskey "L">
 <!ENTITY tableProperties.label "Tabelleigenskapar…">
 <!ENTITY tableProperties.accesskey "T">
-
 <!ENTITY imageToolbarCmd.label "Bilde">
 <!ENTITY imageToolbarCmd.tooltip "Set inn nytt bilde eller rediger eigenskapane til det valde bildet">
 <!ENTITY hruleToolbarCmd.label "Horisontal linje">
@@ -273,8 +229,6 @@
 <!ENTITY anchorToolbarCmd.tooltip "Set inn nytt namngjeve anker eller rediger eigenskapane til det valde ankeret">
 <!ENTITY TextColorButton.tooltip "Vel tekstfarge">
 <!ENTITY BackgroundColorButton.tooltip "Vel bakgrunnsfarge">
-
-<!-- Editor toolbar -->
 <!ENTITY absoluteFontSizeToolbarCmd.tooltip "Vel skriftstorleik">
 <!ENTITY decreaseFontSizeToolbarCmd.tooltip "Mindre skrift">
 <!ENTITY increaseFontSizeToolbarCmd.tooltip "Større skrift">
@@ -291,13 +245,11 @@
 <!ENTITY alignCenterButton.tooltip "Midtstill tekst">
 <!ENTITY alignRightButton.tooltip "Juster tekst langs høgre marg">
 <!ENTITY alignJustifyButton.tooltip "Juster tekst etter venstre og høgre marg">
-
-<!-- TOC manipulation -->
-<!ENTITY insertTOC.label          "Set inn">
-<!ENTITY insertTOC.accesskey      "S">
-<!ENTITY updateTOC.label          "Oppdater">
-<!ENTITY updateTOC.accesskey      "O">
-<!ENTITY removeTOC.label          "Fjern">
-<!ENTITY removeTOC.accesskey      "j">
-<!ENTITY tocMenu.label            "Innhaldsliste …">
-<!ENTITY tocMenu.accesskey        "I">
+<!ENTITY insertTOC.label "Set inn">
+<!ENTITY insertTOC.accesskey "S">
+<!ENTITY updateTOC.label "Oppdater">
+<!ENTITY updateTOC.accesskey "O">
+<!ENTITY removeTOC.label "Fjern">
+<!ENTITY removeTOC.accesskey "j">
+<!ENTITY tocMenu.label "Innhaldsliste …">
+<!ENTITY tocMenu.accesskey "I">

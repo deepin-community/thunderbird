@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Rheolwr Allweddi OpenPGP
     .accesskey = R
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Gwirio Llofnod
     .accesskey = G
 openpgp-has-sender-key = Mae'r neges hon yn honni ei bod yn cynnwys allwedd gyhoeddus OpenPGP yr anfonwr.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Rhybudd: Mae'r allwedd gyhoeddus OpenPGP newydd yn y neges hon yn wahanol i'r allweddi cyhoeddus y gwnaethoch eu derbyn o'r blaen gan { $email }
 openpgp-import-sender-key =
     .label = Mewnforio…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Llofnodwyd y neges hon ag allwedd nad yw gennych chi eto.
 openpgp-search-signature-key =
     .label = Darganfod…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Mae hon yn neges OpenPGP gafodd ei llygru yn ôl pob golwg gan MS-Exchange ac nid oes modd ei hatgyweirio oherwydd iddi gael ei hagor o ffeil leol. Copïwch y neges i mewn i ffolder e-bost i roi cynnig ar ei hatgyweirio'n awtomatig.
 openpgp-broken-exchange-info = Neges OpenPGP yw hon a gafodd ei llygru yn ôl pob golwg gan MS-Exchange. Os na yw cynnwys y neges yn cael ei ddangos yn ôl y disgwyl, gallwch roi cynnig ar atgyweiriad awtomatig.
 openpgp-broken-exchange-repair =

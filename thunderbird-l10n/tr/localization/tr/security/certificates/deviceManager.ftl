@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Strings used for device manager
-
 devmgr-window =
     .title = Aygıt yöneticisi
     .style = min-width: 67em; min-height: 32em;
@@ -35,9 +28,6 @@ devmgr-button-enable-fips =
 devmgr-button-disable-fips =
     .label = FIPS’i etkisizleştir
     .accesskey = F
-
-## Strings used for load device
-
 load-device =
     .title = PKCS #11 aygıt sürücüsünü yükle
 load-device-info = Eklemek istediğiniz modülle ilgili bilgileri girin.
@@ -52,9 +42,6 @@ load-device-filename =
 load-device-browse =
     .label = Gözat…
     .accesskey = G
-
-## Token Manager
-
 devinfo-status =
     .label = Durum
 devinfo-status-disabled =
@@ -89,10 +76,8 @@ devinfo-serialnum =
 fips-nonempty-primary-password-required = FIPS kipi, her güvenlik cihazı bir ana parolaya ihtiyaç duyar. FIPS kipini etkinleştirmeden önce lütfen parolayı ayarlayın.
 unable-to-toggle-fips = FIPS kipi güvenlik aygıtı için değiştirilemiyor. Bu uygulamadan çıkıp uygulamayı yeniden başlatmanız tavsiye edilir.
 load-pk11-module-file-picker-title = Yüklemek için bir PKCS#11 aygıt sürücüsü seçin
-# Load Module Dialog
 load-module-help-empty-module-name =
     .value = Modül adı boş olamaz.
-# Do not translate 'Root Certs'
 load-module-help-root-certs-module-name =
     .value = ‘Root Certs‘ rezerve olduğu için modül adı olarak kullanılamaz.
 add-module-failure = Modül eklenemedi

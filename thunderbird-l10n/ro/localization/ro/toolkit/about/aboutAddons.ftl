@@ -1,20 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = Manager de suplimente
 search-header =
     .placeholder = Caută pe addons.mozilla.org
     .searchbuttonlabel = Căutare
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
 list-empty-get-extensions-message = Obține extensii și teme pe <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-language-packs-message = Obține pachete lingvistice pe <a data-l10n-name="get-extensions">{ $domain }</a>
-
-##
-
 list-empty-installed =
     .value = Nu ai vreun supliment de acest tip instalat
 list-empty-available-updates =
@@ -54,13 +43,9 @@ detail-update-automatic =
 detail-update-manual =
     .label = Dezactivate
     .tooltiptext = Nu instala actualizările automat
-# Used as a description for the option to allow or block an add-on in private windows.
 detail-private-browsing-label = Rulează în ferestre private
-# Some add-ons may elect to not run in private windows by setting incognito: not_allowed in the manifest.  This
-# cannot be overridden by the user.
 detail-private-disallowed-label = Nepermis în ferestre private
 detail-private-disallowed-description2 = Această extensie nu rulează în navigare privată. <a data-l10n-name="learn-more">Află mai multe</a>
-# Some special add-ons are privileged, run in private windows automatically, and this permission can't be revoked
 detail-private-required-label = Necesită acces la ferestre private
 detail-private-required-description2 = Această extensie are acces la activitățile tale online în navigarea privată. <a data-l10n-name="learn-more">Află mai multe</a>
 detail-private-browsing-on =
@@ -138,66 +123,36 @@ addon-category-available-updates-title =
 addon-category-recent-updates = Actualizări recente
 addon-category-recent-updates-title =
     .title = Actualizări recente
-
-## These are global warnings
-
-extensions-warning-safe-mode = Toate suplimentele sunt dezactivate în modul Sigur.
-extensions-warning-check-compatibility = Verificarea compatibilității suplimentelor este dezactivată. Ai putea avea suplimente incompatibile.
 extensions-warning-safe-mode2 =
     .message = Toate suplimentele sunt dezactivate în modul Sigur.
 extensions-warning-check-compatibility2 =
     .message = Verificarea compatibilității suplimentelor este dezactivată. Ai putea avea suplimente incompatibile.
 extensions-warning-check-compatibility-button = Activează
     .title = Activează verificarea compatibilității suplimentelor
-extensions-warning-update-security = Verificarea securității actualizărilor de suplimente este dezactivată. Ai putea primi actualizări compromise.
 extensions-warning-update-security2 =
     .message = Verificarea securității actualizărilor de suplimente este dezactivată. Ai putea primi actualizări compromise.
 extensions-warning-update-security-button = Activează
     .title = Activează verificarea securității actualizărilor suplimentelor
-
-## Strings connected to add-on updates
-
 addon-updates-check-for-updates = Caută actualizări
     .accesskey = C
 addon-updates-view-updates = Vezi actualizările recente
     .accesskey = V
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = Actualizează automat suplimentele
     .accesskey = A
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = Resetează toate suplimentele să se actualizeze automat
     .accesskey = R
 addon-updates-reset-updates-to-manual = Resetează toate suplimentele să se actualizeze manual
     .accesskey = R
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = Se actualizează suplimentele
 addon-updates-installed = Suplimentele tale au fost actualizate.
 addon-updates-none-found = Nicio actualizare găsită
 addon-updates-manual-updates-found = Vezi actualizările disponibile
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = Instalează un supliment dintr-un fișier…
     .accesskey = I
 addon-install-from-file-dialog-title = Selectează suplimentul pentru instalare
 addon-install-from-file-filter-name = Suplimente
 addon-open-about-debugging = Depanează suplimente
     .accesskey = b
-
-## Extension shortcut management
-
-# This is displayed in the page options menu
 addon-manage-extensions-shortcuts = Gestionează comenzile rapide ale extensiilor
     .accesskey = S
 shortcuts-no-addons = Nu ai activat nicio extensie.
@@ -212,23 +167,10 @@ shortcuts-modifier-other = Include Ctrl sau Alt
 shortcuts-invalid = Combinație nevalidă
 shortcuts-letter = Tastează o literă
 shortcuts-system = Scurtăturile { -brand-short-name } nu pot fi înlocuite
-# String displayed in warning label when there is a duplicate shortcut
 shortcuts-duplicate = Comandă rapidă duplicat
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
-shortcuts-duplicate-warning-message = { $shortcut } este folosită drept comandă rapidă în mai mult de un caz. Comenzile rapide duplicat pot produce comportamente neașteptate.
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message2 =
     .message = { $shortcut } este folosită drept comandă rapidă în mai mult de un caz. Comenzile rapide duplicat pot produce comportamente neașteptate.
-# String displayed when a keyboard shortcut is already used by another add-on
-# Variables:
-#   $addon (string) - Name of the add-on
 shortcuts-exists = Deja utilizat de { $addon }
-# Variables:
-#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
         [one] Afișează încă { $numberToShow }
@@ -238,49 +180,24 @@ shortcuts-card-expand-button =
 shortcuts-card-collapse-button = Afișează mai puțin
 header-back-button =
     .title = Înapoi
-
-## Recommended add-ons page
-
-# Explanatory introduction to the list of recommended add-ons. The action word
-# ("recommends") in the final sentence is a link to external documentation.
-discopane-intro = Extensiile și temele sunt ca un fel de aplicații pentru browser și îți permit să îți protejezi parolele, să descarci videoclipuri, să descoperi oferte, să blochezi reclame enervante, să schimbi aspectul browserului și multe altele. Aceste programe software mici sunt adesea dezvoltate de părți terțe. Iată o selecție pe care { -brand-product-name } <a data-l10n-name="learn-more-trigger">o recomandă</a> pentru securitate, performanță și funcționalitate de excepție.
-# Notice to make user aware that the recommendations are personalized.
-discopane-notice-recommendations = Unele dintre aceste recomandări sunt personalizate. Această selecție se bazează pe alte extensii pe care le-ai instalat, pe preferințele de profil și pe statisticile de utilizare.
-# Notice to make user aware that the recommendations are personalized.
 discopane-notice-recommendations2 =
     .message = Unele dintre aceste recomandări sunt personalizate. Această selecție se bazează pe alte extensii pe care le-ai instalat, pe preferințele de profil și pe statisticile de utilizare.
 discopane-notice-learn-more = Află mai multe
 privacy-policy = Politică de confidențialitate
-# Refers to the author of an add-on, shown below the name of the add-on.
-# Variables:
-#   $author (string) - The name of the add-on developer.
 created-by-author = de <a data-l10n-name="author">{ $author }</a>
-# Shows the number of daily users of the add-on.
-# Variables:
-#   $dailyUsers (number) - The number of daily users.
 user-count = Utilizatori: { $dailyUsers }
 install-extension-button = Adaugă în { -brand-product-name }
 install-theme-button = Instalează tema
-# The label of the button that appears after installing an add-on. Upon click,
-# the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = Gestionează
 find-more-addons = Caută mai multe suplimente
 find-more-themes = Găsește mai multe teme
-# This is a label for the button to open the "more options" menu, it is only
-# used for screen readers.
 addon-options-button =
     .aria-label = Mai multe opțiuni
-
-## Add-on actions
-
 report-addon-button = Raportează
 remove-addon-button = Elimină
-# The link will always be shown after the other text.
 remove-addon-disabled-button = Nu se poate elimina <a data-l10n-name="link">De ce?</a>
 disable-addon-button = Dezactivează
 enable-addon-button = Activează
-# This is used for the toggle on the extension card, it's a checkbox and this
-# is always its label.
 extension-enable-addon-button-label =
     .aria-label = Activează
 preferences-addon-button =
@@ -308,38 +225,16 @@ addon-detail-version-label = Versiune
 addon-detail-last-updated-label = Ultima actualizare
 addon-detail-homepage-label = Pagină de start
 addon-detail-rating-label = Evaluare
-# Message for add-ons with a staged pending update.
-install-postponed-message = Această extensie va fi actualizată la repornirea { -brand-short-name }.
-# Message for add-ons with a staged pending update.
 install-postponed-message2 =
     .message = Această extensie va fi actualizată la repornirea { -brand-short-name }.
 install-postponed-button = Actualizează acum
-# The average rating that the add-on has received.
-# Variables:
-#   $rating (number) - A number between 0 and 5. The translation should show at most one digit after the comma.
-five-star-rating =
-    .title = Evaluat la { NUMBER($rating, maximumFractionDigits: 1) } din 5
-# This string is used to show that an add-on is disabled.
-# Variables:
-#   $name (string) - The name of the add-on
 addon-name-disabled = { $name } (dezactivat)
-# The number of reviews that an add-on has received on AMO.
-# Variables:
-#   $numberOfReviews (number) - The number of reviews received
 addon-detail-reviews-link =
     { $numberOfReviews ->
         [one] { $numberOfReviews } recenzie
         [few] { $numberOfReviews } recenzii
        *[other] { $numberOfReviews } de recenzii
     }
-
-## Pending uninstall message bar
-
-# Variables:
-#   $addon (string) - Name of the add-on
-pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> a fost eliminat.
-# Variables:
-#   $addon (string) - Name of the add-on
 pending-uninstall-description2 =
     .message = { $addon } a fost eliminat.
 pending-uninstall-undo-button = Anulează
@@ -349,50 +244,26 @@ addon-detail-updates-radio-on = Activate
 addon-detail-updates-radio-off = Dezactivate
 addon-detail-update-check-label = Caută actualizări
 install-update-button = Actualizare
-# This is the tooltip text for the private browsing badge in about:addons. The
-# badge is the private browsing icon included next to the extension's name.
-addon-badge-private-browsing-allowed2 =
+addon-badge-private-browsing-allowed3 =
     .title = Permis în ferestre private
-    .aria-label = { addon-badge-private-browsing-allowed2.title }
 addon-detail-private-browsing-help = Când are accesul permis, extensia va avea acces la activitățile tale online în navigarea privată. <a data-l10n-name="learn-more">Află mai multe</a>
 addon-detail-private-browsing-allow = Permite
 addon-detail-private-browsing-disallow = Nu permite
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-# Used as a description for the option to allow or block an add-on on quarantined domains.
 addon-detail-quarantined-domains-label = Rulează pe site-uri cu restricții
-# Used as help text part of the quarantined domains UI controls row.
 addon-detail-quarantined-domains-help = Când are accesul permis, extensia va avea acces la site-uri restricționate de { -vendor-short-name }. Permite numai dacă ai încredere în această extensie.
-# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
 addon-detail-quarantined-domains-allow = Permite
 addon-detail-quarantined-domains-disallow = Nu permite
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-addon-badge-recommended2 =
+addon-badge-recommended3 =
     .title = { -brand-product-name } recomandă numai extensiile care ne întrunesc standardele de securitate și performanță
-    .aria-label = { addon-badge-recommended2.title }
-
-##
-
 available-updates-heading = Actualizări disponibile
 recent-updates-heading = Actualizări recente
 release-notes-loading = Se încarcă...
 release-notes-error = Ne pare rău, dar a intervenit o eroare la încărcarea notelor privind versiunea.
-addon-permissions-empty = Această extensie nu necesită nicio permisiune
 addon-permissions-required = Permisiuni necesare pentru funcționalitatea de bază:
 addon-permissions-learnmore = Află mai multe despre permisiuni
 recommended-extensions-heading = Extensii recomandate
 recommended-themes-heading = Teme recomandate
-# A recommendation for the Firefox Color theme shown at the bottom of the theme
-# list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Te simți creativ? <a data-l10n-name="link">Construiește-ți propria temă cu Firefox Color.</a>
-
-## Page headings
-
 extension-heading = Gestionează extensiile
 theme-heading = Gestionează temele
 plugin-heading = Gestionează pluginurile
@@ -406,40 +277,14 @@ addons-heading-search-input =
     .placeholder = Caută pe addons.mozilla.org
 addon-page-options-button =
     .title = Instrumente pentru toate suplimentele
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (string) - Application version.
-details-notification-incompatible = { $name } este incompatibil cu { -brand-short-name } { $version }.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } este incompatibil cu { -brand-short-name } { $version }.
-details-notification-unsigned-and-disabled = { $name } nu a putut fi verificat pentru a fi folosit în { -brand-short-name } și a fost dezactivat.
 details-notification-unsigned-and-disabled2 =
     .message = { $name } nu a putut fi verificat pentru a fi folosit în { -brand-short-name } și a fost dezactivat.
-details-notification-unsigned-and-disabled-link = Mai multe informații
-details-notification-unsigned = { $name } nu a putut fi verificat pentru a fi folosit în { -brand-short-name }. Continuă cu atenție.
 details-notification-unsigned2 =
     .message = { $name } nu a putut fi verificat pentru a fi folosit în { -brand-short-name }. Continuă cu atenție.
-details-notification-unsigned-link = Mai multe informații
-details-notification-blocked = { $name } a fost dezactivat din cauza unor probleme de securitate sau stabilitate.
-details-notification-blocked2 =
-    .message = { $name } a fost dezactivat din cauza unor probleme de securitate sau stabilitate.
-details-notification-blocked-link = Mai multe informații
-details-notification-softblocked = Se știe că { $name } poate provoca probleme de securitate sau stabilitate.
-details-notification-softblocked2 =
-    .message = Se știe că { $name } poate provoca probleme de securitate sau stabilitate.
-details-notification-softblocked-link = Mai multe informații
-details-notification-gmp-pending = { $name } va fi instalat în scurt timp.
 details-notification-gmp-pending2 =
     .message = { $name } va fi instalat în scurt timp.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = Informații privind licența
 plugins-gmp-privacy-info = Informații de confidențialitate
 plugins-openh264-name = Codec video OpenH264 furnizat de Cisco Systems, Inc.

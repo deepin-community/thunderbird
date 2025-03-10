@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Kapat
 preferences-doc-title2 = Ayarlar
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Eşitle
 category-sync =
     .tooltiptext = Eşitle
+pane-qr-export-title = Mobil için Dışa Aktar
+category-qr-export =
+    .tooltiptext = Mobil cihazlar için dışa aktar
 general-language-and-appearance-header = Dil ve Görünüm
 general-incoming-mail-header = Gelen E-postalar
 general-files-and-attachment-header = Dosyalar ve Ekler
@@ -50,8 +49,6 @@ collection-health-report =
     .label = { -brand-short-name }, teknik ve etkileşim verilerimi { -vendor-short-name }’ya gönderebilir
     .accesskey = t
 collection-health-report-link = Daha fazla bilgi al
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Bu yapılandırma için veri raporlama devre dışı bırakılmış
 collection-backlogged-crash-reports =
     .label = { -brand-short-name } geriye dönük çökme raporlarını benim adıma gönderebilir
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Bu değişiklikleri uygulamak için { -brand-short-name } yeniden başlatılmalıdır
 confirm-messenger-language-change-button = Uygula ve yeniden başlat
 update-setting-write-failure-title = Güncelleme tercihleri kaydedilirken hata oluştu
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } bir hatayla karşılaştı ve bu değişikliği kaydetmedi. Bu güncelleme tercihinin ayarlanması için aşağıdaki dosyaya yazma izninizin olması gerekir. Siz veya sistem yöneticiniz bu dosya için Kullanıcılar grubuna tam denetim vererek hatayı giderebilirsiniz.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Güncelleme sürüyor
 update-in-progress-message = { -brand-short-name } bu güncellemeyi uygulamaya devam etsin mi?
 update-in-progress-ok-button = &Vazgeç
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Devam et
 account-button = Hesap Ayarları
 open-addons-sidebar-button = Eklentiler ve Temalar
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Ana parola oluşturmak için Windows hesap bilgilerinizi girin. Bu sayede hesaplarınızı daha güvenli bir şekilde koruyabiliriz.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = ana parola oluşturma
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = OpenSearch sağlayıcısı ekle
 add-opensearch-provider-text = Eklenecek OpenSearch sağlayıcısının URL’sini girin. OpenSearch Açıklama dosyasının tam URL’sini veya sağlayıcının otomatik olarak keşfedilebileceği bir URL’yi kullanın.
 adding-opensearch-provider-failed-title = OpenSearch sağlayıcısı ekleme başarısız
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = { $url } için OpenSearch sağlayıcısı eklenemedi.
 minimize-to-tray-label =
     .label = { -brand-short-name } simge durumuna küçültüldüğünde sistem tepsisine taşı
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Şimdi denetle…
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Alındı onayları…
     .accesskey = A
 update-app-legend = { -brand-short-name } Güncellemeleri
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Sürüm { $version }
 allow-description = { -brand-short-name } şunları yapabilir
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = o
 compact-folder-size =
     .value = MB kazanılabileceği zaman tüm klasörleri sıkıştır
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Önbellek için en fazla
     .accesskey = b
 use-cache-after = MB kullan
-
-##
-
 smart-cache-label =
     .label = Otomatik önbellek yönetiminin üzerine yaz
     .accesskey = O
@@ -304,7 +269,6 @@ color-options-button =
     .label = Renkler…
     .accesskey = R
 display-width-legend = Düz Metinli İletiler
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Duygu simgelerini grafik olarak göster
     .accesskey = D
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Ekleri satır içinde görüntüle
     .accesskey = E
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Baktıktan
     .accesskey = k
 seconds-label = saniye sonra
-
-##
-
 open-msg-label =
     .value = Yeni postayı:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Taşınınca veya silinince ileti penceresini/sekmesini kapat
     .accesskey = k
-display-name-label =
-    .value = Görünen ad:
 address-display-legend = İleti listesi
 address-display-description = Tercih edilen adres görüntüleme biçimi:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Adres defterimdeki kişilerin yalnızca görünen adlarını göster
     .accesskey = d
-
-## Compose Tab
-
+table-layout-legend = Tablo görünümü
+table-layout-horizontal-scroll-label =
+    .label = Yatay kaydırmaya izin ver
+    .accesskey = Y
+conversation-view-legend = Yazışma görünümü
+conversation-view-checkbox-label =
+    .label = Yazışma görünümünü etkinleştir
+    .accesskey = z
+conversation-view-checkbox-description = Gloda’ya dayalı deneysel özellik. Kullanmak sizin sorumluluğunuzdadır.
+label-experiment = Deneysel
+account-hub-legend = Hesap merkezi
+account-hub-checkbox-label =
+    .label = Hesapları yeni Hesap Merkezi’nde oluştur
+    .accesskey = H
+account-hub-checkbox-description = Deneysel yeni e-posta hesabı oluşturma akışı
 forward-label =
     .value = İletileri
     .accesskey = İ
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = dosya adına uzantı ekle
     .accesskey = d
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Her
     .accesskey = e
 auto-save-end = dakikada bir otomatik kaydet
-
-##
-
 warn-on-send-accel-key =
     .label = İleti göndermek için klavye kısayolu kullanıldığında onay iste
     .accesskey = k
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Daha fazla sağlayıcı bul…
 cloud-account-description = Yeni Filelink depolama hizmeti ekle
-
-## Privacy Tab
-
 mail-content = E-posta İçeriği
 remote-content-label =
     .label = İletilerde uzaktan çekilen içeriğe izin ver
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Çerezleri göster…
     .accesskey = z
-do-not-track-label =
-    .label = Web sitelerine izlenmek istemediğimi bildiren “Do Not Track” sinyalini gönder
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Daha fazla bilgi al
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Web sitelerine verilerimi satmamalarını ve paylaşmamalarını söyle
+    .accesskey = W
+do-not-track-removal = Artık “Do Not Track” sinyalini desteklemiyoruz
 passwords-description = { -brand-short-name } bütün hesaplarınızın parolalarını hatırlayabilir.
 passwords-button =
     .label = Kayıtlı parolalar…
@@ -571,7 +528,6 @@ primary-password-description = Ana parola bütün parolalarınızı korur. Her o
 primary-password-label =
     .label = Ana parola kullan
     .accesskey = k
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Parolaları doldurmak ve yönetmek için cihazdan giriş yapmayı zorunlu tut
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Şu anda FIPS kipindesiniz. FIPS için boş olmayan bir ana parola gereklidir.
 forms-master-pw-fips-desc = Parola değiştirme başarısız
 junk-description = Varsayılan gereksiz e-posta ayarlarınızı yapılandırın. Hesaba özel gereksiz e-posta ayarlarını hesap ayarlarından yapılandırabilirsiniz.
-junk-label =
-    .label = İletileri gereksiz olarak işaretlediğimde:
-    .accesskey = l
 junk-marked-label =
     .label = İletiler gereksiz olarak işaretlendiğinde
     .accesskey = z
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = İletileri sil
     .accesskey = s
-junk-read-label =
-    .label = Gereksiz iletileri okundu olarak işaretle
-    .accesskey = G
 junk-read-description = İletileri okundu olarak işaretle
 junk-read-manual-label =
     .label = Elle gereksiz olarak işaretlendiğinde
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Otomatik kararlar, bir ileti oluşturulurken şifrelemenin manuel olarak etkinleştirilmesi veya devre dışı bırakılmasıyla geçersiz kılınabilir.
     Not: Şifreli bir iletiye yanıt verilirken şifreleme her zaman otomatik olarak etkinleştirilir.
-
-## Chat Tab
-
 startup-label =
     .value = { -brand-short-name } açıldığında:
     .accesskey = a
@@ -661,20 +608,10 @@ offline-label =
     .label = Sohbet hesaplarımı çevrimdışı tut
 auto-connect-label =
     .label = Sohbet hesaplarıma otomatik olarak bağlan
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Kişi listemdekiler
     .accesskey = K
 idle-time-label = dakika hareketsizlikten sonra uzakta olduğumu bilsin
-
-##
-
 away-message-label =
     .label = ve durumumu şu durum iletisiyle Uzakta olarak ayarla:
     .accesskey = U
@@ -736,41 +673,21 @@ no-preview-description = Bu tema geçersiz veya şu anda kullanılamıyor (devre
 chat-variant-label =
     .value = Varyant:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Ayarlarda ara
-
-## Settings UI Search Results
-
 search-results-header = Arama Sonuçları
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Kusura bakmayın, seçeneklerde “<span data-l10n-name="query"></span>” ile ilgili bir sonuç bulamadık.
        *[other] Kusura bakmayın, ayarlarda “<span data-l10n-name="query"></span>” ile ilgili bir sonuç bulamadık.
     }
 search-results-help-link = Yardım mı gerekiyor? <a data-l10n-name="url">{ -brand-short-name } Destek</a>’i ziyaret edin.
-
-## Sync Tab
-
 sync-signedout-caption = Web’inizi yanınızda taşıyın
 sync-signedout-description = Hesaplarınızı, adres defterlerinizi, takvimlerinizi, eklentilerinizi ve ayarlarınızı tüm cihazlarınız arasında eşitleyin.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
-sync-signedout-account-signin-btn = Eşitlemek için giriş yap…
+sync-signedout-account-signin-btn = Sync’e giriş yap…
 sync-pane-header = Eşitle
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” doğrulanmamış.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Yeniden “{ $userEmail }” hesabınıza bağlanmak için lütfen giriş yapın
 sync-pane-resend-verification = Doğrulamayı yeniden gönder
 sync-pane-sign-in = Giriş yap
@@ -800,3 +717,49 @@ synced-acount-item-filters = Süzgeçler
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = E-postalarınızı, adres defterlerinizi, takvimlerinizi ve kimliklerinizi tüm cihazlarınız arasında eşitleyin.
 sync-disconnected-turn-on-sync = Eşitlemeyi aç…
+qr-export-pane-header = Hesapları { -brand-product-name } Mobil’e aktar
+qr-export-description = QR kodu oluşturarak hesap ayarlarınızı bilgisayardan telefona hızlıca aktarabilirsiniz. Ekleyeceğiniz hesapları seçin, parolanızı aktarmak isteyip istemediğinize karar verin ve kodu mobil cihazınızla okutun. Hızlı, güvenli ve basit.
+qr-export-get-app = Mobil cihazınızda henüz { -brand-product-name } yok mu? <a data-l10n-name="app-link">Google Play’den indirin</a>
+qr-export-create = Hesaplarınızı dışa aktarmak için QR kodu oluşturun
+qr-export-select-accounts = Dışa aktarılacak hesapları seçin:
+qr-export-no-accounts = Tüm hesaplarınızı göremiyor musunuz? Android için { -brand-product-name } tarafından desteklenmeyen hesaplarınız devre dışı bırakılmış olabilir. <a data-l10n-name="account-support-link">Destek alın</a>
+qr-export-accounts-legend = E-posta hesapları
+qr-export-select-all-accounts = Tümünü seç
+qr-export-security-legend = Güvenlik
+qr-export-include-passwords = Tüm hesap parolalarını dahil et
+qr-export-oauth-warning = Bazı hesaplarınız, mobil cihazınızda yeniden doğrulama gerektirebilecek bir kimlik doğrulama yöntemi kullanıyor. Bu işlem sırasında parolalarınızı tekrar girmeniz gerekebilir.
+qr-export-security-hint = Aşağıdaki QR kodlarını okuttuğunuzda hesap ayarlarınız (e-posta adresiniz ve parolanız dahil) güvenli bir şekilde aktarılacaktır. İşlem sırasında bu verilerin hiçbirini toplamıyor, depolamıyor ve paylaşmıyoruz. Aktarım doğrudan cihazlarınız arasında gerçekleşecektir.
+qr-export-security-warning = Güvenliğiniz için lütfen bu işlemi topluluk içindeyken yapmayın ve sadece güvenilir kaynaklara ait QR kodlarını okutun.
+qr-export-start-export = Dışa aktar
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step }/{ $count } QR kodu
+       *[other] { $step }/{ $count } QR kodu
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Mobil cihazınızda { -brand-product-name } uygulamasıyla QR kodunu okutun
+       *[other] Mobil cihazınızda { -brand-product-name } uygulamasıyla QR kodlarını okutun
+    }
+qr-export-scan-step1 = Mobil cihazınızda { -brand-product-name } uygulamasını açın
+qr-export-scan-step2 = Ayarlara git
+qr-export-scan-step3 = <strong>Ayarları içe aktar</strong>’ı seçin
+qr-export-scan-step4-revision = <strong>QR kodu okut</strong>’a dokunup telefonunuza bu kodu okutun
+qr-export-back = Geri
+qr-export-next = İleri
+qr-export-done = Tamam
+qr-export-summary-description = Hesaplar dışa aktarıldı. Mobil cihazınızdan devam edin.
+qr-export-summary-title = Dışa aktarım özeti:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR kodu oluşturuldu
+       *[other] { $count } QR kodu oluşturuldu
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } hesap dışa aktarıldı:
+       *[other] { $count } hesap dışa aktarıldı:
+    }
+qr-export-summary-passwords-included = Parolalar dahil edildi
+qr-export-summary-passwords-excluded = Parolalar hariç tutuldu
+qr-export-more-accounts = Daha fazla hesabı dışa aktar

@@ -1,11 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-setup-tab-title = Hesap Kurulumu
-
-## Header
-
 account-setup-title = Mevcut E-posta Adresinizi Ayarlayın
 account-setup-description =
     Mevcut e-posta adresinizi kullanmak için hesap bilgilerinizi girin.<br/>
@@ -14,12 +7,8 @@ account-setup-secondary-description = { -brand-product-name }, çalışan ve ön
 account-setup-success-title = Hesap başarıyla oluşturuldu
 account-setup-success-description = Artık bu hesabı { -brand-short-name } ile kullanabilirsiniz.
 account-setup-success-secondary-description = İlgili hizmetleri bağlayarak ve gelişmiş hesap ayarlarını yapılandırarak deneyiminizi iyileştirebilirsiniz.
-
-## Form fields
-
 account-setup-name-label = Tam adınız
     .accesskey = a
-# Note: "John Doe" is a multiple-use name that is used when the true name of a person is unknown. We use this fake name as an input placeholder. Translators should update this to reflect the placeholder name of their language/country.
 account-setup-name-input =
     .placeholder = Ahmet Yılmaz
 account-setup-name-info-icon =
@@ -37,8 +26,6 @@ account-setup-email-warning-icon =
 account-setup-password-label = Parola
     .accesskey = P
     .title = İsteğe bağlı, yalnızca kullanıcı adını doğrulamak için kullanılır
-account-provisioner-button = Yeni bir e-posta adresi al
-    .accesskey = a
 account-setup-password-toggle-show =
     .title = Parolayı açık metin olarak göster
 account-setup-password-toggle-hide =
@@ -47,15 +34,10 @@ account-setup-remember-password = Parolayı hatırla
     .accesskey = h
 account-setup-exchange-label = Kullanıcı adınız
     .accesskey = K
-#   YOURDOMAIN refers to the Windows domain in ActiveDirectory. yourusername refers to the user's account name in Windows.
 account-setup-exchange-input =
     .placeholder = ETKİALANI\kullanıcıadınız
-#   Domain refers to the Windows domain in ActiveDirectory. We mean the user's login in Windows at the local corporate network.
 account-setup-exchange-info-icon =
     .title = Etki alanındaki kullanıcı adı
-
-## Action buttons
-
 account-setup-button-cancel = İptal
     .accesskey = İ
 account-setup-button-manual-config = Elle yapılandır
@@ -68,15 +50,11 @@ account-setup-button-continue = Devam et
     .accesskey = D
 account-setup-button-done = Tamam
     .accesskey = T
-
-## Notifications
-
 account-setup-looking-up-settings = Yapılandırma aranıyor…
 account-setup-looking-up-settings-guess = Yapılandırma aranıyor: Sık kullanılan sunucu adları deneniyor…
 account-setup-looking-up-settings-half-manual = Yapılandırma aranıyor: Sunucu inceleniyor…
 account-setup-looking-up-disk = Yapılandırma aranıyor: { -brand-short-name } kurulumu…
 account-setup-looking-up-isp = Yapılandırma aranıyor: E-posta sağlayıcısı…
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-looking-up-db = Yapılandırma aranıyor: Mozilla İSS veritabanı…
 account-setup-looking-up-mx = Yapılandırma aranıyor: Gelen e-posta alan adı…
 account-setup-looking-up-exchange = Yapılandırma aranıyor: Exchange sunucusu…
@@ -87,15 +65,10 @@ account-setup-success-guess = Sık kullanılan sunucu adları denenerek yapılan
 account-setup-success-guess-offline = Çevrimdışısınız. Bazı ayarları tahmin ettik ama doğru ayarları elle girmeniz gerekecek.
 account-setup-success-password = Parola doğru
 account-setup-success-addon = Eklenti başarıyla yüklendi
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-success-settings-db = Mozilla İSS veritabanında yapılandırma bulundu.
 account-setup-success-settings-disk = { -brand-short-name } kurulumunda yapılandırma bulundu.
 account-setup-success-settings-isp = E-posta sağlayıcısında yapılandırma bulundu.
-# Note: Microsoft Exchange is a product name.
 account-setup-success-settings-exchange = Bir Microsoft Exchange sunucusuna ait yapılandırma bulundu.
-
-## Illustrations
-
 account-setup-step1-image =
     .title = İlk kurulum
 account-setup-step2-image =
@@ -114,11 +87,6 @@ account-setup-documentation-help = Kurulum belgeleri
 account-setup-forum-help = Destek forumu
 account-setup-privacy-help = Gizlilik ilkeleri
 account-setup-getting-started = Başlarken
-
-## Results area
-
-# Variables:
-#  $count (Number) - Number of available protocols.
 account-setup-results-area-title =
     { $count ->
         [one] Mevcut yapılandırma
@@ -126,7 +94,6 @@ account-setup-results-area-title =
     }
 account-setup-result-imap-description = Klasörlerinizi ve e-postalarınızı sunucunuzla eşitlenmiş halde tutun
 account-setup-result-pop-description = Klasörlerinizi ve e-postalarınızı bilgisayarınızda tutun
-# Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Microsoft Exchange sunucusunu veya Office365 bulut hizmetlerini kullanın
 account-setup-incoming-title = Gelen
 account-setup-outgoing-title = Giden
@@ -136,22 +103,11 @@ account-setup-result-no-encryption = Şifreleme yok
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
 account-setup-result-outgoing-existing = Mevcut giden SMTP sunucusunu kullan
-# Variables:
-#  $incoming (String): The email/username used to log into the incoming server
-#  $outgoing (String): The email/username used to log into the outgoing server
 account-setup-result-username-different = Gelen: { $incoming }, giden: { $outgoing }
-
-## Error messages
-
-# Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
 account-setup-credentials-incomplete = Kimlik doğrulama başarısız oldu. Girilen kimlik bilgileri yanlış veya oturum açmak için ayrı bir kullanıcı adı gerekiyor. Bu kullanıcı adı genellikle Windows etki alanı hesabınızdır. Etki alanı dahil olabilir veya olmayabilir. (Örn. ahmetyilmaz veya AD\\ahmetyilmaz)
 account-setup-credentials-wrong = Kimlik doğrulama başarısız oldu. Lütfen kullanıcı adını ve parolayı kontrol edin
 account-setup-find-settings-failed = { -brand-short-name }, e-posta hesabınızın ayarlarını bulamadı
 account-setup-exchange-config-unverifiable = Yapılandırma doğrulanamadı. Kullanıcı adınız ve parolanız doğruysa sunucu yöneticisi hesabınız için seçili yapılandırmayı devre dışı bırakmış olabilir. Başka bir protokol seçmeyi deneyin.
-account-setup-provisioner-error = Yeni { -brand-short-name } hesabınız oluşturulurken bir hata meydana geldi. Lütfen hesabınızı manuel olarak ayarlamayı deneyin.
-
-## Manual configuration area
-
 account-setup-manual-config-title = Sunucu ayarları
 account-setup-incoming-server-legend = Gelen sunucusu
 account-setup-protocol-label = Protokol:
@@ -161,29 +117,18 @@ account-setup-port-label = Port:
 account-setup-auto-description = { -brand-short-name }, boş bırakılan alanları otomatik olarak algılamaya çalışır.
 account-setup-ssl-label = Bağlantı güvenliği:
 account-setup-outgoing-server-legend = Giden sunucusu
-
-## Incoming/Outgoing SSL Authentication options
-
 ssl-autodetect-option = Otomatik algıla
 ssl-no-authentication-option = Yetkilendirme yok
 ssl-cleartext-password-option = Normal parola
 ssl-encrypted-password-option = Şifrelenmiş parola
-
-## Incoming/Outgoing SSL options
-
 ssl-noencryption-option = Yok
 account-setup-auth-label = Yetkilendirme yöntemi:
 account-setup-username-label = Kullanıcı adı:
 account-setup-advanced-setup-button = Gelişmiş yapılandırma
     .accesskey = G
-
-## Warning insecure server dialog
-
 account-setup-insecure-title = Uyarı!
 account-setup-insecure-incoming-title = Gelen posta ayarları:
 account-setup-insecure-outgoing-title = Giden e-posta ayarları:
-# Variables:
-#  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = <b>{ $server }</b> sunucusu şifreleme kullanmıyor.
 account-setup-warning-cleartext-details = Güvensiz posta sunucuları, parolalarınızı ve özel bilgilerinizi korumak için şifrelenmiş bağlantı kullanmaz. Bu sunucuya bağlanarak parolanızı ve özel bilgilerinizi ifşa ediyor olabilirsiniz.
 account-setup-insecure-server-checkbox = Riskleri anladım
@@ -193,17 +138,9 @@ insecure-dialog-cancel-button = Ayarları değiştir
     .accesskey = d
 insecure-dialog-confirm-button = Onayla
     .accesskey = O
-
-## Warning Exchange confirmation dialog
-
-# Variables:
-#  $domain (String): The name of the server where the configuration was found, e.g. rackspace.com.
 exchange-dialog-question = { -brand-short-name }, { $domain } üzerinde hesap kurulum bilgilerinizi buldu. Devam etmek ve hesap bilgilerinizi göndermek ister misiniz?
 exchange-dialog-confirm-button = Giriş yap
 exchange-dialog-cancel-button = Vazgeç
-
-## Dismiss account creation dialog
-
 exit-dialog-title = Yapılandırılmış E-posta Hesabı Yok
 exit-dialog-description = Kurulumu iptal etmek istediğinizden emin misiniz? { -brand-short-name } bir e-posta hesabı olmadan da çalışır ama birçok özelliği kullanamazsınız.
 account-setup-no-account-checkbox = { -brand-short-name }’ü e-posta hesabı olmadan kullan
@@ -212,22 +149,13 @@ exit-dialog-cancel-button = Kuruluma devam et
     .accesskey = d
 exit-dialog-confirm-button = Kurulumdan çık
     .accesskey = u
-
-## Alert dialogs
-
 account-setup-creation-error-title = Hesap Oluşturma Hatası
 account-setup-error-server-exists = Gelen sunucusu zaten var.
 account-setup-confirm-advanced-title = Gelişmiş Yapılandırmayı Onayla
 account-setup-confirm-advanced-description = Bu iletişim kutusu kapatılacak ve yapılandırma hatalı olsa bile mevcut ayarlarla bir hesap oluşturulacaktır. Devam etmek istiyor musunuz?
-
-## Addon installation section
-
 account-setup-addon-install-title = Yükle
 account-setup-addon-install-intro = Üçüncü taraflarca geliştirilen bir eklenti, bu sunucudaki e-posta hesabınıza erişmenize olanak sağlayabilir:
 account-setup-addon-no-protocol = Bu e-posta sunucusu maalesef açık protokolleri desteklemiyor. { account-setup-addon-install-intro }
-
-## Success view
-
 account-setup-settings-button = Hesap ayarları
 account-setup-encryption-button = Uçtan uca şifreleme
 account-setup-signature-button = İmza ekle
@@ -238,15 +166,11 @@ account-setup-calendar-button = Uzak bir takvime bağlanın
 account-setup-linked-services-title = Hizmetlerinizi bağlayın
 account-setup-linked-services-description = { -brand-short-name }, e-posta hesabınızla bağlantılı başka hizmetler buldu.
 account-setup-no-linked-description = { -brand-short-name } uygulamasından en iyi şekilde yararlanmak için diğer hizmetleri kurun.
-# Variables:
-# $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
     { $count ->
         [one] { -brand-short-name }, e-posta hesabınıza bağlı bir adres defteri buldu.
        *[other] { -brand-short-name }, e-posta hesabınıza bağlı { $count } adres defteri buldu.
     }
-# Variables:
-# $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
     { $count ->
         [one] { -brand-short-name } e-posta hesabınıza bağlı 1 takvim buldu.
@@ -265,9 +189,6 @@ account-setup-existing-calendar = Bağlı
     .title = Takvim zaten bağlı
 account-setup-connect-all-calendars = Tüm takvimleri bağla
 account-setup-connect-all-address-books = Tüm adres defterlerini bağla
-
-## Calendar synchronization dialog
-
 calendar-dialog-title = Takvimi bağla
 calendar-dialog-cancel-button = Vazgeç
     .accesskey = V
@@ -279,8 +200,6 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Renk
 account-setup-calendar-refresh-label = Tazele
 account-setup-calendar-refresh-manual = Elle
-# Variables:
-# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Her dakika

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Të dhëna Klasifikuesi URL-je
 url-classifier-search-title = Kërkim
 url-classifier-search-result-title = Përfundime
@@ -40,19 +36,14 @@ url-classifier-debug-sb-modules = Module regjistrash Shfletimi të Parrezik
 url-classifier-debug-modules = Module të tanishëm regjistrimi
 url-classifier-debug-sbjs-modules = Regjistër JS Shfletimi të Parrezik
 url-classifier-debug-file = Kartelë regjistri të tanishëm
-
 url-classifier-trigger-update = Shkakto Përditësim
 url-classifier-not-available = N/A
-url-classifier-disable-sbjs-log = Çaktivizo Regjistër JS-je Shfletimi të Sigurt
-url-classifier-enable-sbjs-log = Aktivizo Regjistër JS-je Shfletimi të Sigurt
+url-classifier-disable-sbjs-log = Çaktivizo Regjistër JS-je Shfletimi të Siguruar
+url-classifier-enable-sbjs-log = Aktivizo Regjistër JS-je Shfletimi të Siguruar
 url-classifier-enabled = I aktivizuar
 url-classifier-disabled = I çaktivizuar
 url-classifier-updating = po përditësohet
 url-classifier-cannot-update = s’përditësohet dot
 url-classifier-success = sukses
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = gabim përditësimi ({ $error })
 url-classifier-download-error = gabim shkarkimi ({ $error })

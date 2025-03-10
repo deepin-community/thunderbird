@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = あなたの権利について
 rights-intro = { -brand-full-name } は無料のオープンソースソフトウェアであり、世界中の多数のコミュニティによって開発されています。ご利用に際してはいくつか知っておいていただきたいことがあります:
 rights-intro-point-1 = { -brand-short-name } は <a data-l10n-name="mozilla-public-license-link">Mozilla Public License</a> の条項下で提供されます。これにより、あなたは { -brand-short-name } を使用、複製、配布することができます。あなたはまた、{ -brand-short-name } のソースコードを必要に応じて修正することもできます。Mozilla Public License では、あなたが修正したバージョンを配布することも認めています。

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Esaouenn wevn
 toolbar-write-message-label = Skridaozañ
 toolbar-write-message =

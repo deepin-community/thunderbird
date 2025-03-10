@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Laster-markak irakurri eta aldatzea
 webext-perms-description-browserSettings = Nabigatzailearen ezarpenak irakurri eta aldatzea
 webext-perms-description-browsingData = Azken nabigazio-historia, cookieak eta erlazionatutako datuak ezabatzea
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Itxitako azken fitxak atzitzea
 webext-perms-description-tabs = Nabigatzailearen fitxak atzitzea
 webext-perms-description-tabHide = Nabigatzaileko fitxak ezkutatu eta erakustea
 webext-perms-description-topSites = Nabigatze-historia atzitzea
+webext-perms-description-trialML = Deskargatu eta exekutatu AA modeloak zure gailuan
+webext-perms-description-userScripts = Baimendu egiaztatu gabeko hirugarrenen scriptei zure datuetarako sarbidea
 webext-perms-description-webNavigation = Nabigatu ahala nabigazio-jarduera atzitzea
+webext-perms-extra-warning-userScripts-long = Egiaztatu gabeko scriptek segurtasun eta pribatutasun arriskuak eragin litzakete, hala nola kode kaltegarria exekutatzea edo webguneetako jardueraren jarraipena egitea. Soilik exekutatu hedapenetako edo fidagarritzat dituzun iturburuetako scriptak.
+webext-perms-extra-warning-userScripts-short = Egiaztatu gabeko scriptek segurtasun eta pribatutasun arriskuak eragin litzakete. Soilik exekutatu hedapenetako edo fidagarritzat dituzun iturburuetako scriptak.

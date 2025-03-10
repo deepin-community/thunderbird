@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Yakon taq kitikirib'al molojri'ïl
 saved-logins-title = Yakon taq kitikirib'al molojri'ïl
-window-close =
-    .key = w
 copy-provider-url-cmd =
     .label = Tiwachib'ëx URL
     .accesskey = w
@@ -62,6 +54,3 @@ remove-all-shown =
 remove-all-passwords-prompt = ¿At jikïl chi nawajo' ye'ayüj ronojel ri ewan taq tzij?
 remove-all-passwords-title = Keyuj ronojel ri ewan taq tzij
 no-master-password-prompt = ¿La at jikïl chi nawajo' ye'ak'üt pe ri ewan taq atzij?
-
-## OS Authentication dialog
-

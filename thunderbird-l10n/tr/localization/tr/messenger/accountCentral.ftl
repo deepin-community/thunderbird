@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = { -brand-full-name } uygulamasına hoş geldiniz
 account-settings = Hesap Ayarları
-#   $accounts (Number) - the number of configured accounts
 setup-title = Eklenecek hesabı seçin
 about-title = { -brand-full-name } hakkında
 resources-title = Kaynaklar
@@ -37,7 +32,6 @@ import-label = İçe aktar
     .aria-label = Diğer programlardan verileri içe aktarma
 about-paragraph = Thunderbird, hem iş hem de kişisel amaçlı kullanım için ücretsiz, açık kaynaklı ve her platformda çalışan lider e-posta ve takvim istemcisidir. Thunderbird’ün güvenli kalmasını ve daha da gelişmesini istiyoruz. Bağış; geliştiricileri işe almamızı, altyapı maliyetlerimizi karşılamamızı ve iyileştirmelere devam edebilmemizi sağlayacaktır.
 about-paragraph-consider-donation = <b>Thunderbird sizin gibi kullanıcıların desteğiyle finanse ediliyor. Thunderbird’ü seviyorsanız lütfen bağış yapmayı düşünün.</b> Thunderbird’ün hayatta kalmasını sağlamanın en iyi yolu <a data-l10n-name="donation-link">bağış yapmaktır</a>.
-explore-link = Özellikleri keşfedin
 support-link = Destek
 involved-link = Bize katılın
 developer-link = Geliştirici belgeleri

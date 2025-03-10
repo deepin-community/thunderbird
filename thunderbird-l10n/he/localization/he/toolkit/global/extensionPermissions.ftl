@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = קריאה ועריכת סימניות
 webext-perms-description-browserSettings = קריאה ועריכת הגדרות הדפדפן
 webext-perms-description-browsingData = איפוס היסטוריית הגלישה, העוגיות והנתונים הנוספים שצברת לאחרונה
@@ -30,4 +21,8 @@ webext-perms-description-sessions = גישה ללשוניות שנסגרו לא�
 webext-perms-description-tabs = גישה ללשוניות
 webext-perms-description-tabHide = הסתרה והצגת לשוניות הדפדפן
 webext-perms-description-topSites = גישה להיסטוריית הגלישה
+webext-perms-description-trialML = הורדה והרצת מודולי AI במכשיר שלך
+webext-perms-description-userScripts = לאפשר לתסריטי צד שלישי לא מאומתים לגשת לנתונים שלך
 webext-perms-description-webNavigation = גישה לפעילות הדפדפן במהלך הניווט
+webext-perms-extra-warning-userScripts-long = תסריטים שאינם מאומתים עלולים להוות סיכוני אבטחה ופרטיות, כמו הפעלת קוד מזיק או מעקב אחר פעילות באתר. יש להריץ תסריטים מהרחבות או מקורות מהימנים בלבד.
+webext-perms-extra-warning-userScripts-short = תסריטים שאינם מאומתים עלולים להוות סיכוני אבטחה ופרטיות. יש להריץ תסריטים מהרחבות או מקורות מהימנים בלבד.

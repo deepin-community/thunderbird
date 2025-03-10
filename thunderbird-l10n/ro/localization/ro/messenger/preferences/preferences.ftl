@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Închide
 pane-general-title = General
@@ -44,8 +40,6 @@ collection-health-report =
     .label = Permite { -brand-short-name } să transmită date tehnice și de interacțiune către { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Află mai multe
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Raportarea datelor este dezactivată în configurația folosită
 collection-backlogged-crash-reports =
     .label = Permite { -brand-short-name } să transmită în numele tău rapoarte de defecțiuni înregistrate
@@ -66,10 +60,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Repornește { -brand-short-name } pentru a aplica aceste modificări
 confirm-messenger-language-change-button = Aplică și repornește
 update-setting-write-failure-title = Eroare la salvarea preferințelor de actualizare
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } a întâmpinat o eroare și nu a salvat această modificare. Reține că setarea acestei preferințe de actualizare necesită permisiunea de a scrie în fișierul de mai jos. Poți rezolva eroarea tu sau administratorul sistemului acordând grupului de utilizatori control deplin asupra acestui fișier.
     
@@ -77,24 +67,10 @@ update-setting-write-failure-message =
 update-in-progress-title = Actualizare în curs
 update-in-progress-message = Vrei ca { -brand-short-name } să continue această actualizare?
 update-in-progress-ok-button = E&limină
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = C&ontinuă
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Pentru a crea o parolă primară, introdu-ți datele de autentificare pentru Windows. Ajută la protejarea securității conturilor tale.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = creează o parolă primară
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -179,8 +155,6 @@ always-check-default =
 check-default-button =
     .label = Verifică acum…
     .accesskey = V
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -198,8 +172,6 @@ return-receipts-button =
     .label = Confirmări de primire…
     .accesskey = r
 update-app-legend = Actualizări { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versiunea { $version }
 allow-description = Permite ca { -brand-short-name } să
 automatic-updates-label =
@@ -231,18 +203,10 @@ offline-compact-folder =
     .accesskey = C
 compact-folder-size =
     .value = MB în total
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Utilizează până la
     .accesskey = U
 use-cache-after = MB de spațiu pentru cache
-
-##
-
 smart-cache-label =
     .label = Înlocuiește gestionarea automată a cache-ului
     .accesskey = v
@@ -263,7 +227,6 @@ color-options-button =
     .label = Culori…
     .accesskey = C
 display-width-legend = Mesaje text
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Afișează emoticoanele în format grafic
     .accesskey = e
@@ -324,17 +287,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Imediat la afișare
     .accesskey = d
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = După ce sunt afișate
     .accesskey = d
 seconds-label = secunde
-
-##
-
 open-msg-label =
     .value = Deschide mesajele într-o:
 open-msg-tab =
@@ -349,14 +305,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Închide fereastra sau fila cu mesajul la mutare sau ștergere
     .accesskey = c
-display-name-label =
-    .value = Nume afișat:
 condensed-addresses-label =
     .label = Afișează numai numele de afișaj ale persoanelor din agenda mea de contacte
     .accesskey = S
-
-## Compose Tab
-
 forward-label =
     .value = Redirecționează mesajele:
     .accesskey = n
@@ -367,17 +318,10 @@ as-attachment-label =
 extension-label =
     .label = adaugă extensia la numele fișierului
     .accesskey = f
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Salvează automat la fiecare
     .accesskey = u
 auto-save-end = minute
-
-##
-
 warn-on-send-accel-key =
     .label = Confirmă trimiterea când se folosește comanda rapidă de la tastatură
     .accesskey = i
@@ -452,9 +396,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Caută mai mulți furnizori…
 cloud-account-description = Adaugă un serviciu nou de stocare Filelink
-
-## Privacy Tab
-
 mail-content = Conținutul mesajelor
 remote-content-label =
     .label = Permite conținuturi de la distanță în mesaje
@@ -480,25 +421,9 @@ third-party-never =
     .label = Niciodată
 third-party-visited =
     .label = De la site-urile vizitate
-keep-label =
-    .value = Păstrează-le până când:
-    .accesskey = K
-keep-expire =
-    .label = expiră
-keep-close =
-    .label = Închid { -brand-short-name }
-keep-ask =
-    .label = întreabă de fiecare dată
 cookies-button =
     .label = Afișează cookie-urile…
     .accesskey = S
-do-not-track-label =
-    .label = Trimite site-urilor web un semnal „Nu urmări” pentru a indica faptul că nu vrei să fii urmărit
-    .accesskey = n
-learn-button =
-    .label = Află mai multe
-dnt-learn-more-button =
-    .value = Află mai multe
 passwords-description = { -brand-short-name } poate reține parolele tuturor conturilor tale.
 passwords-button =
     .label = Parole salvate…
@@ -513,18 +438,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Acum ești în modul FIPS. FIPS nu permite inexistența unei parole primare.
 forms-master-pw-fips-desc = Schimbarea parolei a eșuat
 junk-description = Definește setările implicite pentru mesaje nesolicitate. Setările specifice contului pentru mesaje nesolicitate pot fi configurate în setările contului.
-junk-label =
-    .label = Când marchez mesaje ca nesolicitate:
-    .accesskey = C
 junk-move-label =
     .label = Mută-le în dosarul cu mesaje nesolicitate al contului
     .accesskey = o
 junk-delete-label =
     .label = Șterge-le
     .accesskey = t
-junk-read-label =
-    .label = Marchează mesajele detectate ca nesolicitate ca fiind citite
-    .accesskey = M
 junk-log-label =
     .label = Activează jurnalizarea filtrării adaptive de mesaje nesolicitate
     .accesskey = e
@@ -558,9 +477,6 @@ certificate-button =
 security-devices-button =
     .label = Dispozitive de securitate…
     .accesskey = D
-
-## Chat Tab
-
 startup-label =
     .value = La deschiderea { -brand-short-name }:
     .accesskey = p
@@ -568,20 +484,10 @@ offline-label =
     .label = Păstrează-mi conturile de chat deconectate
 auto-connect-label =
     .label = Conectează-mă automat la conturile de chat
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Permite contactelor să știe când sunt inactiv(ă) după
     .accesskey = P
 idle-time-label = minute de inactivitate
-
-##
-
 away-message-label =
     .label = și setează-mi starea ca Plecat cu acest mesaj de stare:
     .accesskey = s
@@ -641,11 +547,5 @@ no-preview-description = Această temă nu este validă sau nu este disponibilă
 chat-variant-label =
     .value = Variantă:
     .accesskey = V
-
-## Settings UI Search Results
-
 search-results-header = Rezultatele căutării
 search-results-help-link = Ai nevoie de ajutor? Intră pe <a data-l10n-name="url">Asistență { -brand-short-name }</a>
-
-## Sync Tab
-

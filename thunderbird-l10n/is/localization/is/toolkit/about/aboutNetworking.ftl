@@ -1,9 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Um net
 about-networking-http = HTTP
+about-networking-http-clear-cache-button = Hreinsa HTTP-skyndiminni
 about-networking-sockets = Tengill
 about-networking-dns = DNS
 about-networking-dns-clear-cache-button = Hreinsa DNS-skyndiminni
@@ -56,13 +53,6 @@ about-networking-rcwn-cache-slow = Fjöldi þar sem skyndiminnis var hægt
 about-networking-rcwn-cache-not-slow = Fjöldi þar sem skyndiminnis var ekki hægt
 about-networking-networkid = Auðkenni netkerfis
 about-networking-networkid-id = Auðkenni netkerfis
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Þessi síða hefur verið færð á <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Tenging er virk
 about-networking-networkid-status-known = Staða tengingar er þekkt
-
-##
-

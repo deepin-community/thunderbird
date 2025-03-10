@@ -1,9 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 new-account-label = 새 계정
-# Instant messaging account status window for Thunderbird
 accounts-window-title = 메신저 상태
 account-manager-new-account =
     .label = { new-account-label }
@@ -13,7 +8,6 @@ account-manager-close =
     .accesskey = l
 account-manager-close-command =
     .key = a
-# This title must be short, displayed with a big font size
 account-manager-no-account-title = 설정된 계정 없음
 account-manager-no-account-description = { new-account-label } 버튼을 클릭해 { -brand-short-name } 이 계정 설정을 도와줄 수 있게 해 주세요.
 account-auto-sign-on =

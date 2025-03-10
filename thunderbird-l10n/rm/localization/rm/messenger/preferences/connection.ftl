@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Utilisar il purschider
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (predefinì)
     .tooltiptext = Utilisar l'URL da standard per resolver DNS via HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = P
     .tooltiptext = Endatescha l'URL preferì per resolver DNS via HTTPS
 connection-dns-over-https-custom-label = Persunalisà
-connection-dialog-window2 =
-    .title = Parameters da connexiun
 connection-dialog-title = Parameters da connexiun
 disable-extension-button = Deactivar l'extensiun
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Ina extensiun, <img data-l10n-name="extension-icon" alt="" /> { $name }, administrescha la moda da connexiun cun l'internet da { -brand-short-name }.
 connection-proxy-legend = Configurar ils proxies per l'access a l'internet
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Nagin proxy per:
     .accesskey = N
 no-proxy-example = Exempel: .mozilla.org, .giuru.ch, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Las connexiuns cun localhost, 127.0.0.1/8 e ::1 n'utiliseschan mai in proxy.
 proxy-password-prompt =
     .label = Betg pretender l'autentificaziun sch'il pled-clav è memorisà

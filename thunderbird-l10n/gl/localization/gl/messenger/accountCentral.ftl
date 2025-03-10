@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Dámoslle a benvida ao { -brand-full-name }
 account-settings = Configuración da conta
-#   $accounts (Number) - the number of configured accounts
 setup-title =
     { $accounts ->
         [0] Escolla que configurar
@@ -42,7 +37,6 @@ import-label = Importar
     .aria-label = Importar datos doutros programas
 about-paragraph = O Thunderbird é o principal cliente de correo electrónico e calendario multiplataforma de código aberto, libre para uso persoal e empresarial. Queremos manter a súa seguranza e facelo aínda mellor. Unha doazón permitiranos contratar desenvolvedores, pagar infraestruturas e seguir mellorando.
 about-paragraph-consider-donation = <b>O Thunderbird está financiado por usuarios coma vostede! Se lle gusta o Thunderbird, considere facer unha doazón.</b> O mellor xeito de asegurarse de que o Thunderbird permanece dispoñíbel é <a data-l10n-name="donation-link"> facer unha doazón</a>.
-explore-link = Explorar funcionalidades
 support-link = Asistencia
 involved-link = Participe
 developer-link = Documentación de desenvolvemento

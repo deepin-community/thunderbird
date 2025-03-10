@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Նամակների կրիչը">
 <!ENTITY securitySettings.label "Անվտանգության կարգավորումներ">
 <!ENTITY serverSettings.label "Սպասարկիչի կարգավորումներ">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Պորտը.">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Ծրագրային.">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Ստուգել նամակները ամեն՝">
 <!ENTITY biffStart.accesskey "y">
 <!ENTITY biffEnd.label "րոպե">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Կապակցվելու անվտանգությունը.">
 <!ENTITY connectionSecurity.accesskey "ո">
 <!ENTITY connectionSecurityType-0.label "Չկա">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, եթե հասանելի է">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Իսկորոշման եղանակը.">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "k">
 <!ENTITY modelDeleteImmediately.label "Միանգամից ջնջել">
 <!ENTITY modelDeleteImmediately.accesskey "d">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Մաքրել (&quot;Ջնջել&quot;) Մուտքայինը փակելիս">
 <!ENTITY expungeOnExit.accesskey "E">
 <!ENTITY emptyTrashOnExit.label "Փակելիս դատարկել Աղբարկղը">
 <!ENTITY emptyTrashOnExit.accesskey "x">
 <!ENTITY loginAtStartup.label "Բացելի ստուգել նոր նամակները">
 <!ENTITY loginAtStartup.accesskey "C">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Հարցնել ինձ՝ ներբեռնելիս ավելի քան՝">
 <!ENTITY maxMessagesStart.accesskey "ի">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "նամակներ">
 <!ENTITY alwaysAuthenticate.label "Սպասարկիչին կապակցելիս միշտ պահանջել իսկորոշում">
 <!ENTITY alwaysAuthenticate.accesskey "տ">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "B">
 <!ENTITY browseNewsrc.label "Ընտրել…">
 <!ENTITY browseNewsrc.accesskey "e">
-
 <!ENTITY accountTitle.label "Փոստարկղի կարգավորումներ">
 <!ENTITY accountSettingsDesc.label "Սա հատուկ փոստարկղ է։  Չկան համակցված նույնացումներ։">
 <!ENTITY storeType.label "Նամակները պահելու եղանակը.">

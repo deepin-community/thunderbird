@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Добре дошли в <span data-l10n-name="brand-name">{ -brand-full-name }</span>
-account-hub-title = Център за профилите ви
-
-## Footer
-
+account-hub-title = Център за профили
 account-hub-release-notes = Бележки към изданието
 account-hub-support = Поддръжка
 account-hub-donate = Дарения
-
-## Initial setup page
-
 account-hub-email-setup-button = Електронна поща
     .title = Създаване на нов профил
 account-hub-calendar-setup-button = Календар
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Дискусионна група
     .title = Настройка на нова група
 account-hub-import-setup-button = Внасяне
     .title = Внасяне на вече съхранен профил
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
-account-hub-sync-button = Вход за синхронизиране
-
-## Email page
-
-account-hub-email-title = Създаване на нов профил за е-поща
+account-hub-sync-button = Синхронизиране…
 account-hub-add-email-title = Добавяне на профил
 account-hub-manually-configure-email-title = Настройка на конфигурация на профила
 account-hub-email-cancel-button = Отказ
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Завършване
 account-hub-email-manually-configure-button = Ръчна конфигурация
 account-hub-email-continue-button = Продължаване
 account-hub-email-confirm-button = Потвърждение
-account-hub-incoming-server-legend = Входящ сървър
-account-hub-outgoing-server-legend = Изходящ сървър
+account-hub-result-incoming-server-legend = Входящ сървър
+    .title = Входящ сървър
+account-hub-result-outgoing-server-legend = Изходящ сървър
+    .title = Изходящ сървър
 account-hub-protocol-label = Протокол
-account-hub-hostname-label = Име на хост
+account-hub-result-hostname-label = Име на хост
+    .title = Име на хост
+account-hub-result-authentication-label = Удостоверяване
+    .title = Удостоверяване
 account-hub-port-label = Порт
     .title = Задайте номера на порта да е 0 за автоматично разпознаване
 account-hub-auto-description = { -brand-short-name } ще се опита да открие автоматично полета, които са оставени празни.
 account-hub-ssl-label = Сигурност на връзката
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Автоматично разпознаване
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,15 @@ account-hub-ssl-cleartext-password-option =
     .label = Обикновена парола
 account-hub-ssl-encrypted-password-option =
     .label = Шифрована парола
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Няма
 account-hub-auth-no-authentication-option =
     .label = Без удостоверяване
 account-hub-auth-label = Метод за удостоверяване
-account-hub-username-label = Потребителско име
+account-hub-result-username-label = Потребителско име
+    .title = Потребителско име
+account-hub-name-label = Три имена
+    .accesskey = и
 account-hub-adding-account-title = Добавяне на профил
 account-hub-adding-account-subheader = Повторно тестване на настройките за конфигурация на профила
 account-hub-lookup-email-configuration-title = Проверка на конфигурация
@@ -95,3 +75,28 @@ account-hub-email-enter-password = Въведете паролата за пощ
 account-hub-email-sync-accounts = Синхронизиране на календари и адресници
 account-hub-test-configuration = Проверка
 account-hub-add-new-email = Добавяне на друг профил
+account-hub-result-imap-description = Поддържайте електронните си писма и папки синхронизирани на пощенския сървър
+account-hub-result-pop-description = Дръжте писмата и папките си на компютъра
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Използване на Microsoft Exchange Web Services за синхронизиране на папки и писма
+account-hub-result-ews-text = Сървър
+account-hub-result-recommended-label = Препоръчано
+account-hub-edit-configuration = Промяна на настройките
+account-hub-config-success = Настройки от Mozilla ISPDB
+account-hub-password-info = Идентификационните данни ще се пазят само на вашия компютър
+account-hub-sync-success = Thunderbird откри свързани услуги
+account-hub-sync-failure = Thunderbird не откри свързани услуги
+account-hub-unable-to-sync-accounts = Thunderbird не се свърза с избраната услуга
+account-hub-email-added-success = Пощенският профил е свързан
+account-hub-config-test-success = Настройките са правилни
+account-hub-select-all = Избиране на всичко
+account-hub-deselect-all = Отменяне всички
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] { $count } избран
+       *[other] { $count } избрани
+    }
+account-hub-no-address-books = Не е намерена адресна книга
+account-hub-no-calendars = Не е намерен календар
+account-hub-email-added-success-links-title = Други възможности за сигурност и настройка:
+account-hub-signature-link = Подпис на писмото

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = სინქრონიზაცია
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = გამოსვლა…
     .accesskey = ო
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = ახალი ანგარიში
 appmenu-new-account-panel =
     .label = ახალი ანგარიში
     .accesskey = ნ
-appmenu-create-new-mail-account =
-    .label = ახალი ელფოსტის მიღება
-    .accesskey = ბ
-appmenu-new-mail-account =
-    .label = არსებული ელფოსტა
-    .accesskey = რ
 appmenu-new-calendar =
     .label = კალენდარი
     .accesskey = კ
@@ -53,9 +37,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = სიახლეთა ჯგუფი
     .accesskey = ჯ
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = ახალი წიგნაკი
 appmenu-newab-panel =
@@ -70,9 +51,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-წიგნაკი
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = შექმნა
 appmenu-create-panel =
@@ -90,9 +68,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = პირი
     .accesskey = პ
-
-## Open
-
 appmenu-open-file-panel =
     .label = ფაილიდან გახსნა
     .accesskey = ფ
@@ -104,9 +79,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = კალენდარი…
     .accesskey = კ
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = ხედი
 appmenu-view-panel =
@@ -126,14 +98,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = შრიფტის ზომის გაზრდა
 appmenuitem-font-size-reduce =
     .tooltiptext = შრიფტის ზომის შემცირება
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = შრიფტის საწყისი ზომა
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = ხელსაწყოები
 appmenu-tools-panel =
@@ -160,17 +127,14 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = შემმუშავებლის ხელსაწყოები
     .accesskey = შ
-
-## Help
-
 appmenu-help-panel-title =
     .title = დახმარება
 appmenu-help-get-help =
     .label = დახმარების მიღება
     .accesskey = ხ
-appmenu-help-explore-features =
-    .label = შესაძლებლობების გაცნობა
-    .accesskey = ც
+appmenu-help-get-release-help =
+    .label = დახმარება, როგორ გამოიყენოთ { -brand-short-name }
+    .accesskey = ხ
 appmenu-help-shortcuts =
     .label = კლავიატურის მალსახმობები
     .accesskey = მ
@@ -195,9 +159,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = { -brand-short-name } შესახებ
     .accesskey = შ
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = ჩამოიტვირთება ახალი { -brand-shorter-name }
 appmenuitem-banner-update-available =

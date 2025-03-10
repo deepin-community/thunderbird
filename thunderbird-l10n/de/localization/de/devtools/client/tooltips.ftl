@@ -1,29 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Localization for Developer Tools tooltips.
-
 learn-more = <span data-l10n-name="link">Weitere Informationen</span>
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## The variables are all passed from the same place, in `InactiveCssTooltipHelper#getTemplate`
-## (devtools/client/shared/widgets/tooltip/inactive-css-tooltip-helper.js#95)
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
 inactive-css-not-grid-or-flex-container = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil das Element weder ein Flex- noch ein Grid-Container ist.
 inactive-css-not-grid-or-flex-container-or-multicol-container = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es kein Flex-, Grid- oder Mehrspalten-Container ist.
 inactive-css-not-multicol-container = <strong>{ $property }</strong>  hat bei diesem Element keine Wirkung, weil es kein Mehrspalten-Container ist.
@@ -38,7 +13,6 @@ inactive-css-first-line-pseudo-element-not-supported = <strong>{ $property }</st
 inactive-css-first-letter-pseudo-element-not-supported = <strong>{ $property }</strong> wird bei ::first-letter-Pseudo-Elementen nicht unterstützt.
 inactive-css-placeholder-pseudo-element-not-supported = <strong>{ $property }</strong> wird bei ::placeholder-Pseudo-Elementen nicht unterstützt.
 inactive-css-property-because-of-display = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil sein display-Wert <strong>{ $display }</strong> ist.
-inactive-css-not-display-block-on-floated = Der Wert <strong>display</strong> wurde automatisch auf den Wert <strong>block</strong> geändert, weil das Element auf <strong>float</strong> gesetzt wurde.
 inactive-css-not-display-block-on-floated-2 = Der Wert <strong>display</strong> wurde automatisch auf den Wert <strong>{ $display }</strong> geändert, weil das Element auf <strong>float</strong> gesetzt wurde.
 inactive-css-only-non-grid-or-flex-item = <strong>{ $property }</strong> hat keine Wirkung, da es nicht für Grid- oder Flex-Elemente verwendet werden kann.
 inactive-css-not-block = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, da es nur für Elemente auf Blockebene gilt.
@@ -47,6 +21,7 @@ inactive-css-property-is-impossible-to-override-in-visited = <strong>{ $property
 inactive-css-position-property-on-unpositioned-box = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es kein positioniertes Element ist.
 inactive-css-only-replaced-elements = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es nur auf ersetzte Elemente angewendet werden kann.
 inactive-text-overflow-when-no-overflow = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil <strong>overflow:hidden</strong> nicht gesetzt ist.
+inactive-css-no-size-containment = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es kein Größen-Containment hat.
 inactive-css-not-for-internal-table-elements = <strong>{ $property }</strong> hat keine Wirkung auf interne Tabellenelemente.
 inactive-css-not-for-internal-table-elements-except-table-cells = <strong>{ $property }</strong> hat keine Wirkung auf interne Tabellenelemente außer Tabellenzellen.
 inactive-css-not-table = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es keine Tabelle ist.
@@ -56,15 +31,8 @@ inactive-scroll-padding-when-not-scroll-container = <strong>{ $property }</stron
 inactive-css-border-image = <strong>{ $property }</strong> hat keine Auswirkung auf dieses Element, da es nicht auf interne Tabellenelemente angewendet werden kann, bei denen auf dem übergeordneten Tabellenelement <strong>border-collapse</strong> auf <strong>collapse</strong> gesetzt ist.
 inactive-css-resize = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, da es nur auf Elemente mit einem anderen overflow-Wert als "visible" sowie auf bestimmte ersetzte Elemente wie textareas angewendet werden kann.
 inactive-css-ruby-element = <strong>{ $property }</strong> hat keine Auswirkung auf dieses Element, da es sich um ein Ruby-Element handelt. Seine Größe wird durch die Schriftgröße des Ruby-Textes bestimmt.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved.
-
 inactive-css-highlight-pseudo-elements-not-supported = <strong>{ $property }</strong> wird bei Highlight-Pseudo-Elementen nicht unterstützt.
 inactive-css-cue-pseudo-element-not-supported = <strong>{ $property }</strong> wird bei ::cue-Pseudo-Elementen nicht unterstützt.
-# Variables:
-#   $lineCount (integer) - The number of lines the element has.
 inactive-css-text-wrap-balance-lines-exceeded =
     { $lineCount ->
         [one] 	<strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es mehr als { $lineCount } Zeile hat.
@@ -72,12 +40,6 @@ inactive-css-text-wrap-balance-lines-exceeded =
     }
 inactive-css-text-wrap-balance-fragmented = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil es fragmentiert ist, d.h. sein Inhalt ist über mehrere Spalten oder Seiten verteilt.
 inactive-css-no-width-height = <strong>{ $property }</strong> hat bei diesem Element keine Wirkung, weil seine Breite und Höhe nicht gesetzt werden kann.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved. CSS properties and values in <strong> tags should
-## not be translated.
-
 inactive-css-not-grid-or-flex-container-fix = Versuchen Sie, <strong>display:grid</strong> oder <strong>display:flex</strong> hinzuzufügen. { learn-more }
 inactive-css-not-grid-or-flex-or-block-container-fix = Versuchen Sie, <strong>display:grid</strong>, <strong>display:flex</strong> oder <strong>display:block</strong> hinzuzufügen. { learn-more }
 inactive-css-not-grid-or-flex-container-or-multicol-container-fix = Versuchen Sie, <strong>display:grid</strong>, <strong>display:flex</strong> oder <strong>columns:2</strong> hinzuzufügen. { learn-more }
@@ -98,6 +60,7 @@ inactive-css-not-floated-fix = Versuchen Sie, die Eigenschaft <strong>float</str
 inactive-css-position-property-on-unpositioned-box-fix = Versuchen Sie, die <strong>position</strong>-Eigenschaft auf etwas anderes als <strong>static</strong> zu setzen. { learn-more }
 inactive-css-only-replaced-elements-fix = Stellen Sie sicher, dass Sie die Eigenschaft zu einem ersetzten Element hinzufügen. { learn-more }
 inactive-text-overflow-when-no-overflow-fix = Versuchen Sie, <strong>overflow:hidden</strong> hinzuzufügen. { learn-more }
+inactive-css-no-size-containment-fix = Versuchen Sie, die <strong>display</strong>-Eigenschaft auf etwas anderes als <strong>none</strong>, <strong>contents</strong>, <strong>table</strong> oder <strong>inline-table</strong> zu setzen und stellen Sie sicher, dass es nicht innerhalb einer Tabelle oder eines Ruby-Segments ist. { learn-more }
 inactive-css-not-for-internal-table-elements-fix = Versuchen Sie, die <strong>display</strong>-Eigenschaft auf etwas anderes als <strong>table-cell</strong>, <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row-group</strong> oder <strong>table-footer-group</strong> zu setzen. { learn-more }
 inactive-css-not-for-internal-table-elements-except-table-cells-fix = Versuchen Sie, die <strong>display</strong>-Eigenschaft auf etwas anderes als <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row-group</strong> oder <strong>table-footer-group</strong> zu setzen. { learn-more }
 inactive-css-not-table-fix = Versuchen Sie, <strong>display:table</strong> oder <strong>display:inline-table</strong> hinzuzufügen. { learn-more }
@@ -109,14 +72,6 @@ inactive-css-resize-fix = Versuchen Sie, <strong>overflow</strong> auf einen and
 inactive-css-ruby-element-fix = Versuchen Sie, die <strong>font-size</strong> des Ruby-Textes zu ändern. { learn-more }
 inactive-css-text-wrap-balance-lines-exceeded-fix = Versuchen Sie, die Anzahl der Zeilen zu reduzieren. { learn-more }
 inactive-css-text-wrap-balance-fragmented-fix = Vermeiden Sie ein Teilen des Inhalts des Elements z.B. indem Sie die Spalten entfernen oder <strong>page-break-inside:avoid</strong> verwenden. { learn-more }
-
-## In the Rule View when a CSS property may have compatibility issues with other browsers
-## we display an icon. When this icon is hovered this message is displayed to explain why
-## the property is incompatible and the platforms it is incompatible on.
-## Variables:
-##   $property (string) - A CSS declaration name e.g. "-moz-user-select" that can be a platform specific alias.
-##   $rootProperty (string) - A raw CSS property name e.g. "user-select" that is not a platform specific alias.
-
 css-compatibility-default-message = <strong>{ $property }</strong> wird in den folgenden Browsern nicht unterstützt:
 css-compatibility-deprecated-experimental-message = <strong>{ $property }</strong> war eine experimentelle Eigenschaft, die jetzt nach W3C-Standards veraltet ist. Sie wird in den folgenden Browsern nicht unterstützt:
 css-compatibility-deprecated-experimental-supported-message = <strong>{ $property }</strong> war eine experimentelle Eigenschaft, die jetzt nach W3C-Standards veraltet ist.
@@ -125,10 +80,4 @@ css-compatibility-deprecated-supported-message = <strong>{ $property }</strong> 
 css-compatibility-experimental-message = <strong>{ $property }</strong> ist eine experimentelle Eigenschaft. Sie wird in den folgenden Browsern nicht unterstützt:
 css-compatibility-experimental-supported-message = <strong>{ $property }</strong> ist eine experimentelle Eigenschaft.
 css-compatibility-learn-more-message = <span data-l10n-name="link">Weitere Informationen</span> über <strong>{ $rootProperty }</strong>
-
-## In the Rule View when a rule selector can causes issues, we display an icon.
-## When this icon is hovered one or more of those messages are displayed to explain what
-## the issue are.
-
-# :has() should not be translated
 css-selector-warning-unconstrained-has = Dieser Selektor verwendet uneingeschränktes <strong>:has()</strong>, was langsam sein kann

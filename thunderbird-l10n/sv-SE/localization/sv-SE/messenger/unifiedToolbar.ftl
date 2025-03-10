@@ -1,42 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = Sök
-search-bar-item =
-    .label = Sök:
 search-bar-item2 =
     .label = Sök
 search-bar-placeholder = Sök…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Anpassa…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Hämta alla nya meddelanden
     .accesskey = H
-
-## Unified Toolbar customization
-
 customize-title = Anpassa verktygsfält
 customize-space-tab-mail = E-post
     .title = E-post
@@ -60,8 +36,6 @@ customize-button-style-text-only-option = Endast text
 customize-cancel = Avbryt
 customize-save = Spara
 customize-unsaved-changes = Osparade ändringar i andra utrymmen
-customize-search-bar =
-    .label = Sök knappar i verktygsfältet...
 customize-search-bar2 =
     .label = Sök knappar i verktygsfältet
     .placeholder = Sök knappar i verktygsfältet…
@@ -77,18 +51,10 @@ customize-palette-tasks-specific-title = Endast tillgänglig för uppgifter
 customize-palette-chat-specific-title = Endast tillgänglig för chatt
 customize-palette-settings-specific-title = Endast tillgänglig för inställningar
 customize-palette-extension-specific-title = Endast tillgängligt för detta utrymme
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = Lägg till i { $target }
 customize-palette-add-everywhere =
     .label = Lägg till i alla verktygsfält
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = Flytta framåt
 customize-target-backward =

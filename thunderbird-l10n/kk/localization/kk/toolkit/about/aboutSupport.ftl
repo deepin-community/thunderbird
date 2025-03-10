@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Мәселелерді шешу ақпараты
 page-subtitle = Бұл парақта мәселелерді шешуде пайдалы бола алатын техникалық ақпарат бар. Егер сіз { -brand-short-name } туралы жалпы сұрақтарға жауапты іздесеңіз, біздің <a data-l10n-name="support-link">қолдау көрсету</a> сайтын шолыңыз.
 crashes-title = Құлау туралы хабарлар
@@ -38,8 +34,6 @@ app-basics-version = Нұсқасы
 app-basics-build-id = Жинақ ID-і
 app-basics-distribution-id = Таратылым ID
 app-basics-update-channel = Жаңарту арнасы
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Буманы жаңарту
@@ -47,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Жаңартулар тарихы
 app-basics-show-update-history = Жаңартулар тарихын көрсету
-# Represents the path to the binary used to start the application.
 app-basics-binary = Қолданбаның бинарлы файлы
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Профайл бумасы
        *[other] Профиль сақталатын бума
     }
-app-basics-enabled-plugins = Іске қосулы плагиндер
 app-basics-build-config = Жинау баптаулары
 app-basics-user-agent = User Agent
 app-basics-os = ОЖ
 app-basics-os-theme = ОЖ темасы
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta бинарлық трансляциясы
 app-basics-memory-use = Жады қолданылуы
 app-basics-performance = Өнімділік
@@ -79,9 +69,6 @@ app-basics-safe-mode = Қауіпсіз режимі
 app-basics-memory-size = Жады өлшемі (RAM)
 app-basics-disk-available = Дисктегі қолжетімді орын
 app-basics-pointing-devices = Көрсеткіш құрылғылары
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -113,9 +100,7 @@ graphics-decision-log-title = Шешімдер журналы
 graphics-crash-guards-title = Қулаудан қорғаныс сөндірген мүмкіндіктері
 graphics-workarounds-title = Арнайы қолдау
 graphics-device-pixel-ratios = Терезе құрылғысының пиксельдік арақатынасы
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Терезелерді басқару хаттамасы
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Жұмыс үстелі ортасы
 place-database-title = Орналасулар дерекқоры
 place-database-stats = Статистика
@@ -153,9 +138,6 @@ clear-startup-cache-label = Іске қосылу кэшін тазарту…
 startup-cache-dialog-title2 = Іске қосылу кэшін тазарту үшін { -brand-short-name } қайта іске қосу керек пе?
 startup-cache-dialog-body2 = Бұл сіздің баптауларыңызды өзгертпейді және кеңейтулерді өшірмейді.
 restart-button-label = Қайта қосу
-
-## Media titles
-
 audio-backend = Аудио файлдарын ойнату бағдарламасы
 max-audio-channels = Макс. арналар
 sample-rate = Таңдамалы кадрлар жиілігі
@@ -174,11 +156,7 @@ media-device-rate = Жиілігі
 media-device-latency = Кідірісі
 media-capabilities-title = Медиа мүмкіндіктері
 media-codec-support-info = Кодек қолдау ақпараты
-# List all the entries of the database.
 media-capabilities-enumerate = Дерекқор жазбаларын шығару
-
-## Codec support table
-
 media-codec-support-sw-decoding = Бағдарламалық декодтау
 media-codec-support-hw-decoding = Құрылғылық декодтау
 media-codec-support-codec-name = Кодек атауы
@@ -186,26 +164,13 @@ media-codec-support-supported = Қолдауы бар
 media-codec-support-unsupported = Қолдауы жоқ
 media-codec-support-error = Кодектерге қолдау көрсету ақпараты қолжетімді емес. Медиа файлын ойнатқаннан кейін қайта көріңіз.
 media-codec-support-lack-of-extension = Кеңейтуді орнату
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Мазмұнды дешифрлеу модульдері туралы ақпарат
 media-key-system-name = Кілттер жүйесінің атауы
 media-video-robustness = Видео беріктігі
 media-audio-robustness = Аудио беріктігі
 media-cdm-capabilities = Мүмкіндіктер
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Таза бастау
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = HDCP 2.2 үйлесімді
-
-##
-
 intl-title = Интернационалдандыру және локализация
 intl-app-title = Қолданба баптаулары
 intl-locales-requested = Сұралған локальдер
@@ -215,52 +180,29 @@ intl-locales-default = Бастапқы локаль
 intl-os-title = Операциялық жүйе
 intl-os-prefs-system-locales = Жүйелік локальдер
 intl-regional-prefs = Аймақтық баптаулар
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Қашықтан жөндеу (Chromium хаттамасы)
 remote-debugging-accepting-connections = Кіріс байланыстарды қабылдау
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Соңғы { $days } күн үшін құлау хабарламалары
        *[other] Соңғы { $days } күн үшін құлау хабарламалары
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } минут бұрын
        *[other] { $minutes } минут бұрын
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } сағат бұрын
        *[other] { $hours } сағат бұрын
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } күн бұрын
        *[other] { $days } күн бұрын
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Барлық құлау хабарламалары (соның ішінде берілген уақыт аралығындағы әлі жіберілмеген { $reports } құлау)
@@ -268,18 +210,11 @@ pending-reports =
     }
 raw-data-copied = Өнделмеген мәліметтерді алмасу буферіне көшірілген
 text-copied = Мәтінді алмасу буферіне көшірілген
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Графикалық драйверіңіз нұсқасымен блокталған.
 blocked-gfx-card = Шешілмеген драйвер мәселелері нәтижесінде графикалық картаңызбен блокталған.
 blocked-os-version = Операциялық жүйесіңіз нұсқасымен блокталған.
 blocked-mismatched-version = Графикалық драйверіңіздің нұсқасы реестрде және DLL ішінде сәйкес болмауы салдарынан блокталған.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Графикалық драйверіңіз нұсқасымен блокталған. Драйверіңізді { $driverVersion } не жаңалау нұсқасына дейін жаңартыңыз.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType баптаулары
 compositing = Композитинг
 support-font-determination = Қаріп көрінуінің жөндеу ақпараты
@@ -289,11 +224,6 @@ yes = Иә
 no = Жоқ
 unknown = Белгісіз
 virtual-monitor-disp = Виртуалды монитор экраны
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Табылған
 missing = Жоқ
 gpu-process-pid = GPUProcessPid
@@ -320,11 +250,7 @@ webgl2-driver-extensions = WebGL 2 драйвер кеңейтулері
 webgl2-extensions = WebGL 2 кеңейтулері
 webgpu-default-adapter = WebGPU бастапқы адаптері
 webgpu-fallback-adapter = WebGPU қосымша адаптері
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Белгілі мәселелерге байланысты бұғатталған: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Блоктізіміде; қателік коды { $failureCode }
 d3d11layers-crash-guard = D3D11 араластырушысы
 glcontext-crash-guard = OpenGL
@@ -344,8 +270,6 @@ has-seccomp-bpf = Seccomp-BPF (Жүйелік шақыруларды сүзгі�
 has-seccomp-tsync = Seccomp ағынының синхрондалуы
 has-user-namespaces = Пайдаланушының аттар кеңістіктері
 has-privileged-user-namespaces = Артықшылықты үрдістер үшін пайдаланушының аттар кеңістіктері
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Бұл мүмкіндікке жүйеңіз рұқсат бермейді. Бұл { -brand-short-name } қауіпсіздік мүмкіндіктерін шектей алады.
 can-sandbox-content = Құраманың үрдісін құмсалғышта орындау
 can-sandbox-media = Медиа плагиндерін құмсалғышта орындау
@@ -366,16 +290,8 @@ launcher-process-status-0 = Іске қосулы
 launcher-process-status-1 = Ақаулығы салдарынан сөндірілген
 launcher-process-status-2 = Мәжбүрлі сөндірілген
 launcher-process-status-unknown = Қалып-күйі белгісіз
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Тәжірибемен сөндірілген
-fission-status-experiment-treatment = Тәжірибемен іске қосылған
 fission-status-disabled-by-e10s-env = Қоршаммен сөндірілген
 fission-status-enabled-by-env = Қоршаммен іске қосылған
 fission-status-disabled-by-env = Қоршаммен сөндірілген
@@ -384,7 +300,6 @@ fission-status-disabled-by-default = Үнсіз келісім бойынша с
 fission-status-enabled-by-user-pref = Пайдаланушымен іске қосылған
 fission-status-disabled-by-user-pref = Пайдаланушымен сөндірілген
 fission-status-disabled-by-e10s-other = E10s сөндірілген
-fission-status-enabled-by-rollout = Кезеңді шығару арқылы іске қосылған
 async-pan-zoom = Асинхронды панорамдау/масштабтау
 apz-none = ешнәрсе
 wheel-enabled = тышқан дөңгелегімен енгізу іске қосылған
@@ -393,34 +308,20 @@ drag-enabled = айналдыру жолағының ұстап тарту іс�
 keyboard-enabled = пернетақта іске қосылған
 autoscroll-enabled = автоайналдыру іске қосылған
 zooming-enabled = тегіс ыммен масштабтау іске қосылған
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = тышқан дөңгелегімен асинхронды енгізу қолдауы жоқ баптау салдарынан сөндірілген: { $preferenceKey }
 touch-warning = сенсорлық асинхронды енгізу қолдауы жоқ баптау салдарынан сөндірілген: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Белсенді емес
 policies-active = Белсенді
 policies-error = Қате
-
-## Printing section
-
 support-printing-title = Баспаға шығару
 support-printing-troubleshoot = Мәселелерді шешу
 support-printing-clear-settings-button = Сақталған баспаға шығару параметрлерін өшіру
 support-printing-modified-settings = Баспаға шығарудың өзгертілген баптаулары
 support-printing-prefs-name = Аты
 support-printing-prefs-value = Мәні
-
-## Remote Settings sections
-
 support-remote-settings-title = Қашықтан басқару баптаулары
 support-remote-settings-status = Қалып-күйі
 support-remote-settings-status-ok = ОК
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Жұмыс істемейді
 support-remote-settings-last-check = Соңғы тексеру
 support-remote-settings-local-timestamp = Жергілікті уақыт белгісі
@@ -428,9 +329,6 @@ support-remote-settings-sync-history = Тарихы
 support-remote-settings-sync-history-status = Қалып-күйі
 support-remote-settings-sync-history-datetime = Күн
 support-remote-settings-sync-history-infos = Ақпарат
-
-## Normandy sections
-
 support-remote-experiments-title = Қашықтағы тәжірибелер
 support-remote-experiments-name = Аты
 support-remote-experiments-branch = Сынамалы бұтақ
@@ -438,19 +336,10 @@ support-remote-experiments-see-about-studies = Қосымша ақпаратты
 support-remote-features-title = Қашықтағы мүмкіндіктер
 support-remote-features-name = Аты
 support-remote-features-status = Қалып-күйі
-
-## Pointing devices
-
 pointing-device-mouse = Тышқан
 pointing-device-touchscreen = Тачскрин
 pointing-device-pen-digitizer = Қалам диджитайзері
 pointing-device-none = Көрсеткіш құрылғылары жоқ
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Мазмұнды талдау (DLP)
 content-analysis-active = Белсенді
 content-analysis-connected-to-agent = Агентке байланысқан

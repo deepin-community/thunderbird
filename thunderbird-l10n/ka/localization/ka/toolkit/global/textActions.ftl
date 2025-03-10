@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 text-action-undo =
     .label = დაბრუნება
     .accesskey = დ
@@ -22,11 +18,9 @@ text-action-copy =
     .accesskey = ს
 text-action-copy-shortcut =
     .key = C
-# This command copies the link, removing additional
-# query parameters used to track users across sites.
-text-action-strip-on-share =
-    .label = ასლი თვალის დევნების არიდებით
-    .accesskey = ნ
+text-action-copy-clean-link =
+    .label = ბმულის სუფთა ასლი
+    .accesskey = ფ
 text-action-paste =
     .label = ჩასმა
     .accesskey = ჩ
@@ -38,6 +32,9 @@ text-action-paste-shortcut =
 text-action-delete =
     .label = წაშლა
     .accesskey = წ
+text-action-reveal-password =
+    .label = პაროლის გამოჩენა
+    .accesskey = ნ
 text-action-select-all =
     .label = ყველაფრის მონიშვნა
     .accesskey = ყ
@@ -62,3 +59,5 @@ text-action-spell-dictionaries =
     .accesskey = ე
 text-action-search-text-box-clear =
     .title = გასუფთავება
+text-action-highlight-selection =
+    .label = მონიშნულის გამორჩევა

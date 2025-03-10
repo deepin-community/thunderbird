@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 printpreview-simplify-page-checkbox =
     .label = Опростен изглед
     .accesskey = п
@@ -38,11 +34,7 @@ printpreview-page-setup =
 printpreview-page =
     .value = Страница:
     .accesskey = С
-
-## Variables
-## $percent (integer) - menuitem percent label
-## $arrow (String) - UTF-8 arrow character for navigation buttons
-
+printpreview-sheet-of-sheets = { $sheetNum } от { $sheetCount }
 printpreview-percentage-value =
     .label = { $percent }%
 printpreview-homearrow =
@@ -57,4 +49,3 @@ printpreview-nextarrow =
 printpreview-endarrow =
     .label = { $arrow }
     .tooltiptext = Последна страница
-

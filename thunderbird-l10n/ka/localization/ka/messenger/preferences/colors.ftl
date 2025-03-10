@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = ტექსტი და ფონი
 text-color-label =
     .value = ტექსტი:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = მონახულებული ბმულები:
     .accesskey = ო
-underline-link-checkbox =
-    .label = ბმულების ხაზგასმა
-    .accesskey = ხ
 override-color-label =
     .value = გვერდის მიერ მითითებული ფერების ნაცვლად, ზემოთ არჩეულების გამოყენება:
     .accesskey = ნ

@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = About Logging
 about-logging-page-title = Logging manager
 about-logging-current-log-file = Current log file:
 about-logging-new-log-file = New log file:
 about-logging-currently-enabled-log-modules = Currently enabled log modules:
 about-logging-log-tutorial = See <a data-l10n-name="logging">HTTP Logging</a> for instructions on how to use this tool.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Open directory
 about-logging-set-log-file = Set Log File
 about-logging-set-log-modules = Set Log Modules
@@ -27,9 +21,6 @@ about-logging-no-log-modules = None
 about-logging-no-log-file = None
 about-logging-logging-preset-selector-text = Logging preset:
 about-logging-with-profiler-stacks-checkbox = Enable stack traces for log messages
-
-## Logging presets
-
 about-logging-preset-networking-label = Networking
 about-logging-preset-networking-description = Log modules to diagnose networking issues
 about-logging-preset-networking-cookie-label = Cookies
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Log modules to diagnose WebGPU issues
 about-logging-preset-gfx-label = Graphics
 about-logging-preset-gfx-description = Log modules to diagnose graphics issues
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Log modules to diagnose issues specific to Microsoft Windows
 about-logging-preset-custom-label = Custom
 about-logging-preset-custom-description = Log modules manually selected
-# Error handling
 about-logging-error = Error:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Invalid value “{ $v }“ for key “{ $k }“
 about-logging-unknown-logging-preset = Unknown logging preset “{ $v }“
 about-logging-unknown-profiler-preset = Unknown profiler preset “{ $v }“

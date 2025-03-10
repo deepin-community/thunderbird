@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Espaço flexível
 toolbar-write-message-label = Escrever
 toolbar-write-message =
@@ -116,6 +109,3 @@ toolbar-throbber-label = Indicador de atividade
 toolbar-throbber =
     .title = Indicador de atividade
 toolbar-create-address-book-label = Novo Livro de Endereços
-
-## New Address Book popup items
-

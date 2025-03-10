@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Pasek menu
     .accesskey = m
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Ustawienia
     .accesskey = U
 menu-addons-and-themes =
     .label = Dodatki i motywy
     .accesskey = D
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Eksportuj do wersji na telefon…
+    .accesskey = s
 menu-help-help-title =
     .label = Pomoc
     .accesskey = c
 menu-help-get-help =
     .label = Pomoc
     .accesskey = P
-menu-help-explore-features =
-    .label = Odkrywaj możliwości
-    .accesskey = m
 menu-help-get-release-help =
     .label = Pomoc programu { -brand-short-name }
     .accesskey = P
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = O programie { -brand-short-name }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] k
            *[other] k
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Zakończ program { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Zakończ program { -brand-full-name }
            *[other] Zakończ program { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Niechciana
     .tooltiptext = Oznacz zaznaczoną wiadomość jako niechcianą
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Przywróć
     .tooltiptext = Przywróć usunięte wiadomości
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Napraw kodowanie tekstu
     .accesskey = k
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Nagłówek panelu folderów
     .accesskey = N
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Nagłówek listy wiadomości
     .accesskey = w
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Pasek miejsc
     .accesskey = c
-
-## File
-
 file-new-email-account =
     .label = Konto pocztowe…
     .accesskey = K

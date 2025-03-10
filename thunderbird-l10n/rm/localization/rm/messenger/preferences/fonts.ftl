@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Scrittiras
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Predefinì ({ $name })
 fonts-label-default-unnamed =
     .label = Predefinì
-fonts-encoding-dialog-title =
-    .title = Scrittiras & codaziuns
 fonts-language-legend =
     .value = Scrittiras per:
     .accesskey = t
 fonts-proportional-label =
     .value = Proporziunal:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Scrittira latina
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Singalais
 font-language-group-tibetan =
     .label = Tibetan
-
-## Default font type
-
 default-font-serif =
     .label = Cun serifas
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = z
 min-size-none =
     .label = Nagina
-
-## Fonts in message
-
 font-control-legend = Controlla da scrittiras
 use-document-fonts-checkbox =
     .label = Permetter als messadis dad utilisar autras scrittiras
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Utilisar scrittiras a largezza fixa per messadis da text senza formataziun
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Codaziun dal text
 text-encoding-description = Codaziun da text predefinida per retschaiver e trametter e-mails
 font-outgoing-email-label =

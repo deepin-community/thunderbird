@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Güvenli olarak bağlanamıyor, çünkü SSL iletişim kuralı devre dışı bırakıldı.
 psmerr-ssl2-disabled = Güvenli olarak bağlanamıyor, çünkü site SSL iletişim kuralının eski ve güvensiz sürümünü kullanıyor.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Geçersiz bir sertifika aldınız. Lütfen sunucu yöneticisiyle iletişime geçin veya karşı tarafa e-posta yazarak bu bilgiyi verin:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Sunucu, geçersiz bir tamsayı kod
 mozilla-pkix-error-empty-issuer-name = Sunucu, boş bir yayıncı açık adı (DN) içeren bir sertifika sundu.
 mozilla-pkix-error-additional-policy-constraint-failed = Bu sertifika doğrulanırken ek bir ilke kısıtlaması başarısız oldu.
 mozilla-pkix-error-self-signed-cert = Bu sertifika kendi kendine imzalandığı için sertifikaya güvenilmiyor.
+mozilla-pkix-error-issuer-no-longer-trusted = Sertifikayı düzenleyen sertifika makamı, sertifika düzenlenmeden önce güvenilmez kabul ediliyordu.
 xp-java-remove-principal-error = Baş bölüm kaldırılamadı.
 xp-java-delete-privilege-error = Ayrıcalık ortadan kaldırılamadı
 xp-java-cert-not-exists-error = Bu baş bölümün sertifikası yok

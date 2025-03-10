@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Përgjegjës Dëshmish
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Për arsye të panjohura, s’u arrit të krijohej k
 pkcs12-unknown-err = Akti PKCS #12 dështoi për arsye të panjohur.
 pkcs12-info-no-smartcard-backup = S’është e mundur të kopjeruhen dëshmi prej një pajisje sigurie hardware si, bie fjala, smart card.
 pkcs12-dup-data = Kyçi privat dhe dëshmia gjenden tashmë në këtë pajisje sigurie.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Emër Kartele për Kopjeruajtje
 file-browse-pkcs12-spec = Kartela PKCS12
 choose-p12-restore-file-dialog = Kartelë Dëshmie Për Importim
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Kartela Dëshmi
 import-ca-certs-prompt = Përzgjidhni për importim Kartelë që përmban dëshmi AD
 import-email-cert-prompt = Përzgjidhni Kartelë që përmban dëshmi Email-i të dikujt për t’u importuar
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Dëshmia "{ $certName }" përfaqëson një Autoritet Dëshmish.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Fshini Dëshmitë tuaja
 delete-user-cert-confirm = Jeni i sigurt se doni të fshihen këto dëshmi?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Fshini Dëshmi Email-esh
 delete-email-cert-confirm = Jeni i sigurt se doni të fshihen këto dëshmi email-esh personash?
 delete-email-cert-impact = Nëse fshini dëshminë e email-it të dikujt, nuk do të jeni më në gjendje t’i dërgoni atij personi email të fshehtëzuar.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Dëshmia me numër serial: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Mos dërgo dëshmi klienti
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (E Paruajtur)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
-certificate-not-available = (Jo e passhme)
-
-## Used to show whether an override is temporary or permanent
-
+certificate-not-available = (S’mund të kihet)
 permanent-override = I përhershëm
 temporary-override = I përkohshëm
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Jeni duke anashkaluar mekanizmin se si { -brand-short-name }-i identifikon këtë sajt.
 add-exception-invalid-header = Ky sajt po përpiqet të identifikojë veten përmes të dhënash të pavlefshme.
 add-exception-domain-mismatch-short = Sajt i Gabuar
@@ -163,16 +132,13 @@ add-exception-domain-mismatch-long = Dëshmia i përket një sajti tjetër, çka
 add-exception-expired-short = Të dhëna të Vjetruara
 add-exception-expired-long = Dëshmia nuk është e vlefshme hëpërhë. Mund të jetë vjedhur ose humbur dhe mund të përdoret nga dikush për ta bërë një sajt të vetin të duket si i juaji.
 add-exception-unverified-or-bad-signature-short = Identitet i Panjohur
-add-exception-unverified-or-bad-signature-long = Dëshmia nuk u besua, ngaqë s’është vërtetuar si e lëshuar nga një autoritet i besuar që përdor nënshkrim të sigurt.
+add-exception-unverified-or-bad-signature-long = Dëshmia s’besohet, ngaqë s’është vërtetuar si e lëshuar nga një autoritet i besuar që përdor nënshkrim të siguruar.
 add-exception-valid-short = Dëshmi e Vlefshme
 add-exception-valid-long = Ky sajt furnizon identifikim të vlefshëm, të vërtetuar. Nuk ka nevojë të shtohet përjashtim.
-add-exception-checking-short = Po Kontrollohen Të dhënat
+add-exception-checking-short = Po Kontrollohen të Dhënat
 add-exception-checking-long = Përpjekje për identifikimin e këtij sajti…
-add-exception-no-cert-short = Pa të Dhëna të Passhme
+add-exception-no-cert-short = S’ka Informacion
 add-exception-no-cert-long = S’arrihet të merret gjendje identifikimi për këtë sajt.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Ruaje Dëshminë Në Kartelë
 cert-format-base64 = Dëshmi X.509 (PEM)
 cert-format-base64-chain = Dëshmi X.509 me zinxhir (PEM)

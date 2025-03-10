@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Γραμμή μενού
     .accesskey = μ
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Ρυθμίσεις
     .accesskey = θ
 menu-addons-and-themes =
     .label = Πρόσθετα και θέματα
     .accesskey = ρ
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Εξαγωγή για κινητές συσκευές…
+    .accesskey = γ
 menu-help-help-title =
     .label = Βοήθεια
     .accesskey = Β
 menu-help-get-help =
     .label = Λήψη βοήθειας
     .accesskey = ψ
-menu-help-explore-features =
-    .label = Εξερεύνηση λειτουργιών
-    .accesskey = ν
 menu-help-get-release-help =
     .label = Λήψη βοήθειας με το { -brand-short-name }
     .accesskey = Λ
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Σχετικά με το { -brand-short-name }
     .accesskey = χ
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,23 +54,16 @@ menu-quit =
             [windows] ξ
            *[other] Τ
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
-    .label = Έξοδος από το { -brand-shorter-name }{ -brand-shorter-name }
+    .label = Τερματισμός του { -brand-shorter-name }
 system-tray-menu-quit =
     .label =
         { PLATFORM() ->
             [windows] Έξοδος από το { -brand-full-name }
-           *[other] Έξοδος από το { -brand-full-name }
+           *[other] Τερματισμός του { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Ανεπιθύμητα
     .tooltiptext = Επισήμανση επιλεγμένων μηνυμάτων ως ανεπιθύμητων
@@ -92,23 +74,14 @@ toolbar-delete-button =
     .label = Διαγραφή
     .tooltiptext = Διαγραφή επιλεγμένων μηνυμάτων ή φακέλου
 toolbar-undelete-button =
-    .label = Επαναφορά
-    .tooltiptext = Επαναφορά επιλεγμένων μηνυμάτων
-
-## View
-
+    .label = Αναίρεση διαγραφής
+    .tooltiptext = Αναίρεση διαγραφής επιλεγμένων μηνυμάτων
 menu-view-repair-text-encoding =
     .label = Επιδιόρθωση κωδικοποίησης κειμένου
     .accesskey = π
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Κεφαλίδα προβολής φακέλων
     .accesskey = Κ
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Κεφαλίδα λίστας μηνυμάτων
     .accesskey = Κ
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Γραμμή χώρων
     .accesskey = χ
-
-## File
-
 file-new-email-account =
     .label = Λογαριασμός email…
     .accesskey = e

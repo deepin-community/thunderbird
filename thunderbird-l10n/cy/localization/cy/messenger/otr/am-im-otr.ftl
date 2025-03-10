@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Amgryptio Pen-i-Ben
 account-otr-label = Negeseuon Dim Cofnod (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     derbyn heb eu hamgryptio yn cael eu dangos fel rhan o'r sgwrs arferol, na'u cofnodi chwaith.
 otr-verify-nudge =
     .label = Atgoffa bob tro i wirio cyswllt heb ei wirio
-
 otr-not-yet-available = ddim ar gael eto
-

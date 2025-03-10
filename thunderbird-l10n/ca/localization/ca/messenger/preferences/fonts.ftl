@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Tipus de lletra
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Per defecte ({ $name })
 fonts-label-default-unnamed =
     .label = Per defecte
-fonts-encoding-dialog-title =
-    .title = Tipus de lletra i codificacions
 fonts-language-legend =
     .value = Tipus de lletra per a:
     .accesskey = T
 fonts-proportional-label =
     .value = Proporcional:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Llatí
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Singalès
 font-language-group-tibetan =
     .label = Tibetà
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = d
 min-size-none =
     .label = Cap
-
-## Fonts in message
-
 font-control-legend = Control del tipus de lletra
 use-document-fonts-checkbox =
     .label = Permet que els missatges utilitzin altres tipus de lletra
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Utilitza el tipus de lletra d'amplada fixa per als missatges de text
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Codificació del text
 text-encoding-description = Definiu la codificació del text per defecte per enviar i rebre correu
 font-outgoing-email-label =

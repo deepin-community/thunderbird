@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Siirry ylös
     .accesskey = y
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Lisää
     .accesskey = L
-messenger-languages-window2 =
-    .title = { -brand-short-name }in kieliasetukset
 messenger-languages-dialog-title = { -brand-short-name }in kieliasetukset
 messenger-languages-description = { -brand-short-name } näyttää ensimmäisen kielen oletuskielenä ja tarvittaessa muut kielet siinä järjestyksessä kuin ne ilmenevät.
 messenger-languages-search = Etsi lisää kieliä…

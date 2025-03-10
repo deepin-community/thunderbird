@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Įrašyti prisijungimai
 saved-logins-title = Įrašyti prisijungimai
-window-close =
-    .key = w
 focus-search-primary-shortcut =
     .key = f
 focus-search-alt-shortcut =
@@ -69,15 +61,6 @@ remove-all-shown =
 remove-all-passwords-prompt = Ar tikrai pašalinti visus slaptažodžius?
 remove-all-passwords-title = Slaptažodžių šalinimas
 no-master-password-prompt = Ar tikrai parodyti slaptažodžius?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Norėdami atskleisti išsaugotus slaptažodžius, patvirtinkite savo tapatybę.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = atskleisti išsaugotus slaptažodžius
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }

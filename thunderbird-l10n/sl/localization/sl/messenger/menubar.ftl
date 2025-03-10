@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Vrstica z menijem
     .accesskey = m
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Nastavitve
     .accesskey = t
 menu-addons-and-themes =
     .label = Dodatki in teme
     .accesskey = D
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Izvozi za mobilno napravo …
+    .accesskey = z
 menu-help-help-title =
     .label = Pomoč
     .accesskey = m
 menu-help-get-help =
     .label = Poiščite pomoč
     .accesskey = P
-menu-help-explore-features =
-    .label = Raziščite možnosti
-    .accesskey = š
 menu-help-get-release-help =
     .label = Pomoč za { -brand-short-name }
     .accesskey = P
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = O { -brand-short-name(sklon: "mestnik") }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] h
            *[other] h
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Izhod iz { -brand-shorter-name(sklon: "rodilnik") }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Izhod iz { -brand-full-name(sklon: "rodilnik") }
            *[other] Izhod iz { -brand-full-name(sklon: "rodilnik") }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = h
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Neželeno
     .tooltiptext = Označi izbrana sporočila kot neželena
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Prekliči brisanje
     .tooltiptext = Razveljavi izbris izbranih sporočil
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Popravi kodiranje besedila
     .accesskey = r
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Glava podokna map
     .accesskey = G
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Glava seznama sporočil
     .accesskey = G
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Vrstica komponent
     .accesskey = k
-
-## File
-
 file-new-email-account =
     .label = E-poštni račun …
     .accesskey = E

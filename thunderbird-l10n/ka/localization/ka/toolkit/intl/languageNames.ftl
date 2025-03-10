@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = აფარული
 language-name-ab = აფხაზური
 language-name-ach = აჩოლი
@@ -166,6 +162,7 @@ language-name-se = ჩრდილო სამი
 language-name-sg = სანგო
 language-name-si = სინგალეზე
 language-name-sk = სლოვაკური
+language-name-skr = სარაიკი
 language-name-sl = სლოვენური
 language-name-sm = სამოა
 language-name-sn = შონა

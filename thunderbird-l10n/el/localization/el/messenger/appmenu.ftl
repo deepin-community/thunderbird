@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Συγχρονισμός
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Αποσύνδεση…
     .accesskey = ν
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Νέος λογαριασμός
 appmenu-new-account-panel =
     .label = Νέος λογαριασμός
     .accesskey = Ν
-appmenu-create-new-mail-account =
-    .label = Απόκτηση νέου email
-    .accesskey = Α
-appmenu-new-mail-account =
-    .label = Υπάρχον email
-    .accesskey = Υ
 appmenu-new-email-account =
     .label = Email
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Ομάδες συζητήσεων
     .accesskey = Ο
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Νέο ευρετήριο
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Ευρετήριο LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Δημιουργία
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Επαφή
     .accesskey = Ε
-
-## Open
-
 appmenu-open-file-panel =
     .label = Άνοιγμα από αρχείο
     .accesskey = ν
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Ημερολόγιο…
     .accesskey = Η
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Προβολή
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Αύξηση μεγέθους γραμματοσειράς
 appmenuitem-font-size-reduce =
     .tooltiptext = Μείωση μεγέθους γραμματοσειράς
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Επαναφορά μεγέθους γραμματοσειράς
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Εργαλεία
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Εξαγωγή
     .accesskey = ξ
+appmenu-export-for-mobile =
+    .label = Εξαγωγή για κινητές συσκευές
+    .accesskey = γ
 appmenu-tools-message-search =
     .label = Αναζήτηση μηνυμάτων
     .accesskey = Α
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Εργαλεία ανάπτυξης
     .accesskey = λ
-
-## Help
-
 appmenu-help-panel-title =
     .title = Βοήθεια
 appmenu-help-get-help =
     .label = Λήψη βοήθειας
     .accesskey = ψ
-appmenu-help-explore-features =
-    .label = Εξερεύνηση λειτουργιών
-    .accesskey = ν
 appmenu-help-get-release-help =
     .label = Λήψη βοήθειας με το { -brand-short-name }
     .accesskey = Λ
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Σχετικά με το { -brand-short-name }
     .accesskey = χ
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Λήψη ενημέρωσης του { -brand-shorter-name }
 appmenuitem-banner-update-available =

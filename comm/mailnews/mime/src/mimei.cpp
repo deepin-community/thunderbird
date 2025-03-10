@@ -17,6 +17,7 @@
 #include "nsCOMPtr.h"
 #include "mimeobj.h"   /*  MimeObject (abstract) */
 #include "mimecont.h"  /*   |--- MimeContainer (abstract) */
+/*                          |     |--- MimeMultipart (abstract) */
 #include "mimemmix.h"  /*   |     |     |--- MimeMultipartMixed */
 #include "mimemdig.h"  /*   |     |     |--- MimeMultipartDigest */
 #include "mimempar.h"  /*   |     |     |--- MimeMultipartParallel */
@@ -24,15 +25,18 @@
 #include "mimemrel.h"  /*   |     |     |--- MimeMultipartRelated */
 #include "mimemapl.h"  /*   |     |     |--- MimeMultipartAppleDouble */
 #include "mimesun.h"   /*   |     |     |--- MimeSunAttachment */
+/*                          |     |     |--- MimeMultipartSigned (abstract)*/
 #include "nsMailHeaders.h"
 #ifdef ENABLE_SMIME
 #include "mimemcms.h"  /*   |     |           |---MimeMultipartSignedCMS */
 #endif
+/*                          |     |--- MimeEncrypted (abstract) */
 #ifdef ENABLE_SMIME
 #include "mimecms.h"   /*   |     |     |--- MimeEncryptedPKCS7 */
 #endif
 #include "mimemsg.h"   /*   |     |--- MimeMessage */
 #include "mimeunty.h"  /*   |     |--- MimeUntypedText */
+/*                          |--- MimeLeaf (abstract) */
 #include "mimetext.h"  /*   |     |--- MimeInlineText (abstract) */
 #include "mimetpla.h"  /*   |     |     |--- MimeInlineTextPlain */
 #include "mimethpl.h"  /*   |     |     |     |--- M.I.TextHTMLAsPlaintext */
@@ -223,7 +227,10 @@ MimeObject* mime_new(MimeObjectClass* clazz, MimeHeaders* hdrs,
   }
 
   object = (MimeObject*)PR_MALLOC(size);
-  if (!object) return 0;
+  if (!object) {
+    PR_Free(hdrs);
+    return 0;
+  }
 
   memset(object, 0, size);
   object->clazz = clazz;
@@ -279,7 +286,7 @@ bool mime_is_allowed_class(const MimeObjectClass* clazz,
             clazz == (MimeObjectClass*)&mimeMultipartAppleDoubleClass ||
             clazz == (MimeObjectClass*)&mimeMessageClass ||
             clazz == (MimeObjectClass*)&mimeExternalObjectClass ||
-    /*    mimeUntypedTextClass? -- does uuencode */
+  /*    mimeUntypedTextClass? -- does uuencode */
 #ifdef ENABLE_SMIME
             clazz == (MimeObjectClass*)&mimeMultipartSignedCMSClass ||
             clazz == (MimeObjectClass*)&mimeEncryptedCMSClass ||
@@ -306,8 +313,14 @@ void getMsgHdrForCurrentURL(MimeDisplayOptions* opts, nsIMsgDBHdr** aMsgHdr) {
 
   if (!opts) return;
 
-  mime_stream_data* msd = (mime_stream_data*)(opts->stream_closure);
-  if (!msd) return;
+  if (!opts->stream_closure) return;
+
+  mime_stream_data* msd = opts->stream_closure.IsMimeDraftData()
+                              ? nullptr
+                              : opts->stream_closure.AsMimeStreamData();
+  if (!msd) {
+    return;
+  }
 
   nsCOMPtr<nsIChannel> channel =
       msd->channel;  // note the lack of ref counting...
@@ -417,11 +430,14 @@ MimeObjectClass* mime_find_class(const char* content_type, MimeHeaders* hdrs,
         char* imip_method = MimeHeaders_get_parameter(
             full_content_type, "method", nullptr, nullptr);
 
-        mime_stream_data* msd = (mime_stream_data*)(opts->stream_closure);
-        nsCOMPtr<nsIMailChannel> mailChannel = do_QueryInterface(msd->channel);
-        if (mailChannel) {
-          mailChannel->SetImipMethod(
-              nsDependentCString(imip_method ? imip_method : "nomethod"));
+        mime_stream_data* msd = opts->stream_closure.AsMimeStreamData();
+        if (msd) {
+          nsCOMPtr<nsIMailChannel> mailChannel =
+              do_QueryInterface(msd->channel);
+          if (mailChannel) {
+            mailChannel->SetImipMethod(
+                nsDependentCString(imip_method ? imip_method : "nomethod"));
+          }
         }
 
         // PR_Free checks for null
@@ -1397,9 +1413,6 @@ int mime_parse_url_options(const char* url, MimeDisplayOptions* options) {
         memcpy(options->part_to_load, value, end - value);
         options->part_to_load[end - value] = 0;
       }
-    } else if (!PL_strncasecmp("rot13", q, name_end - q)) {
-      options->rot13_p =
-          end <= value || !PL_strncasecmp("true", value, end - value);
     } else if (!PL_strncasecmp("emitter", q, name_end - q)) {
       if ((end > value) && !PL_strncasecmp("js", value, end - value)) {
         // the js emitter needs to hear about nested message bodies
@@ -1516,11 +1529,11 @@ int mime_parse_url_options(const char* url, MimeDisplayOptions* options) {
 int MimeOptions_write(MimeHeaders* hdrs, MimeDisplayOptions* opt,
                       const char* data, int32_t length, bool user_visible_p) {
   int status = 0;
-  void* closure = 0;
+  MimeClosure closure;
   if (!opt || !opt->output_fn || !opt->state) return 0;
 
   closure = opt->output_closure;
-  if (!closure) closure = opt->stream_closure;
+  if (!closure.mClosure) closure = opt->stream_closure;
 
   //  PR_ASSERT(opt->state->first_data_written_p);
 

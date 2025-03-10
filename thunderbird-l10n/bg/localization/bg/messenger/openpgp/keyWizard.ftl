@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Добавяне на личен OpenPGP ключ за { $identity }
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Използване на външен ключ чрез GnuPG (напр. от смарт карта)
     .accesskey = И
-
-## Generate key section
-
 openpgp-generate-key-title = Генериране на OpenPGP ключ
 openpgp-keygen-secret-protection = Защита на секретния ключ
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = Вашият ключ трябва да е вал�
 openpgp-keygen-ongoing = Генерирането на ключ вече е в ход!
 openpgp-keygen-error-core = OpenPGP Core Service не може да се включи
 openpgp-keygen-error-failed = Генерирането на OpenPGP ключ неочаквано се провали
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP ключът е създаден успешно, но не успя да получи отмяна за ключ { $key }
 openpgp-keygen-abort-title = Да се прекъсне ли генерирането на ключ?
 openpgp-keygen-abort = В момента се извършва генериране на OpenPGP ключ, сигурни ли сте, че искате да го отмените?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Генериране на публичен и таен ключ за { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Внасяне  на съществуващ личен OpenPGP ключ
 openpgp-import-key-legend = Избор на предварително архивиран файл.
 openpgp-import-key-description = Можете да внесете лични ключове, които са създадени с друг OpenPGP софтуер.
 openpgp-import-key-info = Друг софтуер може да опише личен ключ, използвайки алтернативни термини като ваш собствен ключ, таен ключ, личен ключ или двойка ключове.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } намери един ключ, които може да бъде внесен.
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = Третирайте този ключ като личен ключ
 gnupg-file = GnuPG файлове
 import-error-file-size = <b>Грешка!</b> Файлове, по-големи от 5 MB, не се поддържат.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Грешка!</b> Неуспешно внасяне на файл. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Грешка!</b> Неуспешно внасяне на ключове. { $error }
 openpgp-import-identity-label = Идентичност
 openpgp-import-fingerprint-label = Пръстов отпечатък
@@ -122,9 +106,6 @@ openpgp-import-bits-label = Бита
 openpgp-import-key-props =
     .label = Свойства на ключа
     .accesskey = к
-
-## External Key section
-
 openpgp-external-key-title = Външен GnuPG ключ
 openpgp-external-key-description = Конфигуриране на външен GnuPG ключ чрез въвеждане на идентификатора му
 openpgp-external-key-info = Освен това трябва да използвате и "мениджър на ключове", за да внесете и приемете съответния публичен ключ.

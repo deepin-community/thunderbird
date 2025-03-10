@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Желі туралы
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = HTTP кэшін тазарту
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Кэшке баяу қатынаудың са
 about-networking-rcwn-cache-not-slow = Кэшке баяу емес қатынаудың саны
 about-networking-networkid = Желі идентификаторы
 about-networking-networkid-id = Желі идентификаторы
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Бұл бет <a data-l10n-name="about-logging-url">about:logging</a> ішіне жылжытылды.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Байланыс орнатылды
 about-networking-networkid-status-known = Байланыс қалып-күйі белгісіз
-
-##
-

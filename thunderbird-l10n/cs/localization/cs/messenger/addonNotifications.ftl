@@ -1,17 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 xpinstall-prompt = Aplikace { -brand-short-name } zabránila této stránce v dotazu na instalaci softwaru do vašeho počítače.
-
-## Variables:
-##   $host (String): The hostname of the site the add-on is being installed from.
-
 xpinstall-prompt-header = Chcete nainstalovat doplněk ze serveru { $host }?
 xpinstall-prompt-message = Pokoušíte se nainstalovat doplněk ze serveru { $host }. Ujistěte se prosím, že tomuto serveru můžete věřit.
-
-##
-
 xpinstall-prompt-header-unknown = Chcete nainstalovat doplněk z neznámého serveru?
 xpinstall-prompt-message-unknown = Pokoušíte se nainstalovat doplněk z neznámého serveru. Ujistěte se prosím, že mu můžete věřit.
 xpinstall-prompt-dont-allow =
@@ -20,57 +9,28 @@ xpinstall-prompt-dont-allow =
 xpinstall-prompt-never-allow =
     .label = Nikdy nepovolovat
     .accesskey = e
-# Long text in this context make the dropdown menu extend awkwardly to the left,
-# avoid a localization that's significantly longer than the English version.
 xpinstall-prompt-never-allow-and-report =
     .label = Nahlásit podezřelou stránku
     .accesskey = N
-# Accessibility Note:
-# Be sure you do not choose an accesskey that is used elsewhere in the active context (e.g. main menu bar, submenu of the warning popup button)
-# See https://website-archive.mozilla.org/www.mozilla.org/access/access/keyboard/ for details
 xpinstall-prompt-install =
     .label = Nainstalovat
     .accesskey = N
-
-# These messages are shown when a website invokes navigator.requestMIDIAccess.
-
 site-permission-install-first-prompt-midi-header = Tato stránka požaduje přístup k vašim MIDI (Musical Instrument Digital Interface) zařízením. Přístup k zařízení lze povolit instalací doplňku.
 site-permission-install-first-prompt-midi-message = Tento přístup nemusí být vždy bezpečný. Pokračujte jen pokud tomuto serveru důvěřujete.
-
-##
-
 xpinstall-disabled-locked = Instalace softwaru byla zakázána správcem vašeho systému.
 xpinstall-disabled = Instalace softwaru je v současnosti zakázána. Klepněte na Povolit a zkuste to prosím znovu.
 xpinstall-disabled-button =
     .label = Povolit
     .accesskey = o
-# This message is shown when the installation of an add-on is blocked by enterprise policy.
-# Variables:
-#   $addonName (String): the name of the add-on.
-#   $addonId (String): the ID of add-on.
 addon-install-blocked-by-policy = Doplněk { $addonName } ({ $addonId }) byl zablokován správcem vašeho počítače.{ " " }
-# This message is shown when the installation of add-ons from a domain is blocked by enterprise policy.
 addon-domain-blocked-by-policy = Nastavení od správce vašeho systému zabránilo této stránce v dotazu na instalaci softwaru do vašeho počítače.
 addon-install-full-screen-blocked = V režimu celé obrazovky nebo těsně před jeho zapnutím není instalace doplňků povolena.
-# Variables:
-#   $addonName (String): the localized name of the sideloaded add-on.
 webext-perms-sideload-menu-item = Doplněk { $addonName } byl přidán do aplikace { -brand-short-name }
-# Variables:
-#   $addonName (String): the localized name of the extension which has been updated.
 webext-perms-update-menu-item = Doplněk { $addonName } vyžaduje nová oprávnění
-
-## Add-on removal warning
-
-# Variables:
-#  $name (String): The name of the add-on that will be removed.
 addon-removal-title = Opravdu chcete odebrat rozšíření { $name }?
-# Variables:
-#   $name (String): the name of the extension which is about to be removed.
 addon-removal-message = Odebrat doplněk { $name } z aplikace { -brand-shorter-name }?
 addon-removal-button = Odebrat
 addon-removal-abuse-report-checkbox = Nahlásit toto rozšíření organizaci { -vendor-short-name }
-# Variables:
-#   $addonCount (Number): the number of add-ons being downloaded
 addon-downloading-and-verifying =
     { $addonCount ->
         [one] Stahování a ověřování doplňku…
@@ -84,10 +44,6 @@ addon-install-cancel-button =
 addon-install-accept-button =
     .label = Přidat
     .accesskey = P
-
-## Variables:
-##   $addonCount (Number): the number of add-ons being installed
-
 addon-confirm-install-message =
     { $addonCount ->
         [one] Tato stránka chce nainstalovat doplněk do aplikace { -brand-short-name }:
@@ -100,8 +56,6 @@ addon-confirm-install-unsigned-message =
         [few] Upozornění: Tato stránka chce nainstalovat { $addonCount } neověřené doplňky do aplikace { -brand-short-name }. Pokračujte na vlastní riziko.
        *[other] Upozornění: Tato stránka chce nainstalovat { $addonCount } neověřených doplňků do aplikace { -brand-short-name }. Pokračujte na vlastní riziko.
     }
-# Variables:
-#   $addonCount (Number): the number of add-ons being installed (at least 2)
 addon-confirm-install-some-unsigned-message =
     { $addonCount ->
         [one]
@@ -120,11 +74,6 @@ addon-confirm-install-some-unsigned-message =
                *[no-cases] Upozornění: Tato stránka chce do aplikace { -brand-short-name } nainstalovat { $addonCount } doplňků, z nichž některé jsou neověřené. Pokračujte na vlastní riziko.
             }
     }
-
-## Add-on install errors
-## Variables:
-##   $addonName (String): the add-on name.
-
 addon-install-error-network-failure = Doplněk nemohl být stažen z důvodu selhání připojení.
 addon-install-error-incorrect-hash = Doplněk nemohl být nainstalován, protože neodpovídá doplňku, který { -brand-short-name } očekává.
 addon-install-error-corrupt-file = Doplněk stažený z tohoto serveru nemohl být nainstalován, protože je poškozený.
@@ -136,7 +85,5 @@ addon-local-install-error-incorrect-hash = Tento doplněk nemohl být nainstalov
 addon-local-install-error-corrupt-file = Tento doplněk nemohl být nainstalován, protože je poškozený.
 addon-local-install-error-file-access = Doplněk { $addonName } nemohl být nainstalován, protože { -brand-short-name } nemůže upravit potřebný soubor.
 addon-local-install-error-not-signed = Tento doplněk nemohl být nainstalován, protože nebyl ověřen.
-# Variables:
-#   $appVersion (String): the application version.
 addon-install-error-incompatible = Doplněk { $addonName } nemohl být nainstalován, protože není kompatibilní s aplikací { -brand-short-name } { $appVersion }.
 addon-install-error-blocklisted = Doplněk { $addonName } nemohl být nainstalován, protože přináší vysoké riziko nestability nebo bezpečnostních problémů.

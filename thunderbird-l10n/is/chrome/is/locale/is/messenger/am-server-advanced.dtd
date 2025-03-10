@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Ítarlegri reikningsstillingar">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "Mappa IMAP netþjóns:">
 <!ENTITY serverDirectory.accesskey "þ">
 <!ENTITY usingSubscription.label "Sýna aðeins möppur sem eru í áskrift">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "j">
 <!ENTITY maximumConnectionsNumber.label "Hámarksfjöldi netþjónatenginga í skyndiminni">
 <!ENTITY maximumConnectionsNumber.accesskey "m">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "Þessar stillingar skilgreina nafnsvið á IMAP þjóni">
 <!ENTITY personalNamespace.label "Eigið nafnsvið:">
 <!ENTITY personalNamespace.accesskey "E">

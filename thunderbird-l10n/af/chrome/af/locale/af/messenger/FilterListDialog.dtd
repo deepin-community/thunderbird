@@ -1,28 +1,24 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "Boodskapfilters">
 <!ENTITY nameColumn.label "Filternaam">
 <!ENTITY activeColumn.label "Geaktiveer">
 <!ENTITY newButton.label "Nuwe…">
 <!ENTITY newButton.accesskey "N">
-
-
+<!ENTITY newButton.popupCopy.label "Copy…">
+<!ENTITY newButton.popupCopy.accesskey "C">
 <!ENTITY editButton.label "Redigeer…">
 <!ENTITY editButton.accesskey "e">
 <!ENTITY deleteButton.label "Skrap">
 <!ENTITY deleteButton.accesskey "a">
-
-
-
+<!ENTITY reorderTopButton "Move to Top">
+<!ENTITY reorderTopButton.accessKey "o">
+<!ENTITY reorderTopButton.toolTip "Rearrange filter so it executes before all others">
 <!ENTITY reorderUpButton.label "Skuif op">
 <!ENTITY reorderUpButton.accesskey "o">
 <!ENTITY reorderDownButton.label "Skuif af">
 <!ENTITY reorderDownButton.accesskey "a">
-
-
-
+<!ENTITY reorderBottomButton "Move to Bottom">
+<!ENTITY reorderBottomButton.accessKey "B">
+<!ENTITY reorderBottomButton.toolTip "Rearrange filter so it executes after all others">
 <!ENTITY filterHeader.label "Geaktiveerde filters loop outomaties in die volgorde hieronder.">
 <!ENTITY filtersForPrefix.label "Filters vir:">
 <!ENTITY filtersForPrefix.accesskey "F">
@@ -36,16 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "k">
 <!ENTITY helpButton.label "Hulp">
 <!ENTITY helpButton.accesskey "H">
-<!ENTITY closeCmd.key "W"> 
-
-
-
-<!ENTITY newButton.popupCopy.label "Copy…">
-<!ENTITY newButton.popupCopy.accesskey "C">
-<!ENTITY reorderTopButton "Move to Top">
-<!ENTITY reorderTopButton.accessKey "o">
-<!ENTITY reorderTopButton.toolTip "Rearrange filter so it executes before all others">
-<!ENTITY reorderBottomButton "Move to Bottom">
-<!ENTITY reorderBottomButton.accessKey "B">
-<!ENTITY reorderBottomButton.toolTip "Rearrange filter so it executes after all others">
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Search filters by name…">

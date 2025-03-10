@@ -1,11 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY titledefault.label "&brandFullName;">
 <!ENTITY titleSeparator.label " - ">
-
-<!-- File Menu -->
 <!ENTITY newFolderCmd.label "Mappe…">
 <!ENTITY newFolderCmd.accesskey "e">
 <!ENTITY closeTabCmd2.label "Lat att">
@@ -14,32 +8,23 @@
 <!ENTITY closeOtherTabsCmd2.accesskey "a">
 <!ENTITY recentlyClosedTabsCmd.label "Nyleg attlatne faner">
 <!ENTITY recentlyClosedTabsCmd.accesskey "N">
-
 <!ENTITY undoCloseTabCmd.commandkey "T">
-<!-- LOCALIZATION NOTE (moveToNewWindow.label):
-     Menu option to cause the current tab to be migrated to a new Thunderbird
-     window.
-     -->
 <!ENTITY moveToNewWindow.label "Flytt til nytt vindauge">
 <!ENTITY moveToNewWindow.accesskey "F">
 <!ENTITY newVirtualFolderCmd.label "Lagra søk…">
 <!ENTITY newVirtualFolderCmd.accesskey "L">
-<!ENTITY newCreateEmailAccountCmd.label "Lag ein ny e-postkonto …">
-<!ENTITY newCreateEmailAccountCmd.accesskey "L">
-<!ENTITY newExistingEmailAccountCmd.label "Eksisterande e-postkonto …">
-<!ENTITY newExistingEmailAccountCmd.accesskey "E">
 <!ENTITY newIMAccountCmd.label "Chattekonto…">
 <!ENTITY newIMAccountCmd.accesskey "N">
 <!ENTITY newFeedAccountCmd.label "RSS-kanalkonto…">
 <!ENTITY newFeedAccountCmd.accesskey "a">
 <!ENTITY newIMContactCmd.label "Chatte-kontakt…">
 <!ENTITY newIMContactCmd.accesskey "t">
-<!ENTITY  newMessageCmd2.key "N">
-<!ENTITY  newMessageCmd.key "M">
-<!ENTITY  newMessageCmd.label "Melding">
-<!ENTITY  newMessageCmd.accesskey "m">
-<!ENTITY  newContactCmd.label "Adressebokkontakt…">
-<!ENTITY  newContactCmd.accesskey "k">
+<!ENTITY newMessageCmd2.key "N">
+<!ENTITY newMessageCmd.key "M">
+<!ENTITY newMessageCmd.label "Melding">
+<!ENTITY newMessageCmd.accesskey "m">
+<!ENTITY newContactCmd.label "Adressebokkontakt…">
+<!ENTITY newContactCmd.accesskey "k">
 <!ENTITY openMenuCmd.label "Opne">
 <!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY openMessageFileCmd.label "Opne lagra melding…">
@@ -80,13 +65,11 @@
 <!ENTITY settingsOfflineCmd2.accesskey "F">
 <!ENTITY downloadSelectedCmd.label "Last ned valde meldingar">
 <!ENTITY downloadSelectedCmd.accesskey "n">
-<!ENTITY downloadStarredCmd.label "Last ned meldingar merkte med stjerne">
+<!ENTITY downloadStarredCmd.label "Last ned stjernemarkerte meldingar">
 <!ENTITY downloadStarredCmd.accesskey "L">
 <!ENTITY printCmd.label "Skriv ut…">
 <!ENTITY printCmd.accesskey "u">
 <!ENTITY printCmd.key "p">
-
-<!-- Edit Menu -->
 <!ENTITY selectMenu.label "Vel">
 <!ENTITY selectMenu.accesskey "V">
 <!ENTITY all.label "Alle">
@@ -94,7 +77,7 @@
 <!ENTITY selectThreadCmd.label "Tråd">
 <!ENTITY selectThreadCmd.accesskey "T">
 <!ENTITY selectThreadCmd.key "a">
-<!ENTITY selectFlaggedCmd.label "Meldingar med stjerne">
+<!ENTITY selectFlaggedCmd.label "Stjernemarkerte meldingar">
 <!ENTITY selectFlaggedCmd.accesskey "e">
 <!ENTITY menuFavoriteFolder.label "Favorittmappe">
 <!ENTITY menuFavoriteFolder.accesskey "F">
@@ -110,15 +93,12 @@
 <!ENTITY undoDefaultCmd.accesskey "A">
 <!ENTITY redoDefaultCmd.label "Gjenta">
 <!ENTITY redoDefaultCmd.accesskey "G">
-
-<!-- View Menu -->
 <!ENTITY menubarCmd.label "Menylinje">
 <!ENTITY menubarCmd.accesskey "M">
 <!ENTITY showMessengerToolbarCmd.label "Meldingslinje">
 <!ENTITY showMessengerToolbarCmd.accesskey "e">
 <!ENTITY customizeToolbar.label "Tilpass …">
 <!ENTITY customizeToolbar.accesskey "T">
-
 <!ENTITY messagePaneLayoutStyle.label "Utsjånad">
 <!ENTITY messagePaneLayoutStyle.accesskey "U">
 <!ENTITY messagePaneClassic.label "Klassisk vising">
@@ -131,7 +111,6 @@
 <!ENTITY showFolderPaneCmd.accesskey "M">
 <!ENTITY showMessageCmd.label "Meldingsvindauge">
 <!ENTITY showMessageCmd.accesskey "v">
-
 <!ENTITY folderView.label "Mapper">
 <!ENTITY folderView.accesskey "M">
 <!ENTITY unifiedFolders.label "Samlemapper">
@@ -146,8 +125,6 @@
 <!ENTITY recentFolders.accesskey "N">
 <!ENTITY compactVersion.label "Kompaktvising">
 <!ENTITY compactVersion.accesskey "K">
-
-<!-- Sort Menu -->
 <!ENTITY sortMenu.label "Sorter etter">
 <!ENTITY sortMenu.accesskey "o">
 <!ENTITY sortByDateCmd.label "Dato">
@@ -210,7 +187,6 @@
 <!ENTITY watchedThreadsWithUnreadCmd.accesskey "O">
 <!ENTITY ignoredThreadsCmd.label "Ignorerte trådar">
 <!ENTITY ignoredThreadsCmd.accesskey "I">
-
 <!ENTITY headersMenu.label "Meldingshovud">
 <!ENTITY headersMenu.accesskey "M">
 <!ENTITY headersAllCmd.label "Alle">
@@ -227,7 +203,6 @@
 <!ENTITY bodyAsPlaintext.accesskey "R">
 <!ENTITY bodyAllParts.label "Alle body-delar">
 <!ENTITY bodyAllParts.accesskey "A">
-
 <!ENTITY bodyMenuFeed.label "Vis RSS-kjeldemeldingskropp som">
 <!ENTITY bodyMenuFeed.accesskey "K">
 <!ENTITY viewFeedWebPage.label "Nettside">
@@ -236,17 +211,13 @@
 <!ENTITY viewFeedSummary.accesskey "O">
 <!ENTITY viewFeedSummaryFeedPropsPref.label "Standardformat">
 <!ENTITY viewFeedSummaryFeedPropsPref.accesskey "S">
-
 <!ENTITY viewAttachmentsInlineCmd.label "Vis vedlegg innbunde">
 <!ENTITY viewAttachmentsInlineCmd.accesskey "V">
-
 <!ENTITY pageSourceCmd.label "Kjeldekode">
 <!ENTITY pageSourceCmd.accesskey "K">
 <!ENTITY pageSourceCmd.key "u">
 <!ENTITY getNewMessagesCmd.key "y">
 <!ENTITY getAllNewMessagesCmd.key "Y">
-
-<!-- Search Menu -->
 <!ENTITY findMenu.label "Søk">
 <!ENTITY findMenu.accesskey "S">
 <!ENTITY findCmd.label "Søk i denne meldinga…">
@@ -265,8 +236,6 @@
 <!ENTITY glodaSearchCmd.accesskey "G">
 <!ENTITY searchAddressesCmd.label "Søk i adresser …">
 <!ENTITY searchAddressesCmd.accesskey "S">
-
-<!-- Go Menu -->
 <!ENTITY goMenu.label "Gå til">
 <!ENTITY goMenu.accesskey "G">
 <!ENTITY nextMenu.label "Neste">
@@ -277,7 +246,7 @@
 <!ENTITY nextUnreadMsgCmd.label "Ulesen melding">
 <!ENTITY nextUnreadMsgCmd.accesskey "U">
 <!ENTITY nextUnreadMsgCmd.key "n">
-<!ENTITY nextStarredMsgCmd.label "Melding med stjerne">
+<!ENTITY nextStarredMsgCmd.label "Stjernemarkert melding">
 <!ENTITY nextStarredMsgCmd.accesskey "M">
 <!ENTITY nextUnreadThread.label "Ulesen tråd">
 <!ENTITY nextUnreadThread.accesskey "t">
@@ -298,7 +267,7 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Chatt">
 <!ENTITY goChatCmd.accesskey "e">
-<!ENTITY prevStarredMsgCmd.label "Melding med stjerne">
+<!ENTITY prevStarredMsgCmd.label "Stjernemarkert melding">
 <!ENTITY prevStarredMsgCmd.accesskey "M">
 <!ENTITY folderMenu.label "Mappe">
 <!ENTITY folderMenu.accesskey "M">
@@ -306,8 +275,6 @@
 <!ENTITY goRecentlyClosedTabs.accesskey "N">
 <!ENTITY startPageCmd.label "Startside">
 <!ENTITY startPageCmd.accesskey "S">
-
-<!-- Message Menu -->
 <!ENTITY msgMenu.label "Melding">
 <!ENTITY msgMenu.accesskey "M">
 <!ENTITY newMsgCmd.label "Ny melding">
@@ -349,7 +316,7 @@
 <!ENTITY editTemplateMsgCmd.label "Rediger mal">
 <!ENTITY editTemplateMsgCmd.accesskey "m">
 <!ENTITY newMsgFromTemplateCmd.label "Ny melding frå mal">
-<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN"><!-- do not change "VK_RETURN" -->
+<!ENTITY newMsgFromTemplateCmd.keycode "VK_RETURN">
 <!ENTITY createFilter.label "Lag filter på meldinga">
 <!ENTITY createFilter.accesskey "L">
 <!ENTITY moveMsgToMenu.label "Flytt til">
@@ -427,11 +394,7 @@
 <!ENTITY openFeedSummary.accesskey "s">
 <!ENTITY openFeedWebPageInMP.label "Byt mellom vising av nettside og oppsummering i meldingsvindauget">
 <!ENTITY openFeedWebPageInMP.accesskey "B">
-
-<!-- Windows Menu -->
 <!ENTITY windowMenu.label "Vindauge">
-
-<!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Verktøy">
 <!ENTITY tasksMenu.accesskey "e">
 <!ENTITY messengerCmd.label "E-post og nyhendegrupper">
@@ -444,10 +407,10 @@
 <!ENTITY activitymanager.accesskey "v">
 <!ENTITY imAccountsStatus.label "Chattestatus">
 <!ENTITY imAccountsStatus.accesskey "N">
-<!ENTITY imStatus.available          "Tilgjengeleg">
-<!ENTITY imStatus.unavailable        "Utilgjengeleg">
-<!ENTITY imStatus.offline            "Fråkopla">
-<!ENTITY imStatus.showAccounts       "Vis kontoar …">
+<!ENTITY imStatus.available "Tilgjengeleg">
+<!ENTITY imStatus.unavailable "Utilgjengeleg">
+<!ENTITY imStatus.offline "Fråkopla">
+<!ENTITY imStatus.showAccounts "Vis kontoar …">
 <!ENTITY joinChatCmd.label "Kople til chatt…">
 <!ENTITY joinChatCmd.accesskey "O">
 <!ENTITY savedFiles.label "Lagra filer">
@@ -473,13 +436,7 @@
 <!ENTITY clearRecentHistory.accesskey "n">
 <!ENTITY accountManagerCmd2.label "Kontoinnstillingar">
 <!ENTITY accountManagerCmd2.accesskey "K">
-<!-- LOCALIZATION NOTE (accountManagerCmdUnix.accesskey):
-     Belongs to accountManagerCmd.label, which is placed under the Edit menu
-     on Unix systems
-  -->
 <!ENTITY accountManagerCmdUnix2.accesskey "K">
-
-<!-- Developer Tools Submenu -->
 <!ENTITY devtoolsMenu.label "Utviklarverktøy">
 <!ENTITY devtoolsMenu.accesskey "U">
 <!ENTITY devToolboxCmd.label "Verktøykasse for utviklarar">
@@ -490,8 +447,6 @@
 <!ENTITY errorConsoleCmd.label "Feilmeldingar">
 <!ENTITY errorConsoleCmd.accesskey "F">
 <!ENTITY errorConsoleCmd.commandkey "j">
-
-<!-- Mail Toolbar -->
 <!ENTITY getMsgButton1.label "Hent meldingar">
 <!ENTITY newMsgButton.label "Skriv">
 <!ENTITY replyButton.label "Svar">
@@ -524,8 +479,6 @@
 <!ENTITY tagButton.label "Merkelapp-stikkord">
 <!ENTITY compactButton.label "Komprimer">
 <!ENTITY appmenuButton.label "AppMeny">
-
-<!-- Mail Toolbar Tooltips-->
 <!ENTITY advancedButton.tooltip "Avansert meldingssøk">
 <!ENTITY getMsgButton.tooltip "Hent nye meldingar">
 <!ENTITY getAllNewMsgCmd.label "Hent alle nye meldingar">
@@ -554,45 +507,31 @@
 <!ENTITY tagButton.tooltip "Merk melding">
 <!ENTITY compactButton.tooltip "Fjern sletta meldingar frå vald mappe">
 <!ENTITY appmenuButton1.tooltip "Viser &brandShortName;-menyen">
-
-<!-- Toolbar Button Popup -->
 <!ENTITY buttonMenuForwardAsInline.label "Vidaresend innbunde">
 <!ENTITY buttonMenuForwardAsAttachment.label "Vidaresend som vedlegg">
-
-<!-- Remote Content Button Popup -->
 <!ENTITY remoteContentOptionsAllowForMsg.label "Vis eksternt innhald i denne meldinga">
 <!ENTITY remoteContentOptionsAllowForMsg.accesskey "V">
 <!ENTITY editRemoteContentSettings.label "Innstillingar for eksternt innhald …">
 <!ENTITY editRemoteContentSettings.accesskey "n">
 <!ENTITY editRemoteContentSettingsUnix.label "Innstillingar for eksternt innhald …">
 <!ENTITY editRemoteContentSettingsUnix.accesskey "n">
-
-<!-- Phishing Button Popup -->
 <!ENTITY phishingOptionIgnore.label "Ignorer åtvaring for denne meldinga">
 <!ENTITY phishingOptionIgnore.accesskey "n">
 <!ENTITY phishingOptionSettings.label "Rediger svindeloppdagings-innstillingar…">
 <!ENTITY phishingOptionSettings.accesskey "d">
 <!ENTITY phishingOptionSettingsUnix.label "Rediger svindeloppdagings-innstillingar…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "d">
-
-<!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Ny melding">
 <!ENTITY appmenuNewContactCmd.label "Adressebokkontaktar …">
 <!ENTITY appmenuToolbarLayout.label "Verktøylinjeutsjånad…">
-
-<!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Nytt merkelapp-stikkord…">
 <!ENTITY addNewTag.accesskey "N">
 <!ENTITY manageTags.label "Handsam merkelapp-stikkord…">
 <!ENTITY manageTags.accesskey "H">
-
-<!-- Folder Pane -->
 <!ENTITY folderNameColumn.label "Namn">
 <!ENTITY folderUnreadColumn.label "Ulesne">
 <!ENTITY folderTotalColumn.label "Totalt">
 <!ENTITY folderSizeColumn.label "Storleik">
-
-<!-- Folder Pane Context Menu -->
 <!ENTITY folderContextGetMessages.label "Hent meldingar">
 <!ENTITY folderContextGetMessages.accesskey "H">
 <!ENTITY folderContextMarkAllFoldersRead.label "Merk alle mapper som lesne">
@@ -621,8 +560,6 @@
 <!ENTITY folderContextUnsubscribe.accesskey "u">
 <!ENTITY folderContextMarkNewsgroupRead.label "Merk nyhendegruppe som lesen">
 <!ENTITY folderContextMarkNewsgroupRead.accesskey "r">
-<!ENTITY folderContextMarkMailFolderRead.label "Merk mappe som lesen">
-<!ENTITY folderContextMarkMailFolderRead.accesskey "M">
 <!ENTITY folderContextSubscribe.label "Meld inn…">
 <!ENTITY folderContextSubscribe.accesskey "M">
 <!ENTITY folderContextSearchForMessages.label "Søk i meldingar…">
@@ -633,15 +570,9 @@
 <!ENTITY folderContextFavoriteFolder.accesskey "F">
 <!ENTITY folderContextSettings2.label "Innstillingar">
 <!ENTITY folderContextSettings2.accesskey "n">
-
-<!-- Search Bar -->
 <!ENTITY SearchNameOrEmail.label "Namn eller e-postadresse inneheld:">
 <!ENTITY SearchNameOrEmail.accesskey "N">
-
-<!-- Gloda Search Bar -->
 <!ENTITY glodaSearchBar.placeholder "Søk i meldingar…">
-
-<!-- Quick Search Menu Bar -->
 <!ENTITY searchSubjectMenu.label "Emne">
 <!ENTITY searchFromMenu.label "Frå">
 <!ENTITY searchSubjectOrFromMenu.label "Emne eller Frå">
@@ -649,8 +580,6 @@
 <!ENTITY searchSubjectOrRecipientMenu.label "Emne, Til eller Cc">
 <!ENTITY searchMessageBody.label "Meldingskropp">
 <!ENTITY saveAsVirtualFolderMenu.label "Lagre søk som mappe…">
-
-<!-- Thread Pane -->
 <!ENTITY selectColumn.label "Vel meldingar">
 <!ENTITY threadColumn.label "Tråd">
 <!ENTITY fromColumn.label "Frå">
@@ -668,13 +597,11 @@
 <!ENTITY totalColumn.label "Totalt">
 <!ENTITY readColumn.label "Lesen">
 <!ENTITY receivedColumn.label "Motteke">
-<!ENTITY starredColumn.label "Stjerne">
+<!ENTITY starredColumn.label "Stjernemarkert">
 <!ENTITY locationColumn.label "Plassering">
 <!ENTITY idColumn.label "Motteke-rekkjefølgje">
 <!ENTITY attachmentColumn.label "Vedlegg">
 <!ENTITY deleteColumn.label "Slett">
-
-<!-- Thread Pane Tooltips -->
 <!ENTITY columnChooser2.tooltip "Vel kolonner du vil vise">
 <!ENTITY selectColumn.tooltip "Skift vel alle meldingane">
 <!ENTITY threadColumn2.tooltip "Vis meldingstrådar">
@@ -698,15 +625,9 @@
 <!ENTITY idColumn2.tooltip "Sorter etter: Mottaksrekkjefølgje">
 <!ENTITY attachmentColumn2.tooltip "Sorter etter: Vedlegg">
 <!ENTITY deleteColumn.tooltip "Slett ei melding">
-
-<!-- Thread Pane Context Menu -->
 <!ENTITY contextNewMsgFromTemplate.label "Ny melding frå mal">
 <!ENTITY contextOpenNewWindow.label "Opne melding i nytt vindauge">
 <!ENTITY contextOpenNewWindow.accesskey "O">
-<!-- The contextOpenNewTab.accesskey ("T") potentially conflicts with
-     cutCmd.accessKey which is defined in textcontext.dtd from toolkit. Right
-     now, both menu items can't be visible at the same time, but should someone
-     enable copy/paste of message, this key would probably need to be changed. -->
 <!ENTITY contextOpenNewTab.label "Opne melding i ny fane">
 <!ENTITY contextOpenNewTab.accesskey "n">
 <!ENTITY contextOpenConversation.label "Opne melding i samtale">
@@ -728,20 +649,10 @@
 <!ENTITY contextReplyAll.accesskey "a">
 <!ENTITY contextReplyList.label "Svar til liste">
 <!ENTITY contextReplyList.accesskey "r">
-<!ENTITY contextForward.label "Vidaresend">
-<!ENTITY contextForward.accesskey "V">
-<!ENTITY contextForwardAsMenu.label "Vidaresend som">
-<!ENTITY contextForwardAsMenu.accesskey "r">
-<!ENTITY contextForwardAsInline.label "Innbunde">
-<!ENTITY contextForwardAsInline.accesskey "I">
-<!ENTITY contextForwardAsAttachmentItem.label "Vedlegg">
-<!ENTITY contextForwardAsAttachmentItem.accesskey "V">
-<!ENTITY contextMultiForwardAsAttachment.label "Vidaresend som vedlegg">
-<!ENTITY contextMultiForwardAsAttachment.accesskey "d">
 <!ENTITY contextMoveMsgMenu.label "Flytt til">
 <!ENTITY contextMoveMsgMenu.accesskey "F">
-<!ENTITY contextMoveCopyMsgRecentMenu.label "Sist brukt">
-<!ENTITY contextMoveCopyMsgRecentMenu.accesskey "S">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.label "Recent Destinations">
+<!ENTITY contextMoveCopyMsgRecentDestinationMenu.accesskey "R">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.label "Favorittar">
 <!ENTITY contextMoveCopyMsgFavoritesMenu.accesskey "F">
 <!ENTITY contextCopyMsgMenu.label "Kopier til">
@@ -751,10 +662,6 @@
 <!ENTITY contextKillThreadMenu.accesskey "I">
 <!ENTITY contextKillSubthreadMenu.label "Ignorer undertråd">
 <!ENTITY contextWatchThreadMenu.label "Overvak tråd">
-<!-- LOCALIZATION NOTE (contextWatchThreadMenu.accesskey):
-     In the en-US locale we ran out of access keys, so there is an empty access key for
-     Watch Thread. Localizers can pick a suitable key
-  -->
 <!ENTITY contextWatchThreadMenu.accesskey "">
 <!ENTITY contextSaveAs.label "Lagre som…">
 <!ENTITY contextSaveAs.accesskey "L">
@@ -762,48 +669,10 @@
 <!ENTITY contextPrint.accesskey "u">
 <!ENTITY contextPrintPreview.label "Førehandsvising">
 <!ENTITY contextPrintPreview.accesskey "r">
-
-<!-- LOCALIZATION NOTE (columnPicker.applyTo.label):
-     This option in the thread pane column picker pops up a sub-menu containing
-     the "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" options. This item indicates
-     a desire to apply the currently displayed set of columns to some other
-     folder(s). The sub-menu items indicate whether we want to apply it to just
-     a folder or also its children.
-  -->
 <!ENTITY columnPicker.applyTo.label "Bruk same kolonnar i …">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolder.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolderAndChildren.label". It indicates a desire to
-     apply the currently display thread pane column settings to a single folder
-     that the user selects using the same widget as the move to/copy to
-     mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolder.label "Mappe …">
-<!-- LOCALIZATION NOTE (columnPicker.applyToFolderAndChildren.label):
-     This option in the thread pane column picker is found on a sub-menu beneath
-     the "columnPicker.applyTo.label" alongside
-     "columnPicker.applyToFolder.label". It indicates a desire to
-     apply the currently display thread pane column settings to a folder and all
-     of its descendents. The user selects the folder using the same widget as the
-     move to/copy to mechanism (via a series of popups).
-  -->
 <!ENTITY columnPicker.applyToFolderAndChildren.label "Mappe og undermapper …">
-<!-- LOCALIZATION NOTE (columnPicker.thisFolder.label):
-     This is used in the folder selection widget for the
-     "columnPicker.applyToFolder.label" and
-     "columnPicker.applyToFolderAndChildren.label" menu options. Whenever
-     a folder has children, it results in a menu popup; the first menu item
-     in that popup is given this label to indicate that that folder should be
-     selected. For example, if folder "A" has two children, "B" and "C", then
-     when the user hovers over "A", a new popup menu will be displayed whose
-     items are "This folder", "B", and "C". This is the equivalent of the
-     "File here" option for the move to/copy to widget.
-  -->
 <!ENTITY columnPicker.thisFolder.label "Denne mappa">
-
-<!-- Media (video/audio) controls -->
 <!ENTITY contextPlay.label "Spel av">
 <!ENTITY contextPlay.accesskey "S">
 <!ENTITY contextPause.label "Pause">
@@ -812,37 +681,10 @@
 <!ENTITY contextMute.accesskey "a">
 <!ENTITY contextUnmute.label "Slå på lyd">
 <!ENTITY contextUnmute.accesskey "å">
-
-<!-- Quick Search Bar -->
-<!-- LOCALIZATION NOTE (quickSearchCmd.key):
-     This is actually the key used for the global message search box; we have
-     not changed
-  -->
 <!ENTITY quickSearchCmd.key "k">
-<!-- LOCALIZATION NOTE (search.label.base1):
-     This is the base of the empty text for the global search box. We replace
-     #1 with the contents of the appropriate search.keyLabel.* value for the
-     platform.
-     The goal is to convey to the user that typing in the box will allow them
-     to search for messages globally and that there is a hotkey they can press
-     to get to the box faster. If the global indexer is disabled, the search
-     box will be collapsed and the user will never see this message.
-  -->
 <!ENTITY search.label.base1 "Søk #1">
-<!-- LOCALIZATION NOTE (search.keyLabel.nonmac):
-     The description of the key-binding to get into the global search box on
-     windows and linux (which use the control key). We use the key defined in
-     the quickSearchCmd.key entity defined above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.nonmac "&lt;Ctrl+K&gt;">
-<!-- LOCALIZATION NOTE (search.keyLabel.mac):
-     The description of the key-binding to get into the global search box on mac
-     systems. We use the key defined in the quickSearchCmd.key entity defined
-     above, the letter should match it.
-  -->
 <!ENTITY search.keyLabel.mac "&lt;&#x2318;K&gt;">
-
-<!-- Message Header Context Menu -->
 <!ENTITY AddToAddressBook.label "Legg til i adressebok …">
 <!ENTITY AddToAddressBook.accesskey "L">
 <!ENTITY AddDirectlyToAddressBook.label "Legg til i adressebok">
@@ -867,12 +709,8 @@
 <!ENTITY CreateFilterFrom.accesskey "L">
 <!ENTITY reportPhishingURL.label "Rapporter e-postsvindel">
 <!ENTITY reportPhishingURL.accesskey "o">
-
-<!-- Spell checker context menu items -->
 <!ENTITY spellAddDictionaries.label "Legg til ordbøker …">
 <!ENTITY spellAddDictionaries.accesskey "L">
-
-<!-- Content Pane Context Menu -->
 <!ENTITY saveLinkAsCmd.label "Lagre lenke som…">
 <!ENTITY saveLinkAsCmd.accesskey "r">
 <!ENTITY saveImageAsCmd.label "Lagre bilde som…">
@@ -887,34 +725,24 @@
 <!ENTITY openInBrowser.accesskey "n">
 <!ENTITY openLinkInBrowser.label "Opne lenke i nettlesar">
 <!ENTITY openLinkInBrowser.accesskey "e">
-
-<!-- Statusbar -->
 <!ENTITY statusText.label "Ferdig">
-
-<!-- Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.label "Minimer">
 <!ENTITY minimizeWindow.key "m">
 <!ENTITY bringAllToFront.label "Send alle til framgrunnen">
 <!ENTITY zoomWindow.label "Zoom">
-
-<!-- Mac OS X Application Menu (Cocoa widgets) -->
-<!ENTITY preferencesCmdMac2.label       "Innstillingar">
-<!ENTITY preferencesCmdMac.commandkey   ",">
-<!ENTITY preferencesCmdMac.modifiers    "accel">
-<!ENTITY servicesMenuMac.label          "Tenester">
-<!ENTITY hideThisAppCmdMac.label        "Gøym &brandShortName;">
-<!ENTITY hideThisAppCmdMac.commandkey   "H">
-<!ENTITY hideThisAppCmdMac.modifiers    "accel">
-<!ENTITY hideOtherAppsCmdMac.label      "Gøym andre">
+<!ENTITY preferencesCmdMac2.label "Innstillingar">
+<!ENTITY preferencesCmdMac.commandkey ",">
+<!ENTITY preferencesCmdMac.modifiers "accel">
+<!ENTITY servicesMenuMac.label "Tenester">
+<!ENTITY hideThisAppCmdMac.label "Gøym &brandShortName;">
+<!ENTITY hideThisAppCmdMac.commandkey "H">
+<!ENTITY hideThisAppCmdMac.modifiers "accel">
+<!ENTITY hideOtherAppsCmdMac.label "Gøym andre">
 <!ENTITY hideOtherAppsCmdMac.commandkey "H">
-<!ENTITY hideOtherAppsCmdMac.modifiers  "accel,alt">
-<!ENTITY showAllAppsCmdMac.label        "Vis alle">
-
-<!-- Mac OS X Dock Icon pop-up menu -->
-<!ENTITY dockOptions.label              "Innstillingar for app-ikon …">
-<!ENTITY writeNewMessageDock.label      "Skriv ny melding">
-<!ENTITY openAddressBookDock.label      "Opne Adresseboka">
-
-<!-- Content tab Navigation buttons -->
-<!ENTITY browseBackButton.tooltip    "Gå tilbake ei side">
+<!ENTITY hideOtherAppsCmdMac.modifiers "accel,alt">
+<!ENTITY showAllAppsCmdMac.label "Vis alle">
+<!ENTITY dockOptions.label "Innstillingar for app-ikon …">
+<!ENTITY writeNewMessageDock.label "Skriv ny melding">
+<!ENTITY openAddressBookDock.label "Opne Adresseboka">
+<!ENTITY browseBackButton.tooltip "Gå tilbake ei side">
 <!ENTITY browseForwardButton.tooltip "Gå fram ei side">

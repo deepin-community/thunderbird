@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Eşitle
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Çıkış yap…
     .accesskey = k
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Yeni hesap
 appmenu-new-account-panel =
     .label = Yeni hesap
     .accesskey = h
-appmenu-create-new-mail-account =
-    .label = Yeni e-posta al
-    .accesskey = Y
-appmenu-new-mail-account =
-    .label = Mevcut e-posta
-    .accesskey = M
 appmenu-new-email-account =
     .label = E-posta
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Haber grubu
     .accesskey = u
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Yeni adres defteri
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP adres defteri
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Oluştur
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kişi
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Dosyadan aç
     .accesskey = D
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Takvim…
     .accesskey = T
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Görünüm
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Yazı tipi boyutunu büyüt
 appmenuitem-font-size-reduce =
     .tooltiptext = Yazı tipi boyutunu küçült
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Yazı tipi boyutunu sıfırla
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Araçlar
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Dışa aktar
     .accesskey = D
+appmenu-export-for-mobile =
+    .label = Mobil cihazlar için dışa aktar
+    .accesskey = M
 appmenu-tools-message-search =
     .label = İletilerde ara
     .accesskey = a
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Geliştirici araçları
     .accesskey = G
-
-## Help
-
 appmenu-help-panel-title =
     .title = Yardım
 appmenu-help-get-help =
     .label = Yardım al
     .accesskey = Y
-appmenu-help-explore-features =
-    .label = Özellikleri keşfet
-    .accesskey = Ö
 appmenu-help-get-release-help =
     .label = { -brand-short-name } hakkında yardım al
     .accesskey = r
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = { -brand-short-name } hakkında
     .accesskey = a
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = { -brand-shorter-name } güncellemesi indiriliyor
 appmenuitem-banner-update-available =

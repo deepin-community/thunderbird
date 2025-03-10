@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-setup-tab-title = Configuraziun dal conto
-
-## Header
-
 account-setup-title = Configurar tia adressa dad e-mail existenta
 account-setup-description = Per utilisar tia adressa dad e-mail actuala, endatescha tias infurmaziuns d'annunzia.
 account-setup-secondary-description = { -brand-product-name } tschertga automaticamain la configuraziun recumandada che funcziunescha per il server.
 account-setup-success-title = Creà il conto cun success
 account-setup-success-description = Ti pos ussa utilisar quest conto cun { -brand-short-name }.
 account-setup-success-secondary-description = Ti pos meglierar tia experientscha cun connectar servetschs associads e configurar ils parameters avanzads dal conto.
-
-## Form fields
-
 account-setup-name-label = Tes num cumplet
     .accesskey = n
-# Note: "John Doe" is a multiple-use name that is used when the true name of a person is unknown. We use this fake name as an input placeholder. Translators should update this to reflect the placeholder name of their language/country.
 account-setup-name-input =
     .placeholder = Flurina Bundi
 account-setup-name-info-icon =
@@ -35,8 +24,6 @@ account-setup-email-warning-icon =
 account-setup-password-label = Pled-clav
     .accesskey = P
     .title = Facultativ, vegn mo utilisà per validar il num d'utilisader
-account-provisioner-button = Ir per ina nova adressa dad e-mail
-    .accesskey = I
 account-setup-password-toggle-show =
     .title = Mussar il pled-clav
 account-setup-password-toggle-hide =
@@ -45,15 +32,10 @@ account-setup-remember-password = Memorisar il pled-clav
     .accesskey = m
 account-setup-exchange-label = Tias datas d'annunzia
     .accesskey = d
-#   YOURDOMAIN refers to the Windows domain in ActiveDirectory. yourusername refers to the user's account name in Windows.
 account-setup-exchange-input =
     .placeholder = TIADOMENA\tesnumd'utilisader
-#   Domain refers to the Windows domain in ActiveDirectory. We mean the user's login in Windows at the local corporate network.
 account-setup-exchange-info-icon =
     .title = Infurmaziun d'annunzia da la domena
-
-## Action buttons
-
 account-setup-button-cancel = Interrumper
     .accesskey = r
 account-setup-button-manual-config = Configurar manualmain
@@ -66,15 +48,11 @@ account-setup-button-continue = Cuntinuar
     .accesskey = C
 account-setup-button-done = Finì
     .accesskey = F
-
-## Notifications
-
 account-setup-looking-up-settings = Tschertgar la configuraziun…
 account-setup-looking-up-settings-guess = Tschertgar la configuraziun: Empruvar ils nums da server frequents…
 account-setup-looking-up-settings-half-manual = Tschertgar la configuraziun: Empruvar il server…
 account-setup-looking-up-disk = Tschertgar la configuraziun: Installaziun da { -brand-short-name }…
 account-setup-looking-up-isp = Tschertgar la configuraziun: Purschider dad e-mail…
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-looking-up-db = Tschertgar la configuraziun: Banca da datas da Mozilla cun purschiders…
 account-setup-looking-up-mx = Tschertgar la configuraziun: Domena per e-mails che entran…
 account-setup-looking-up-exchange = Tschertgar la configuraziun: Server Exchange…
@@ -85,15 +63,10 @@ account-setup-success-guess = La configuraziun chattada cun empruvar nums da ser
 account-setup-success-guess-offline = Ti es offline. Nus avain presumà intgins parameters, probablamain stos ti dentant endatar ils parameters corrects.
 account-setup-success-password = Pled-clav correct
 account-setup-success-addon = Installà il supplement cun success
-# Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
 account-setup-success-settings-db = Chattà ina configuraziun en la banca da datas da Mozilla cun purschiders.
 account-setup-success-settings-disk = Chattà ina configuraziun en l'installaziun da { -brand-short-name }.
 account-setup-success-settings-isp = Chattà ina configuraziun tar il purschider dad e-mail.
-# Note: Microsoft Exchange is a product name.
 account-setup-success-settings-exchange = Chattà ina configuraziun per in server Microsoft Exchange.
-
-## Illustrations
-
 account-setup-step1-image =
     .title = Configuraziun iniziala
 account-setup-step2-image =
@@ -112,11 +85,6 @@ account-setup-documentation-help = Documentaziun da la configuraziun
 account-setup-forum-help = Forum da support
 account-setup-privacy-help = Directivas per la protecziun da datas
 account-setup-getting-started = Entschaiver
-
-## Results area
-
-# Variables:
-#  $count (Number) - Number of available protocols.
 account-setup-results-area-title =
     { $count ->
         [one] Configuraziun disponibla
@@ -124,7 +92,6 @@ account-setup-results-area-title =
     }
 account-setup-result-imap-description = Sincronisescha tes ordinaturs ed e-mails cun tes server
 account-setup-result-pop-description = Salva tes ordinaturs ed e-mails sin tes computer
-# Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Utilisar il server Microsoft Exchange u servetschs da cloud da Office 365
 account-setup-incoming-title = Posta che entra
 account-setup-outgoing-title = Posta che sorta
@@ -134,22 +101,11 @@ account-setup-result-no-encryption = Nagin criptadi
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
 account-setup-result-outgoing-existing = Utilisar in server da sortida SMTP existent
-# Variables:
-#  $incoming (String): The email/username used to log into the incoming server
-#  $outgoing (String): The email/username used to log into the outgoing server
 account-setup-result-username-different = Entrada: { $incoming }, sortida: { $outgoing }
-
-## Error messages
-
-# Note: The reference to "janedoe" (Jane Doe) is the name of an example person. You will want to translate it to whatever example persons would be named in your language. In the example, AD is the name of the Windows domain, and this should usually not be translated.
 account-setup-credentials-incomplete = L'autentificaziun n'è betg reussida. U che las infurmaziuns d'annunzia endatadas n'èn betg correctas u ch'in num d'utilisader separà è necessari per s'annunziar. Quest num d'utilisader correspunda normalmain a quel da l'annunzia a la domena Windows cun u senza la domena (per exempel martincantieni u AD\\martincantieni).
 account-setup-credentials-wrong = L'autentificaziun n'è betg reussida. Controllescha per plaschair il num d'utilisader ed il pled-clav.
 account-setup-find-settings-failed = { -brand-short-name } n'ha betg chattà la configuraziun per tes conto dad e-mail
 account-setup-exchange-config-unverifiable = I n'è betg reussì da verifitgar la configuraziun. Sche tes num d'utilisader ed il pled-clav èn corrects, èsi probabel che l'administratur dal server ha deactivà la configuraziun tschernida per tes conto. Emprova da tscherner in auter protocol.
-account-setup-provisioner-error = Ina errur è succedida durant la configuraziun da tes nov conto en { -brand-short-name }. Emprova per plaschair da configurar manualmain tes conto cun tias infurmaziuns d'annunzia.
-
-## Manual configuration area
-
 account-setup-manual-config-title = Parameters dal server
 account-setup-incoming-server-legend = Server d'entrada
 account-setup-protocol-label = Protocol:
@@ -159,29 +115,18 @@ account-setup-port-label = Port:
 account-setup-auto-description = { -brand-short-name } vegn ad empruvar dad emplenir automaticamain champs vids.
 account-setup-ssl-label = Segirezza da connexiun:
 account-setup-outgoing-server-legend = Server da sortida
-
-## Incoming/Outgoing SSL Authentication options
-
 ssl-autodetect-option = Determinaziun automatica
 ssl-no-authentication-option = Nagina autentificaziun
 ssl-cleartext-password-option = Pled-clav normal
 ssl-encrypted-password-option = Pled-clav criptà
-
-## Incoming/Outgoing SSL options
-
 ssl-noencryption-option = Nagina
 account-setup-auth-label = Metoda d'autentificaziun:
 account-setup-username-label = Num d'utilisader:
 account-setup-advanced-setup-button = Configuraziun avanzada
     .accesskey = a
-
-## Warning insecure server dialog
-
 account-setup-insecure-title = Attenziun!
 account-setup-insecure-incoming-title = Parameters da l'entrada:
 account-setup-insecure-outgoing-title = Parameters da la sortida:
-# Variables:
-#  $server (String): The name of the hostname of the server the user was trying to connect to.
 account-setup-warning-cleartext = <b>{ $server }</b> n'utilisescha nagin criptadi.
 account-setup-warning-cleartext-details = Servers betg segirs n'utiliseschan nagin criptadi per proteger tes pleds-clav e tias datas persunalas. Cun connectar cun quest server ristgas ti che terzs vesian tes pled-clav e tias datas persunalas.
 account-setup-insecure-server-checkbox = Jau chapesch las ristgas
@@ -191,17 +136,9 @@ insecure-dialog-cancel-button = Midar ils parameters
     .accesskey = M
 insecure-dialog-confirm-button = Confermar
     .accesskey = C
-
-## Warning Exchange confirmation dialog
-
-# Variables:
-#  $domain (String): The name of the server where the configuration was found, e.g. rackspace.com.
 exchange-dialog-question = { -brand-short-name } ha chattà las infurmaziuns per configurar tes conto sin { $domain }. Vuls ti cuntinuar e trametter tias infurmaziuns d'annunzia?
 exchange-dialog-confirm-button = S'annunziar
 exchange-dialog-cancel-button = Interrumper
-
-## Dismiss account creation dialog
-
 exit-dialog-title = Na configurà nagin conto dad e-mail
 exit-dialog-description = Vuls ti propi interrumper il process da configuraziun? Ins po era utilisar { -brand-short-name } senza in conto dad e-mail, ma bleras funcziuns na stattan betg a disposiziun.
 account-setup-no-account-checkbox = Utilisar { -brand-short-name } senza in conto dad e-mail
@@ -210,22 +147,13 @@ exit-dialog-cancel-button = Cuntinuar cun la configuraziun
     .accesskey = C
 exit-dialog-confirm-button = Bandunar la configuraziun
     .accesskey = B
-
-## Alert dialogs
-
 account-setup-creation-error-title = Errur cun crear il conto
 account-setup-error-server-exists = Il server d'entrada exista gia.
 account-setup-confirm-advanced-title = Confermar la configuraziun avanzada
 account-setup-confirm-advanced-description = Quest dialog vegn serrà ed in conto cun la configuraziun actuala vegn creà, era sche la configuraziun è incorrecta. Vuls ti cuntinuar?
-
-## Addon installation section
-
 account-setup-addon-install-title = Installar
 account-setup-addon-install-intro = In supplement dad ina terza partida po ta pussibilitar dad acceder al conto dad e-mail sin quest server:
 account-setup-addon-no-protocol = Quest server dad e-mail na sustegna deplorablamain betg protocols averts. { account-setup-addon-install-intro }
-
-## Success view
-
 account-setup-settings-button = Parameters dal conto
 account-setup-encryption-button = Criptadi da fin a fin
 account-setup-signature-button = Agiuntar ina signatura
@@ -236,15 +164,11 @@ account-setup-calendar-button = Connectar cun in chalender lontan
 account-setup-linked-services-title = Connectar tes servetschs associads
 account-setup-linked-services-description = { -brand-short-name } ha chattà auters servetschs associads cun tes conto dad e-mail.
 account-setup-no-linked-description = Configurar auters servetschs per optimar tia experientscha cun { -brand-short-name }.
-# Variables:
-# $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
     { $count ->
         [one] { -brand-short-name } ha chattà in cudeschet d'adressas associà cun tes conto dad e-mail.
        *[other] { -brand-short-name } ha chattà { $count } cudeschets d'adressas associads cun tes conto dad e-mail.
     }
-# Variables:
-# $count (Number) - The number of calendars found during autoconfig.
 account-setup-found-calendars-description =
     { $count ->
         [one] { -brand-short-name } ha chattà in chalender associà cun tes conto dad e-mail.
@@ -263,9 +187,6 @@ account-setup-existing-calendar = Connectà
     .title = Il chalender è gia connectà
 account-setup-connect-all-calendars = Connectar tut ils chalenders
 account-setup-connect-all-address-books = Connectar tut ils cudeschets d'adressas
-
-## Calendar synchronization dialog
-
 calendar-dialog-title = Connectar il chalender
 calendar-dialog-cancel-button = Interrumper
     .accesskey = I
@@ -277,8 +198,6 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Colur
 account-setup-calendar-refresh-label = Actualisar
 account-setup-calendar-refresh-manual = Manualmain
-# Variables:
-# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Mintga minuta

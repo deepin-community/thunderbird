@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Am mìosachan
 calendar-title-reminder = Cuimhneachain
 calendar-title-notification = Brathan
@@ -9,10 +5,8 @@ calendar-title-category = Roinnean-seòrsa
 dateformat-label =
     .value = Fòrmat teacs nan ceann-là:
     .accesskey = F
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Fada: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Goirid: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Faighnich dhìom mus tèid tachartasan is saothraichean a sguabadh às.
     .accesskey = F
-accessibility-legend = So-ruigsinneachd
-accessibility-colors-label =
-    .label = Pisich na dathan a chùm so-ruigsinneachd
-    .accesskey = c
 reminder-legend = Nuair a sheirmeas caismeachd:
 reminder-play-checkbox =
     .label = Cluich fuaim

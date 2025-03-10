@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Teygjanlegt bil
 search-bar-label = Leita
 toolbar-write-message-label = Skrifa
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Flytja inn
 toolbar-import-contacts =
     .title = Flytja tengiliði inn úr skrá
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Bæta við staðbundinni nafnaskrá
 toolbar-new-address-book-popup-add-carddav-address-book =

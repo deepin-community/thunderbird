@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Жабу
 preferences-doc-title2 = Баптаулар
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Синхрондау
 category-sync =
     .tooltiptext = Синхрондау
+pane-qr-export-title = Мобильді үшін экспорттау
+category-qr-export =
+    .tooltiptext = Мобильді үшін экспорттау
 general-language-and-appearance-header = Тіл және сыртқы түрі
 general-incoming-mail-header = Кіріс хабарламалар
 general-files-and-attachment-header = Файлдар және салынымдар
@@ -50,8 +49,6 @@ collection-health-report =
     .label = { -brand-short-name } үшін { -vendor-short-name } адресіне техникалық және әрекеттесу деректерін жіберуді рұқсат ету
     .accesskey = р
 collection-health-report-link = Көбірек білу
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Деректер есептемесін беру бұл жинақта сөндірілген
 collection-backlogged-crash-reports =
     .label = { -brand-short-name } үшін сіздің атыңыздан құлаулар жөнінде архивті хабарламаларды жіберуді рұқсат ету
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Бұл өзгерістерді іске асыру үшін, { -brand-short-name } қайта іске қосыңыз
 confirm-messenger-language-change-button = Іске асыру және қайта қосу
 update-setting-write-failure-title = Жаңарту баптауларын сақтау қатемен аяқталды
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } қатеге тап болып, бұл өзгерісті сақтамады. Бұл жаңарту баптауын өзгерту төмендегі файлға жазу құқығын талап ететінің ескеріңіз. Сіз немесе жүйелік әкімші бұл мәселені Пайдаланушылар тобына бұл файлға толық қатынау құқығын беру арқылы шеше алады.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Жаңарту орындалуда
 update-in-progress-message = { -brand-short-name } бұл жаңартумен жалғастыруды қалайсыз ба?
 update-in-progress-ok-button = Тай&дыру
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = Жалға&стыру
 account-button = Тіркелгі баптаулары
 open-addons-sidebar-button = Қосымшалар және темалар
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Басты парольді жасау үшін, Windows ішіне кірудің есептік жазба мәліметтерін енгізіңіз. Бұл тіркелгілеріңіздің қауіпсіздігін қорғауға көмектеседі.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = басты парольді жасау
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = OpenSearch провайдерін қосу
 add-opensearch-provider-text = Қосу үшін OpenSearch провайдерінің URL адресін енгізіңіз. OpenSearch сипаттама файлының тікелей URL адресін немесе оны автоматты түрде табуға болатын URL адресін пайдаланыңыз.
 adding-opensearch-provider-failed-title = OpenSearchпровайдерін қосу сәтсіз аяқталды
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = { $url } үшін OpenSearch провайдерін қосу мүмкін болмады.
 minimize-to-tray-label =
     .label = { -brand-short-name } қайырылған кезде, оны трейге орналастыру
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Қазір тексеру…
     .accesskey = з
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Алу есептемелері…
     .accesskey = р
 update-app-legend = { -brand-short-name } жаңартулары
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Нұсқасы { $version }
 allow-description = { -brand-short-name } үшін рұқсат ету
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = д
 compact-folder-size =
     .value = МБ жалпы
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Дейін қолдану
     .accesskey = о
 use-cache-after = МБ орын кэш үшін
-
-##
-
 smart-cache-label =
     .label = Кэшті автобасқаруды елемеу
     .accesskey = м
@@ -304,7 +269,6 @@ color-options-button =
     .label = Түстер…
     .accesskey = Т
 display-width-legend = Ашық мәтін хабарламалары
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Смайликтерді суреттер ретінде көрсету
     .accesskey = С
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Салынымдарды хат ішінде қарау
     .accesskey = р
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Келесі уақыт бойы көрген соң
     .accesskey = р
 seconds-label = секунд
-
-##
-
 open-msg-label =
     .value = Хабарламаларды қайда ашу:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Жылжыту немесе өшіру кезінде хабарлама терезесін/бетін жабу
     .accesskey = ж
-display-name-label =
-    .value = Көрсетілетін аты:
 address-display-legend = Хабарламалар тізімі
 address-display-description = Адресті көрсетудің таңдаулы пішімі:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Адрестік кітапшамдағы адамдар үшін тек атын көрсету
     .accesskey = с
-
-## Compose Tab
-
+table-layout-legend = Кесте ретінде
+table-layout-horizontal-scroll-label =
+    .label = Горизонталды айналдыруды рұқсат ету
+    .accesskey = Г
+conversation-view-legend = Сөйлесу режимі
+conversation-view-checkbox-label =
+    .label = Сөйлесу режимін іске қосу
+    .accesskey = е
+conversation-view-checkbox-description = Gloda негізіндегі эксперименттік мүмкіндік, оны өз тәуекеліңізге пайдаланыңыз
+label-experiment = Эксперименттік
+account-hub-legend = Тіркелгілер орталығы
+account-hub-checkbox-label =
+    .label = Жаңа Тіркелгілер орталығында тіркелгілерді жасау
+    .accesskey = с
+account-hub-checkbox-description = Пошта тіркелгілерін жасаудың жаңа, эксперименттік үрдісі
 forward-label =
     .value = Хабарламаларды әрі қарай жіберу:
     .accesskey = й
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = файл атына кеңейтуді қосу
     .accesskey = е
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Автосақтау әр
     .accesskey = А
 auto-save-end = минут
-
-##
-
 warn-on-send-accel-key =
     .label = Хабарламаны жіберу үшін пернетақта жарлығы қолданылған кезде растауды сұрау
     .accesskey = с
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Көбірек провайдерлерді табу…
 cloud-account-description = Жаңа Filelink сақтау қызметін қосу
-
-## Privacy Tab
-
 mail-content = Пошта құрамасы
 remote-content-label =
     .label = Хабарламалардағы қашықтағы құраманы рұқсат ету
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Cookies көрсету…
     .accesskey = р
-do-not-track-label =
-    .label = Сайттарға "Мені бақыламау" сигналын жіберу арқылы сіз өзіңізді бақыламауды қалайтыныңыз туралы хабарлау
-    .accesskey = н
-dnt-learn-more-button =
-    .value = Көбірек білу
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Веб-сайттарға менің деректерімді сатпауды немесе олармен бөліспеуді айту
+    .accesskey = п
+do-not-track-removal = Біз енді «Мені бақыламау» сигналын қолдамаймыз
 passwords-description = { -brand-short-name } барлық тіркелгілер үшін парольдерді сақтай алады.
 passwords-button =
     .label = Сақталған парольдер…
@@ -571,7 +528,6 @@ primary-password-description = Басты пароль сіздің барлық
 primary-password-label =
     .label = Басты парольді қолдану
     .accesskey = ы
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Парольдерді толтыру және басқару үшін құрылғыға кіруді талап ету
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Сіз FIPS-ке сәйкестеу режимінде жұмыс істеп отырсыз. Бұл режим бос емес басты парольді талап етеді.
 forms-master-pw-fips-desc = Парольді өзгерту сәтсіз аяқталды
 junk-description = Бастапқы спам баптауларын орнатыңыз. Тіркелгілердің спам баптаулары Тіркелгі баптауларында өзгертуге болады.
-junk-label =
-    .label = Мен хабарламаларды қоқыс ретінде белгілеген кезде:
-    .accesskey = з
 junk-marked-label =
     .label = Хабарлама спам ретінде белгіленген кезде:
     .accesskey = к
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Оларды өшіру
     .accesskey = ш
-junk-read-label =
-    .label = Қоқыс ретінде анықталған хабарламаларды оқылған ретінде белгілеу
-    .accesskey = б
 junk-read-description = Хабарламаларды оқылған ретінде белгілеу
 junk-read-manual-label =
     .label = Спам ретінде қолмен белгіленген кезде
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Хабарламаны құрастыру кезінде шифрлеуді қолмен іске қосу немесе сөндіру арқылы автоматты шешімдерді қайта анықтауға болады.
     Ескертпе: шифрленген хабарламаға жауап беру кезінде шифрлеу әрқашан автоматты түрде іске қосылады.
-
-## Chat Tab
-
 startup-label =
     .value = { -brand-short-name } қосылу кезінде:
     .accesskey = ы
@@ -661,20 +608,10 @@ offline-label =
     .label = Менің чат тіркелгілерімді желіден тыс ұстау
 auto-connect-label =
     .label = Менің чат тіркелгілерімді автобайланыстыру
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Мен белсенді емес туралы контакттарыма кейін айту
     .accesskey = М
 idle-time-label = минут белсенді еместік
-
-##
-
 away-message-label =
     .label = және менің қалып-күйімді Кетіп қалғанға орнату, мына хабарламамен:
     .accesskey = е
@@ -736,41 +673,21 @@ no-preview-description = Бұл тема жарамсыз немесе ағым�
 chat-variant-label =
     .value = Нұсқасы:
     .accesskey = с
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Баптаулардан табу
-
-## Settings UI Search Results
-
 search-results-header = Іздеу нәтижелері
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Кешіріңіз! Баптауларда "<span data-l10n-name="query"></span>" үшін нәтижелер табылмады.
        *[other] Кешіріңіз! Баптауларда "<span data-l10n-name="query"></span>" үшін нәтижелер табылмады.
     }
 search-results-help-link = Көмек керек пе? <a data-l10n-name="url">{ -brand-short-name } қолдауы</a> шолыңыз
-
-## Sync Tab
-
 sync-signedout-caption = Өз интернетіңізді өзіңізбен бірге ұстаңыз
 sync-signedout-description = Тіркелгілер, адрестік кітапшалар, күнтізбелер, қосымшалар және баптауларды барлық құрылғыларыңыз арасында синхрондаңыз.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Синхрондау ішіне кіру…
 sync-pane-header = Синхрондау
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = "{ $userEmail }" расталмаған.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = "{ $userEmail }" қайта қосылу үшін жүйеге кіріңіз
 sync-pane-resend-verification = Растауды қайта жіберу
 sync-pane-sign-in = Кіру
@@ -800,3 +717,49 @@ synced-acount-item-filters = Сүзгілер
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Эл. пошта тіркелгілері, адрестік кітапшалар, күнтізбелер және жеке мәліметтерді барлық құрылғыларыңыз арасында синхрондаңыз.
 sync-disconnected-turn-on-sync = Синхрондауды іске қосу…
+qr-export-pane-header = Тіркелгілерді мобильді { -brand-product-name } қолданбасына экспорттау
+qr-export-description = QR кодын жасау арқылы тіркелгі параметрлерін жұмыс үстелінен мобильді құрылғыға жылдам тасымалдаңыз. Тасымалданатын тіркелгілерді таңдап, парольді тасымалдағыңыз келетін-келмейтінін шешіңіз және мобильді құрылғыңызбен кодты сканерлеңіз. Жылдам, қауіпсіз және қарапайым.
+qr-export-get-app = Мобильді құрылғыңызда әлі { -brand-product-name } жоқ па? <a data-l10n-name="app-link">Оны Google Play ішінен жүктеп алыңыз</a>
+qr-export-create = Тіркелгілеріңізді экспорттау үшін QR кодын жасау
+qr-export-select-accounts = Экспортталатын тіркелгілерді таңдаңыз:
+qr-export-no-accounts = Тіркелгілеріңіздің барлығын бірдей көрмейсіз бе? Кейбір тіркелгілер Android үшін { -brand-product-name } қолдау көрсетпейтіндіктен сөндірілген болуы мүмкін. <a data-l10n-name="account-support-link">Қолдау</a>
+qr-export-accounts-legend = Эл. пошта тіркелгілері
+qr-export-select-all-accounts = Барлығын таңдау
+qr-export-security-legend = Қауіпсіздік
+qr-export-include-passwords = Барлық тіркелгілер парольдерін қосу
+qr-export-oauth-warning = Кейбір тіркелгілеріңіз мобильді құрылғыда қайта аутентификацияны қажет етуі мүмкін аутентификация әдісін пайдаланады. Бұл процесс барысында парольдерді қайта енгізу қажет болуы мүмкін.
+qr-export-security-hint = Келесі QR кодтарын сканерлеу арқылы тіркелгі параметрлері, соның ішінде электрондық пошта мен пароль — қауіпсіз тасымалданады. Біз процесс барысында бұл деректердің ешқайсысын жинамаймыз, сақтамаймыз немесе бөліспейміз. Тасымалдау құрылғылар арасында тікелей жүреді.
+qr-export-security-warning = Қауіпсіздік үшін жеке режимде екеніңізге көз жеткізіңіз және тек сенімді көздерден алынған QR кодтарын сканерлеңіз.
+qr-export-start-export = Экспорттау
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step }/{ $count } QR коды
+       *[other] { $step }/{ $count } QR коды
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Мобильді құрылғыда { -brand-product-name } арқылы QR кодын сканерлеңіз
+       *[other] Мобильді құрылғыда { -brand-product-name } арқылы QR кодтарын сканерлеңіз
+    }
+qr-export-scan-step1 = Мобильді құрылғыңызда { -brand-product-name } ашыңыз
+qr-export-scan-step2 = Баптауларға өту
+qr-export-scan-step3 = <strong>Импорттау баптаулары</strong> таңдаңыз
+qr-export-scan-step4-revision = <strong>QR кодын сканерлеу</strong> басып, телефонды осы кодтың үстінде ұстаңыз
+qr-export-back = Артқа
+qr-export-next = Келесі
+qr-export-done = Дайын
+qr-export-summary-description = Тіркелгілер экспортталды. Мобильді құрылғыда жалғастырыңыз.
+qr-export-summary-title = Экспорттаудың есептемесі:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR код генерацияланды
+       *[other] { $count } QR код генерацияланды
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } тіркелгі экспортталды:
+       *[other] { $count } тіркелгі экспортталды:
+    }
+qr-export-summary-passwords-included = Парольдермен қоса
+qr-export-summary-passwords-excluded = Парольдерсіз
+qr-export-more-accounts = Көбірек тіркелгілерді экспорттау

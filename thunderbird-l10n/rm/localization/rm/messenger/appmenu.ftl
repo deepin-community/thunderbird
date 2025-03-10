@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sincronisar
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Sortir…
     .accesskey = o
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nov conto
 appmenu-new-account-panel =
     .label = Nov conto
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Ir per ina nova adressa dad e-mail
-    .accesskey = I
-appmenu-new-mail-account =
-    .label = Adressa dad e-mail existenta
-    .accesskey = e
 appmenu-new-email-account =
     .label = E-mail
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Gruppa da discussiun
     .accesskey = n
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nov cudeschet d'adressas
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Cudeschet d'adressas LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Crear
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Contact
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = Avrir ord datoteca
     .accesskey = v
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Chalender…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Vista
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Engrondir la grondezza da la scrittira
 appmenuitem-font-size-reduce =
     .tooltiptext = Reducir la grondezza da la scrittira
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Reinizialisar la grondezza da la scrittira
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Utensils
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Exportar
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = Exportar per in apparat mobil
+    .accesskey = p
 appmenu-tools-message-search =
     .label = Tschertgar messadis
     .accesskey = s
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Utensils per sviluppaders
     .accesskey = t
-
-## Help
-
 appmenu-help-panel-title =
     .title = Agid
 appmenu-help-get-help =
     .label = Ir per agid
     .accesskey = g
-appmenu-help-explore-features =
-    .label = Scuvrir las funcziuns
-    .accesskey = f
 appmenu-help-get-release-help =
     .label = Retschaiver agid per { -brand-short-name }
     .accesskey = R
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Davart { -brand-short-name }
     .accesskey = a
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Telechargiar l'actualisaziun da { -brand-shorter-name }
 appmenuitem-banner-update-available =

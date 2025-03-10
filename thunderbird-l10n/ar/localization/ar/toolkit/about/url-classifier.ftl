@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-provider-title = المزوِّد
 url-classifier-provider = المزوِّد
 url-classifier-provider-last-update-time = وقت آخر تحديث
@@ -29,7 +25,6 @@ url-classifier-debug-sb-modules = وحدات سجل التصفح الآمن
 url-classifier-debug-modules = وحدات السجل الحالية
 url-classifier-debug-sbjs-modules = سجل جافاسكربت التصفح الآمن
 url-classifier-debug-file = ملف السجل الحالي
-
 url-classifier-trigger-update = ابدأ التحديث
 url-classifier-not-available = غير متاح
 url-classifier-disable-sbjs-log = عطّل سجل جافاسكربت التصفح الآمن
@@ -39,9 +34,5 @@ url-classifier-disabled = معطل
 url-classifier-updating = يُحدّث
 url-classifier-cannot-update = تعذّر التحديث
 url-classifier-success = نجاح
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = خطأ في التحديث ({ $error })
 url-classifier-download-error = خطأ في التنزيل ({ $error })

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Etamab'äl chi rij ri URL Cha'onel
 url-classifier-search-title = Tikanöx
 url-classifier-search-result-title = Taq q'i'oj
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Taq rujuperaj rutz'ibaxik ütz okem pa k'amaya
 url-classifier-debug-modules = Wakami taq rujuperaj tz'ib'anïk
 url-classifier-debug-sbjs-modules = Ütz okem pa k'amaya'l JS nitz'ib'äx
 url-classifier-debug-file = Ruyakb'al tz'ib'anïk k'o wakami
-
 url-classifier-trigger-update = Ruk'exïk K'aqob'äl
 url-classifier-not-available = M/O
 url-classifier-disable-sbjs-log = Tichup ütz okem pa K'amaya'l JS nitz'ib'äx
@@ -50,9 +45,5 @@ url-classifier-disabled = Chupun
 url-classifier-updating = tajin nik'ex
 url-classifier-cannot-update = man tikirel ta nik'ex
 url-classifier-success = xojtikïr
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = rusachoj k'exoj ({ $error })
 url-classifier-download-error = rusachoj qasanïk ({ $error })

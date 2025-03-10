@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-search-title = Cerca
 url-classifier-search-result-title = Resultats
 url-classifier-search-result-uri = URI: { $uri }
@@ -28,14 +24,9 @@ url-classifier-debug-module-btn = Defineix els mòduls de registre
 url-classifier-debug-file-btn = Defineix el fitxer de registre
 url-classifier-debug-modules = Mòduls de registre actuals
 url-classifier-debug-file = Fitxer de registre actual
-
 url-classifier-not-available = N/D
 url-classifier-updating = s'està actualitzant
 url-classifier-cannot-update = no es pot actualitzar
 url-classifier-success = correcte
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = error d'actualització ({ $error })
 url-classifier-download-error = error de baixada ({ $error })

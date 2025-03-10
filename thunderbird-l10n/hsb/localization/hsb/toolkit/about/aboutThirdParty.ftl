@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Informacije wo modulu třećeho poskićowarja
 third-party-section-title = Lisćina modulow třećich poskićowarjow w { -brand-short-name }
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = Ze systemowymi informacijemi znowa začitać
     .title = Ze systemowymi informacijemi znowa začitać
 third-party-button-open =
     .title = Datajowe městno wočinić…
-third-party-button-to-block =
-    .title = Tutón modul blokować
-    .aria-label = Tutón modul blokować
-third-party-button-to-unblock =
-    .title = Tuchwilu zablokowany. Klikńće, zo byšće zablokowanje zběhnył.
-    .aria-label = Tuchwilu zablokowany. Klikńće, zo byšće zablokowanje zběhnył.
-third-party-button-to-unblock-disabled =
-    .title =
-        Je tuchwilu jako zablokowane markěrowane, hačrunjež lisćina blokowanjow za tute
-        přewjedźenje { -brand-short-name } je znjemóžnjena Klikńće, zo byšće blokowanje skónčił.
-    .aria-label =
-        Je tuchwilu jako zablokowane markěrowane, hačrunjež lisćina blokowanjow za tute
-        přewjedźenje { -brand-short-name } je znjemóžnjena Klikńće, zo byšće blokowanje skónčił.
 third-party-button-to-block-module = Tutón modul blokować
     .title = Tutón modul blokować
     .aria-label = Tutón modul blokować

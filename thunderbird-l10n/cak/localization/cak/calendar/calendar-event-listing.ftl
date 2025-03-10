@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Listing columns
-
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Xk'is
     .tooltiptext = Tinuk' chi k'ulwachinäq
@@ -31,9 +22,6 @@ calendar-event-listing-column-status =
 calendar-event-listing-column-title =
     .label = B'i'aj
     .tooltiptext = Tinuk' chi b'i'aj
-
-## Interval dropdown options
-
 calendar-event-listing-interval-next-7-days =
     .label = Taq nimaq'ij pa ri 7 apo q'ij
 calendar-event-listing-interval-next-14-days =

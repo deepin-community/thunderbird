@@ -242,6 +242,9 @@ const signonsTreeView = {
       _editLogin("password");
     }
   },
+  getParentIndex() {
+    return -1;
+  },
 };
 
 function SortTree(column, ascending) {
@@ -647,6 +650,11 @@ async function FilterPasswords() {
 
   document.l10n.setAttributes(signonsIntro, "logins-description-filtered");
   document.l10n.setAttributes(removeAllButton, "remove-all-shown");
+  if (signonsTreeView._filterSet.length == 0) {
+    removeAllButton.setAttribute("disabled", "true");
+  } else {
+    removeAllButton.removeAttribute("disabled");
+  }
 }
 
 function CopyProviderUrl() {

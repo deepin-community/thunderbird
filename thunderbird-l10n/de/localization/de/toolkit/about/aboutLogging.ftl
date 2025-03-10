@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Über Protokollierung
 about-logging-page-title = Protokollierungs-Manager
 about-logging-current-log-file = Derzeitige Protokolldatei:
 about-logging-new-log-file = Neue Protokolldatei:
 about-logging-currently-enabled-log-modules = Derzeit aktivierte zu protokollierende Module:
 about-logging-log-tutorial = Weitere Informationen zur Verwendung dieses Werkzeugs stehen unter <a data-l10n-name="logging">HTTP-Protokollierung</a> zur Verfügung.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Ordner öffnen
 about-logging-set-log-file = Als Protokolldatei festlegen
 about-logging-set-log-modules = Als zu protokollierende Module festlegen
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Keine
 about-logging-no-log-file = Keine
 about-logging-logging-preset-selector-text = Voreinstellung für die Protokollierung:
 about-logging-with-profiler-stacks-checkbox = Stack-Traces für Log-Meldungen aktivieren
-
-## Logging presets
-
 about-logging-preset-networking-label = Netzwerkverbindungen
 about-logging-preset-networking-description = Zu protokollierende Module zur Diagnose von Netzwerkproblemen
 about-logging-preset-networking-cookie-label = Cookies
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Zu protokollierende Module zur Diagnose von WebGPU-Problemen
 about-logging-preset-gfx-label = Grafik
 about-logging-preset-gfx-description = Zu protokollierende Module zur Diagnose von Grafikproblemen
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Zu protokollierende Module zur Diagnose von spezifischen Problemen mit Microsoft Windows
 about-logging-preset-custom-label = Benutzerdefiniert
 about-logging-preset-custom-description = Zu protokollierende Module manuell ausgewählt
-# Error handling
 about-logging-error = Fehler:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Ungültiger Wert "{ $v }" für Schlüssel "{ $k }"
 about-logging-unknown-logging-preset = Unbekannte Protokollierungs-Voreinstellung "{ $v }"
 about-logging-unknown-profiler-preset = Unbekannte Profiler-Voreinstellung "{ $v }"

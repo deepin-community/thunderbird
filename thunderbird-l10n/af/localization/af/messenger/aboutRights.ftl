@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Aangaande u regte
 rights-intro = { -brand-full-name } is vrye, oop sagteware wat deur 'n gemeenskap van derduisende mense van reg oor die wêreld gebou is. Hier is 'n paar dinge wat u moet weet:
 rights-intro-point-1 = { -brand-short-name } word aan u beskikbaar gestel ingevolge die <a data-l10n-name="mozilla-public-license-link">Mozilla Publieke Lisensie</a>. Dit beteken dat u { -brand-short-name } kan gebruik, kopieer en versprei.  U kan ook die bronkode van { -brand-short-name } wysig, as u dit wil, om aan u behoeftes te voldoen. Die Mozilla Publieke Lisensie gee u ook die reg om gewysigde weergawes te versprei.

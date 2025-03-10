@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL-klassifikaasjeynformaasje
 url-classifier-search-title = Sykje
 url-classifier-search-result-title = Resultaten
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = List fan tabellen: { $list }
 url-classifier-search-input = URL
 url-classifier-search-error-invalid-url = Unjildige URL
@@ -53,9 +45,5 @@ url-classifier-disabled = Utskeakele
 url-classifier-updating = bywurkje
 url-classifier-cannot-update = kin net bywurkje
 url-classifier-success = slagge
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = fernijingsflater ({ $error })
 url-classifier-download-error = downloadflater ({ $error })

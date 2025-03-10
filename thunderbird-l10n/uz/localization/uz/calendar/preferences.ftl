@@ -1,14 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 dateformat-label =
     .value = Matn formati sanasi:
     .accesskey = s
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Uzun: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Qisqa: { $date }
 timezone-label =
@@ -109,10 +103,6 @@ task-start-8-label =
     .label = Keyingi soatga aloqador
 task-due-label =
     .value = Tugash sanasi:
-accessibility-legend = Qulaylik
-accessibility-colors-label =
-    .label = Qulaylashtirish uchun ranglarni moslash
-    .accesskey = r
 reminder-legend = Eslatkich vaqti bo‘lganda:
 reminder-play-checkbox =
     .label = Tovushni tinglash

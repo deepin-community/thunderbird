@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Window controls
-
 messenger-window-minimize-button =
     .tooltiptext = Minimeeri
 messenger-window-maximize-button =
@@ -13,38 +6,18 @@ messenger-window-restore-down-button =
     .tooltiptext = Taasta alla
 messenger-window-close-button =
     .tooltiptext = Sulge
-# Variables:
-# $count (Number) - Number of unread messages.
 unread-messages-os-tooltip =
     { $count ->
         [one] 1 lugemata kiri
        *[other] { $count } lugemata kirja
     }
 about-rights-notification-text = { -brand-short-name } on vaba ja avatud lähtekoodiga tarkvara, mille on loonud tuhandetest koosnev kogukond üle kogu maailma.
-
-## Content tabs
-
 content-tab-page-loading-icon =
     .alt = Leht laadib
 content-tab-security-high-icon =
     .alt = Turvaline ühendus
 content-tab-security-broken-icon =
     .alt = Ühendus pole turvaline
-
-# Back
-
-
-# Forward
-
-
-# Reload
-
-
-# Stop
-
-
-## Toolbar
-
 addons-and-themes-toolbarbutton =
     .label = Lisad ja teemad
     .tooltiptext = Halda oma lisasid
@@ -54,18 +27,12 @@ quick-filter-toolbarbutton =
 redirect-msg-button =
     .label = Suuna ümber
     .tooltiptext = Suuna valitud kiri ümber
-
-## Folder Pane
-
 folder-pane-toolbar =
     .toolbarname = Kaustade paneeli tööriistariba
     .accesskey = K
 folder-pane-toolbar-options-button =
     .tooltiptext = Kaustadepaneeli sätted
 folder-pane-header-label = Kaustad
-
-## Folder Toolbar Header Popup
-
 folder-toolbar-hide-toolbar-toolbarbutton =
     .label = Peida tööriistariba
     .accesskey = P
@@ -90,20 +57,12 @@ show-tags-folders-label =
 folder-toolbar-toggle-folder-compact-view =
     .label = Kompaktne vaade
     .accesskey = v
-
-## File Menu
-
 menu-file-save-as-file =
     .label = Failina...
     .accesskey = F
-
-## Edit Menu
-
 menu-edit-delete-folder =
     .label = Kustuta kaust
     .accesskey = K
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-delete-messages =
     .label =
         { $count ->
@@ -111,8 +70,6 @@ menu-edit-delete-messages =
            *[other] Kustuta valitud kirjad
         }
     .accesskey = I
-# Variables:
-# $count (Number) - Number of selected messages.
 menu-edit-undelete-messages =
     .label =
         { $count ->
@@ -129,61 +86,27 @@ menu-edit-folder-properties =
 menu-edit-newsgroup-properties =
     .label = Uudistegrupi omadused
     .accesskey = e
-
-## Message Menu
-
 redirect-msg-menuitem =
     .label = Suuna ümber
     .accesskey = m
-
-## AppMenu
-
 appmenu-save-as-file =
     .label = Failina...
 appmenu-settings =
     .label = Sätted
 appmenu-addons-and-themes =
     .label = Lisad ja teemad
-
-## Context menu
-
 mail-context-menu-forward-forward =
     .label = Edasta
     .accesskey = d
 context-menu-redirect-msg =
     .label = Suuna ümber
-mail-context-delete-messages =
-    .label =
-        { $count ->
-            [one] Kustuta kiri
-           *[other] Kustuta valitud kirjad
-        }
-# Variables:
-# $count (Number) - Number of selected messages.
-mail-context-undelete-messages =
-    .label =
-        { $count ->
-            [one] Taasta kiri
-           *[other] Taasta valitud kirjad
-        }
-
-## Message header pane
-
 other-action-redirect-msg =
     .label = Suuna ümber
 message-header-msg-flagged =
     .title = Tähistatud
     .aria-label = Tähistatud
-# Variables:
-# $address (String) - The email address of the recipient this picture belongs to.
 message-header-recipient-avatar =
     .alt = Kontakti { $address } profiilipilt.
-
-## Message header cutomize panel
-
-
-## Message header customize panel
-
 message-header-customize-panel-title = Kirja päise sätted
 message-header-customize-button-style =
     .value = Nupu stiil
@@ -207,20 +130,12 @@ message-header-hide-label-column =
 message-header-large-subject =
     .label = Teemat kuvatakse suurelt
     .accesskey = T
-
-## Action Button Context Menu
-
 toolbar-context-menu-manage-extension =
     .label = Halda laiendust
     .accesskey = H
 toolbar-context-menu-remove-extension =
     .label = Eemalda laiendus
     .accesskey = E
-
-## Add-on removal warning
-
-# Variables:
-#  $name (String): The name of the addon that will be removed.
 addon-removal-title = Kas eemaldada lisa { $name }?
 addon-removal-confirmation-button = Eemalda
 addon-removal-confirmation-message = Kas eemaldada lisa { $name } koos selle konfiguratsiooni ja andmetega { -brand-short-name }ist?
@@ -230,18 +145,9 @@ caret-browsing-prompt-check-text = Rohkem ei küsita.
 repair-text-encoding-button =
     .label = Paranda teksti kodeering
     .tooltiptext = Kirja sisu põhjal tuvastatakse korrektne kodeering
-
-## no-reply handling
-
 no-reply-title = Vastust ei toetata
 no-reply-message = Vastusaadress ({ $email }) ei tundu olevat jälgitav aadress. Sellele aadressile saadetud kirju ei loe tõenäoliselt keegi.
 no-reply-reply-anyway-button = Vasta igal juhul
-
-## error messages
-
-
-## Spaces toolbar
-
 spaces-toolbar-element =
     .toolbarname = Rakenduskaartide tööriistariba
     .aria-label = Rakenduskaartide tööriistariba
@@ -268,8 +174,6 @@ spaces-context-new-tab-item =
     .label = Ava uuel kaardil
 spaces-context-new-window-item =
     .label = Ava uues aknas
-# Variables:
-# $tabName (String) - The name of the tab this item will switch to.
 spaces-context-switch-tab-item =
     .label = Lülitu kaardile { $tabName }
 settings-context-open-settings-item2 =
@@ -278,9 +182,6 @@ settings-context-open-account-settings-item2 =
     .label = Kontode sätted
 settings-context-open-addons-item2 =
     .label = Lisad ja teemad
-
-## Spaces toolbar pinned tab menupopup
-
 spaces-toolbar-pinned-tab-button =
     .tooltiptext = Ava rakenduskaartide menüü
 spaces-pinned-button-menuitem-mail2 =
@@ -297,47 +198,25 @@ spaces-pinned-button-menuitem-settings2 =
     .label = { spaces-toolbar-button-settings2.title }
 spaces-pinned-button-menuitem-show =
     .label = { spaces-toolbar-button-show.title }
-# Variables:
-# $count (Number) - Number of unread messages.
 chat-button-unread-messages = { $count }
     .title =
         { $count ->
             [one] Üks lugemata kiri
            *[other] { $count } lugemata kirja
         }
-
-## Spaces toolbar customize panel
-
 menuitem-customize-label =
     .label = Kohanda...
 spaces-customize-panel-title = Rakenduskaartide menüü sätted
 spaces-customize-background-color = Taustavärv
 spaces-customize-icon-color = Nupu värv
-# The background color used on the buttons of the spaces toolbar when they are
-# `current`, meaning the related space/tab is active and visible.
 spaces-customize-accent-background-color = Valitud nupu taustavärv
-# The icon color used on the buttons of the spaces toolbar when they are
-# `current`, meaning the related space/tab is active and visible.
 spaces-customize-accent-text-color = Valitud nupu värv
 spaces-customize-button-restore = Taasta vaikeväärtused
     .accesskey = T
 customize-panel-button-save = Valmis
     .accesskey = V
-
-## Quick Filter Bar
-
-# The label to display for the "View... Toolbars..." menu item that controls
-# whether the quick filter bar is visible.
 quick-filter-bar-toggle =
     .label = Kiirfiltri riba
     .accesskey = K
-# This is the key used to show the quick filter bar.
-# This should match quick-filter-bar-textbox-shortcut in about3Pane.ftl.
 quick-filter-bar-show =
     .key = k
-
-## OpenPGP
-
-
-## Quota panel.
-

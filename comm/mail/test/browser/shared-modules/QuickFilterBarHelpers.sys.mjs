@@ -158,7 +158,7 @@ export async function toggle_tag_constraints(...aArgs) {
   aArgs.forEach(function (arg) {
     const tagId = "qfb-tag-" + arg;
     const button = about3Pane.document.getElementById(tagId);
-    button.scrollIntoView();
+    button.scrollIntoView({ block: "start", behavior: "instant" });
     EventUtils.synthesizeMouseAtCenter(button, { clickCount: 1 }, about3Pane);
   });
   await wait_for_all_messages_to_load(mc);
@@ -362,5 +362,5 @@ export function assert_results_label_count(aCount) {
  * This is automatically called by the test teardown helper.
  */
 export function clear_constraints() {
-  about3Pane.quickFilterBar._testHelperResetFilterState();
+  about3Pane.quickFilterBar._resetFilterState();
 }

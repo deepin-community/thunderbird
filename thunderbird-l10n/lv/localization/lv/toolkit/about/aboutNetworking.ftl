@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Par tīklu
 about-networking-http = HTTP
 about-networking-sockets = Sockets
@@ -45,9 +41,3 @@ about-networking-rcwn-avg-long = Garš vidējais
 about-networking-rcwn-std-dev-long = Gara standarta nobīde
 about-networking-rcwn-cache-slow = Kešatmiņas lēnumu skaits
 about-networking-rcwn-cache-not-slow = Kešatmiņas ne lēnumu skaits
-
-## Link is intended as "network link"
-
-
-##
-

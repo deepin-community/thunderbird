@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Identifiants enregistrés
-window-close =
-    .key = w
 saved-logins-title = Identifiants enregistrés
 focus-search-primary-shortcut =
     .key = f
@@ -69,20 +61,9 @@ remove-all-shown =
 remove-all-passwords-prompt = Souhaitez-vous vraiment supprimer tous les mots de passe ?
 remove-all-passwords-title = Supprimer tous les mots de passe
 no-master-password-prompt = Voulez-vous vraiment afficher vos mots de passe ?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Confirmez votre identité pour révéler les mots de passe enregistrés.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = révéler les mots de passe enregistrés
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
-# This message can be seen when attempting to disable osauth in about:preferences.
 password-os-auth-change-dialog-message =
     { PLATFORM() ->
         [macos] modifier les paramètres des mots de passe

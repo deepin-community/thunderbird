@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Se déconnecter…
     .accesskey = d
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nouveau compte
 appmenu-new-account-panel =
     .label = Nouveau compte
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Obtenir une nouvelle adresse e-mail
-    .accesskey = O
-appmenu-new-mail-account =
-    .label = Adresse e-mail existante
-    .accesskey = A
 appmenu-new-email-account =
     .label = Adresse e-mail
     .accesskey = A
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Groupes de discussion
     .accesskey = G
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nouveau carnet d’adresses
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Carnet d’adresses LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Créer
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Contact
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = Ouvrir à partir d’un fichier
     .accesskey = u
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Agenda…
     .accesskey = A
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Affichage
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Augmenter la taille de la police
 appmenuitem-font-size-reduce =
     .tooltiptext = Réduire la taille de la police
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Réinitialiser la taille de la police
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Outils
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Exporter
     .accesskey = x
+appmenu-export-for-mobile =
+    .label = Exporter pour mobile
+    .accesskey = E
 appmenu-tools-message-search =
     .label = Rechercher dans les messages
     .accesskey = R
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Outils de développement
     .accesskey = o
-
-## Help
-
 appmenu-help-panel-title =
     .title = Aide
 appmenu-help-get-help =
     .label = Obtenir de l’aide
     .accesskey = b
-appmenu-help-explore-features =
-    .label = Découvrir les fonctionnalités
-    .accesskey = D
 appmenu-help-get-release-help =
     .label = Obtenir de l’aide pour { -brand-short-name }
     .accesskey = O
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = À propos de { -brand-short-name }
     .accesskey = o
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Téléchargement de la mise à jour de { -brand-shorter-name }
 appmenuitem-banner-update-available =

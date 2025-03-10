@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Dodaj osebni ključ OpenPGP za  { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Nadaljuj
-    .buttonlabelhelp = Pojdi nazaj
 key-wizard-dialog =
     .buttonlabelaccept = Nadaljuj
     .buttonlabelextra1 = Pojdi nazaj
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Uporabi obstoječ ključ preko GnuPG (npr. s pametne kartice)
     .accesskey = r
-
-## Generate key section
-
 openpgp-generate-key-title = Ustvari ključ OpenPGP
 openpgp-keygen-secret-protection = Zaščita tajnega ključa
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Ključ mora biti veljaven vsaj en dan.
 openpgp-keygen-ongoing = Ustvarjanje ključev že poteka!
 openpgp-keygen-error-core = Jedrne storitve OpenPGP ni mogoče inicializirati
 openpgp-keygen-error-failed = Ustvarjanje ključev OpenPGP je nepričakovano spodletelo
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Ključ OpenPGP je bil uspešno ustvarjen, ni pa bilo mogoče pridobiti preklica za ključ { $key }
 openpgp-keygen-abort-title = Prekini ustvarjanje ključev?
 openpgp-keygen-abort = V teku je ustvarjanje ključev OpenPGP, ali ste prepričani, da ga želite prekiniti?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Ustvari javni in tajni ključ za { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Uvozi obstoječ osebni ključ OpenPGP
 openpgp-import-key-legend = Izberite datoteko z varnostno kopijo.
 openpgp-import-key-description = Lahko uvozite osebne ključe, ki so bili ustvarjeni z drugo programsko opremo OpenPGP.
 openpgp-import-key-info = Drugi programi lahko osebni ključ imenujejo drugače, na primer lastni ključ, skrivni ključ, zasebni ključ ali par ključev.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } je našel en ključ, ki ga lahko uvozi.
@@ -108,8 +91,6 @@ openpgp-import-key-list-caption = Ključi, označeni za obravnavo kot osebni klj
 openpgp-import-keep-passphrases =
     .label = Obdrži zaščito uvoženih skrivnih ključev z geslom
 openpgp-passphrase-prompt-title = Zahtevano je geslo
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Vnesite geslo za odklepanje naslednjega ključa: { $key }
 openpgp-import-key-button =
     .label = Izberi datoteko za uvoz …
     .accesskey = I
@@ -118,9 +99,7 @@ import-key-personal-checkbox =
     .label = Obravnavaj ta ključ kot osebni ključ
 gnupg-file = Datoteke GnuPG
 import-error-file-size = <b>Napaka!</b> Datoteke, večje od 5 MB, niso podprte.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Napaka!</b> Datoteke ni bilo mogoče uvoziti. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Napaka!</b> Ključev ni bilo mogoče uvoziti. { $error }
 openpgp-import-identity-label = Identiteta
 openpgp-import-fingerprint-label = Prstni odtis
@@ -129,9 +108,6 @@ openpgp-import-bits-label = Bitov
 openpgp-import-key-props =
     .label = Lastnosti ključa
     .accesskey = L
-
-## External Key section
-
 openpgp-external-key-title = Zunanji ključ GnuPG
 openpgp-external-key-description = Nastavite zunanji ključ GnuPG z vnosom ID-ja ključa
 openpgp-external-key-info = Poleg tega morate z upraviteljem ključev uvoziti in sprejeti ustrezni javni ključ.

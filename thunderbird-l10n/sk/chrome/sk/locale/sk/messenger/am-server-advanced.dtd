@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Pokročilé nastavenia účtu">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "Priečinok na serveri IMAP:">
 <!ENTITY serverDirectory.accesskey "e">
 <!ENTITY usingSubscription.label "Zobrazovať len prihlásené priečinky">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "S">
 <!ENTITY maximumConnectionsNumber.label "Maximálny počet spojení servera k vyrovnávacej pamäti">
 <!ENTITY maximumConnectionsNumber.accesskey "M">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "Tieto nastavenia definujú priestory názvov na vašom serveri IMAP">
 <!ENTITY personalNamespace.label "Osobný:">
 <!ENTITY personalNamespace.accesskey "n">

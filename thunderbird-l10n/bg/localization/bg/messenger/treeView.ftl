@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Избор на текушия ред
     .title = Текущият ред е избран
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Възстановяване на текущия ред
 tree-list-view-column-picker =
     .title = Избиране на видими колони
-tree-list-view-column-picker-restore =
-    .label = Възстановяване на сортирането на колоната
 tree-list-view-column-picker-restore-default-columns =
     .label = Възстановяване на стандартните колони
 tree-list-view-row-thread-button =

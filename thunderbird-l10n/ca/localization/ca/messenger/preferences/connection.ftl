@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Utilitza el proveïdor
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (per defecte)
     .tooltiptext = Utilitza l'URL per defecte per resoldre DNS sobre HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = P
     .tooltiptext = Introduïu el vostre URL preferit per resoldre DNS sobre HTTPS
 connection-dns-over-https-custom-label = Personalitzat
-connection-dialog-window2 =
-    .title = Paràmetres de connexió
 connection-dialog-title = Paràmetres de connexió
 disable-extension-button = Inhabilita l'extensió
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = L'extensió «<img data-l10n-name="extension-icon" alt="" /> { $name }» controla la forma com el { -brand-short-name } es connecta a Internet.
 connection-proxy-legend = Configura els servidors intermediaris per accedir a Internet
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Sense servidor intermediari per a:
     .accesskey = n
 no-proxy-example = Exemple: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = No s'utilitza mail cap servidor intermediari per a les connexions a localhost, 127.0.0.1/8 i ::1.
 proxy-password-prompt =
     .label = No sol·licitis autenticació si la contrasenya està desada

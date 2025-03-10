@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Не удалось установить защищённое соединение, так как была отключена поддержка протокола SSL.
 psmerr-ssl2-disabled = Не удалось установить защищённое соединение, так как сайт использует устаревшую, незащищённую версию протокола SSL.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Вы получили недействительный сертификат. Обратитесь к администратору сервера или отправьте сообщение по электронной почте тому, от кого вы получили этот сертификат, и сообщите следующую информацию:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Сертификат, получе
 mozilla-pkix-error-empty-issuer-name = В сертификате, полученном от сервера, отличительное имя издателя является пустым.
 mozilla-pkix-error-additional-policy-constraint-failed = При проверке этого сертификата выявлено нарушение ограничений, наложенных дополнительной политикой.
 mozilla-pkix-error-self-signed-cert = К сертификату нет доверия, так как он является самоподписанным.
+mozilla-pkix-error-issuer-no-longer-trusted = Центру сертификации, выдавшему сертификат, не было доверия до его выдачи.
 xp-java-remove-principal-error = Не могу удалить принципала
 xp-java-delete-privilege-error = Не могу удалить привилегию
 xp-java-cert-not-exists-error = Этот принципал не имеет сертификата

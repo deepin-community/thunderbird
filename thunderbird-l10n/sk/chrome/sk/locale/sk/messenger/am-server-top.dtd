@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Úložisko správ">
 <!ENTITY securitySettings.label "Bezpečnostné nastavenia">
 <!ENTITY serverSettings.label "Nastavenia servera">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Štandardný:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Kontrolovať novú poštu každých">
 <!ENTITY biffStart.accesskey "K">
 <!ENTITY biffEnd.label "minút">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Zabezpečenie pripojenia:">
 <!ENTITY connectionSecurity.accesskey "e">
 <!ENTITY connectionSecurityType-0.label "žiadne">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, ak je dostupné">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Metóda overenia:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "b">
 <!ENTITY modelDeleteImmediately.label "Okamžite ju odstrániť">
 <!ENTITY modelDeleteImmediately.accesskey "a">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Pri ukončení vyčistiť (&quot;Expunge&quot;) priečinok Doručená pošta">
 <!ENTITY expungeOnExit.accesskey "x">
 <!ENTITY emptyTrashOnExit.label "Vyprázdniť kôš pri ukončení">
 <!ENTITY emptyTrashOnExit.accesskey "u">
 <!ENTITY loginAtStartup.label "Pri štarte skontrolovať novú poštu">
 <!ENTITY loginAtStartup.accesskey "v">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Opýtať sa pri sťahovaní viac ako">
 <!ENTITY maxMessagesStart.accesskey "s">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "správ">
 <!ENTITY alwaysAuthenticate.label "Pri pripájaní sa na tento server vždy vyžadovať overenie">
 <!ENTITY alwaysAuthenticate.accesskey "a">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "h">
 <!ENTITY browseNewsrc.label "Prehľadávať…">
 <!ENTITY browseNewsrc.accesskey "d">
-
 <!ENTITY accountTitle.label "Nastavenia účtu">
 <!ENTITY accountSettingsDesc.label "Toto je špeciálny účet, s ktorým nie sú asociované žiadne identity.">
 <!ENTITY storeType.label "Spôsob ukladania správ:">

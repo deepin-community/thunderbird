@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = შრიფტები
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = ნაგულისხმევი ({ $name })
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = პროპორციული:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = ლათინური
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = სინჰალური
 font-language-group-tibetan =
     .label = ტიბეტური
-
-## Default font type
-
 default-font-serif =
     .label = ნაჭდევებიანი
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = z
 min-size-none =
     .label = არა
-
-## Fonts in message
-
 font-control-legend = შრიფტების მართვა
 use-document-fonts-checkbox =
     .label = წერილებში სხვა შრიფტების გამოყენების უფლება
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = მონოსიგანის შრიფტებით სარგებლობა ტექსტური გზავნილებისთვის
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = ტექსტის კოდირება
 text-encoding-description = ტექსტის ნაგულისხმევი კოდირების მითითება, წერილების გაგზავნა/მიღებისთვის
 font-outgoing-email-label =

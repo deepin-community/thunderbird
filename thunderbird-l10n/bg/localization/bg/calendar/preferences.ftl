@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Календар
 calendar-title-reminder = Напомняния
 calendar-title-notification = Известия
@@ -9,16 +5,14 @@ calendar-title-category = Категории
 dateformat-label =
     .value = Текстов формат на датата:
     .accesskey = Т
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Дълъг: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Кратък: { $date }
 use-system-timezone-radio-button =
     .label = Използване на системния часови пояс
 set-timezone-manually-radio-button =
-    .label = Ръчно задаване на часовата зона
+    .label = Ръчен избор на часовия пояс
 timezone-label =
     .value = Часови пояс:
 weekstart-label =

@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Вітаємо в <span data-l10n-name="brand-name">{ -brand-full-name }</span>
 account-hub-title = Центр облікових записів
-
-## Footer
-
 account-hub-release-notes = Примітки до випуску
 account-hub-support = Підтримка
 account-hub-donate = Зробити внесок
-
-## Initial setup page
-
 account-hub-email-setup-button = Обліковий запис електронної пошти
     .title = Налаштувати обліковий запис електронної пошти
 account-hub-calendar-setup-button = Календар
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Група новин
     .title = Налаштувати обліковий запис груп новин
 account-hub-import-setup-button = Імпорт
     .title = Імпорт резервної копії профілю
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Увійти до Синхронізації…
-
-## Email page
-
-account-hub-email-title = Налаштуйте свій обліковий запис електронної пошти
 account-hub-add-email-title = Додайте свій обліковий запис
 account-hub-manually-configure-email-title = Налаштувати обліковий запис
 account-hub-email-cancel-button = Скасувати
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Завершити
 account-hub-email-manually-configure-button = Налаштувати вручну
 account-hub-email-continue-button = Продовжити
 account-hub-email-confirm-button = Підтвердити
-account-hub-incoming-server-legend = Сервер вхідної пошти
-account-hub-outgoing-server-legend = Сервер вихідної пошти
+account-hub-result-incoming-server-legend = Сервер вхідної пошти
+    .title = Сервер вхідної пошти
+account-hub-result-outgoing-server-legend = Сервер вихідної пошти
+    .title = Сервер вихідної пошти
 account-hub-protocol-label = Протокол
-account-hub-hostname-label = Ім'я сервера
+account-hub-result-hostname-label = Ім'я хоста
+    .title = Ім'я хоста
+account-hub-result-authentication-label = Автентифікація
+    .title = Автентифікація
 account-hub-port-label = Порт
     .title = Встановіть 0 для автовизначення
 account-hub-auto-description = { -brand-short-name } спробує автоматично визначити поля, які залишились порожніми.
 account-hub-ssl-label = Захист з'єднання
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Автовиявлення
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = Звичайний пароль
 account-hub-ssl-encrypted-password-option =
     .label = Зашифрований пароль
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Жодного
 account-hub-auth-no-authentication-option =
     .label = Без автентифікації
 account-hub-auth-label = Метод автентифікації
-account-hub-username-label = Ім'я користувача
+account-hub-result-username-label = Ім'я користувача
+    .title = Ім'я користувача
 account-hub-name-label = Повне ім'я
     .accesskey = П
 account-hub-adding-account-title = Додавання облікового запису
@@ -97,3 +75,29 @@ account-hub-email-enter-password = Введіть пароль обліково�
 account-hub-email-sync-accounts = Синхронізуйте свої календарі та адресні книги
 account-hub-test-configuration = Тест
 account-hub-add-new-email = Додайте іншу електронну адресу
+account-hub-result-imap-description = Синхронізуйте свої теки та електронні листи на сервері
+account-hub-result-pop-description = Зберігайте теки та електронні листи на комп'ютері
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Використовуйте вебслужби Exchange для синхронізації тек та електронних листів
+account-hub-result-ews-text = Сервер
+account-hub-result-recommended-label = Рекомендовано
+account-hub-edit-configuration = Редагувати конфігурацію
+account-hub-config-success = Конфігурацію знайдено в Mozilla ISPDB
+account-hub-password-info = Ваші облікові дані зберігатимуться лише локально на вашому комп'ютері
+account-hub-sync-success = Thunderbird знайшов деякі під'єднані служби
+account-hub-sync-failure = Thunderbird не вдалося знайти під'єднані служби
+account-hub-unable-to-sync-accounts = Thunderbird не вдалося під'єднати вибрані служби
+account-hub-email-added-success = Обліковий запис електронної пошти успішно під'єднано
+account-hub-config-test-success = Параметри конфігурації дійсні
+account-hub-select-all = Вибрати все
+account-hub-deselect-all = Зняти вибір із усього
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] Вибрано { $count }
+        [few] Вибрано { $count }
+       *[many] Вибрано { $count }
+    }
+account-hub-no-address-books = Адресних книг не знайдено
+account-hub-no-calendars = Календарів не знайдено
+account-hub-email-added-success-links-title = Ознайомтеся з можливостями безпеки та персоналізації:
+account-hub-signature-link = Підпис електронної пошти

@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = 選單列
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = 設定
     .accesskey = e
 menu-addons-and-themes =
     .label = 附加元件與佈景主題
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = 匯出至行動版…
+    .accesskey = p
 menu-help-help-title =
     .label = 說明
     .accesskey = H
 menu-help-get-help =
     .label = 取得幫助
     .accesskey = H
-menu-help-explore-features =
-    .label = 探索功能
-    .accesskey = F
 menu-help-get-release-help =
     .label = { -brand-short-name } 使用說明
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = 關於 { -brand-short-name }
     .accesskey = A
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] x
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = 離開 { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] 結束 { -brand-full-name }
            *[other] 離開 { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = 是垃圾郵件
     .tooltiptext = 標示所選訊息為垃圾信
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = 反刪除
     .tooltiptext = 取消刪除選擇的訊息
-
-## View
-
 menu-view-repair-text-encoding =
     .label = 修復文字編碼
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = 資料夾窗格標題
     .accesskey = F
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = 訊息清單標題
     .accesskey = H
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = 按鈕空間
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = 電子郵件帳號…
     .accesskey = E

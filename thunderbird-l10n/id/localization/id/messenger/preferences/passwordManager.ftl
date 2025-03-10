@@ -1,12 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Info Masuk Tersimpan
 saved-logins-title = Info Masuk Tersimpan
-window-close =
-    .key = w
+focus-search-primary-shortcut =
+    .key = f
+focus-search-alt-shortcut =
+    .key = k
 copy-provider-url-cmd =
     .label = Salin URL
     .accesskey = y
@@ -45,6 +41,9 @@ remove =
 import =
     .label = Impor…
     .accesskey = I
+password-close-button =
+    .label = Tutup
+    .accesskey = T
 show-passwords =
     .label = Tampilkan Sandi
     .accesskey = P
@@ -62,15 +61,11 @@ remove-all-shown =
 remove-all-passwords-prompt = Yakin akan menghapus semua sandi?
 remove-all-passwords-title = Hapus seluruh sandi
 no-master-password-prompt = Yakin ingin menampilkan sandi Anda?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Verifikasikan identitas Anda untuk mengungkapkan sandi yang tersimpan.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = mengungkapkan sandi yang tersimpan
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
+password-os-auth-change-dialog-message =
+    { PLATFORM() ->
+        [macos] mengubah pengaturan bagi sandi
+       *[other] { -brand-short-name } mencoba mengubah pengaturan bagi sandi. Gunakan perangkat Anda yang sudah masuk untuk mengizinkan ini.
+    }

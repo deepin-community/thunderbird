@@ -1,31 +1,60 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
-
-## Unified toolbar context menu
-
+search-bar-button =
+    .alt = Cari
+search-bar-item2 =
+    .label = Cari
+search-bar-placeholder = Cari…
+search-bar-placeholder-with-key2 =
+    { PLATFORM() ->
+        [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
+       *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
+    }
 customize-menu-customize =
     .label = Kesukaan…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Ambil Semua Pesan Baru
     .accesskey = A
-
-## Unified Toolbar customization
-
+customize-title = Ubahsuai Bilah Alat
+customize-space-tab-mail = Surat
+    .title = Surat
+customize-space-tab-addressbook = Buku Alamat
+    .title = Buku Alamat
+customize-space-tab-calendar = Kalender
+    .title = Kalender
+customize-space-tab-tasks = Tugas
+    .title = Tugas
+customize-space-tab-chat = Obrolan
+    .title = Obrolan
+customize-space-tab-settings = Pengaturan
+    .title = Pengaturan
+customize-restore-default = Pulihkan bawaan
+customize-change-appearance = Ubah tampilan…
+customize-button-style-label = Gaya tombol:
 customize-button-style-icons-beside-text-option = Ikon di sebelah Teks
-
-## Unified toolbar customization palette context menu
-
-
-## Unified toolbar customization target context menu
-
+customize-button-style-icons-above-text-option = Ikon di atas teks
+customize-button-style-icons-only-option = Ikon saja
+customize-button-style-text-only-option = Teks saja
+customize-cancel = Batal
+customize-save = Simpan
+customize-search-bar2 =
+    .label = Cari tombol bilah alat
+    .placeholder = Cari tombol bilah alat…
+customize-main-toolbar-target =
+    .aria-label = Bilah alat utama
+customize-palette-add-to =
+    .label = Tambahkan ke { $target }
+customize-palette-add-everywhere =
+    .label = Tambahkan ke semua bilah alat
+customize-target-forward =
+    .label = Pindahkan ke depan
+customize-target-backward =
+    .label = Pindahkan ke belakang
+customize-target-remove =
+    .label = Hapus
+customize-target-remove-everywhere =
+    .label = Hapus dari semua bilah alat
+customize-target-add-everywhere =
+    .label = Tambahkan ke semua bilah alat
+customize-target-start =
+    .label = Pindah ke awal
+customize-target-end =
+    .label = Pindah ke akhir

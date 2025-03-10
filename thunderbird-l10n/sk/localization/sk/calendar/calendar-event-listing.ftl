@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Zavrieť vyhľadávanie udalostí a zoznam udalostí
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Názov kalendára
     .tooltiptext = Usporiadať podľa stĺpca Názov kalendára
 calendar-event-listing-column-category =
     .label = Kategória
     .tooltiptext = Usporiadať podľa stĺpca Kategória
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Hotovo
     .tooltiptext = Usporiadať podľa stĺpca Hotovo
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Názov
     .tooltiptext = Usporiadať podľa stĺpca Názov
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Udalosti v minulosti
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Udalosti v nasledujúcich 6 mesiacoch
 calendar-event-listing-interval-next-12-months =
     .label = Udalosti v nasledujúcich 12 mesiacoch
+calendar-event-listing-interval-future =
+    .label = Všetky budúce udalosti
 calendar-event-listing-interval-all =
     .label = Všetky udalosti
 calendar-event-listing-interval-selected-day =

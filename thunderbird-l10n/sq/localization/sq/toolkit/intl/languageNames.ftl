@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = Afar
 language-name-ab = Abkhaze
 language-name-ach = Akolase
@@ -84,7 +80,7 @@ language-name-ii = Sihuan Ji
 language-name-ik = Inupiake
 language-name-io = Ido
 language-name-is = Islandisht
-language-name-it = Italiaisht
+language-name-it = Italisht
 language-name-iu = Inuktitut
 language-name-ja = Japonisht
 language-name-jv = Xhavanisht

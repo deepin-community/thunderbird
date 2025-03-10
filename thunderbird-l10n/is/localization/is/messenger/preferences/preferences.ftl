@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Loka
 preferences-doc-title2 = Stillingar
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Samstiling
 category-sync =
     .tooltiptext = Samstiling
+pane-qr-export-title = Útflutningur fyrir farsíma
+category-qr-export =
+    .tooltiptext = Útflutningur fyrir farsíma
 general-language-and-appearance-header = Tungumál og útlit
 general-incoming-mail-header = Póstur sem berst
 general-files-and-attachment-header = Skrár og viðhengi
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Leyfa { -brand-short-name } að senda sjálkrafa tæknilegar og notkunar upplýsingar til { -vendor-short-name }
     .accesskey = L
 collection-health-report-link = Frekari upplýsingar
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Gagnaskýrslur eru óvirkar fyrir þessa uppsetningarútgáfu
 collection-backlogged-crash-reports =
     .label = Leyfa { -brand-short-name } að senda hrunskýrslur í bakgrunni í þínu nafni
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Endurræstu { -brand-short-name } til að staðfesta þessar breytingar
 confirm-messenger-language-change-button = Virkja og endurræsa
 update-setting-write-failure-title = Villa við að vista uppfærslustillingar
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } rakst á villu og vistaði ekki þessa breytingu. Athugaðu að til að stilla þennan uppfærsluvalkost þarf heimild til að skrifa í skrána hér að neðan. Þú eða kerfisstjóri gætuð leyst vandamálið með því að veita users-hópnum fulla stjórn á þessari skrá.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Uppfærsla í gangi
 update-in-progress-message = Viltu að { -brand-short-name } haldi áfram með þessa uppfærslu?
 update-in-progress-ok-button = Hen&da
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Halda áfram
 account-button = Stillingar reiknings
 open-addons-sidebar-button = Viðbætur og þemu
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Til að búa til aðallykilorð skaltu setja inn Windows-innskráningarauðkennin þín. Þetta hjálpar til við að tryggja öryggi reikninganna þinna.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = búa til aðallykilorð
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Bæta við OpenSearch þjónustuveitu
 add-opensearch-provider-text = Settu inn slóð OpenSearch þjónustuveitunnar sem á að bæta við. Notaðu annaðhvort beina vefslóð OpenSearch lýsiskránnar eða vefslóð þar sem hægt er að finna hana sjálfvirkt.
 adding-opensearch-provider-failed-title = Mistókst að bæta við OpenSearch þjónustuveitu
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Gat ekki bætt við OpenSearch þjónustu fyrir { $url }.
 minimize-to-tray-label =
     .label = Þegar { -brand-short-name } er lágmarkað skal færa það í kerfisbakkann
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Kanna núna…
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Staðfesting á lestri…
     .accesskey = S
 update-app-legend = { -brand-short-name } uppfærslur
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Útgáfa { $version }
 allow-description = Leyfa { -brand-short-name } að
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = p
 compact-folder-size =
     .value = MB alls
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Nota að hámarki
     .accesskey = o
 use-cache-after = MB af plássi fyrir skyndiminni
-
-##
-
 smart-cache-label =
     .label = Hunsa sjálfvirka umsýslu skyndiminnis
     .accesskey = n
@@ -304,7 +269,6 @@ color-options-button =
     .label = Litir…
     .accesskey = L
 display-width-legend = Ósniðinn textapóstur
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Birta broskalla sem myndir
     .accesskey = m
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Skoða viðhengi innanmáls
     .accesskey = v
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Eftir birtingu í
     .accesskey = b
 seconds-label = sekúndur
-
-##
-
 open-msg-label =
     .value = Opna póst í:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Loka póstglugga/flipa þegar verið er að færa eða eyða
     .accesskey = L
-display-name-label =
-    .value = Birtingarnafn:
 address-display-legend = Skilaboðalisti
 address-display-description = Ákjósanlegt birtingarsnið tölvupóstfangs:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Sýna aðeins birtingarnafn fyrir tengiliði í nafnaskránni
     .accesskey = S
-
-## Compose Tab
-
+table-layout-legend = Töflusýn
+table-layout-horizontal-scroll-label =
+    .label = Leyfa lárétt skrun
+    .accesskey = l
+conversation-view-legend = Samtalsyfirlit
+conversation-view-checkbox-label =
+    .label = Virkja samtalsyfirlit
+    .accesskey = k
+conversation-view-checkbox-description = Tilraunaeiginleiki byggður á Gloda, notaðu þetta á eigin ábyrgð
+label-experiment = Á tilraunastigi
+account-hub-legend = Reikningamiðstöð
+account-hub-checkbox-label =
+    .label = Búðu til reikninga í nýju reikningamiðstöðinni
+    .accesskey = B
+account-hub-checkbox-description = Tilraunaflæði til að búa til nýja póstreikninga
 forward-label =
     .value = Áframsenda póst:
     .accesskey = f
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = bæta skráarendingu við skráarheiti
     .accesskey = b
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Vista sjálfkrafa á
     .accesskey = V
 auto-save-end = mínútna fresti
-
-##
-
 warn-on-send-accel-key =
     .label = Staðfesta að senda póst þegar notað er lyklaborðsflýtivísun
     .accesskey = i
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Finna fleiri veitur…
 cloud-account-description = Bæta við nýrri Filelink-geymsluþjónustu fyrir skrár
-
-## Privacy Tab
-
 mail-content = Efni pósts
 remote-content-label =
     .label = Leyfa fjartengt efni í pósti
@@ -538,7 +495,7 @@ exceptions-button =
     .label = Undanþágur…
     .accesskey = U
 remote-content-info =
-    .value = Fræðast meira um friðhelgisvandamál í fjartengdu efni
+    .value = Frekari upplýsingar um friðhelgisvandamál í fjartengdu efni
 web-content = Vefur
 history-label =
     .label = Muna eftir vefsvæðum og tenglum sem ég heimsæki
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Sýna vefkökur…
     .accesskey = S
-do-not-track-label =
-    .label = Senda vefsvæðum “Do Not Track” merki um að þú viljir ekki láta fylgjast með þér
-    .accesskey = D
-dnt-learn-more-button =
-    .value = Frekari upplýsingar
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Segja vefsvæðum að selja ekki eða deila gögnunum mínum
+    .accesskey = m
+do-not-track-removal = Við styðjum ekki lengur „Ekki rekja“ merkinguna
 passwords-description = { -brand-short-name } getur munað öll þín lykilorð þannig að þú þurfir ekki að setja þau inn aftur.
 passwords-button =
     .label = Vistuð lykilorð…
@@ -571,7 +528,6 @@ primary-password-description = Aðallykilorð verndar öll lykilorðin þín, en
 primary-password-label =
     .label = Nota aðallykilorð
     .accesskey = o
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Krefjast innskráningar tækis til að fylla út og sýsla með lykilorð
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Þú ert núna í FIPS-ham. FIPS má ekki hafa tómt aðallykilorð.
 forms-master-pw-fips-desc = Breyting á lykilorði mistókst
 junk-description = Stilla sjálfgefnar ruslpóstsstillingar. Stillingar fyrir ruslpóst fyrir ákveðinn reikning er hægt að stilla í stillingum reiknings.
-junk-label =
-    .label = Þegar ég merki skilaboð sem ruslpóst:
-    .accesskey = k
 junk-marked-label =
     .label = Þegar skilaboð eru merkt sem rusl:
     .accesskey = k
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Eyða þeim
     .accesskey = E
-junk-read-label =
-    .label = Merkja staðfestan ruslpóst sem lesinn
-    .accesskey = j
 junk-read-description = Merkja skilaboð sem lesin
 junk-read-manual-label =
     .label = Þegar merkt er handvirkt sem rusl
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Hægt er að hnekkja sjálfvirkum ákvörðunum með því að kveikja eða slökkva handvirkt á dulritun þegar þú skrifar skilaboð.
     Athugið: dulritun er alltaf virkjuð sjálfkrafa þegar dulrituðum skilaboðum er svarað.
-
-## Chat Tab
-
 startup-label =
     .value = Þegar { -brand-short-name } ræsir:
     .accesskey = s
@@ -661,20 +608,10 @@ offline-label =
     .label = Aftengja spjallreikninga
 auto-connect-label =
     .label = Tengja spjallreikninga sjálfvirkt
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Tilkynna tengiliðum ef ég er aðgerðalaus í
     .accesskey = i
 idle-time-label = mínútur óvirkur
-
-##
-
 away-message-label =
     .label = og setja stöðu sem fjarverandi með skilaboðum:
     .accesskey = a
@@ -736,41 +673,21 @@ no-preview-description = Þetta þema er ekki gilt eða er ekki tiltækt í augn
 chat-variant-label =
     .value = Tilbrigði:
     .accesskey = T
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Finna í stillingum
-
-## Settings UI Search Results
-
 search-results-header = Leitarniðurstöður
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Því miður! Engar niðurstöður eru til í stillingum fyrir “<span data-l10n-name="query"></span>”.
        *[other] Því miður! Engar niðurstöður eru til í stillingum fyrir “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Þarftu aðstoð? Skoðaðu <a data-l10n-name="url">{ -brand-short-name } hjálparsvæðið</a>
-
-## Sync Tab
-
 sync-signedout-caption = Taktu vefinn með þér
 sync-signedout-description = Samstilltu reikningana þína, nafnaskrár, dagatöl, viðbætur og stillingar á öllum tækjunum þínum.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Skráðu inn til að samstilla…
 sync-pane-header = Samstiling
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = "{ $email }" er ekki staðfest.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Skráðu þig inn til að endurtengja „{ $userEmail }“
 sync-pane-resend-verification = Endursenda staðfestingu
 sync-pane-sign-in = Skrá inn
@@ -788,7 +705,7 @@ sync-pane-show-synced-header-off = Samstilling: AF
 sync-pane-sync-now = Samstilla núna
 sync-panel-sync-now-syncing = Samstilli…
 show-synced-list-heading = Þú ert núna að samstilla þessi atriði:
-show-synced-learn-more = Fræðast meira…
+show-synced-learn-more = Kanna nánar…
 show-synced-item-account = Tölvupóstsreikningar
 show-synced-item-address = Nafnaskrár
 show-synced-item-calendar = Dagatöl
@@ -800,3 +717,49 @@ synced-acount-item-filters = Síur
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Samstilltu tölvupóstreikningana þína, nafnaskrár, dagatöl og auðkenni á öllum tækjunum þínum.
 sync-disconnected-turn-on-sync = Kveikja á samstillingu…
+qr-export-pane-header = Flytja út reikninga í { -brand-product-name } á farsíma
+qr-export-description = Flyttu reikningsstillingarnar þínar fljótt úr vinnutölvu yfir í farsíma með því að búa til QR-kóða. Veldu hvaða reikninga þú vilt hafa með, ákveddu hvort þú viljir flytja lykilorðið þitt og skannaðu kóðann með farsímanum þínum. Hratt, öruggt og einfalt.
+qr-export-get-app = Ertu ekki enn með { -brand-product-name } í farsímanum? <a data-l10n-name="app-link">Sæktu það á Google Play</a>
+qr-export-create = Búðu til QR-kóða til að flytja út reikningana þína
+qr-export-select-accounts = Veldu hvaða reikninga á að flytja út:
+qr-export-no-accounts = Sérðu ekki alla reikningana þína? Sumir reikningar gætu verið óvirkir vegna þess að þeir eru ekki studdir af { -brand-product-name } fyrir Android. <a data-l10n-name="account-support-link">Aðstoð</a>
+qr-export-accounts-legend = Tölvupóstsreikningar
+qr-export-select-all-accounts = Velja allt
+qr-export-security-legend = Öryggi
+qr-export-include-passwords = Hafa með öll lykilorð reikninga
+qr-export-oauth-warning = Sumir reikningar þínir nota auðkenningaraðferð sem gæti krafist endurvottunar á farsímanum þínum. Þú gætir þurft að setja aftur inn lykilorðin þín meðan á þessu ferli stendur.
+qr-export-security-hint = Með því að skanna eftirfarandi QR-kóða verða stillingar reikningsins þíns – þar á meðal netfangið þitt og lykilorð – fluttar á öruggan hátt. Við söfnum ekki, geymum eða deilum neinum af þessum gögnum meðan á ferlinu stendur. Flutningurinn á sér stað beint á milli tækjanna þinna.
+qr-export-security-warning = Til öryggis skaltu ganga úr skugga um að þú hafir gott næði og skannaðu einungis QR-kóða frá aðilum sem þú treystir.
+qr-export-start-export = Flytja út
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } af { $count } QR-kóða
+       *[other] { $step } af { $count } QR-kóðum
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skannaðu QR-kóðann með { -brand-product-name } á farsímanum þínum
+       *[other] Skannaðu QR-kóðana með { -brand-product-name } á farsímanum þínum
+    }
+qr-export-scan-step1 = Opnaðu { -brand-product-name } á farsímanum þínum
+qr-export-scan-step2 = Farðu í stillingar
+qr-export-scan-step3 = Veldu <strong>Flytja inn stillingar</strong>
+qr-export-scan-step4-revision = Ýttu á <strong>Skanna QR-kóða</strong> og haltu símanum yfir þessum kóða
+qr-export-back = Til baka
+qr-export-next = Næsta
+qr-export-done = Lokið
+qr-export-summary-description = Reikningar fluttir út. Haltu áfram á farsímanum þínum.
+qr-export-summary-title = Samantekt útflutnings:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-kóði búinn til
+       *[other] { $count } QR-kóðar búnir til
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } reikningur fluttur út:
+       *[other] { $count } reikningar fluttir út:
+    }
+qr-export-summary-passwords-included = Lykilorð fylgja með
+qr-export-summary-passwords-excluded = Lykilorð ekki með
+qr-export-more-accounts = Flytja út fleiri reikninga

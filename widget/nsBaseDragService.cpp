@@ -37,6 +37,7 @@
 #include "mozilla/ViewportUtils.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/BrowserParent.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/ContentParent.h"
 #include "mozilla/dom/DataTransferItemList.h"
 #include "mozilla/dom/DataTransfer.h"
@@ -450,7 +451,7 @@ nsresult nsBaseDragSession::InitWithImage(
   mSourceTopWindowContext =
       mSourceWindowContext ? mSourceWindowContext->TopWindowContext() : nullptr;
 
-  mScreenPosition = aDragEvent->ScreenPoint(CallerType::System);
+  mScreenPosition = RoundedToInt(aDragEvent->ScreenPoint(CallerType::System));
   mInputSource = aDragEvent->InputSource(CallerType::System);
 
   // If dragging within a XUL tree and no custom drag image was
@@ -522,7 +523,7 @@ nsresult nsBaseDragSession::InitWithRemoteImage(
   mSourceWindowContext = mDragStartData->GetSourceWindowContext();
   mSourceTopWindowContext = mDragStartData->GetSourceTopWindowContext();
 
-  mScreenPosition = aDragEvent->ScreenPoint(CallerType::System);
+  mScreenPosition = RoundedToInt(aDragEvent->ScreenPoint(CallerType::System));
   mInputSource = aDragEvent->InputSource(CallerType::System);
 
   nsresult rv = InvokeDragSession(
@@ -537,13 +538,14 @@ nsBaseDragService::InvokeDragSessionWithSelection(
     Selection* aSelection, nsIPrincipal* aPrincipal,
     nsIContentSecurityPolicy* aCsp, nsICookieJarSettings* aCookieJarSettings,
     nsIArray* aTransferableArray, uint32_t aActionType, DragEvent* aDragEvent,
-    DataTransfer* aDataTransfer) {
+    DataTransfer* aDataTransfer, nsINode* aTargetContent) {
   nsCOMPtr<nsIWidget> widget =
       aDragEvent->WidgetEventPtr()->AsDragEvent()->mWidget;
   MOZ_ASSERT(widget);
 
   NS_ENSURE_TRUE(aSelection, NS_ERROR_NULL_POINTER);
   NS_ENSURE_TRUE(aDragEvent, NS_ERROR_NULL_POINTER);
+  NS_ENSURE_TRUE(aTargetContent, NS_ERROR_NULL_POINTER);
   NS_ENSURE_TRUE(mSuppressLevel == 0, NS_ERROR_FAILURE);
 
   RefPtr<nsBaseDragSession> session =
@@ -557,14 +559,15 @@ nsBaseDragService::InvokeDragSessionWithSelection(
   return session->InitWithSelection(widget, aSelection, aPrincipal, aCsp,
                                     aCookieJarSettings, aTransferableArray,
                                     aActionType, aDragEvent, aDataTransfer,
-                                    isSynthesized);
+                                    aTargetContent, isSynthesized);
 }
 
 nsresult nsBaseDragSession::InitWithSelection(
     nsIWidget* aWidget, Selection* aSelection, nsIPrincipal* aPrincipal,
     nsIContentSecurityPolicy* aCsp, nsICookieJarSettings* aCookieJarSettings,
     nsIArray* aTransferableArray, uint32_t aActionType, DragEvent* aDragEvent,
-    DataTransfer* aDataTransfer, bool aIsSynthesizedForTests) {
+    DataTransfer* aDataTransfer, nsINode* aTargetContent,
+    bool aIsSynthesizedForTests) {
   mSessionIsSynthesizedForTests = aIsSynthesizedForTests;
   mDataTransfer = aDataTransfer;
   mSelection = aSelection;
@@ -575,15 +578,13 @@ nsresult nsBaseDragSession::InitWithSelection(
   mDragStartData = nullptr;
   mRegion = Nothing();
 
-  mScreenPosition.x = aDragEvent->ScreenX(CallerType::System);
-  mScreenPosition.y = aDragEvent->ScreenY(CallerType::System);
+  mScreenPosition = RoundedToInt(aDragEvent->ScreenPoint(CallerType::System));
   mInputSource = aDragEvent->InputSource(CallerType::System);
 
-  // just get the focused node from the selection
   // XXXndeakin this should actually be the deepest node that contains both
   // endpoints of the selection
-  nsCOMPtr<nsINode> node = aSelection->GetFocusNode();
-  mSourceWindowContext = node ? node->OwnerDoc()->GetWindowContext() : nullptr;
+  nsCOMPtr<nsINode> node = aTargetContent;
+  mSourceWindowContext = node->OwnerDoc()->GetWindowContext();
   mSourceTopWindowContext =
       mSourceWindowContext ? mSourceWindowContext->TopWindowContext() : nullptr;
 
@@ -673,11 +674,20 @@ int32_t nsBaseDragSession::TakeChildProcessDragAction() {
 //-------------------------------------------------------------------------
 NS_IMETHODIMP
 nsBaseDragSession::EndDragSession(bool aDoneDrag, uint32_t aKeyModifiers) {
+  if (mDelayedDropTarget) {
+    if (!mEndDragSessionData) {
+      EndDragSessionData edsData = {aDoneDrag, aKeyModifiers};
+      mEndDragSessionData = Some(edsData);
+    }
+    return NS_OK;
+  }
   return EndDragSessionImpl(aDoneDrag, aKeyModifiers);
 }
 
 nsresult nsBaseDragSession::EndDragSessionImpl(bool aDoneDrag,
                                                uint32_t aKeyModifiers) {
+  MOZ_DRAGSERVICE_LOG("[%p] EndDragSession | mDoingDrag %s", this,
+                      mDoingDrag ? "true" : "false");
   if (!mDoingDrag || mEndingSession) {
     return NS_ERROR_FAILURE;
   }
@@ -1031,9 +1041,9 @@ nsresult nsBaseDragSession::DrawDragForImage(
     aScreenDragRect->SizeTo(aPresContext->CSSPixelsToDevPixels(imageWidth),
                             aPresContext->CSSPixelsToDevPixels(imageHeight));
   } else {
-    // XXX The canvas size should be converted to dev pixels.
+    // Bug 1907668: The canvas size should be converted to dev pixels.
     NS_ASSERTION(aCanvas, "both image and canvas are null");
-    nsIntSize sz = aCanvas->GetSize();
+    CSSIntSize sz = aCanvas->GetSize();
     aScreenDragRect->SizeTo(sz.width, sz.height);
   }
 
@@ -1263,4 +1273,83 @@ nsIWidget* nsBaseDragService::GetWidgetFromWidgetProvider(
   nsViewManager* vm = presShell->GetViewManager();
   NS_ENSURE_TRUE(vm, nullptr);
   return vm->GetRootWidget();
+}
+
+NS_IMETHODIMP
+nsBaseDragSession::SendStoreDropTargetAndDelayEndDragSession(
+    DragEvent* aEvent) {
+  mDelayedDropBrowserParent = dom::BrowserParent::GetBrowserParentFromLayersId(
+      aEvent->WidgetEventPtr()->mLayersId);
+  NS_ENSURE_TRUE(mDelayedDropBrowserParent, NS_ERROR_FAILURE);
+  uint32_t dropEffect = nsIDragService::DRAGDROP_ACTION_NONE;
+  if (mDataTransfer) {
+    dropEffect = mDataTransfer->DropEffectInt();
+  }
+  Unused
+      << mDelayedDropBrowserParent->SendStoreDropTargetAndDelayEndDragSession(
+             aEvent->WidgetEventPtr()->mRefPoint, dropEffect, mDragAction,
+             mTriggeringPrincipal, mCsp);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsBaseDragSession::SendDispatchToDropTargetAndResumeEndDragSession(
+    bool aShouldDrop) {
+  MOZ_ASSERT(mDelayedDropBrowserParent);
+  Unused << mDelayedDropBrowserParent
+                ->SendDispatchToDropTargetAndResumeEndDragSession(aShouldDrop);
+  mDelayedDropBrowserParent = nullptr;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsBaseDragSession::StoreDropTargetAndDelayEndDragSession(
+    mozilla::dom::Element* aElement, nsIFrame* aFrame) {
+  MOZ_ASSERT(XRE_IsContentProcess());
+  MOZ_DRAGSERVICE_LOG(
+      "[%p] StoreDropTargetAndDelayEndDragSession | aElement: %p | aFrame: %p",
+      this, aElement, aFrame);
+  mDelayedDropTarget = do_GetWeakReference(aElement);
+  mDelayedDropFrame = aFrame;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsBaseDragSession::DispatchToDropTargetAndResumeEndDragSession(
+    nsIWidget* aWidget, const LayoutDeviceIntPoint& aPt, bool aShouldDrop) {
+  MOZ_ASSERT(XRE_IsContentProcess());
+  MOZ_DRAGSERVICE_LOG(
+      "[%p] DispatchToDropTargetAndResumeEndDragSession | pt=(%d, %d) | "
+      "shouldDrop: %s",
+      this, static_cast<int32_t>(aPt.x), static_cast<int32_t>(aPt.y),
+      aShouldDrop ? "true" : "false");
+
+  RefPtr<Element> delayedDropTarget = do_QueryReferent(mDelayedDropTarget);
+  mDelayedDropTarget = nullptr;
+  nsIFrame* delayedDropFrame = mDelayedDropFrame;
+  mDelayedDropFrame = nullptr;
+  auto edsData = std::move(mEndDragSessionData);
+
+  if (!delayedDropTarget) {
+    MOZ_ASSERT(!edsData && !delayedDropFrame);
+    return NS_OK;
+  }
+  if (!delayedDropFrame) {
+    // Weak frame was deleted
+    return NS_OK;
+  }
+
+  nsEventStatus status = nsEventStatus_eIgnore;
+  RefPtr<PresShell> ps = delayedDropFrame->PresContext()->GetPresShell();
+  auto event = MakeUnique<WidgetDragEvent>(
+      true, aShouldDrop ? eDrop : eDragExit, aWidget);
+  event->mRefPoint = aPt;
+  ps->HandleEventWithTarget(event.get(), delayedDropFrame, delayedDropTarget,
+                            &status);
+
+  // If EndDragSession was delayed, issue it now.
+  if (edsData) {
+    EndDragSession(edsData->mDoneDrag, edsData->mKeyModifiers);
+  }
+  return NS_OK;
 }

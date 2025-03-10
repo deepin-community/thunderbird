@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Hlavní nabídka
     .accesskey = H
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Nastavení
     .accesskey = e
 menu-addons-and-themes =
     .label = Doplňky a vzhledy
     .accesskey = a
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exportovat pro mobilní zařízení…
+    .accesskey = E
 menu-help-help-title =
     .label = Nápověda
     .accesskey = N
 menu-help-get-help =
     .label = Získat pomoc
     .accesskey = Z
-menu-help-explore-features =
-    .label = Prozkoumejte všechny funkce
-    .accesskey = P
 menu-help-get-release-help =
     .label =
         { -brand-short-name.case-status ->
@@ -57,11 +47,9 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = O aplikaci { -brand-short-name }
     .accesskey = a
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label = Ukončit
     .accesskey = k
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label =
         { -brand-shorter-name.case-status ->
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Ukončit { -brand-full-name }
            *[other] Ukončit { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Nevyžádaná pošta
     .tooltiptext = Označí vybrané zprávy jako nevyžádanou poštu
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Zrušit smazání
     .tooltiptext = Obnoví dříve smazané vybrané zprávy
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Opravit znakovou sadu textu
     .accesskey = z
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Záhlaví podokna složek
     .accesskey = Z
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Hlavička seznamu zpráv
     .accesskey = H
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Navigační lišta
     .accesskey = N
-
-## File
-
 file-new-email-account =
     .label = E-mailový účet…
     .accesskey = E

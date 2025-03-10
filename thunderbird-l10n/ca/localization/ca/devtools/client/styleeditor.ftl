@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Crea i afegeix un full d'estil nou al document
     .accesskey = N
@@ -16,8 +12,6 @@ styleeditor-save-button = Desa
     .accesskey = D
 styleeditor-options-button =
     .tooltiptext = Opcions de l'editor d'estils
-styleeditor-editor-textbox =
-    .data-placeholder = Escriviu el CSS aquí.
 styleeditor-no-stylesheet = Aquesta pàgina no té cap full d'estil.
 styleeditor-no-stylesheet-tip = Potser voleu <a data-l10n-name="append-new-stylesheet">afegir un full d'estil nou</a>?
 styleeditor-open-link-new-tab =
@@ -33,10 +27,6 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Salta a la línia…
     .accesskey = S
-
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } regla.

@@ -1,10 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-uri-redirect-window-title = カレンダー URI のリダイレクト
-# Variables:
-# $calendarName (String) - Display name of the calendar.
 calendar-uri-redirect-description =
     サーバーが “{ $calendarName }” のカレンダーの URI をリダイレクトしています。
     このカレンダーのリダイレクトを受け入れて新しい URI を使用しますか？

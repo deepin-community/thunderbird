@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Lägg till en personlig OpenPGP-nyckel för { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Fortsätt
-    .buttonlabelhelp = Gå tillbaka
 key-wizard-dialog =
     .buttonlabelaccept = Fortsätt
     .buttonlabelextra1 = Gå tillbaka
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Använd din externa nyckel genom GnuPG (t.ex. från ett smartkort)
     .accesskey = A
-
-## Generate key section
-
 openpgp-generate-key-title = Generera OpenPGP-nyckel
 openpgp-keygen-secret-protection = Skydd av hemligt nyckel
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Din nyckel måste vara giltig i minst en dag.
 openpgp-keygen-ongoing = Nyckelgenerering pågår redan!
 openpgp-keygen-error-core = Det går inte att initiera OpenPGP Core Service
 openpgp-keygen-error-failed = OpenPGP-nyckelgenerering misslyckades oväntat
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP-nyckeln skapades framgångsrikt, men misslyckades med att få återkallelse för nyckeln { $key }
 openpgp-keygen-abort-title = Avbryta nyckelgenerering?
 openpgp-keygen-abort = OpenPGP-nyckelgenerering pågår för närvarande, är du säker på att du vill avbryta den?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Generera en publik och hemlig nyckel för { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Importera en befintlig personlig OpenPGP-nyckel
 openpgp-import-key-legend = Välj en tidigare säkerhetskopierad fil.
 openpgp-import-key-description = Du kan importera personliga nycklar som skapades med annan OpenPGP-programvara.
 openpgp-import-key-info = Annan programvara kan beskriva en personlig nyckel med alternativa termer som din egen nyckel, hemlig nyckel, privat nyckel eller nyckelpar.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } hittade en nyckel som kan importeras.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Nycklar markerade för att behandlas som perso
 openpgp-import-keep-passphrases =
     .label = Behåll lösenfrasskyddet för importerade hemliga nycklar
 openpgp-passphrase-prompt-title = Lösenfras krävs
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Ange lösenfrasen för att låsa upp följande nyckel: { $key }
 openpgp-import-key-button =
     .label = Välj fil att importera...
     .accesskey = V
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Behandla den här nyckeln som en personlig nyckel
 gnupg-file = GnuPG-filer
 import-error-file-size = <b>Fel!</b> Filer som är större än 5MB stöds inte.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Fel!</b> Det gick inte att importera filen. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Fel!</b> Det gick inte att importera nycklar. { $error }
 openpgp-import-identity-label = Identitet
 openpgp-import-fingerprint-label = Fingeravtryck
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bitar
 openpgp-import-key-props =
     .label = Nyckelegenskaper
     .accesskey = N
-
-## External Key section
-
 openpgp-external-key-title = Extern GnuPG-nyckel
 openpgp-external-key-description = Konfigurera en extern GnuPG-nyckel genom att ange nyckel-ID
 openpgp-external-key-info = Dessutom måste du använda Nyckelhanteraren för att importera och acceptera motsvarande publika nyckel.

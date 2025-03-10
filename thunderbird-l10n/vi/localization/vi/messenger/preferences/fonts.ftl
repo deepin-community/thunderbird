@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Phông chữ
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Mặc định ({ $name })
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = Tỷ lệ:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latin
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = Tiếng Sinhala
 font-language-group-tibetan =
     .label = Tiếng Tibetan
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = z
 min-size-none =
     .label = Không
-
-## Fonts in message
-
 font-control-legend = Điều chỉnh phông chữ
 use-document-fonts-checkbox =
     .label = Cho phép thư sử dụng phông chữ khác
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Sử dụng phông chữ có chiều rộng cố định cho thư văn bản thuần túy
     .accesskey = x
-
-## Language settings
-
 text-encoding-legend = Bảng mã văn bản
 text-encoding-description = Đặt mã hóa văn bản mặc định để gửi và nhận thư
 font-outgoing-email-label =

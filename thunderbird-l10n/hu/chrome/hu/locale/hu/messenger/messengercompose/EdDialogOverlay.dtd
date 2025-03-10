@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY AdvancedEditButton.label "Speciális szerkesztés…">
 <!ENTITY AdvancedEditButton.accessKey "S">
 <!ENTITY AdvancedEditButton.tooltip "HTML-attribútumok, stílusattribútumok és JavaScript hozzáadása vagy módosítása">
@@ -9,11 +5,5 @@
 <!ENTITY chooseFileButton.accessKey "T">
 <!ENTITY chooseFileLinkButton.label "Tallózás…">
 <!ENTITY chooseFileLinkButton.accessKey "a">
-
-<!ENTITY makeUrlRelative.label "A webcím az oldal helyéhez képest relatív">
-<!ENTITY makeUrlRelative.accessKey "r">
-<!ENTITY makeUrlRelative.tooltip "Váltás a relatív és az abszolút webcím között. Az oldalt menteni kell a változtatás előtt.">
-
-<!-- Shared by Link and Image dialogs -->
 <!ENTITY LinkURLEditField2.label "Adja meg a weboldal helyét, egy helyi fájlt, vagy válasszon ki egy horgonyt vagy címsort a mező környezeti menüjéből:">
 <!ENTITY LinkURLEditField2.accessKey "w">

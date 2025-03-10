@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Πληροφορίες επίλυσης προβλημάτων
 page-subtitle =
     Αυτή η σελίδα περιέχει τεχνικές πληροφορίες που ενδέχεται να φανούν χρήσιμες κατά
@@ -41,8 +37,6 @@ app-basics-version = Έκδοση
 app-basics-build-id = ID έκδοσης
 app-basics-distribution-id = ID διανομής
 app-basics-update-channel = Κανάλι ενημερώσεων
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Κατάλογος ενημερώσεων
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Ιστορικό ενημερώσεων
 app-basics-show-update-history = Εμφάνιση ιστορικού ενημερώσεων
-# Represents the path to the binary used to start the application.
 app-basics-binary = Αρχείο εφαρμογής
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Κατάλογος προφίλ
        *[other] Φάκελος προφίλ
     }
-app-basics-enabled-plugins = Ενεργά αρθρώματα
 app-basics-build-config = Ρύθμιση δομής
-app-basics-user-agent = Παράγοντας χρήστη
+app-basics-user-agent = Πράκτορας χρήστη
 app-basics-os = ΛΣ
 app-basics-os-theme = Θέμα ΛΣ
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Μεταφρασμένο με Rosetta
 app-basics-memory-use = Χρήση μνήμης
 app-basics-performance = Επιδόσεις
@@ -82,13 +72,10 @@ app-basics-safe-mode = Ασφαλής λειτουργία
 app-basics-memory-size = Μέγεθος μνήμης (RAM)
 app-basics-disk-available = Διαθέσιμος χώρος δίσκου
 app-basics-pointing-devices = Συσκευές κατάδειξης
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
-        [macos] Προβολή στο Finder
+        [macos] Εμφάνιση στο Finder
         [windows] Άνοιγμα φακέλου
        *[other] Άνοιγμα καταλόγου
     }
@@ -116,9 +103,7 @@ graphics-decision-log-title = Αρχείο καταγραφής αποφάσεω
 graphics-crash-guards-title = Ανενεργές λειτουργίες φύλαξης καταρρεύσεων
 graphics-workarounds-title = Λύσεις
 graphics-device-pixel-ratios = Αναλογίες εικονοστοιχείων συσκευής παραθύρου
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Πρωτόκολλο παραθύρου
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Περιβάλλον επιφάνειας εργασίας
 place-database-title = Βάση δεδομένων τοποθεσιών
 place-database-stats = Στατιστικά
@@ -156,9 +141,6 @@ clear-startup-cache-label = Απαλοιφή κρυφής μνήμης εκκί�
 startup-cache-dialog-title2 = Επανεκκίνηση { -brand-short-name } για απαλοιφή κρυφής μνήμης εκκίνησης;
 startup-cache-dialog-body2 = Αυτό δεν θα αλλάξει τις ρυθμίσεις σας, ούτε θα αφαιρέσει τις επεκτάσεις σας.
 restart-button-label = Επανεκκίνηση
-
-## Media titles
-
 audio-backend = Υποσύστημα ήχου
 max-audio-channels = Μέγιστος αριθμός καναλιών
 sample-rate = Επιθυμητός ρυθμός δειγματοληψίας
@@ -177,11 +159,7 @@ media-device-rate = Ρυθμός
 media-device-latency = Καθυστέρηση
 media-capabilities-title = Δυνατότητες μέσων
 media-codec-support-info = Πληροφορίες υποστήριξης codec
-# List all the entries of the database.
 media-capabilities-enumerate = Απαρίθμηση βάσης δεδομένων
-
-## Codec support table
-
 media-codec-support-sw-decoding = Αποκωδικοποίηση λογισμικού
 media-codec-support-hw-decoding = Αποκωδικοποίηση υλικού
 media-codec-support-codec-name = Όνομα κωδικοποιητή
@@ -189,26 +167,13 @@ media-codec-support-supported = Υποστηρίζεται
 media-codec-support-unsupported = Δεν υποστηρίζεται
 media-codec-support-error = Οι πληροφορίες υποστήριξης κωδικοποίησης δεν είναι διαθέσιμες. Δοκιμάστε ξανά μετά την αναπαραγωγή ενός αρχείου πολυμέσων.
 media-codec-support-lack-of-extension = Εγκατάσταση επέκτασης
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Πληροφορίες μονάδων αποκρυπτογράφησης περιεχομένου
 media-key-system-name = Όνομα συστήματος κλειδιών
 media-video-robustness = Ανθεκτικότητα βίντεο
 media-audio-robustness = Ανθεκτικότητα ήχου
 media-cdm-capabilities = Δυνατότητες
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Μη κρυπτογραφημένη έναρξη (Clear Lead)
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Συμβατό με HDCP 2.2
-
-##
-
 intl-title = Διεθνοποίηση και μετάφραση
 intl-app-title = Ρυθμίσεις εφαρμογής
 intl-locales-requested = Ζητούμενες γλώσσες
@@ -218,52 +183,29 @@ intl-locales-default = Προεπιλεγμένη γλώσσα
 intl-os-title = Λειτουργικό σύστημα
 intl-os-prefs-system-locales = Γλώσσες συστήματος
 intl-regional-prefs = Προτιμήσεις περιοχής
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Απομακρυσμένος έλεγχος σφαλμάτων (Πρωτόκολλο Chromium)
 remote-debugging-accepting-connections = Αποδεκτές συνδέσεις
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Αναφορές κατάρρευσης της τελευταίας { $days } ημέρας
        *[other] Αναφορές κατάρρευσης των τελευταίων { $days } ημερών
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } λεπτό πριν
        *[other] { $minutes } λεπτά πριν
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } ώρα πριν
        *[other] { $hours } ώρες πριν
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } μέρα πριν
        *[other] { $days } ημέρες πριν
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Όλες οι αναφορές κατάρρευσης (συμπεριλαμβανομένης { $reports } κατάρρευσης σε αναμονή στο δεδομένο χρονικό διάστημα)
@@ -271,18 +213,11 @@ pending-reports =
     }
 raw-data-copied = Τα ακατέργαστα δεδομένα αντιγράφτηκαν στο πρόχειρο
 text-copied = Το κείμενο αντιγράφτηκε στο πρόχειρο
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Αποκλείστηκε για την έκδοση του προγράμματος οδήγησης γραφικών σας.
 blocked-gfx-card = Αποκλείστηκε για την κάρτα γραφικών σας, λόγω ανεπίλυτων προβλημάτων προγράμματος οδήγησης.
 blocked-os-version = Αποκλείστηκε για την έκδοση του λειτουργικού σας συστήματος.
 blocked-mismatched-version = Αποκλείστηκε λόγω ασυμφωνίας της έκδοσης του προγράμματος οδήγησης γραφικών μεταξύ μητρώου και DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Αποκλείστηκε για το πρόγραμμα οδήγησης της κάρτας γραφικών σας. Δοκιμάστε να το αναβαθμίστε στην έκδοση { $driverVersion } ή νεότερη.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Παράμετροι ClearType
 compositing = Σύνθεση
 support-font-determination = Πληροφορίες ελέγχου ορατότητας γραμματοσειράς
@@ -292,11 +227,6 @@ yes = Ναι
 no = Όχι
 unknown = Άγνωστο
 virtual-monitor-disp = Οθόνη εικονικής εποπτείας
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Βρέθηκε
 missing = Λείπει
 gpu-process-pid = GPUProcessPid
@@ -323,11 +253,7 @@ webgl2-driver-extensions = Επεκτάσεις προγράμματος οδή�
 webgl2-extensions = Επεκτάσεις WebGL 2
 webgpu-default-adapter = Προεπιλεγμένος προσαρμογέας WebGPU
 webgpu-fallback-adapter = Εφεδρικός προσαρμογέας WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Αποκλείστηκε λόγω γνωστών ζητημάτων: <a data-l10n-name="bug-link">σφάλμα { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Αποκλείστηκε· κωδικός αποτυχίας { $failureCode }
 d3d11layers-crash-guard = Συνθέτης D3D11
 glcontext-crash-guard = OpenGL
@@ -347,8 +273,6 @@ has-seccomp-bpf = Seccomp-BPF (Φιλτράρισμα κλήσεων συστή�
 has-seccomp-tsync = Συγχρονισμός νήματος Seccomp
 has-user-namespaces = Χώροι ονομάτων χρήστη
 has-privileged-user-namespaces = Χώροι ονομάτων χρήστη για προνομιακές διεργασίες
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Αυτή η λειτουργία δεν επιτρέπεται από το σύστημά σας. Αυτό μπορεί να περιορίσει τις λειτουργίες ασφαλείας του { -brand-short-name }.
 can-sandbox-content = Sandboxing διεργασίας περιεχομένου
 can-sandbox-media = Sandboxing αρθρώματος πολυμέσων
@@ -369,25 +293,16 @@ launcher-process-status-0 = Ενεργή
 launcher-process-status-1 = Ανενεργή λόγω αποτυχίας
 launcher-process-status-2 = Ανενεργή εξαναγκαστικά
 launcher-process-status-unknown = Άγνωστη κατάσταση
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Απενεργοποιήθηκε από πείραμα
-fission-status-experiment-treatment = Ενεργοποιήθηκε από πείραμα
 fission-status-disabled-by-e10s-env = Απενεργοποιήθηκε από το περιβάλλον
 fission-status-enabled-by-env = Ενεργοποιήθηκε από το περιβάλλον
 fission-status-disabled-by-env = Ανενεργό λόγω περιβάλλοντος
 fission-status-enabled-by-default = Ενεργό από προεπιλογή
 fission-status-disabled-by-default = Απενεργοποιήθηκε από προεπιλογή
-fission-status-enabled-by-user-pref = Ενεργοποιήθηκε από το χρήστη
-fission-status-disabled-by-user-pref = Απενεργοποιήθηκε από το χρήστη
+fission-status-enabled-by-user-pref = Ενεργοποιήθηκε από τον χρήστη
+fission-status-disabled-by-user-pref = Απενεργοποιήθηκε από τον χρήστη
 fission-status-disabled-by-e10s-other = Ανενεργό E10s
-fission-status-enabled-by-rollout = Ενεργό με σταδιακή διάθεση
 async-pan-zoom = Ασύγχρονο pan/zoom
 apz-none = κανένα
 wheel-enabled = είσοδος ρόδας ενεργή
@@ -396,34 +311,20 @@ drag-enabled = ολίσθηση γραμμής κύλισης ενεργή
 keyboard-enabled = πληκτρολόγιο ενεργό
 autoscroll-enabled = αυτόματη κύλιση ενεργή
 zooming-enabled = ομαλό ζουμ ενεργό
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = ανενεργή ασύγχρονη είσοδος ρόδας λόγω μη υποστηριζόμενης προτίμησης: { $preferenceKey }
 touch-warning = ανενεργή ασύγχρονη είσοδος αφής λόγω μη υποστηριζόμενης προτίμησης: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Ανενεργό
 policies-active = Ενεργό
 policies-error = Σφάλμα
-
-## Printing section
-
 support-printing-title = Εκτύπωση
 support-printing-troubleshoot = Επίλυση προβλημάτων
 support-printing-clear-settings-button = Διαγραφή αποθηκευμένων ρυθμίσεων εκτύπωσης
 support-printing-modified-settings = Τροποποιημένες ρυθμίσεις εκτύπωσης
 support-printing-prefs-name = Όνομα
 support-printing-prefs-value = Τιμή
-
-## Remote Settings sections
-
 support-remote-settings-title = Απομακρυσμένες ρυθμίσεις
 support-remote-settings-status = Κατάσταση
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Δεν λειτουργεί
 support-remote-settings-last-check = Τελευταίος έλεγχος
 support-remote-settings-local-timestamp = Τοπική χρονική σήμανση
@@ -431,9 +332,6 @@ support-remote-settings-sync-history = Ιστορικό
 support-remote-settings-sync-history-status = Κατάσταση
 support-remote-settings-sync-history-datetime = Ημερομηνία
 support-remote-settings-sync-history-infos = Πληροφορίες
-
-## Normandy sections
-
 support-remote-experiments-title = Απομακρυσμένα πειράματα
 support-remote-experiments-name = Όνομα
 support-remote-experiments-branch = Κλάδος πειραμάτων
@@ -441,19 +339,10 @@ support-remote-experiments-see-about-studies = Δείτε το <a data-l10n-name
 support-remote-features-title = Απομακρυσμένες δυνατότητες
 support-remote-features-name = Όνομα
 support-remote-features-status = Κατάσταση
-
-## Pointing devices
-
 pointing-device-mouse = Ποντίκι
 pointing-device-touchscreen = Οθόνη αφής
 pointing-device-pen-digitizer = Ψηφιοποιητής γραφίδας
 pointing-device-none = Δεν υπάρχουν συσκευές κατάδειξης
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Ανάλυση περιεχομένου (DLP)
 content-analysis-active = Ενεργή
 content-analysis-connected-to-agent = Σε σύνδεση με παράγοντα

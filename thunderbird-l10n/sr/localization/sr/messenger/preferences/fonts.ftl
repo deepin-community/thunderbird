@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Фонтови
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Подразумевани ({ $name })
 fonts-label-default-unnamed =
     .label = Подразумевано
-fonts-encoding-dialog-title =
-    .title = Фонтови и кодирања
 fonts-language-legend =
     .value = Фонтови за:
     .accesskey = т
 fonts-proportional-label =
     .value = Сразмерно:
     .accesskey = з
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Латинични
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Синхалешки
 font-language-group-tibetan =
     .label = Тибетански
-
-## Default font type
-
 default-font-serif =
     .label = Серифни
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = т
 min-size-none =
     .label = Ништа
-
-## Fonts in message
-
 font-control-legend = Контрола фонта
 use-document-fonts-checkbox =
     .label = Дозволи порукама да користе друге фонтове
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Користи фонт утврђене ширине за обичне текстуалне поруке
     .accesskey = б
-
-## Language settings
-
 text-encoding-legend = Кодирање текста
 text-encoding-description = Постави подразумевано кодирање текста за послату и примљену пошту
 font-outgoing-email-label =

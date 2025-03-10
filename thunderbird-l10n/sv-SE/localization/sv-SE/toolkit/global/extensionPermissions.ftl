@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Läsa och ändra bokmärken
 webext-perms-description-browserSettings = Läsa och ändra webbläsarens inställningar
 webext-perms-description-browsingData = Rensa den senaste webbhistoriken, kakor och relaterad data
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Åtkomst till webbläsarens nyligen stängda
 webext-perms-description-tabs = Åtkomst till webbläsarens flikar
 webext-perms-description-tabHide = Dölj och visa webbläsarens flikar
 webext-perms-description-topSites = Åtkomst till webbhistoriken
+webext-perms-description-trialML = Ladda ner och kör AI-modeller på din enhet
+webext-perms-description-userScripts = Tillåt overifierade skript från tredje part att komma åt dina uppgifter
 webext-perms-description-webNavigation = Åtkomst till webbläsarens aktivitet under navigering
+webext-perms-extra-warning-userScripts-long = Overifierade skript kan utgöra säkerhets- och integritetsrisker, som att köra skadlig kod eller spåra webbplatsaktivitet. Kör bara skript från tillägg eller källor som du litar på.
+webext-perms-extra-warning-userScripts-short = Overifierade skript kan utgöra säkerhets- och integritetsrisker. Kör bara skript från tillägg eller källor som du litar på.

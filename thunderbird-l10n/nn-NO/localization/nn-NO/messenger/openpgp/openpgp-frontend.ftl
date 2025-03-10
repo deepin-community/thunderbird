@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP-nøkkelhandsamar
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Stadfest signatur
     .accesskey = S
 openpgp-has-sender-key = Denne meldinga hevdar å innehalde den offentlege OpenPGP-nøkkelen til avsendaren.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Åtvaring: Den nye offentlege OpenPGP-nøkkelen i denne meldinga skil seg frå dei offentlege nøklane som du tidlegare godkjende for { $email }.
 openpgp-import-sender-key =
     .label = Importer…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Denne meldinga vart signert med ein nøkkel som du enno ikkje har.
 openpgp-search-signature-key =
     .label = Oppdag…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Dette er ei OpenPGP-melding som tilsynelatande vart øydelagd av MS-Exchange, og ho kan ikkje reparerast fordi ho vart opna frå ei lokal fil. Kopier meldinga til ei e-postmappe for å prøve ein automatisk reparasjon.
 openpgp-broken-exchange-info = Dette er ei OpenPGP-melding som tydelegvis vart øydelagd av MS-Exchange. Dersom innhaldet i meldinga ikkje vert vist som forventa, kan du prøve ein automatisk reparasjon.
 openpgp-broken-exchange-repair =
@@ -36,6 +29,7 @@ openpgp-broken-exchange-repair =
 openpgp-broken-exchange-wait = Vent litt…
 openpgp-has-nested-encrypted-parts = Denne meldinga inneheld ytterlegare krypterte delar.
 openpgp-show-encrypted-parts = Dekrypter og vis
+openpgp-has-nested-signed-parts = Nokre delar av denne meldinga kan vere digitalt signert.
 openpgp-show-signed-parts = Opne og vis
 openpgp-cannot-decrypt-because-mdc =
     Dette er ei kryptert melding som brukar ein gammel og sårbar mekanisme.

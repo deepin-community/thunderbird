@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Užverti
 preferences-doc-title2 = Nuostatos
@@ -47,8 +43,6 @@ collection-health-report =
     .label = Leisti „{ -brand-short-name }“ siųsti techninius ir naudojimosi duomenis „{ -vendor-short-name }“
     .accesskey = L
 collection-health-report-link = Sužinokite daugiau
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Šios programos duomenų siuntimo galimybė išjungta jos kompiliavimo metu
 collection-backlogged-crash-reports =
     .label = Leisti „{ -brand-short-name }“ siųsti sukauptus strigčių pranešimus jūsų vardu
@@ -69,10 +63,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Šie pakeitimai bus pritaikyti i naujo paleidus „{ -brand-short-name }“
 confirm-messenger-language-change-button = Pritaikyti ir perleisti
 update-setting-write-failure-title = Klaida įrašant naujinimų nuostatas
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     „{ -brand-short-name }“ susidūrė su klaida ir neįrašė šio pakeitimo. Atminkite, kad norint pakeisti šią naujinimų nuostatą, reikalingas leidimas rašyti į žemiau nurodytą failą. Jūs, arba sistemos prižiūrėtojas, gali pabandyti tai sutvarkyti, suteikiant atitinkamas šio failo valdymo teises „Users“ grupei.
     
@@ -80,26 +70,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Vyksta naujinimas
 update-in-progress-message = Ar norite, kad „{ -brand-short-name }“ tęstų šį naujinimą?
 update-in-progress-ok-button = &Atsisakyti
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Tęsti
 account-button = Paskyros nuostatos
 open-addons-sidebar-button = Priedai ir grafiniai apvalkalai
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Norėdami sukurti pagrindinį slaptažodį, įveskite savo „Windows“ prisijungimo duomenis. Tai padeda apsaugoti jūsų paskyras.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = sukurti pagrindinį slaptažodį
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -194,8 +170,6 @@ always-check-default =
 check-default-button =
     .label = Tikrinti dabar…
     .accesskey = d
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -213,8 +187,6 @@ return-receipts-button =
     .label = Laiškų pristatymo pažymos…
     .accesskey = L
 update-app-legend = „{ -brand-short-name }“ naujinimai
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Laida { $version }
 allow-description = Leisti „{ -brand-short-name }“
 automatic-updates-label =
@@ -246,18 +218,10 @@ offline-compact-folder =
     .accesskey = S
 compact-folder-size =
     .value = MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Podėliui skirti iki
     .accesskey = P
 use-cache-after = MB disko atminties
-
-##
-
 smart-cache-label =
     .label = Neleisti automatinio podėlio dydžio valdymo
     .accesskey = v
@@ -278,7 +242,6 @@ color-options-button =
     .label = Spalvos…
     .accesskey = S
 display-width-legend = Grynojo teksto laiškai
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Jaustukus rodyti grafiškai
     .accesskey = J
@@ -341,17 +304,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = iškart
     .accesskey = i
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = praėjus
     .accesskey = p
 seconds-label = sek.
-
-##
-
 open-msg-label =
     .value = Atveriamą laišką rodyti:
 open-msg-tab =
@@ -366,14 +322,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Perkėlus ar pašalinus laišką, užverti langą ar kortelę su juo
     .accesskey = v
-display-name-label =
-    .value = Rodomas vardas:
 condensed-addresses-label =
     .label = Jei asmens duomenys įrašyti į adresų knygą, tai rodyti tik jo asmenvardį (be adreso)
     .accesskey = a
-
-## Compose Tab
-
 forward-label =
     .value = Persiųsti laiškus:
     .accesskey = P
@@ -384,17 +335,10 @@ as-attachment-label =
 extension-label =
     .label = failo vardui suteikti prievardį
     .accesskey = v
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Automatiškai įrašyti kas
     .accesskey = u
 auto-save-end = min.
-
-##
-
 warn-on-send-accel-key =
     .label = Parodyti patvirtinimą, kai laiškas siunčiamas naudojant sparčiuosius klavišus
     .accesskey = o
@@ -469,9 +413,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Rasti daugiau teikėjų…
 cloud-account-description = Pridėkite failų talpinimo debesyje tarnybą
-
-## Privacy Tab
-
 mail-content = Laiškų intarpai
 remote-content-label =
     .label = Leisti intarpus iš tinklo laiškuose
@@ -497,25 +438,9 @@ third-party-never =
     .label = niekada
 third-party-visited =
     .label = tik lankytų
-keep-label =
-    .value = Laikyti iki:
-    .accesskey = k
-keep-expire =
-    .label = jų galiojimo laiko pabaigos
-keep-close =
-    .label = „{ -brand-short-name }“ seanso pabaigos
-keep-ask =
-    .label = klausti prieš priimant slapuką
 cookies-button =
     .label = Rodyti slapukus…
     .accesskey = R
-do-not-track-label =
-    .label = Siųsti svetainėms „Do Not Track“ signalą, nurodantį jūsų pageidavimą nebūti sekamiems
-    .accesskey = n
-learn-button =
-    .label = Sužinokite daugiau
-dnt-learn-more-button =
-    .value = Sužinokite daugiau
 passwords-description = Programa „{ -brand-short-name }“ gali įsiminti visų paskyrų slaptažodžius.
 passwords-button =
     .label = Įrašyti slaptažodžiai…
@@ -530,18 +455,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Šiuo metu pasirinkta FIPS veiksena. Jai reikia pagrindinio slaptažodžio.
 forms-master-pw-fips-desc = Slaptažodžio pakeisti nepavyko
 junk-description = Brukalo kontrolės nuostatos atskiroms paskyroms parenkamos paskyrų nuostatų lange.
-junk-label =
-    .label = Pažymėjus, kad laiškai yra brukalas:
-    .accesskey = P
 junk-move-label =
     .label = perkelti juos į paskyros aplanką „Brukalas“
     .accesskey = k
 junk-delete-label =
     .label = pašalinti juos
     .accesskey = š
-junk-read-label =
-    .label = Laiškus, įgijusius brukalo statusą, žymėti kaip skaitytus
-    .accesskey = L
 junk-log-label =
     .label = Įrašyti adaptyviojo brukalo filtro veiksmus
     .accesskey = r
@@ -575,9 +494,6 @@ certificate-button =
 security-devices-button =
     .label = Saugumo priemonės…
     .accesskey = D
-
-## Chat Tab
-
 startup-label =
     .value = Paleidus „{ -brand-short-name }“:
     .accesskey = P
@@ -585,20 +501,10 @@ offline-label =
     .label = pokalbių paskyras palikti neprijungtas
 auto-connect-label =
     .label = prijungti pokalbių paskyras automatiškai
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Pranešti adresatams apie jūsų neveiklumą po
     .accesskey = n
 idle-time-label = min.
-
-##
-
 away-message-label =
     .label = ir pakeisti būseną į „nesu“, nurodant šį būsenos pranešimą:
     .accesskey = b
@@ -658,11 +564,5 @@ no-preview-description = Ši tema netinkama arba šiuo metu nepasiekiama (išjun
 chat-variant-label =
     .value = Variantas:
     .accesskey = V
-
-## Settings UI Search Results
-
 search-results-header = Paieškos rezultatai
 search-results-help-link = Reikia pagalbos? Aplankykite <a data-l10n-name="url">„{ -brand-short-name }“</a>
-
-## Sync Tab
-

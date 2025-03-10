@@ -1,9 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Tutup
+preferences-doc-title2 = Pengaturan
 category-list =
     .aria-label = Kategori
 pane-general-title = Umum
@@ -21,6 +18,12 @@ category-chat =
 pane-calendar-title = Kalender
 category-calendar =
     .tooltiptext = Kalender
+pane-sync-title = Sinkronisasi
+category-sync =
+    .tooltiptext = Sinkronisasi
+pane-qr-export-title = Ekspor untuk Seluler
+category-qr-export =
+    .tooltiptext = Ekspor untuk Seluler
 general-language-and-appearance-header = Bahasa & Tampilan
 general-incoming-mail-header = Surel Masuk
 general-files-and-attachment-header = File & Lampiran
@@ -46,8 +49,6 @@ collection-health-report =
     .label = Izinkan { -brand-short-name } mengirim data teknis dan interaksi ke { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Pelajari lebih lanjut
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Pelaporan data dinonaktifkan untuk konfigurasi jasad ini
 collection-backlogged-crash-reports =
     .label = Izinkan { -brand-short-name } mengirim setumpuk laporan kerusakan atas nama Anda
@@ -68,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Mulai ulang { -brand-short-name } untuk menerapkan perubahan
 confirm-messenger-language-change-button = Terapkan dan Mulai Ulang
 update-setting-write-failure-title = Gagal menyimpan preferensi Pemutakhiran
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } mengalami kesalahan dan tidak menyimpan perubahan ini. Perhatikan bahwa pengaturan preferensi pembaruan ini memerlukan izin untuk menulis ke file di bawah ini. Anda atau administrator sistem mungkin dapat menyelesaikan kesalahan dengan memberikan kontrol penuh pada grup Pengguna atas file ini.
     
@@ -79,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Sedang Memperbarui
 update-in-progress-message = Apakah Anda ingin { -brand-short-name } melanjutkan pembaruan ini?
 update-in-progress-ok-button = &Hapus Perubahan
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Lanjutkan
 account-button = Pengaturan Akun
 open-addons-sidebar-button = Pengaya dan Tema
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Untuk membuatSandi Utama, masukkan kredensial masuk Windows Anda. Ini membantu melindungi keamanan akun Anda.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = membuat Sandi Utama
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -114,9 +97,16 @@ restore-default-label =
     .label = Kembalikan Nilai Default
     .accesskey = K
 default-search-engine = Mesin Pencari Baku
+add-web-search-engine =
+    .label = Tambah…
+    .accesskey = a
 remove-search-engine =
     .label = Hapus
     .accesskey = v
+add-opensearch-provider-title = Tambahkan Penyedia OpenSearch
+add-opensearch-provider-text = Masukkan URL penyedia OpenSearch untuk ditambahkan. Gunakan URL langsung dari berkas Deskripsi OpenSearch, atau URL di mana itu dapat ditemukan secara otomatis.
+adding-opensearch-provider-failed-title = Gagal Menambahkan Penyedia OpenSearch
+adding-opensearch-provider-failed-text = Tidak bisa menambahkan Penyedia OpenSearch untuk { $url }.
 minimize-to-tray-label =
     .label = Saat { -brand-short-name } diminimalkan, pindahkan ke baki
     .accesskey = m
@@ -135,6 +125,7 @@ change-dock-icon = Ubah preferensi untuk ikon aplikasi
 app-icon-options =
     .label = Opsi Ikon Aplikasi...
     .accesskey = n
+notification-settings2 = Lansiran dan suara asal dapat dinonaktifkan pada panel Notifikasi di Pengaturan Sistem.
 animated-alert-label =
     .label = Tampilkan peringatan
     .accesskey = g
@@ -178,6 +169,17 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = Gunakan pengguliran mulus
     .accesskey = m
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = Selalu tampilkan bilah gulir
+    .accesskey = b
+window-layout-legend = Tata Letak Jendela
+draw-in-titlebar-label =
+    .label = Sembunyikan bilah judul jendela sistem
+    .accesskey = h
+auto-hide-tabbar-label =
+    .label = Otomatis sembunyikan bilah tab
+    .accesskey = a
+auto-hide-tabbar-description = Sembunyikan bilah tab saat hanya satu tab yang terbuka
 system-integration-legend = Integrasi dengan Sistem
 always-check-default =
     .label = Periksa apakah { -brand-short-name } adalah pembaca email default ketika memulai
@@ -185,8 +187,6 @@ always-check-default =
 check-default-button =
     .label = Periksa Sekarang…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -204,8 +204,6 @@ return-receipts-button =
     .label = Tanda Konfirmasi Diterima…
     .accesskey = r
 update-app-legend = Pemutakhiran { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versi { $version }
 allow-description = Izinkan { -brand-short-name } untuk
 automatic-updates-label =
@@ -235,26 +233,24 @@ diskspace-legend = Ruang Disk
 offline-compact-folder =
     .label = Padatkan semua folder saat akan disimpan
     .accesskey = a
+offline-compact-folder-automatically =
+    .label = Tanyakan setiap saat sebelum memadatkan
+    .accesskey = b
 compact-folder-size =
     .value = Total MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Gunakan harddisk untuk tembolok hingga
     .accesskey = h
 use-cache-after = MB
-
-##
-
 smart-cache-label =
     .label = Gunakan pengaturan tembolok manual
     .accesskey = v
 clear-cache-button =
     .label = Bersihkan Sekarang
     .accesskey = g
+clear-cache-shutdown-label =
+    .label = Bersihkan singgahan saat dimatikan
+    .accesskey = s
 fonts-legend = Huruf & Warna
 default-font-label =
     .value = Huruf default:
@@ -269,7 +265,6 @@ color-options-button =
     .label = Warna…
     .accesskey = C
 display-width-legend = Pesan Teks Polos
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Tampilkan emotikon dengan gambar
     .accesskey = d
@@ -299,6 +294,8 @@ quoted-text-color =
     .accesskey = o
 search-handler-table =
     .placeholder = Filter tipe dan tindakan konten
+type-column-header = Tipe Isi
+action-column-header = Aksi
 save-to-label =
     .label = Simpan berkas di
     .accesskey = S
@@ -332,17 +329,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Langsung saat ditampilkan
     .accesskey = d
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Setelah ditampilkan
     .accesskey = e
 seconds-label = detik
-
-##
-
 open-msg-label =
     .value = Buka pesan di:
 open-msg-tab =
@@ -357,14 +347,31 @@ open-msg-ex-window =
 close-move-delete =
     .label = Tutup jendela/tab pesan saat memindahkan atau menghapus
     .accesskey = T
-display-name-label =
-    .value = Nama tampilan:
+address-display-legend = Daftar Pesan
+address-display-description = Format tampilan alamat pilihan:
+address-display-full =
+    .label = Nama lengkap dan alamat surel
+    .accesskey = p
+address-display-email =
+    .label = Hanya surel
+    .accesskey = e
+address-display-name =
+    .label = Hanya nama
+    .accesskey = n
 condensed-addresses-label =
     .label = Hanya tampilkan nama tampilan untuk orang yang ada pada buku alamat saya.
     .accesskey = p
-
-## Compose Tab
-
+table-layout-legend = Tampilan Tabel
+table-layout-horizontal-scroll-label =
+    .label = Izinkan pengguliran horizontal
+    .accesskey = h
+conversation-view-legend = Tampilan percakapan
+conversation-view-checkbox-label =
+    .label = Fungsikan tampilan percakapan
+    .accesskey = c
+conversation-view-checkbox-description = Fitur eksperimental berbasis Gloda, gunakan dengan risiko Anda sendiri
+label-experiment = Eksperimental
+account-hub-checkbox-description = Alur pembuatan akun surel baru eksperimental
 forward-label =
     .value = Teruskan pesan:
     .accesskey = T
@@ -375,19 +382,15 @@ as-attachment-label =
 extension-label =
     .label = tambahkan ekstensi di belakang nama berkas
     .accesskey = b
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Simpan otomatis setiap
     .accesskey = o
 auto-save-end = menit
-
-##
-
 warn-on-send-accel-key =
     .label = Konfirmasi dengan menggunakan tombol cepat papan ketik untuk mengirim pesan
+    .accesskey = i
+add-link-previews =
+    .label = Tambahkan pratinjau tautan saat menempelkan URL
     .accesskey = i
 spellcheck-label =
     .label = Periksa ejaan sebelum mengirim
@@ -420,6 +423,19 @@ restore-html-label =
 default-format-label =
     .label = Gunakan format Paragraf sebagai ganti Tubuh Teks secara tetap
     .accesskey = P
+compose-send-format-title = Format Pengiriman
+compose-send-automatic-option =
+    .label = Otomatis
+compose-send-automatic-description = Jika tidak ada gaya yang digunakan dalam pesan, kirim Teks Polos. Jika tidak, kirim HTML dengan fallback Teks Polos.
+compose-send-both-option =
+    .label = Baik HTML maupun Teks Polos
+compose-send-both-description = Aplikasi surel penerima akan menentukan versi mana yang akan ditampilkan.
+compose-send-html-option =
+    .label = Hanya HTML
+compose-send-html-description = Beberapa penerima mungkin tidak dapat membaca pesan tanpa fallback Teks Polos.
+compose-send-plain-option =
+    .label = Hanya Teks Polos
+compose-send-plain-description = Beberapa gaya akan diubah menjadi alternatif polos, sementara fitur komposisi lainnya akan dinonaktifkan.
 autocomplete-description = Saat menulis alamat email tujuan, cari item yang cocok di:
 ab-label =
     .label = Buku Alamat Lokal
@@ -460,9 +476,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Temukan lebih banyak penyedia...
 cloud-account-description = Tambakan layanan penyimpanan Filelink
-
-## Privacy Tab
-
 mail-content = Konten Surel
 remote-content-label =
     .label = Izinkan konten jarak jauh dalam pesan
@@ -488,25 +501,14 @@ third-party-never =
     .label = Jangan pernah
 third-party-visited =
     .label = Dari yang dikunjungi
-keep-label =
-    .value = Simpan hingga:
-    .accesskey = K
-keep-expire =
-    .label = kedaluwarsa
-keep-close =
-    .label = Saya menutup { -brand-short-name }
-keep-ask =
-    .label = selalu tanyakan
 cookies-button =
     .label = Tampilkan Kuki…
     .accesskey = S
-do-not-track-label =
-    .label = Kirim sinyal “Jangan Lacak” ke situs web bahwa Anda tidak ingin dilacak
+global-privacy-control-search = Kontrol Privasi Global (Global Privacy Control/GPC)
+global-privacy-control-description =
+    .label = Beritahu situs untuk tidak menjual atau membagikan data saya
     .accesskey = n
-learn-button =
-    .label = Pelajari lebih lanjut
-dnt-learn-more-button =
-    .value = Pelajari lebih lanjut
+do-not-track-removal = Kami tidak lagi mendukung sinyal "Jangan Lacak"
 passwords-description = { -brand-short-name } dapat menyimpan informasi sandi untuk semua akun Anda sehingga Anda tidak perlu mengetikkan ulang informasi log-masuk Anda berkali-kali.
 passwords-button =
     .label = Sandi Tersimpan…
@@ -515,14 +517,16 @@ primary-password-description = Sandi Utama melindungi semua kata sandi Anda, tet
 primary-password-label =
     .label = Gunakan Sandi Utama
     .accesskey = U
+forms-os-reauth =
+    .label = Wajibkan perangkat masuk untuk mengisi dan mengelola sandi
 primary-password-button =
     .label = Ubah Sandi Utama…
     .accesskey = C
 forms-primary-pw-fips-title = Anda tengah dalam mode FIPS. Mode ini mewajibkan Sandi Utama harus diisi.
 forms-master-pw-fips-desc = Sandi Gagal Diubah
 junk-description = Atur pengaturan surel sampah bawaan. Pengaturan surel sampah masing-masing akun dapat diatur pada Pengaturan Akun.
-junk-label =
-    .label = Saat menandai pesan sebagai pesan junk:
+junk-marked-label =
+    .label = Saat pesan ditandai sebagai sampah:
     .accesskey = S
 junk-move-label =
     .label = Pindahkan ke folder "Junk" akun
@@ -530,9 +534,13 @@ junk-move-label =
 junk-delete-label =
     .label = Hapus pesan
     .accesskey = p
-junk-read-label =
-    .label = Tandai sudah dibaca pada pesan yang ditandai sebagai Junk
-    .accesskey = d
+junk-read-description = Tandai pesan sebagai telah dibaca
+junk-read-manual-label =
+    .label = Saat ditandai secara manual sebagai sampah
+    .accesskey = m
+junk-read-auto-label =
+    .label = Ketika { -brand-short-name } menentukan bahwa mereka adalah sampah
+    .accesskey = t
 junk-log-label =
     .label = Aktifkan logging filter junk adaptif
     .accesskey = g
@@ -566,9 +574,22 @@ certificate-button =
 security-devices-button =
     .label = Peranti Keamanan…
     .accesskey = D
-
-## Chat Tab
-
+email-e2ee-header = Enkripsi Ujung-Ke-Ujung Surel
+account-settings = Pengaturan Akun
+email-e2ee-enable-info = Siapkan akun surel dan identitas untuk Enkripsi Ujung-Ke-Ujung di Pengaturan Akun.
+email-e2ee-automatism = Penggunaan Enkripsi Otomatis
+email-e2ee-automatism-pre =
+    { -brand-short-name } dapat membantu dengan mengaktifkan atau menonaktifkan enkripsi secara otomatis saat menulis surel.
+    Pengaktifan/penonaktifan otomatis didasarkan pada ketersediaan kunci atau sertifikat koresponden yang valid dan diterima.
+email-e2ee-auto-on =
+    .label = Aktifkan enkripsi secara otomatis jika memungkinkan
+email-e2ee-auto-off =
+    .label = Nonaktifkan enkripsi secara otomatis ketika penerima berubah dan enkripsi tidak lagi dimungkinkan
+email-e2ee-auto-off-notify =
+    .label = Tampilkan pemberitahuan ketika enkripsi dinonaktifkan secara otomatis
+email-e2ee-automatism-post =
+    Keputusan otomatis dapat ditimpa dengan mengaktifkan atau menonaktifkan enkripsi secara manual saat menulis pesan.
+    Catatan: enkripsi selalu diaktifkan secara otomatis saat membalas pesan terenkripsi.
 startup-label =
     .value = Saat { -brand-short-name } dimulai:
     .accesskey = S
@@ -576,20 +597,10 @@ offline-label =
     .label = Biarkan akun ngobrol tetap luring
 auto-connect-label =
     .label = Sambungkan akun ngobrol secara otomatis
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Biarkan kontak saya mengetahui bawah saya sedang diam setelah
     .accesskey = i
 idle-time-label = menit tanpa aktivitas
-
-##
-
 away-message-label =
     .label = dan setel status saya ke Tidak Ada Di Tempat dengan pesan status:
     .accesskey = A
@@ -635,6 +646,8 @@ chat-browse-sound-button =
 theme-label =
     .value = Tema:
     .accesskey = T
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Gelembung
 style-dark =
@@ -649,11 +662,77 @@ no-preview-description = Tema ini tidak valid atau saat ini tidak tersedia (peng
 chat-variant-label =
     .value = Varian:
     .accesskey = V
-
-## Settings UI Search Results
-
+search-preferences-input2 =
+    .style = width: 15.4em
+    .placeholder = Cari di Setelan
 search-results-header = Hasil Pencarian
+search-results-empty-message2 =
+    { PLATFORM() ->
+        [windows] Maaf! Tidak ada hasil di Opsi untuk “<span data-l10n-name="query"></span>”.
+       *[other] Maaf! Tidak ada hasil di Pengaturan untuk “<span data-l10n-name="query"></span>”.
+    }
 search-results-help-link = Perlu bantuan? Kunjungi <a data-l10n-name="url"> { -brand-short-name } Dukungan</a>
-
-## Sync Tab
-
+sync-signedout-caption = Bawalah Web Bersama Anda
+sync-signedout-description = Sinkronkan akun, buku alamat, kalender, pengaya, dan pengaturan Anda di semua perangkat Anda.
+sync-signedout-account-signin-btn = Masuk untuk Sinkronisasi…
+sync-pane-header = Sinkronkan
+sync-pane-email-not-verified = “{ $userEmail }” tidak terverifikasi.
+sync-signedin-login-failure = Silakan masuk untuk menyambungkan kembali “{ $userEmail }”
+sync-pane-resend-verification = Kirim ulang verifikasi
+sync-pane-sign-in = Masuk
+sync-pane-remove-account = Hapus akun
+sync-pane-edit-photo =
+    .title = Ubah gambar profil
+sync-pane-manage-account = Kelola akun
+sync-pane-sign-out = Keluar…
+sync-pane-device-name-title = Nama Perangkat
+sync-pane-change-device-name = Ubah nama perangkat
+sync-pane-cancel = Batal
+sync-pane-save = Simpan
+sync-pane-show-synced-header-on = Sinkronisasi AKTIF
+sync-pane-show-synced-header-off = Sinkronisasi NONAKTIF
+sync-pane-sync-now = Sinkronkan Sekarang
+sync-panel-sync-now-syncing = Menyinkronkan…
+show-synced-list-heading = Anda sedang menyinkronkan item ini:
+show-synced-learn-more = Pelajari lebih lanjut…
+show-synced-item-account = Akun Surel
+show-synced-item-address = Buku Alamat
+show-synced-item-calendar = Kalender
+show-synced-item-identity = Identitas
+show-synced-item-passwords = Sandi
+show-synced-change = Ubah…
+synced-acount-item-server-config = Konfigurasi server
+synced-acount-item-filters = Penyaring
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = Sinkronkan akun surel, buku alamat, kalender, dan identitas Anda di semua perangkat Anda.
+sync-disconnected-turn-on-sync = Aktifkan Sinkronisasi…
+qr-export-pane-header = Ekspor akun ke { -brand-product-name } Mobile
+qr-export-description = Dengan cepat mentransfer pengaturan akun Anda dari desktop ke ponsel dengan membuat kode QR. Pilih akun mana yang akan disertakan, putuskan apakah Anda ingin mentransfer kata sandi Anda, dan pindai kode dengan perangkat seluler Anda. Cepat, aman, dan sederhana.
+qr-export-get-app = Belum memiliki { -brand-product-name } di perangkat seluler? <a data-l10n-name="app-link">Dapatkan di Google Play</a>
+qr-export-create = Buat kode QR untuk mengekspor akun Anda
+qr-export-select-accounts = Pilih akun mana yang akan diekspor:
+qr-export-no-accounts = Tidak melihat semua akun Anda? Beberapa akun mungkin dinonaktifkan karena tidak didukung oleh { -brand-product-name } untuk Android. <a data-l10n-name="account-support-link">Dukungan</a>
+qr-export-accounts-legend = Akun surel
+qr-export-select-all-accounts = Pilih semua
+qr-export-security-legend = Keamanan
+qr-export-include-passwords = Sertakan semua kata sandi akun
+qr-export-oauth-warning = Beberapa akun Anda menggunakan metode autentikasi yang mungkin memerlukan autentikasi ulang pada perangkat seluler Anda. Anda mungkin perlu memasukkan sandi Anda lagi selama proses ini.
+qr-export-security-hint = Dengan memindai kode QR berikut, pengaturan akun Anda—termasuk surel dan kata sandi Anda—akan ditransfer dengan aman. Kami tidak mengumpulkan, menyimpan, atau membagikan data ini selama proses berlangsung. Transfer terjadi langsung antar perangkat Anda.
+qr-export-security-warning = Demi keamanan Anda, pastikan Anda berada dalam pengaturan pribadi dan hanya memindai kode QR dari sumber terpercaya.
+qr-export-start-export = Ekspor
+qr-export-scan-progress = { $step } dari { $count } kode QR
+qr-export-scan-description = Pindai kode QR dengan { -brand-product-name } di perangkat seluler Anda
+qr-export-scan-step1 = Buka { -brand-product-name } di perangkat seluler Anda
+qr-export-scan-step2 = Buka pengaturan
+qr-export-scan-step3 = Pilih <strong>Impor pengaturan</strong>
+qr-export-scan-step4-revision = Ketuk <strong>Pindai kode QR</strong> dan arahkan ponsel Anda di atas kode ini
+qr-export-back = Mundur
+qr-export-next = Selanjutnya
+qr-export-done = Selesai
+qr-export-summary-description = Akun diekspor. Lanjutkan di perangkat seluler Anda.
+qr-export-summary-title = Ringkasan ekspor:
+qr-export-summary-qr-count = { $count } kode QR dihasilkan
+qr-export-summary-accounts = { $count } akun diekspor:
+qr-export-summary-passwords-included = Termasuk kata sandi
+qr-export-summary-passwords-excluded = Sandi dikecualikan
+qr-export-more-accounts = Ekspor lebih banyak akun

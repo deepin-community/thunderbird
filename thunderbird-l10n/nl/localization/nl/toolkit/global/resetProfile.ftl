@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 refresh-profile-dialog-title = { -brand-short-name } opfrissen naar de standaardinstellingen?
 refresh-profile-dialog-button =
     .label = { -brand-short-name } opfrissen
@@ -9,7 +5,6 @@ refresh-profile-dialog-description = Maak een frisse start om prestatieproblemen
 refresh-profile = { -brand-short-name } optimaliseren
 refresh-profile-button = { -brand-short-name } opfrissen…
 refresh-profile-learn-more = Meer info
-
 refresh-profile-progress =
     .title = { -brand-short-name } opfrissen
 refresh-profile-progress-description = Bijna gereed…

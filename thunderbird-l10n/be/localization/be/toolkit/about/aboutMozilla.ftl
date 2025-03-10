@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-mozilla-title-6-27 = Кніга Mozilla, 6:27
 about-mozilla-quote-6-27 =
     Звер працягнуў свае даследаванні з абноўленым <em>фокусам</em>, ствараючы велічны <em>даведнік</em>

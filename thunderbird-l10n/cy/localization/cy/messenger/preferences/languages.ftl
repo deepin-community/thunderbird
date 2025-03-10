@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Symud i Fyny
     .accesskey = F
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Ychwanegu
     .accesskey = Y
-messenger-languages-window2 =
-    .title = Gosodiadau Iaith { -brand-short-name }
 messenger-languages-dialog-title = Gosodiadau Iaith { -brand-short-name }
 messenger-languages-description = Bydd { -brand-short-name } yn dangos yr iaith gyntaf fel eich rhagosodedig a bydd yn danogs ieithoedd eraill yn y drefn fyddan nhw'n ymddangos.
 messenger-languages-search = Chwilio am ragor o ieithoedd…

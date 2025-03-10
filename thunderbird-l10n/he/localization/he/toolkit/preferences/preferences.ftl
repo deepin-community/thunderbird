@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (לא נקבע)
 failed-pp-change = לא ניתן לשנות את הססמה הראשית.
@@ -21,7 +17,6 @@ set-password-new-password = הכנס ססמה חדשה:
 set-password-reenter-password = הכנס את הססמה שוב:
 set-password-meter = מד איכות ססמה
 set-password-meter-loading = בטעינה
-primary-password-admin = מנהל המערכת שלך דורש שתהיה מוגדרת ססמה ראשית כדי לשמור כניסות וססמאות.
 primary-password-required-by-policy = הארגון שלך דורש שתהיה מוגדרת ססמה ראשית כדי לשמור כניסות וססמאות.
 primary-password-description = הססמה הראשית שלך מגינה על מידע רגיש כמו כניסות וססמאות, במכשיר זה. לאחר יצירת ססמה ראשית, תתקבל בקשה להקליד אותה פעם אחת עבור כל הפעלה כאשר { -brand-short-name } מנסה לגשת לנתונים שמורים המוגנים על־ידי הססמה.
 primary-password-warning = נא לוודא שיהיה באפשרותך לזכור את הססמה הראשית שקבעת. אם הססמה הראשית שלך תישכח, לא יהיה ניתן לגשת לשום מידע המוגן באמצעותה על מכשיר זה.

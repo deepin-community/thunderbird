@@ -169,6 +169,11 @@ class nsIMsgFolder;
 
 #define NS_MSG_ERROR_INVALID_FOLDER_NAME NS_MSG_GENERATE_FAILURE(34)
 
+#define NS_MSG_ERROR_UNEXPECTED_SIZE NS_MSG_GENERATE_FAILURE(35)
+
+// Mbox message doesn't start with "From " separator line.
+#define NS_MSG_ERROR_MBOX_MALFORMED NS_MSG_GENERATE_FAILURE(36)
+
 /* Error codes for message compose are defined in
    compose\src\nsMsgComposeStringBundle.h. Message compose use the same error
    code space as other mailnews modules. To avoid any conflict, values between
@@ -200,9 +205,6 @@ class nsIMsgFolder;
  */
 #define IS_MSG_LINEBREAK(line) \
   (line[0] == '\012' ? 1 : ((line[0] == '\015' && line[1] == '\012') ? 2 : 0))
-
-#define NS_MSG_BASE
-#define NS_MSG_BASE_STATIC_MEMBER_(type) type
 
 /// The number of microseconds in a day. This comes up a lot.
 #define PR_USEC_PER_DAY (PRTime(PR_USEC_PER_SEC) * 60 * 60 * 24)

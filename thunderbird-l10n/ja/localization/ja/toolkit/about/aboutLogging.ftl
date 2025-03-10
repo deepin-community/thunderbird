@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = HTTP ログについて
 about-logging-page-title = ログマネージャー
 about-logging-current-log-file = 現在のログファイル:
 about-logging-new-log-file = 新しいログファイル:
 about-logging-currently-enabled-log-modules = 現在有効なログモジュール:
 about-logging-log-tutorial = このツールの使い方は <a data-l10n-name="logging">HTTP Logging</a> を参照してください。
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = ディレクトリーを開く
 about-logging-set-log-file = ログファイルを設定
 about-logging-set-log-modules = ログモジュールを設定
@@ -27,9 +21,6 @@ about-logging-no-log-modules = なし
 about-logging-no-log-file = なし
 about-logging-logging-preset-selector-text = ログプリセット:
 about-logging-with-profiler-stacks-checkbox = ログメッセージのスタックトレースを有効にする
-
-## Logging presets
-
 about-logging-preset-networking-label = ネットワーク通信
 about-logging-preset-networking-description = ネットワーク通信の問題を診断するログモジュールです
 about-logging-preset-networking-cookie-label = Cookie
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = WebGPU の問題を診断するログモジュールです
 about-logging-preset-gfx-label = グラフィック
 about-logging-preset-gfx-description = グラフィックの問題を診断するログモジュールです
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Microsoft Windows 特有の問題を診断するログモジュールです
 about-logging-preset-custom-label = カスタム
 about-logging-preset-custom-description = 手動で選択されたログモジュールです
-# Error handling
 about-logging-error = エラー:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = “{ $k }“ キーの値 “{ $v }“ が不正です
 about-logging-unknown-logging-preset = ログプリセット “{ $v }“ は不明です
 about-logging-unknown-profiler-preset = プロファイラープリセット “{ $v }“ は不明です

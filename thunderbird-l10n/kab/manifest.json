@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-kab@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: Taqbaylit (Kabyle)",
   "description": "Thunderbird Language Pack for Taqbaylit (kab) – Kabyle",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "kab": {
-      "version": "20240930174610",
+      "version": "20250227153711",
       "chrome_resources": {
         "alerts": "chrome/kab/locale/kab/alerts/",
         "autoconfig": "chrome/kab/locale/kab/autoconfig/",

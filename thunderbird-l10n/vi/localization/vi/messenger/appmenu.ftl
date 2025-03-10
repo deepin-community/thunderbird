@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Đồng bộ hóa
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Đăng xuất…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Tài khoản mới
 appmenu-new-account-panel =
     .label = Tài khoản mới
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Tạo một email mới
-    .accesskey = G
-appmenu-new-mail-account =
-    .label = Email hiện có
-    .accesskey = E
 appmenu-new-email-account =
     .label = Email
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Nhóm tin
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Sổ địa chỉ mới
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Sổ địa chỉ LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Tạo
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Liên hệ
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = Mở từ tập tin
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Lịch…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Xem
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Tăng cỡ chữ
 appmenuitem-font-size-reduce =
     .tooltiptext = Giảm cỡ chữ
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Đặt lại cỡ chữ
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Công cụ
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Xuất
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = Xuất sang di động
+    .accesskey = p
 appmenu-tools-message-search =
     .label = Tìm kiếm thư
     .accesskey = S
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Công cụ phát triển
     .accesskey = T
-
-## Help
-
 appmenu-help-panel-title =
     .title = Trợ giúp
 appmenu-help-get-help =
     .label = Nhận trợ giúp
     .accesskey = H
-appmenu-help-explore-features =
-    .label = Khám phá tính năng
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = Nhận trợ giúp với { -brand-short-name }
     .accesskey = R
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Về { -brand-short-name }
     .accesskey = A
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Đang tải xuống bản cập nhật { -brand-shorter-name }
 appmenuitem-banner-update-available =

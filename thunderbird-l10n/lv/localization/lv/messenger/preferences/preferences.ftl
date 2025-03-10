@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Aizvērt
 category-list =
@@ -46,8 +42,6 @@ collection-health-report =
     .label = Ļaut { -brand-short-name } nosūtīt tehniskos un mijiedarbības datus uz vietni { -vendor-short-name }
     .accesskey = s
 collection-health-report-link = Uzzināt vairāk
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Šī būvējuma iestatījumos datu pārskati ir atslēgti
 collection-backlogged-crash-reports =
     .label = Ļaut { -brand-short-name } jūsu vārdā nosūtīt ierakstītos avārijas ziņojumus
@@ -68,10 +62,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Pārstartēt { -brand-short-name }, lai pielietotu izmaiņas
 confirm-messenger-language-change-button = Pielietot un pārstartēt
 update-setting-write-failure-title = Saglabājot atjaunotos iestatījumus, radās kļūda
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } radās kļūda un šīs izmaiņas netika saglabātas. Ņemiet vērā, ka, lai saglabāto atjaunotos iestatījumus, ir nepieciešamas tiesības rakstīt zemāk esošajā failā. Iespējams, jūs vai jūsu sistēmas administrators, varēsit novērst kļūdu, piešķirot Lietotājs grupai pilnu kontroli pār šo failu.
     
@@ -79,25 +69,11 @@ update-setting-write-failure-message =
 update-in-progress-title = Notiek atjaunošana
 update-in-progress-message = Vai vēlaties, lai { -brand-short-name } turpina lietot šo atjaunojumu?
 update-in-progress-ok-button = &Izmest
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Turpināt
 account-button = Konta iestatījumi
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Lai izveidotu galveno paroli, ievadiet Windows pieteikšanās akreditācijas datus. Tas palīdz aizsargāt jūsu kontu drošību.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = izveidot primāro paroli
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -178,8 +154,6 @@ always-check-default =
 check-default-button =
     .label = Pārbaudīt tagad…
     .accesskey = P
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -197,8 +171,6 @@ return-receipts-button =
     .label = Saņemšanas apliecinājums…
     .accesskey = S
 update-app-legend = { -brand-short-name } atjaunojumi
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versija { $version }
 allow-description = Ļaut { -brand-short-name }
 automatic-updates-label =
@@ -230,18 +202,10 @@ offline-compact-folder =
     .accesskey = s
 compact-folder-size =
     .value = Kopā MB
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Izmantot līdz
     .accesskey = l
 use-cache-after = MB vietas kešatmiņai
-
-##
-
 smart-cache-label =
     .label = Ignorēt automātisko kešatmiņas pārvaldību
     .accesskey = I
@@ -262,7 +226,6 @@ color-options-button =
     .label = Krāsas...
     .accesskey = K
 display-width-legend = Vienkārša teksta vēstules
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Rādīt emodžus kā grafiku
     .accesskey = e
@@ -323,17 +286,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Uzreiz parādot
     .accesskey = U
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Pēc parādīšanas
     .accesskey = P
 seconds-label = sekundes
-
-##
-
 open-msg-label =
     .value = Atvērt vēstules:
 open-msg-tab =
@@ -348,14 +304,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Aizveriet vēstules logu/cilni, to pārvietojot vai dzēšot
     .accesskey = A
-display-name-label =
-    .value = Rādāmvārds:
 condensed-addresses-label =
     .label = Adrešu grāmatā rādīt tikai tikai personas rādāmvārdu
     .accesskey = r
-
-## Compose Tab
-
 forward-label =
     .value = Pārsūtīt vēstules:
     .accesskey = P
@@ -366,17 +317,10 @@ as-attachment-label =
 extension-label =
     .label = Faila nosaukumam pievienot paplašinājumu
     .accesskey = p
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Automātiski saglabāt katru
     .accesskey = A
 auto-save-end = minūti
-
-##
-
 warn-on-send-accel-key =
     .label = Apstiprināt, ja vēstules sūtīšanai izmanto īsinājumtaustiņu
     .accesskey = A
@@ -451,9 +395,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Meklēt citus sniedzējus…
 cloud-account-description = Pievienot jaunu Filelink krātuves pakalpojumu
-
-## Privacy Tab
-
 mail-content = Pasta saturs
 remote-content-label =
     .label = Ļaut attālo saturu vēstulēs
@@ -479,25 +420,9 @@ third-party-never =
     .label = Nekad
 third-party-visited =
     .label = No apmeklētajām
-keep-label =
-    .value = Glabāt līdz:
-    .accesskey = G
-keep-expire =
-    .label = beidzas derīgums
-keep-close =
-    .label = Aizver { -brand-short-name }
-keep-ask =
-    .label = vienmēr jautāt
 cookies-button =
     .label = Rādīt sīkfailus…
     .accesskey = R
-do-not-track-label =
-    .label = Sūtot signālu “Nesekot” norādīt vietnēm, ka nevēlaties, lai jūs izseko
-    .accesskey = N
-learn-button =
-    .label = Uzzināt vairāk
-dnt-learn-more-button =
-    .value = Uzzināt vairāk
 passwords-description = { -brand-short-name } var atcerēties paroles visiem jūsu kontiem.
 passwords-button =
     .label = Saglabātās paroles…
@@ -512,18 +437,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Šobrīd jūs esat FIPS režīmā. FIPS pieprasa netukšu galveno paroli.
 forms-master-pw-fips-desc = Paroles maiņa neizdevās
 junk-description = Iestatiet noklusētos drazas pasta iestatījumus. Noteikta konta drazas pasta iestatījumus var mainīt Konta iestatījumos.
-junk-label =
-    .label = Atzīmējot vēstuli kā drazu:
-    .accesskey = A
 junk-move-label =
     .label = Pārvietot tās uz konta "Draza" mapi
     .accesskey = P
 junk-delete-label =
     .label = Dzēst tās
     .accesskey = D
-junk-read-label =
-    .label = Vēstules, kas atzīmētas kā draza, padarīt lasītas
-    .accesskey = a
 junk-log-label =
     .label = Ieslēgt adaptīvā drazas filtra žurnalēšanu
     .accesskey = I
@@ -557,9 +476,6 @@ certificate-button =
 security-devices-button =
     .label = Drošības ierīces…
     .accesskey = D
-
-## Chat Tab
-
 startup-label =
     .value = Palaižoties { -brand-short-name }:
     .accesskey = P
@@ -567,20 +483,10 @@ offline-label =
     .label = Saglabāt tērzēšanas kontus nesaistē
 auto-connect-label =
     .label = Automātiski savienot tērzēšanas kontus
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Ļaujiet kontaktiem zināt, ka esat dīkstāvē
     .accesskey = d
 idle-time-label = bezdarbības minūtēm
-
-##
-
 away-message-label =
     .label = un iestatīt statusu Prom ar šo statusa ziņojumu:
     .accesskey = u
@@ -640,11 +546,5 @@ no-preview-description = Šī tēma nav derīga vai pašlaik nav pieejama (atsp�
 chat-variant-label =
     .value = Variants:
     .accesskey = V
-
-## Settings UI Search Results
-
 search-results-header = Meklēšanas rezultāti
 search-results-help-link = Vajadzīga palīdzība? Apmeklējiet <a data-l10n-name="url">{ -brand-short-name } atbalstu</a>!
-
-## Sync Tab
-

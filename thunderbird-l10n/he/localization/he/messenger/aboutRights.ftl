@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = הזכויות שלך
 rights-intro = { -brand-full-name } היא תוכנה חופשית בקוד פתוח, שנבנתה בידי קהילה של אלפים מכל רחבי העולם. ישנם מספר דברים שעליך לדעת:
 rights-intro-point-1 = { -brand-short-name } ניתן לך תחת התנאים של <a data-l10n-name="mozilla-public-license-link">הרישיון הציבורי של Mozilla</a>. משמעות הדבר היא שניתן להשתמש ב־{ -brand-short-name }, להעתיקו ולהפיצו לאחרים, כמו גם לשנות את קוד המקור של { -brand-short-name } בדרך המתאימה ביותר לצרכיך. הרישיון הציבורי של Mozilla גם נותן לך את הזכות להפיץ את הגרסאות עם השינויים שלך.

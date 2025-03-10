@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = ਆਪਣੇ ਹੱਕਾਂ ਬਾਰੇ ਜਾਣੋ
 rights-intro = { -brand-full-name } ਮੁਫ਼ਤ ਅਤੇ ਓਪਨ ਸੋਰਸ ਸਾਫਟਵੇਅਰ ਹੈ, ਜਿਸ ਨੂੰ ਸੰਸਾਰ ਭਰ ਵਿੱਚੋਂ ਹਜ਼ਾਰਾਂ ਲੋਕਾਂ ਨੇ ਬਣਾਇਆ ਹੈ। ਕੁਝ ਚੀਜ਼ਾਂ ਹਨ, ਜਿੰਨ੍ਹਾਂ ਬਾਰੇ ਤੁਹਾਨੂੰ ਜਾਣ ਲੈਣਾ ਚਾਹੀਦਾ ਹੈ:
 rights-intro-point-1 = { -brand-short-name } ਤੁਹਾਨੂੰ <a data-l10n-name="mozilla-public-license-link">ਮੋਜ਼ੀਲਾ ਪਬਲਿਕ ਲਸੰਸ </a>ਦੀਆਂ ਸ਼ਰਤਾਂ ਅਧੀਨ ਦਿੱਤਾ ਗਿਆ ਹੈ। ਇਸ ਦਾ ਭਾਵ ਹੈ ਕਿ ਤੁਸੀਂ  { -brand-short-name } ਨੂੰ ਵਰਤ ਸਕਦੇ ਹੋ, ਕਾਪੀ ਕਰ ਸਕਦੇ ਹੋ ਅਤੇ ਹੋਰਾਂ ਨੂੰ ਵੰਡ ਸਕਦੇ ਹੋ। { -brand-short-name } ਦੇ ਸਰੋਤ ਕੋਡ (ਸੋਰਸ ਕੋਡ) ਨੂੰ ਤੁਹਾਡੀ ਲੋੜ ਮੁਤਾਬਕ ਬਦਲਣ ਦੀ ਤੁਹਾਨੂੰ ਪੂਰੀ ਖੁੱਲ੍ਹ ਹੈ। ਮੋਜ਼ੀਲਾ ਪਬਲਿਕ ਲਸੰਸ (Mozilla Public License) ਤੁਹਾਨੂੰ ਤੁਹਾਡੇ ਬਦਲੇ ਵਰਜਨ ਮੁਤਾਬਕ ਅੱਗੇ ਵੰਡਣ ਲਈ ਖੁੱਲ੍ਹ ਦਿੰਦਾ ਹੈ।

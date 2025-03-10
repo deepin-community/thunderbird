@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (nincs beállítva)
 failed-pp-change = Nem sikerült megváltoztatni az elsődleges jelszót.
@@ -21,7 +17,6 @@ set-password-new-password = Új jelszó:
 set-password-reenter-password = Jelszó megerősítése:
 set-password-meter = Jelszó minősége
 set-password-meter-loading = Betöltés
-primary-password-admin = A rendszergazda a bejelentkezések és jelszavak mentéséhez megköveteli az elsődleges jelszó beállítását.
 primary-password-required-by-policy = A szervezete a bejelentkezések és jelszavak mentéséhez megköveteli az elsődleges jelszó beállítását.
 primary-password-description = Az elsődleges jelszó érzékeny adatok, például webhelyek belépési jelszavai védelmére használható. Ha létrehozza az elsődleges jelszót, akkor minden munkamenetben egyszer be kell írnia, ha a { -brand-short-name } betölti a jelszóval védett mentett adatokat.
 primary-password-warning = Az elsődleges jelszót jól jegyezze meg. Ha elfelejti, nem fog hozzáférni az általa védett adatokhoz ezen az eszközön.

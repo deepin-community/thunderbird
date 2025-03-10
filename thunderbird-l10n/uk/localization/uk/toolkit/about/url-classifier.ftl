@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Інформація про URL-класифікатор
 url-classifier-search-title = Пошук
 url-classifier-search-result-title = Результати
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = Список таблиць: { $list }
 url-classifier-search-input = URL
 url-classifier-search-error-invalid-url = Неправильний URL
@@ -17,8 +9,8 @@ url-classifier-search-error-no-features = Функції не вибрані
 url-classifier-search-btn = Почати пошук
 url-classifier-search-features = Функції
 url-classifier-search-listType = Тип списку
-url-classifier-provider-title = Постачальник
-url-classifier-provider = Постачальник
+url-classifier-provider-title = Провайдер
+url-classifier-provider = Провайдер
 url-classifier-provider-last-update-time = Час останнього оновлення
 url-classifier-provider-next-update-time = Час наступного оновлення
 url-classifier-provider-back-off-time = Час повернення назад
@@ -44,7 +36,6 @@ url-classifier-debug-sb-modules = Модулі журналу Safe Browsing
 url-classifier-debug-modules = Поточні модулі журналу
 url-classifier-debug-sbjs-modules = Журнал Safe Browsing JS
 url-classifier-debug-file = Поточний файл журналу
-
 url-classifier-trigger-update = Оновлення тригера
 url-classifier-not-available = N/A
 url-classifier-disable-sbjs-log = Вимкнути журнал Safe Browsing JS
@@ -54,9 +45,5 @@ url-classifier-disabled = Вимкнено
 url-classifier-updating = оновлення
 url-classifier-cannot-update = не вдалося оновити
 url-classifier-success = успішно
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = помилка оновлення ({ $error })
 url-classifier-download-error = помилка завантаження ({ $error })

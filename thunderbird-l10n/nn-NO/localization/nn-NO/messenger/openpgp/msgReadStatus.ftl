@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = S
 openpgp-view-signer-key =
     .label = Vis signatarnøkkel
@@ -23,19 +16,9 @@ openpgp-sig-invalid-technical-problem = Denne meldinga inneheld ein digital sign
 openpgp-sig-valid-unverified = Denne meldinga inneheld ein gyldig digital signatur frå ein nøkkel som du allereie har akseptert. Du har likevel enno ikkje stadfesta at nøkkelen verkeleg er eigd av avsendaren.
 openpgp-sig-valid-verified = Denne meldinga inneheld ein gyldig digital signatur frå ein stadfesta nøkkel.
 openpgp-sig-valid-own-key = Denne meldinga inneheld ein gyldig digital signatur frå den personlege nøkkelen din.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = Signatarnøkkel-ID: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = Signatarnøkkel-ID: { $key } (Undernøkkel-ID: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = Dekrypteringsnøkkel-ID-en din:  { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = Dekrypteringsnøkkel-ID-en din: { $key } (Undernøkkel-ID: { $subkey })
 openpgp-enc-none = Meldinga er ikkje kryptert
 openpgp-enc-none-label = Meldinga vart ikkje kryptert før ho vart send. Informasjon som vert send over Internett utan kryptering, kan verte sett av andre under overføringa.
@@ -52,7 +35,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Mislykka dekryptering
 openpgp-message-header-signed-ok-icon =
     .alt = God signatur
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Dårleg signatur
 openpgp-message-header-signed-unknown-icon =

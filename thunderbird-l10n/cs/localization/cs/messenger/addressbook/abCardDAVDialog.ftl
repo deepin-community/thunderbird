@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, you can obtain one at http://mozilla.org/MPL/2.0/.
-
 carddav-window-title = Nová složka kontaktů CardDAV
 carddav-dialog =
     .buttonlabelaccept = Pokračovat
@@ -15,8 +11,6 @@ carddav-location-label =
 carddav-location =
     .default-placeholder = URL adresa nebo adresa serveru s kontakty
 carddav-loading = Vyhledávání nastavení…
-# Variables:
-# $url (String) - CardDAV endpoint hostname. For example "example.com".
 carddav-known-incompatible =
     { -brand-short-name.case-status ->
         [with-cases] Adresa { $url } je známa jako nekompatibilní s { -brand-short-name(case: "ins") }.

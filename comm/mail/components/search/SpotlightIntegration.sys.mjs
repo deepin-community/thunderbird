@@ -21,8 +21,8 @@ class SpotlightStreamListener extends StreamListenerBase {
   /**
    * Encodes reserved XML characters
    */
-  #xmlEscapeString(s) {
-    return s.replace(/[<>&]/g, function (s) {
+  #xmlEscapeString(str) {
+    return str.replace(/[<>&]/g, function (s) {
       switch (s) {
         case "<":
           return "&lt;";
@@ -31,7 +31,7 @@ class SpotlightStreamListener extends StreamListenerBase {
         case "&":
           return "&amp;";
         default:
-          throw new Error("Unexpected match");
+          throw new Error(`Unexpected match: ${s}`);
       }
     });
   }
@@ -92,7 +92,7 @@ class SpotlightStreamListener extends StreamListenerBase {
       const stringStream = Cc[
         "@mozilla.org/io/string-input-stream;1"
       ].createInstance(Ci.nsIStringInputStream);
-      stringStream.setData(this.#message, this.#message.length);
+      stringStream.setByteStringData(this.#message);
       const folder = this._msgHdr.folder;
       let text = folder.getMsgTextFromStream(
         stringStream,
@@ -150,8 +150,18 @@ class SpotlightStreamListener extends StreamListenerBase {
 }
 
 export class SearchIntegration extends SearchSupport {
+  #profileDir = null; // The user's profile dir.
+  #metadataDir = null;
+
   constructor() {
     super();
+    this.#profileDir = Services.dirsvc.get("ProfD", Ci.nsIFile);
+
+    this.#metadataDir = Services.dirsvc.get("Home", Ci.nsIFile);
+    this.#metadataDir.append("Library");
+    this.#metadataDir.append("Caches");
+    this.#metadataDir.append("Metadata");
+    this.#metadataDir.append("Thunderbird");
 
     this._initLogging();
 
@@ -172,29 +182,13 @@ export class SearchIntegration extends SearchSupport {
   // The Spotlight pref base
   _prefBase = "mail.spotlight.";
 
-  // The user's profile dir, which we'll cache and use a lot for path clean-up
-  get _profileDir() {
-    delete this._profileDir;
-    return (this._profileDir = Services.dirsvc.get("ProfD", Ci.nsIFile));
-  }
-
-  get _metadataDir() {
-    delete this._metadataDir;
-    const metadataDir = Services.dirsvc.get("Home", Ci.nsIFile);
-    metadataDir.append("Library");
-    metadataDir.append("Caches");
-    metadataDir.append("Metadata");
-    metadataDir.append("Thunderbird");
-    return (this._metadataDir = metadataDir);
-  }
-
   // Spotlight won't index files in the profile dir, but will use ~/Library/Caches/Metadata
   _getSearchPathForFolder(aFolder) {
     // Swap the metadata dir for the profile dir prefix in the folder's path
     const folderPath = aFolder.filePath.path;
     const fixedPath = folderPath.replace(
-      this._profileDir.path,
-      this._metadataDir.path
+      this.#profileDir.path,
+      this.#metadataDir.path
     );
     const searchPath = Cc["@mozilla.org/file/local;1"].createInstance(
       Ci.nsIFile
@@ -206,8 +200,8 @@ export class SearchIntegration extends SearchSupport {
   // Replace ~/Library/Caches/Metadata with the profile directory, then convert
   _getFolderForSearchPath(aPath) {
     const folderPath = aPath.path.replace(
-      this._metadataDir.path,
-      this._profileDir.path
+      this.#metadataDir.path,
+      this.#profileDir.path
     );
     const folderFile = Cc["@mozilla.org/file/local;1"].createInstance(
       Ci.nsIFile

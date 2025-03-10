@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### This file contains the entities needed to use the Find Bar.
-
 findbar-next =
     .tooltiptext = 尋找文字下次出現的位置
 findbar-previous =
@@ -46,12 +39,7 @@ findbar-match-diacritics-status =
     .value = （變音符號需符合）
 findbar-entire-word-status =
     .value = （僅整個字）
-# Variables:
-#   $current (Number): Index of the currently selected match
-#   $total (Number): Total count of matches
 findbar-found-matches =
     .value = 第 { $current } 筆符合，共符合 { $total } 筆
-# Variables:
-#   $limit (Number): Total count of matches allowed before counting stops
 findbar-found-matches-count-limit =
     .value = 符合超過 { $limit } 項

@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Aby rum na plaśe žarił, njeześěgniśo:">
 <!ENTITY doNotDownloadNntp.label "Aby rum na plaśe žarił, njeześěgniśo za wužywanje offline:">
 <!ENTITY doNotDownloadImap.label "Aby rum na plaśe žarił, dajo se ześěgowanje powěsćow ze serwera a wobchowanje kopijow za wužywanje offline pó starstwje abo wjelikosći wobgranicowaś.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "R">
 <!ENTITY syncGroupTitle.label "Synchronizěrowanje powěsćow">
 <!ENTITY diskspaceGroupTitle.label "Rum na plaśe">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Wšykne powěsći lokalnje synchronizěrowaś, njeźiwajucy na starstwo">
-<!ENTITY allAutosync.accesskey           "l">
-<!ENTITY ageAutosyncBefore.label         "Nejnowše synchronizěrowaś">
-<!ENTITY ageAutosync.accesskey           "N">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "dnjow">
-<!ENTITY weekAgeInterval.label           "njeźelow">
-<!ENTITY monthAgeInterval.label          "mjasecow">
-<!ENTITY yearAgeInterval.label           "lět">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Wšykne powěsći lokalnje synchronizěrowaś, njeźiwajucy na starstwo">
+<!ENTITY allAutosync.accesskey "l">
+<!ENTITY ageAutosyncBefore.label "Nejnowše synchronizěrowaś">
+<!ENTITY ageAutosync.accesskey "N">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "dnjow">
+<!ENTITY weekAgeInterval.label "njeźelow">
+<!ENTITY monthAgeInterval.label "mjasecow">
+<!ENTITY yearAgeInterval.label "lět">
+<!ENTITY ageAutosyncAfter.label "">

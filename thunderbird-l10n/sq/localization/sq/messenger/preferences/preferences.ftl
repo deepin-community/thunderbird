@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Mbylle
 preferences-doc-title2 = Rregullime
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Njëkohësim
 category-sync =
     .tooltiptext = Njëkohësim
+pane-qr-export-title = Eksportoji për Celular
+category-qr-export =
+    .tooltiptext = Eksportojini për Celular
 general-language-and-appearance-header = Gjuhë & Dukje
 general-incoming-mail-header = Email-e Ardhëse
 general-files-and-attachment-header = Kartela & Bashkëngjitje
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Lejojeni { -brand-short-name }-in të dërgojë te { -vendor-short-name } të dhëna teknike dhe ndërveprimesh
     .accesskey = L
 collection-health-report-link = Mësoni më tepër
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Raportimi i të dhënave është i çaktivizuar për këtë formësim montimi
 collection-backlogged-crash-reports =
     .label = Lejojeni { -brand-short-name }-in të dërgojë në emrin tuaj njoftime vithisjesh të dikurshme ende pezull
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Që të hyjnë në fuqi këto ndryshime, rinisni { -brand-short-name }-in
 confirm-messenger-language-change-button = Zbatoje dhe Rinisu
 update-setting-write-failure-title = Gabim në ruajtje parapëlqimesh Përditësimi
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name }-i hasi një gabim dhe s’e ruajti këtë ndryshim. Kini parasysh se caktimi i këtij parapëlqimi mbi përditësimet lyp leje për shkrim te kartela më poshtë. Ju, ose një përgjegjës sistemi mund të jeni në gjendje ta zgjidhni gabimin duke i akorduar grupit Përdorues kontroll të plotë të kësaj kartele.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Përditësim Në Kryerje e Sipër
 update-in-progress-message = Doni që { -brand-short-name }-i të vazhdojë këtë përditësim?
 update-in-progress-ok-button = &Hidhe Tej
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Vazhdo
 account-button = Rregullime Llogarie
 open-addons-sidebar-button = Shtesa dhe Tema
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Që të krijoni një Fjalëkalim të Përgjithshëm, jepni kredencialet tuaj për hyrje në Windows. Kjo ndihmon të mbrohet siguria e llogarive tuaja.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = të krijojë një Fjalëkalim të Përgjithshëm
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Shtoni Furnizues OpenSearch
 add-opensearch-provider-text = Jepni URL-në e furnizuesit OpenSearch që duhet shtuar. Ose përdorni URL-në e drejtpërdrejtë të kartelës OpenSearch Description, ose një URL ku mund të zbulohet automatikisht.
 adding-opensearch-provider-failed-title = Shtimi i Furnizuesit OpenSearch Dështoi
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = S’u shtua dot Furnizues OpenSearch për { $url }.
 minimize-to-tray-label =
     .label = Kur minimizohet { -brand-short-name }-i, shpjere te shtylla
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Kontrolloni Tani…
     .accesskey = K
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Fatura Kthimi…
     .accesskey = F
 update-app-legend = Përditësime { -brand-short-name }-i
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Version { $version }
 allow-description = Lejojeni { -brand-short-name }-in të
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = P
 compact-folder-size =
     .value = MB gjithsej
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Përdor deri më
     .accesskey = d
 use-cache-after = MB hapësirë për fshehtinën
-
-##
-
 smart-cache-label =
     .label = Anashkalo administrim të vetvetishëm fshehtine
     .accesskey = A
@@ -304,7 +269,6 @@ color-options-button =
     .label = Ngjyra…
     .accesskey = N
 display-width-legend = Mesazhe Tekst i Thjeshtë
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Emotikonet shfaqi si grafikë
     .accesskey = E
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Shihni bashkëngjitjet brendazi
     .accesskey = S
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Pasi janë shfaqur për
     .accesskey = P
 seconds-label = sekonda
-
-##
-
 open-msg-label =
     .value = Hapi mesazhet në:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Me lëvizjen ose fshirjen mbylle dritaren /skedën e mesazhit
     .accesskey = m
-display-name-label =
-    .value = Emër në ekran:
 address-display-legend = Listë Mesazhesh
 address-display-description = Format i parapëlqyer shfaqjeje adresash:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Për persona në librin tim të adresave shfaq vetëm emër ekrani
     .accesskey = P
-
-## Compose Tab
-
+table-layout-legend = Parje Si Tabelë
+table-layout-horizontal-scroll-label =
+    .label = Lejo rrëshqitje horizontale
+    .accesskey = L
+conversation-view-legend = Pamje bisedë
+conversation-view-checkbox-label =
+    .label = Aktivizo pamjen bisedë
+    .accesskey = A
+conversation-view-checkbox-description = Veçori eksperimentale e bazuar në Gloda, qari dhe zarari i juaji
+label-experiment = Eksperimentale
+account-hub-legend = Qendër llogarish
+account-hub-checkbox-label =
+    .label = Krijoni llogari te Qendra e re e Llogarive
+    .accesskey = K
+account-hub-checkbox-description = Rrjedhë e re eksperimentale për krijim llogarish email
 forward-label =
     .value = Mesazhet përcilli:
     .accesskey = M
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = Shto prapashtesë te emri i kartelës
     .accesskey = s
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Vetëruaje çdo
     .accesskey = V
 auto-save-end = minuta
-
-##
-
 warn-on-send-accel-key =
     .label = Ripohoni përdorimin e shkurtoreve për dërgim mesazhi
     .accesskey = R
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Gjeni më tepër furnizues…
 cloud-account-description = Shtoni një shërbim të ri depozitimi Filelink
-
-## Privacy Tab
-
 mail-content = Lëndë Poste
 remote-content-label =
     .label = Lejo lëndë të largët në mesazhe
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Shfaqni Cookie-t…
     .accesskey = S
-do-not-track-label =
-    .label = Dërgojuni sajteve një sinjal “Mos Më Gjurmo” se nuk doni të ndiqeni
-    .accesskey = D
-dnt-learn-more-button =
-    .value = Mësoni më tepër
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Thuaju sajteve të mos shesin apo japin të dhëna të miat
+    .accesskey = m
+do-not-track-removal = S’e mbulojmë më sinjalin “Mos Më Gjurmoni”
 passwords-description = { -brand-short-name }-i mund të mbajë mend fjalëkalimet për tërë llogaritë tuaja.
 passwords-button =
     .label = Fjalëkalime të Ruajtur…
@@ -571,7 +528,6 @@ primary-password-description = Një Fjalëkalim i Përgjithshëm i mbron tërë 
 primary-password-label =
     .label = Përdorni një Fjalëkalim të Përgjithshëm
     .accesskey = P
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Kërko bërje hyrjeje në pajisje, për të plotësuar dhe administruar fjalëkalime
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Gjendeni nën mënyrën FIPS. FIPS lyp një Fjalëkalim të Përgjithshëm jo të zbrazët.
 forms-master-pw-fips-desc = Ndryshimi i Fjalëkalimit Dështoi
 junk-description = Caktoni rregullimet tuaja parazgjedhje për postën e pavlerë. Rregullimet për postë të pavlerë, sipas llogarish të veçanta, mund të formësohen te Rregullime Llogarish.
-junk-label =
-    .label = Kur shënoj mesazhe si të pavlera:
-    .accesskey = K
 junk-marked-label =
     .label = Kur mesazheve u vihet shenjë si hedhurinë:
     .accesskey = K
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Fshiji
     .accesskey = F
-junk-read-label =
-    .label = Mesazhet, për të cilat është përcaktuar se janë Të pavlera, shënoji si të lexuar
-    .accesskey = M
 junk-read-description = Vëru shenjë mesazheve si të lexuar
 junk-read-manual-label =
     .label = Kur u vihet shenjë dorazi si hedhurinë
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Vendime për automatizim mund të anashkalohen duke aktivizuar apo çaktivizuar dorazi fshehtëzimin, kur hartohet një mesash.
     Shënim: fshehtëzimi është përherë i aktivizuar automatikisht, kur i përgjigjeni një mesazhi të fshehtëzuar.
-
-## Chat Tab
-
 startup-label =
     .value = Kur niset { -brand-short-name }-i:
     .accesskey = K
@@ -661,20 +608,10 @@ offline-label =
     .label = Mbaji jashtë linje llogaritë e mia të fjalosjeve
 auto-connect-label =
     .label = Bëje vetvetiu lidhjen e llogarive të mia të fjalosjeve
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Kontakteve të mia lejoju të më shohin si të plogësht pas
     .accesskey = K
 idle-time-label = minutash pa veprimtari
-
-##
-
 away-message-label =
     .label = dhe gjendjen time kaloje si i Larguar dhe me këtë mesazh gjendjeje:
     .accesskey = d
@@ -736,41 +673,21 @@ no-preview-description = Kjo temë s’është e vlefshme ose hëpërhë jo gati
 chat-variant-label =
     .value = Variant:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 20em
     .placeholder = Gjeni te Rregullime
-
-## Settings UI Search Results
-
 search-results-header = Përfundime Kërkimi
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Na ndjeni! S’ka përfundime te Mundësi për “<span data-l10n-name="query"></span>”.
        *[other] Na ndjeni! S’ka përfundime te Rregullime për “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Ju duhet ndihmë? Vizitoni <a data-l10n-name="url">Asistencë { -brand-short-name }-i</a>
-
-## Sync Tab
-
 sync-signedout-caption = Merreni Web-in me vete
 sync-signedout-description = Njëkohësoni llogaritë tuaja, libra adresash, kalendarë, shtesa dhe rregullime nëpër krejt pajisjet tuaja.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Për njëkohësim, bëni hyrjen…
 sync-pane-header = Njëkohësoni
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” s’është i verifikuar.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Që të rilidhet “{ $userEmail }”, ju lutemi, bëni hyrjen
 sync-pane-resend-verification = Ridërgo verifikim
 sync-pane-sign-in = Hyni
@@ -800,3 +717,49 @@ synced-acount-item-filters = Filtra
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Njëkohësoni llogaritë tuaja email, libra adresash, kalendarë dhe identitete nëpër krejt pajisjet tuaja.
 sync-disconnected-turn-on-sync = Aktivizoni Njëkohësimin…
+qr-export-pane-header = Eksportoni llogari për { -brand-product-name } për Celular
+qr-export-description = Shpërngulni shpejt e shpejt rregullimet e llogarisë tuaj nga desktop në celular, duke prodhuar një kod QR. Përzgjidhni cilat llogari të përfshihen, vendosni nëse doni të shpërngulni fjalëkalimin tuaj dhe skanojeni kodin me pajisjen tuaj celulare. E shpejtë, e siguruar dhe e thjeshtë.
+qr-export-get-app = S’e keni ende { -brand-product-name } në celular? <a data-l10n-name="app-link">Merreni që nga Google Play</a>
+qr-export-create = Krijoni një kod QR për të eksportuar llogaritë tuaja
+qr-export-select-accounts = Përzgjidhni cilat llogari të eksportohen:
+qr-export-no-accounts = S’i shihni krejt llogaritë tuaja? Disa llogari mund të jenë çaktivizuar, ngaqë nuk mbulohen nga { -brand-product-name } për Android. <a data-l10n-name="account-support-link">Asistencë</a>
+qr-export-accounts-legend = Llogari email
+qr-export-select-all-accounts = Përzgjidhi krejt
+qr-export-security-legend = Siguri
+qr-export-include-passwords = Përfshi krejt fjalëkalimet e llogarive
+qr-export-oauth-warning = Disa nga llogaritë tuaja përdorin një metodë mirëfilltësimi që mund të lypë rimirëfilltësim në pajisjen tuaj celulare. Gjatë këtij procesi mund t’ju duhet të rijepni fjalëkalimin tuaj.
+qr-export-security-hint = Duke skanuar kodet vijues QR, rregullimet e llogarive tuaja—përfshi email-in dhe fjalëkalimin tuaj—do të shpërngulen në mënyrë të parrezik. Gjatë procesit nuk grumbullojmë, depozitojmë apo ndajmë me të tjerët këto të dhëna. Shpërngulja ndodh drejtpërdrejt mes pajisjeve tuaja.
+qr-export-security-warning = Për sigurinë tuaj, ju lutemi, sigurohuni se gjendeni në një mjedis privat dhe skanoni kode QR vetë, prej burimesh të besuar.
+qr-export-start-export = Eksportim
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } nga { $count } kod QR gjithsej
+       *[other] { $step } nga { $count } kode QR gjithsej
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skanoni kod QR me { -brand-product-name }-in në pajisjen tuaj celulare
+       *[other] Skanoni kode QR me { -brand-product-name }-in në pajisjen tuaj celulare
+    }
+qr-export-scan-step1 = Hapeni { -brand-product-name }-in në pajisjen tuaj celulare
+qr-export-scan-step2 = Shko te rregullimet
+qr-export-scan-step3 = Përzgjidhni <strong>Importoni rregullime</strong>
+qr-export-scan-step4-revision = Prekni <strong>Skanoni kod QR</strong> dhe mbajeni telefonin tuaj mbi këtë kod
+qr-export-back = Mbrapsht
+qr-export-next = Pasuesi
+qr-export-done = U bë
+qr-export-summary-description = Llogaritë u eksportuan. Vazhdoni te pajisja juaj celulare.
+qr-export-summary-title = Përmbledhje eksportimi:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] U prodhua { $count } kod QR
+       *[other] U prodhuan { $count } kode QR
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] U eksportua { $count } llogari:
+       *[other] U eksportuan { $count } llogari:
+    }
+qr-export-summary-passwords-included = Me përfshirje fjalëkalimesh
+qr-export-summary-passwords-excluded = Pa përfshirë fjalëkalime
+qr-export-more-accounts = Eksportoni më tepër llogari

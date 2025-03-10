@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-central-title = Добродошли у { -brand-full-name }
 account-settings = Подешавања налога
-#   $accounts (Number) - the number of configured accounts
 setup-title =
     { $accounts ->
         [0] Изаберите шта желите подесити
@@ -43,7 +38,6 @@ import-label = Увези
     .aria-label = Увези податке из других програма
 about-paragraph = Thunderbird је водећи вишеплатформски клијент за е-пошту и календар, отвореног кода, бесплатан за пословну и личну употребу. Желимо да остане безбедан и да постане још бољи. Донације нам омогућавају да запослимо програмере, платимо инфраструктуру и наставимо са побољшањима.
 about-paragraph-consider-donation = <b>Thunderbird финансирају корисници слични вама! Ако вам се Thunderbird свиђа, размислите о донацији.</b> Најбољи начин за осигуравање даље доступности Thunderbird-а је <a data-l10n-name="donation-link">давање донације</a>.
-explore-link = Истражите могућности
 support-link = Подршка
 involved-link = Прикључите се
 developer-link = Програмерска документација

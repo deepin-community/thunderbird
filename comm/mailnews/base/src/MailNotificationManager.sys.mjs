@@ -28,11 +28,11 @@ export class MailNotificationManager {
   ]);
 
   constructor() {
-    this._systemAlertAvailable = true;
     this._unreadChatCount = 0;
     this._unreadMailCount = 0;
-    // @type {Map<nsIMsgFolder, number>} - A map of folder and its last biff time.
-    this._folderBiffTime = new Map();
+    // @type {Map<string, number>} - A map of folder URIs and the date of the
+    //   newest message a notification has been shown for.
+    this._folderNewestNotifiedTime = new Map();
     // @type {Set<nsIMsgFolder>} - A set of folders to show alert for.
     this._pendingFolders = new Set();
 
@@ -51,16 +51,14 @@ export class MailNotificationManager {
 
     // Ensure that OS integration is defined before we attempt to initialize the
     // system tray icon.
-    ChromeUtils.defineLazyGetter(this, "_osIntegration", () => {
-      try {
-        return Cc["@mozilla.org/messenger/osintegration;1"].getService(
-          Ci.nsIMessengerOSIntegration
-        );
-      } catch (e) {
-        // We don't have OS integration on all platforms.
-        return null;
-      }
-    });
+    try {
+      this._osIntegration = Cc[
+        "@mozilla.org/messenger/osintegration;1"
+      ].getService(Ci.nsIMessengerOSIntegration);
+    } catch (e) {
+      // We don't have OS integration on all platforms, i.e. 32-bit Linux.
+      this._osIntegration = null;
+    }
 
     if (["macosx", "win"].includes(AppConstants.platform)) {
       // We don't have indicator for unread count on Linux yet.
@@ -194,19 +192,26 @@ export class MailNotificationManager {
     this._logger.debug(
       `Filling alert info; folder.URI=${folder.URI}, numNewMessages=${numNewMessages}`
     );
-    const firstNewMsgHdr = folder.msgDatabase.getMsgHdrForKey(newMsgKeys[0]);
+    if (Services.prefs.getBoolPref("mail.biff.use_system_alert", true)) {
+      const firstNewMsgHdr = folder.msgDatabase.getMsgHdrForKey(newMsgKeys[0]);
 
-    const title = this._getAlertTitle(folder, numNewMessages);
-    let body;
-    try {
-      body = await this._getAlertBody(folder, firstNewMsgHdr);
-    } catch (e) {
-      this._logger.error(e);
+      const title = this._getAlertTitle(folder, numNewMessages);
+      let body;
+      try {
+        body = await this._getAlertBody(folder, firstNewMsgHdr);
+      } catch (e) {
+        this._logger.error(e);
+      }
+      if (!title || !body) {
+        return;
+      }
+
+      this._showAlert(firstNewMsgHdr, title, body);
+      this._saveNotificationTime(folder, newMsgKeys);
+    } else {
+      this._showCustomizedAlert(folder);
     }
-    if (!title || !body) {
-      return;
-    }
-    this._showAlert(firstNewMsgHdr, title, body);
+
     this._animateDockIcon();
   }
 
@@ -232,7 +237,7 @@ export class MailNotificationManager {
         continue;
       }
 
-      if (folder.getNumNewMessages(false) > 0) {
+      if (this._getNewMsgKeysNotNotified(folder).length > 0) {
         return folder;
       }
     }
@@ -259,7 +264,7 @@ export class MailNotificationManager {
    * Get the body for the alert.
    *
    * @param {nsIMsgFolder} folder - The changed folder.
-   * @param {nsIMsgHdr} msgHdr - The nsIMsgHdr of the first new messages.
+   * @param {nsIMsgDBHdr} msgHdr - The nsIMsgHdr of the first new messages.
    * @returns {string} The alert body.
    */
   async _getAlertBody(folder, msgHdr) {
@@ -320,45 +325,30 @@ export class MailNotificationManager {
   /**
    * Show the alert.
    *
-   * @param {nsIMsgHdr} msgHdr - The nsIMsgHdr of the first new messages.
+   * @param {nsIMsgDBHdr} msgHdr - The nsIMsgHdr of the first new messages.
    * @param {string} title - The alert title.
    * @param {string} body - The alert body.
    */
   _showAlert(msgHdr, title, body) {
     const folder = msgHdr.folder;
 
-    // Try to use system alert first.
-    if (
-      Services.prefs.getBoolPref("mail.biff.use_system_alert", true) &&
-      this._systemAlertAvailable
-    ) {
-      const alertsService = Cc[
-        "@mozilla.org/system-alerts-service;1"
-      ].getService(Ci.nsIAlertsService);
-      const cookie = folder.generateMessageURI(msgHdr.messageKey);
-      try {
-        const alert = Cc["@mozilla.org/alert-notification;1"].createInstance(
-          Ci.nsIAlertNotification
-        );
-        alert.init(
-          cookie,
-          "chrome://messenger/skin/icons/new-mail-alert.png",
-          title,
-          body,
-          true /* text clickable */,
-          cookie
-        );
-        alertsService.showAlert(alert, this);
-        return;
-      } catch (e) {
-        this._logger.error(e);
-        this._systemAlertAvailable = false;
-      }
-    }
+    const alertsService = Cc["@mozilla.org/system-alerts-service;1"].getService(
+      Ci.nsIAlertsService
+    );
+    const cookie = folder.generateMessageURI(msgHdr.messageKey);
 
-    // The use_system_alert pref is false or showAlert somehow failed, use the
-    // customized alert window.
-    this._showCustomizedAlert(folder);
+    const alert = Cc["@mozilla.org/alert-notification;1"].createInstance(
+      Ci.nsIAlertNotification
+    );
+    alert.init(
+      cookie,
+      "chrome://messenger/skin/icons/new-mail-alert.png",
+      title,
+      body,
+      true /* text clickable */,
+      cookie
+    );
+    alertsService.showAlert(alert, this);
   }
 
   /**
@@ -404,25 +394,47 @@ export class MailNotificationManager {
       args
     );
     this._customizedAlertShown = true;
-    this._folderBiffTime.set(folder, Date.now());
+    this._saveNotificationTime(folder, newMsgKeys);
   }
 
   /**
-   * Get all NEW messages from a folder that we received after last biff time.
+   * Get all NEW messages from a folder that are newer than the newest message
+   * in the folder we had a notification about.
    *
    * @param {nsIMsgFolder} folder - The message folder to check.
-   * @returns {number[]} An array of message keys.
+   * @returns {nsMsgKey[]} An array of message keys.
    */
   _getNewMsgKeysNotNotified(folder) {
+    if (folder.getNumNewMessages(false) == 0) {
+      return [];
+    }
+
     const msgDb = folder.msgDatabase;
-    const lastBiffTime = this._folderBiffTime.get(folder) || 0;
+    const newestNotifiedTime =
+      this._folderNewestNotifiedTime.get(folder.URI) || 0;
     return msgDb
       .getNewList()
       .slice(-folder.getNumNewMessages(false))
       .filter(key => {
         const msgHdr = msgDb.getMsgHdrForKey(key);
-        return msgHdr.dateInSeconds * 1000 > lastBiffTime;
+        return msgHdr.dateInSeconds > newestNotifiedTime;
       });
+  }
+
+  /**
+   * Record the time of the newest new message in the folder, so that we never
+   * notify about it again.
+   *
+   * @param {nsIMsgFolder} folder
+   * @param {nsMsgKey[]} newMsgKeys - As returned by _getNewMsgKeysNotNotified.
+   */
+  _saveNotificationTime(folder, newMsgKeys) {
+    let newestNotifiedTime = 0;
+    for (const msgKey of newMsgKeys) {
+      const msgHdr = folder.msgDatabase.getMsgHdrForKey(msgKey);
+      newestNotifiedTime = Math.max(newestNotifiedTime, msgHdr.dateInSeconds);
+    }
+    this._folderNewestNotifiedTime.set(folder.URI, newestNotifiedTime);
   }
 
   async _updateUnreadCount() {

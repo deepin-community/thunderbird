@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Connexiuns a la rait
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = Svidar il cache HTTP
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = Dumber da giadas ch'il cache è plaun
 about-networking-rcwn-cache-not-slow = Dumber da giadas ch'il cache è svelt
 about-networking-networkid = ID da la rait
 about-networking-networkid-id = ID da la rait
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Questa pagina è vegnida spustada en <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = La colliaziun è activa
 about-networking-networkid-status-known = Il status da la colliaziun è enconuschent
-
-##
-

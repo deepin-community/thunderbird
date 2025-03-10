@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Για εξοικονόμηση χώρου, να μη λαμβάνονται:">
 <!ENTITY doNotDownloadNntp.label "Για εξοικονόμηση χώρου, να μη λαμβάνονται για χρήση εκτός σύνδεσης:">
 <!ENTITY doNotDownloadImap.label "Για εξοικονόμηση χώρου, μπορείτε να περιορίσετε κατά ημερομηνία ή μέγεθος τη λήψη μηνυμάτων από τον διακομιστή, καθώς και τη διατήρηση τοπικών αντιγράφων για χρήση εκτός σύνδεσης.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "θ">
 <!ENTITY syncGroupTitle.label "Συγχρονισμός μηνυμάτων">
 <!ENTITY diskspaceGroupTitle.label "Χώρος δίσκου">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Τοπικός συγχρονισμός όλων των μηνυμάτων ανεξαρτήτως ημερομηνίας">
-<!ENTITY allAutosync.accesskey           "χ">
-<!ENTITY ageAutosyncBefore.label         "Συγχρονισμός των τελευταίων">
-<!ENTITY ageAutosync.accesskey           "γ">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "ημερών">
-<!ENTITY weekAgeInterval.label           "εβδομάδων">
-<!ENTITY monthAgeInterval.label          "μηνών">
-<!ENTITY yearAgeInterval.label           "ετών">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Τοπικός συγχρονισμός όλων των μηνυμάτων ανεξαρτήτως ημερομηνίας">
+<!ENTITY allAutosync.accesskey "χ">
+<!ENTITY ageAutosyncBefore.label "Συγχρονισμός των τελευταίων">
+<!ENTITY ageAutosync.accesskey "γ">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "ημερών">
+<!ENTITY weekAgeInterval.label "εβδομάδων">
+<!ENTITY monthAgeInterval.label "μηνών">
+<!ENTITY yearAgeInterval.label "ετών">
+<!ENTITY ageAutosyncAfter.label "">

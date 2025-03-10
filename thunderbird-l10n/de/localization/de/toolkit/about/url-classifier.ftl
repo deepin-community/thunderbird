@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = URL Classifier - Informationen
 url-classifier-search-title = Suche
 url-classifier-search-result-title = Ergebnisse
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Im abgesicherten Modus zu protokollierende Mod
 url-classifier-debug-modules = Derzeit protokollierte Module
 url-classifier-debug-sbjs-modules = JS-Protokoll im Abgesicherten Modus
 url-classifier-debug-file = Derzeitige Protokolldatei
-
 url-classifier-trigger-update = Update starten
 url-classifier-not-available = Nicht verfügbar
 url-classifier-disable-sbjs-log = JS-Protokoll im abgesicherten Modus deaktivieren
@@ -50,9 +45,5 @@ url-classifier-disabled = Deaktiviert
 url-classifier-updating = Wird aktualisiert…
 url-classifier-cannot-update = Update nicht möglich
 url-classifier-success = Erfolgreich
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = Fehler beim Update ({ $error })
 url-classifier-download-error = Fehler beim Download ({ $error })

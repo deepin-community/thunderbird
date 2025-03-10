@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = メニューバー
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = 設定
     .accesskey = e
 menu-addons-and-themes =
     .label = アドオンとテーマ
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = モバイル向けのエクスポート...
+    .accesskey = p
 menu-help-help-title =
     .label = ヘルプ
     .accesskey = H
 menu-help-get-help =
     .label = ヘルプを表示
     .accesskey = H
-menu-help-explore-features =
-    .label = 機能紹介
-    .accesskey = F
 menu-help-get-release-help =
     .label = { -brand-short-name } に関するヘルプ
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = { -brand-short-name } について
     .accesskey = A
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] x
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } を終了
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] { -brand-full-name } を終了
            *[other] { -brand-full-name } を終了
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = 迷惑メール
     .tooltiptext = 選択したメッセージに迷惑マークを付けます
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = 削除を元に戻す
     .tooltiptext = 選択したメッセージの削除を元に戻します
-
-## View
-
 menu-view-repair-text-encoding =
     .label = テキストエンコーディングを修復
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = フォルダーペインヘッダー
-    .accesskey = F
-
-## View / Layout
-
+    .accesskey = P
 menu-view-toggle-thread-pane-header =
     .label = メッセージリストヘッダー
     .accesskey = H
@@ -136,13 +109,9 @@ mail-uidensity-default =
 mail-uidensity-relaxed =
     .label = リラックス
     .accesskey = R
-# (^m^) en-US: "Spaces Toolbar" (Bug 1665511)
 menu-spaces-toolbar-button =
     .label = スペースツールバー
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = メールアカウント...
     .accesskey = E

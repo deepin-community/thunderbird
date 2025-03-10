@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Користите достављача
     .accesskey = р
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (подразумевано)
     .tooltiptext = Користите подразумевани URL за решавање DNS преко HTTP-а
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = П
     .tooltiptext = Унесите пожељни URL за решавање DNS преко HTTP-а
 connection-dns-over-https-custom-label = Прилагођено
-connection-dialog-window2 =
-    .title = Подешавања везе
 connection-dialog-title = Подешавања везе
 disable-extension-button = Онемогући додатак
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Додатак <img data-l10n-name="extension-icon" alt="" /> { $name } управља начином на који се { -brand-short-name } повезује на интернет.
 connection-proxy-legend = Подесите прокси за приступ интернету
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Нема прокси за:
     .accesskey = н
 no-proxy-example = На пример: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Везе са localhost, 127.0.0.1/8, и ::1 никада нису преко прокси сервера.
 proxy-password-prompt =
     .label = Не питај за идентификацију уколико је лозинка сачувана

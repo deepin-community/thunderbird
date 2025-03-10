@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message Header Encryption Button
-
 message-header-show-security-info-key = S
-#   $type (String) - the shortcut key defined in the message-header-show-security-info-key
 message-security-button =
     .title =
         { PLATFORM() ->
@@ -21,20 +13,12 @@ openpgp-openpgp = OpenPGP
 openpgp-no-sig = Dijital imza yok
 openpgp-no-sig-info = Bu ileti, gönderenin sayısal imzasını içermiyor. İmzanın yokluğu, başka birisinin bu e-posta adresinden geliyormuş gibi posta göndermesi ihtimalini doğurur. Hatta iletinin ağ üzerinde değiştirilmesi dahi mümkündür.
 openpgp-uncertain-sig = Belirsiz dijital imza
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-uncertain-sig-with-date = Belirsiz dijital imza - { $date } tarihinde imzalandı
 openpgp-invalid-sig = Geçersiz dijital imza
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-invalid-sig-with-date = Geçersiz dijital imza - { $date } tarihinde imzalandı
 openpgp-bad-date-sig = İmza tarihi eşleşmiyor
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-bad-date-sig-with-date = İmza tarihi eşleşmiyor - { $date } tarihinde imzalandı
 openpgp-good-sig = İyi dijital imza
-# Variables:
-# $date (String) - Date with time the signature was made in a short format.
 openpgp-good-sig-with-date = İyi dijital imza - { $date } tarihinde imzalandı
 openpgp-sig-uncertain-no-key = Bu ileti bir dijital imza içeriyor ama imzanın doğru olup olmadığı belirsiz. İmzayı doğrulamak için gönderenin ortak anahtarını edinmeniz gerekir.
 openpgp-sig-uncertain-uid-mismatch = Bu ileti bir dijital imza içeriyor ama bir uyuşmazlık tespit edildi. İleti, imzalayanın ortak anahtarıyla eşleşmeyen bir e-posta adresinden gönderilmiş.
@@ -44,19 +28,9 @@ openpgp-sig-invalid-technical-problem = Bu ileti bir dijital imza içeriyor ama 
 openpgp-sig-valid-unverified = Bu ileti, daha önce kabul ettiğiniz bir anahtara ait geçerli bir dijital imza içeriyor. Ancak anahtarın gerçekten göndericiye ait olup olmadığını henüz doğrulamadınız.
 openpgp-sig-valid-verified = Bu ileti, doğrulanmış bir anahtara ait geçerli bir dijital imza içeriyor.
 openpgp-sig-valid-own-key = Bu ileti, kişisel anahtarınıza ait geçerli bir dijital imza içeriyor.
-# Variables:
-# $key (String) - The ID of the OpenPGP key used to create the signature.
 openpgp-sig-key-id = İmzalayan anahtar kimliği: { $key }
-# Variables:
-# $key (String) - The primary ID of the OpenPGP key used to create the signature.
-# $subkey (String) - A subkey of the primary key was used to create the signature, and this is the ID of that subkey.
 openpgp-sig-key-id-with-subkey-id = İmzalayan anahtar kimliği: { $key } (Alt anahtar kimliği: { $subkey })
-# Variables:
-# $key (String) - The ID of the user's OpenPGP key used to decrypt the message.
 openpgp-enc-key-id = Şifre çözme anahtarı kimliğiniz: { $key }
-# Variables:
-# $key (String) - The primary ID of the user's OpenPGP key used to decrypt the message.
-# $subkey (String) - A subkey of the primary key was used to decrypt the message, and this is the ID of that subkey.
 openpgp-enc-key-with-subkey-id = Şifre çözme anahtarı kimliğiniz: { $key } (Alt anahtar kimliği: { $subkey })
 openpgp-enc-none = İleti şifrelenmemiş
 openpgp-enc-none-label = Bu ileti gönderilmeden önce şifrelenmedi. İnternet üzerinden gönderilen şifrelenmemiş bilgiler başkaları tarafından görülebilir.
@@ -74,7 +48,6 @@ openpgp-message-header-encrypted-notok-icon =
     .alt = Şifre çözme başarısız
 openpgp-message-header-signed-ok-icon =
     .alt = İyi imza
-# Mismatch icon is used for notok state as well
 openpgp-message-header-signed-mismatch-icon =
     .alt = Kötü imza
 openpgp-message-header-signed-unknown-icon =

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-mozilla-title-6-27 = Mozilla 서, 6:27
 about-mozilla-quote-6-27 =
     야수는 새로운 <em>참고 문헌(Reference)</em>을 만들고 새로운 <em>현실(Realities)</em>을 고려하면서 새로운 <em>초점(Focus)</em>으로 

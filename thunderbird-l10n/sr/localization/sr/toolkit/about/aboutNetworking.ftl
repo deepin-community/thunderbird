@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = О умрежавању
 about-networking-http = HTTP
 about-networking-sockets = Sockets
@@ -56,13 +52,6 @@ about-networking-rcwn-cache-slow = Број успореног кеша
 about-networking-rcwn-cache-not-slow = Брз неуспореног кеша
 about-networking-networkid = ИБ мреже
 about-networking-networkid-id = ИБ мреже
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Ова страница је премештена у <a data-l10n-name="about-logging-url">about:logging</a>.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = Веза је успостављена
 about-networking-networkid-status-known = Стање везе непознато
-
-##
-

@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Pisave
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Privzeta ({ $name })
 fonts-label-default-unnamed =
     .label = Privzeta
-fonts-encoding-dialog-title =
-    .title = Pisave in kodiranja
 fonts-language-legend =
     .value = Pisave za:
     .accesskey = P
 fonts-proportional-label =
     .value = Večširinska pisava:
     .accesskey = S
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = latinico
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = singalsko
 font-language-group-tibetan =
     .label = tibetansko
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = N
 min-size-none =
     .label = Brez
-
-## Fonts in message
-
 font-control-legend = Nadzor pisav
 use-document-fonts-checkbox =
     .label = Dovoli, da sporočila uporabljajo druge pisave
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Za sporočila v golem besedilu uporabi enoširinsko pisavo
     .accesskey = Z
-
-## Language settings
-
 text-encoding-legend = Kodiranje besedila
 text-encoding-description = Nastavi privzeto kodiranje besedila za pošiljanje in prejemanje pošte
 font-outgoing-email-label =

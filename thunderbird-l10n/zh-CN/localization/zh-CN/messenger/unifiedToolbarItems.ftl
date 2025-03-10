@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = 弹性空白
 search-bar-label = 搜索
 toolbar-write-message-label = 新建消息
@@ -61,7 +54,7 @@ toolbar-junk =
 toolbar-delete-label = 删除
 toolbar-delete-title =
     .title = 删除选定的消息
-toolbar-undelete-label = 撤消删除
+toolbar-undelete-label = 撤销删除
 toolbar-undelete =
     .title = 撤销删除选定的消息
 toolbar-compact-label = 压缩
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = 导入
 toolbar-import-contacts =
     .title = 从文件导入联系人
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = 添加本地通讯录
 toolbar-new-address-book-popup-add-carddav-address-book =

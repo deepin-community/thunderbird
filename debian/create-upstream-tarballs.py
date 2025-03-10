@@ -43,7 +43,6 @@ RELEASE_STRING_EXCLUSION_LIST = (
  "125.0",
  "127.0",
  "129.0",
- "130.0",
 )
 
 # Also we need to exclude some strings in the current planned version
@@ -53,7 +52,6 @@ PLANNED_STRING_EXCLUSION_LIST = (
  "125.0",
  "127.0",
  "129.0",
- "130.0",
 )
 
 try:

@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Barre de menus
     .accesskey = m
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Paramètres
     .accesskey = P
 menu-addons-and-themes =
     .label = Modules complémentaires et thèmes
     .accesskey = e
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exporter pour l’application mobile…
+    .accesskey = E
 menu-help-help-title =
     .label = Aide
     .accesskey = e
 menu-help-get-help =
     .label = Obtenir de l’aide
     .accesskey = O
-menu-help-explore-features =
-    .label = Découvrir les fonctionnalités
-    .accesskey = D
 menu-help-get-release-help =
     .label = Obtenir de l’aide pour { -brand-short-name }
     .accesskey = O
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = À propos de { -brand-short-name }
     .accesskey = o
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,19 +54,12 @@ menu-quit =
             [windows] Q
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Quitter { -brand-shorter-name }
 system-tray-menu-quit =
     .label = Quitter { -brand-full-name }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Indésirable
     .tooltiptext = Marquer le message sélectionné comme indésirable
@@ -90,21 +72,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Restaurer
     .tooltiptext = Restaurer les messages sélectionnés
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Réparer l’encodage du texte
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = En-tête du panneau des dossiers
     .accesskey = E
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = En-tête de la liste de messages
     .accesskey = E
@@ -135,9 +108,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Barre d’espaces
     .accesskey = e
-
-## File
-
 file-new-email-account =
     .label = Compte de messagerie…
     .accesskey = C

@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- Window title -->
-
 <!ENTITY windowTitle.label "ألوان وخلفية الصفحة">
 <!ENTITY pageColors.label "ألوان الصفحة">
 <!ENTITY defaultColorsRadio.label "ألوان القارئ المبدئية (لا تحدد ألوان في الصفحة)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "استخدم ألوان مخصصة:">
 <!ENTITY customColorsRadio.accessKey "ل">
 <!ENTITY customColorsRadio.tooltip "إعدادات الألوان هذه تتجاوز إعدادات منصفّح المُشاهد">
-
 <!ENTITY normalText.label "نص عادي">
 <!ENTITY normalText.accessKey "ص">
 <!ENTITY linkText.label "نص الرابط">

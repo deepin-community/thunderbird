@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Чытаць і змяняць закладкі
 webext-perms-description-browserSettings = Прагляд і рэдагаванне налад браўзера
 webext-perms-description-browsingData = Выдаленне нядаўняй гісторыі аглядання, кукаў і звязаных з імі дадзеных
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Доступ да нядаўна закры�
 webext-perms-description-tabs = Доступ да картак браўзера
 webext-perms-description-tabHide = Хаванне і паказ картак браўзера
 webext-perms-description-topSites = Доступ да гісторыі аглядання
+webext-perms-description-trialML = Сцягваць і запускаць мадэлі ШІ на вашай прыладзе
+webext-perms-description-userScripts = Дазволіць неправераным староннім скрыптам доступ да вашых дадзеных
 webext-perms-description-webNavigation = Доступ да дзеянняў браўзера ў час навігацыі
+webext-perms-extra-warning-userScripts-long = Неправераныя скрыпты могуць пагражаць бяспецы і прыватнасці, напрыклад, запускаць шкодны код або асочваць дзейнасць сайта. Запускайце скрыпты толькі з пашырэнняў ці крыніц, якім вы давяраеце.
+webext-perms-extra-warning-userScripts-short = Неправераныя скрыпты могуць пагражаць бяспецы і прыватнасці. Запускайце скрыпты толькі з пашырэнняў ці крыніц, якім давяраеце.

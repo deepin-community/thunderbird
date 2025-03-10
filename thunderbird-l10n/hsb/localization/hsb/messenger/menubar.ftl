@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menijowa lajsta
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Nastajenja
     .accesskey = N
 menu-addons-and-themes =
     .label = Přidatki a drasty
     .accesskey = P
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Eksport za mobilny grat…
+    .accesskey = E
 menu-help-help-title =
     .label = Pomoc
     .accesskey = P
 menu-help-get-help =
     .label = Pomoc wobstarać
     .accesskey = c
-menu-help-explore-features =
-    .label = Funkcije wuslědźić
-    .accesskey = F
 menu-help-get-release-help =
     .label = Pomoc za { -brand-short-name } dóstać
     .accesskey = P
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Wo { -brand-short-name }
     .accesskey = o
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] k
            *[other] S
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } skónčić
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] { -brand-full-name } skónčić
            *[other] { -brand-full-name } skónčić
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = s
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Čapor
     .tooltiptext = Wubrane powěsće jako čapor markěrować
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Wobnowić
     .tooltiptext = Wubrane powěsće wobnowić
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Tekstowe kodowanje reparować
     .accesskey = d
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Hłowa wobłuka rjadowaka
     .accesskey = H
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Hłowa powěsćoweje lisćiny
     .accesskey = H
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Lajsta dźělnych programow
     .accesskey = d
-
-## File
-
 file-new-email-account =
     .label = E-mejlowe konto…
     .accesskey = E

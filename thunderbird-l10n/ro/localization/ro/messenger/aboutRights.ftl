@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Despre drepturile tale
 rights-intro = { -brand-full-name } este un program liber și cu sursă deschisă, construit de o comunitate de mii de oameni din lumea întreagă. Există câteva lucruri bine pe care ar trebui să le știi:
 rights-intro-point-1 = { -brand-short-name } este disponibil sub termenii <a data-l10n-name="mozilla-public-license-link">Licenței publice Mozilla</a>. Acest lucru înseamnă că poți folosi, copia și distribui { -brand-short-name }. De asemenea, ești binevenit(ă) să modifici cum dorești codul sursă { -brand-short-name } pentru a răspunde nevoilor tale. Licența publică Mozilla îți oferă și dreptul de a distribui versiunile pe care le-ai modificat.

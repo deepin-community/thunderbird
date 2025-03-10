@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Bwlch Hyblyg
 search-bar-label = Chwilio
 toolbar-write-message-label = Ysgrifennu
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Mewnforio
 toolbar-import-contacts =
     .title = Mewnforio cysylltiadau o ffeil
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Ychwanegu Llyfr Cyfeiriadau Lleol
 toolbar-new-address-book-popup-add-carddav-address-book =

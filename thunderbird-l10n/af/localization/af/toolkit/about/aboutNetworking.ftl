@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-http = HTTP
 about-networking-sockets = Sokke
 about-networking-dns = DNS
@@ -26,9 +22,3 @@ about-networking-bytes-received = Grepe ontvang
 about-networking-dns-lookup = DNS-navraag
 about-networking-dns-domain = Domein:
 about-networking-dns-lookup-table-column = IP-adresse
-
-## Link is intended as "network link"
-
-
-##
-

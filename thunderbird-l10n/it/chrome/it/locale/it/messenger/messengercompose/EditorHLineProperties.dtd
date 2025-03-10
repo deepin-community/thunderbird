@@ -1,10 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-
 <!ENTITY windowTitle.label "Proprietà separatore orizzontale">
-
 <!ENTITY dimensionsBox.label "Dimensioni">
 <!ENTITY heightEditField.label "Altezza:">
 <!ENTITY heightEditField.accessKey "A">
@@ -18,7 +12,6 @@
 <!ENTITY centerRadio.accessKey "C">
 <!ENTITY rightRadio.label "Destra">
 <!ENTITY rightRadio.accessKey "D">
-
 <!ENTITY threeDShading.label "In rilievo">
 <!ENTITY threeDShading.accessKey "I">
 <!ENTITY saveSettings.label "Salva impostazioni">

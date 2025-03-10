@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Informácie o URL Classifieri
 url-classifier-search-title = Hľadať
 url-classifier-search-result-title = Výsledky
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Moduly protokolu pre službu Safe Browsing
 url-classifier-debug-modules = Aktuálne moduly protokolu
 url-classifier-debug-sbjs-modules = Protokol JS pre službu Safe Browsing
 url-classifier-debug-file = Aktuálny súbor protokolu
-
 url-classifier-trigger-update = Spustiť aktualizáciu
 url-classifier-not-available = N/A
 url-classifier-disable-sbjs-log = Zakázať denník JS služby Safe Browsing
@@ -50,9 +45,5 @@ url-classifier-disabled = Zakázané
 url-classifier-updating = aktualizuje sa
 url-classifier-cannot-update = aktualizácia nie je možná
 url-classifier-success = úspech
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = chyba pri aktualizácii ({ $error })
 url-classifier-download-error = chyba pri sťahovaní ({ $error })

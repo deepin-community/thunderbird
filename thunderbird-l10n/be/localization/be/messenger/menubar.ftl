@@ -1,22 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Панэль меню
     .accesskey = П
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Налады
     .accesskey = Н
 menu-addons-and-themes =
     .label = Дадаткі і тэмы
     .accesskey = Д
-
-## Help Menu
-
 menu-help-help-title =
     .label = Даведка
     .accesskey = Д
@@ -29,9 +19,6 @@ menu-help-exit-troubleshoot-mode =
 menu-help-about-product =
     .label = Пра { -brand-short-name }
     .accesskey = П
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Спам
     .tooltiptext = Пазначыць выбраныя паведамленні як спам
@@ -42,20 +29,14 @@ toolbar-delete-button =
     .label = Выдаліць
     .tooltiptext = Выдаліць абраныя лісты ці тэчкі
 toolbar-undelete-button =
-    .label = Адмяніць выдаленне
-    .tooltiptext = Адмяніць выдаленне вылучаных лістоў
-
-## View
-
+    .label = Аднавіць
+    .tooltiptext = Аднавіць выбраныя паведамленні
 menu-view-repair-text-encoding =
     .label = Выправіць кадаванне тэксту
     .accesskey = В
-
-## View / Folders
-
-
-## View / Layout
-
+menu-view-folders-toggle-header =
+    .label = Загаловак панэлі папак
+    .accesskey = З
 menu-view-toggle-thread-pane-header =
     .label = Загаловак спіса паведамленняў
     .accesskey = З
@@ -83,9 +64,6 @@ mail-uidensity-default =
 mail-uidensity-relaxed =
     .label = Вольная
     .accesskey = В
-
-## File
-
 file-new-email-account =
     .label = Уліковы запіс электроннай пошты…
     .accesskey = э

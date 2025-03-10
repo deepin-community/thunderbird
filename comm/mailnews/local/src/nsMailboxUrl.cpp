@@ -30,6 +30,8 @@
 #include "nsMsgUtils.h"
 #include "mozilla/Components.h"
 
+#include "nsIMsgAccountManager.h"
+
 // helper function for parsing the search field of a url
 char* extractAttributeValue(const char* searchString,
                             const char* attributeName);
@@ -203,29 +205,64 @@ NS_IMETHODIMP nsMailboxUrl::GetUri(nsACString& aURI) {
   return NS_OK;
 }
 
-nsresult nsMailboxUrl::GetMsgHdrForKey(nsMsgKey msgKey, nsIMsgDBHdr** aMsgHdr) {
-  nsresult rv = NS_OK;
-  if (aMsgHdr && m_filePath) {
-    nsCOMPtr<nsIMsgDatabase> mailDBFactory;
-    nsCOMPtr<nsIMsgDatabase> mailDB;
-    nsCOMPtr<nsIMsgDBService> msgDBService =
-        do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
+nsresult nsMailboxUrl::GetMsgHdrForKey(nsMsgKey msgKey, nsIMsgDBHdr** msgHdr) {
+  NS_ENSURE_ARG_POINTER(msgHdr);
+  NS_ENSURE_TRUE(m_filePath, NS_ERROR_NULL_POINTER);
 
-    if (msgDBService) {
-      rv = msgDBService->OpenMailDBFromFile(m_filePath, nullptr, false, false,
-                                            getter_AddRefs(mailDB));
-    }
-    if (NS_SUCCEEDED(rv) && mailDB) {
-      // Did we get a db back?
-      rv = mailDB->GetMsgHdrForKey(msgKey, aMsgHdr);
-    } else {
-      rv = NS_OK;
-    }
-  } else {
-    rv = NS_ERROR_NULL_POINTER;
+  if (msgKey == 0) {
+    // This appears to be an .eml file. Just return without error instead of
+    // looping through all folders unsuccessfully looking for a database with
+    // a matching file path, with potentially huge performance implications.
+    return NS_OK;
   }
 
-  return rv;
+  nsresult rv;
+  nsCOMPtr<nsIMsgDatabase> mailDB;
+  nsCOMPtr<nsIMsgDBService> msgDBService =
+      do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
+  if (msgDBService) {
+    rv = msgDBService->CachedDBForFilePath(m_filePath, getter_AddRefs(mailDB));
+  }
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  nsCOMPtr<nsIMsgFolder> mailDBFolder = nullptr;
+  if (mailDB) {
+    mailDB->GetFolder(getter_AddRefs(mailDBFolder));
+  }
+
+  if (!mailDB || !mailDBFolder) {
+    // If the database hasn't been opened before with its actual
+    // nsIMsgFolder, we need to look it up, otherwise
+    // nsMsgDatabase::GetMsgHdrForKey won't work.
+    nsCOMPtr<nsIMsgAccountManager> accountMgr =
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    nsTArray<RefPtr<nsIMsgFolder>> allFolders;
+    rv = accountMgr->GetAllFolders(allFolders);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    for (const auto& folder : allFolders) {
+      nsCOMPtr<nsIFile> folderPath;
+      rv = folder->GetFilePath(getter_AddRefs(folderPath));
+      if (NS_FAILED(rv)) {
+        continue;
+      }
+      bool matchFound = false;
+      rv = folderPath->Equals(m_filePath, &matchFound);
+      if (NS_SUCCEEDED(rv) && matchFound) {
+        rv = msgDBService->OpenFolderDB(folder, true, getter_AddRefs(mailDB));
+        NS_ENSURE_SUCCESS(rv, rv);
+        break;
+      }
+    }
+  }
+
+  if (mailDB) {
+    return mailDB->GetMsgHdrForKey(msgKey, msgHdr);
+  }
+
+  return NS_ERROR_UNEXPECTED;
 }
 
 NS_IMETHODIMP nsMailboxUrl::GetMessageHeader(nsIMsgDBHdr** aMsgHdr) {

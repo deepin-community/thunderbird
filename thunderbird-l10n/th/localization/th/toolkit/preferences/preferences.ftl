@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ไม่ได้ตั้ง)
 failed-pp-change = ไม่สามารถเปลี่ยนรหัสผ่านหลักได้
@@ -21,7 +17,6 @@ set-password-new-password = ป้อนรหัสผ่านใหม่:
 set-password-reenter-password = ป้อนรหัสผ่านใหม่อีกครั้ง:
 set-password-meter = มาตรวัดคุณภาพรหัสผ่าน
 set-password-meter-loading = กำลังโหลด
-primary-password-admin = ผู้ดูแลระบบของคุณต้องการให้คุณตั้งรหัสผ่านหลักเพื่อบันทึกการเข้าสู่ระบบและรหัสผ่าน
 primary-password-required-by-policy = องค์กรของคุณต้องการให้คุณตั้งรหัสผ่านหลักเพื่อบันทึกการเข้าสู่ระบบและรหัสผ่าน
 primary-password-description = รหัสผ่านหลักใช้ปกป้องข้อมูลที่อ่อนไหว เช่น การเข้าสู่ระบบ และรหัสผ่าน บนอุปกรณ์นี้ หากคุณสร้างรหัสผ่านหลัก คุณจะต้องใส่รหัสผ่านหนึ่งครั้งต่อหนึ่งวาระเมื่อ { -brand-short-name } ดึงข้อมูลที่บันทึกไว้ซึ่งได้รับการปกป้องโดยรหัสผ่าน
 primary-password-warning = โปรดตรวจสอบให้แน่ใจว่าคุณจำรหัสผ่านหลักที่คุณตั้งได้ หากคุณลืมรหัสผ่านหลัก คุณจะไม่สามารถเข้าถึงข้อมูลใด ๆ ที่ปัองกันไว้บนอุปกรณ์นี้

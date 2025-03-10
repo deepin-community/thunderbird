@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sinhronizacija
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Odjava …
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nov račun
 appmenu-new-account-panel =
     .label = Nov račun
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Pridobite nov naslov
-    .accesskey = b
-appmenu-new-mail-account =
-    .label = Obstoječ e-poštni naslov
-    .accesskey = O
 appmenu-new-email-account =
     .label = E-pošta
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Novičarska skupina
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nov imenik
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Imenik LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Ustvari
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Stik
     .accesskey = k
-
-## Open
-
 appmenu-open-file-panel =
     .label = Odpri iz datoteke
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Koledar …
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Pogled
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Povečaj velikost pisave
 appmenuitem-font-size-reduce =
     .tooltiptext = Zmanjšajte velikost pisave
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } pik
     .tooltiptext = Ponastavi velikost pisave
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Orodja
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Izvozi
     .accesskey = I
+appmenu-export-for-mobile =
+    .label = Izvozi za mobilno napravo
+    .accesskey = z
 appmenu-tools-message-search =
     .label = Išči po sporočilih
     .accesskey = š
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Orodja za razvijalce
     .accesskey = z
-
-## Help
-
 appmenu-help-panel-title =
     .title = Pomoč
 appmenu-help-get-help =
     .label = Poiščite pomoč
     .accesskey = P
-appmenu-help-explore-features =
-    .label = Raziščite možnosti
-    .accesskey = š
 appmenu-help-get-release-help =
     .label = Pomoč za { -brand-short-name }
     .accesskey = P
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = O { -brand-short-name(sklon: "mestnik") }
     .accesskey = O
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Prenašanje posodobitve za { -brand-shorter-name(sklon: "tozilnik") }
 appmenuitem-banner-update-available =

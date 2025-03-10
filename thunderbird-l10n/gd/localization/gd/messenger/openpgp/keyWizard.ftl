@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Cuir iuchair phearsanta OpenPGP ris airson { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Air adhart
-    .buttonlabelhelp = Air ais
 key-wizard-dialog =
     .buttonlabelaccept = Air adhart
     .buttonlabelextra1 = Air ais
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Cleachd an iuchair on taobh a-muigh agad slighe GnuPG (m.e. o chairt thapaidh)
     .accesskey = u
-
-## Generate key section
-
 openpgp-generate-key-title = Gin iuchair OpenPGP
 openpgp-keygen-secret-protection = Dìon nan iuchraichean rùin
 radio-keygen-no-protection =
@@ -76,20 +65,14 @@ openpgp-keygen-short-expiry = Feumaidh an iuchair a bhith dligheach co-dhiù lat
 openpgp-keygen-ongoing = Tha an iuchair ga gintinn mu thràth!
 openpgp-keygen-error-core = Chan urrainn dhuinn OpenPGP Core Service a chur gu dol
 openpgp-keygen-error-failed = Dh’fhàillig gintinn na h-iuchrach OpenPGP gu h-obann
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = Chaidh an iuchair OpenPGP a chruthachadh ach cha b’ urrainn dhuinn an iuchair { $key } a ghairm air ais
 openpgp-keygen-abort-title = A bheil thu airson sgur de ghintinn na h-iuchrach?
 openpgp-keygen-abort = Tha an iuchair OpenPGP ga gintinn, a bheil thu cinnteach gu bheil thu airson sgur dheth?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = A bheil thu airson iuchair rùin is phoblach a ghintinn airson { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Ion-phortaich iuchair OpenPGP phearsanta làithreach
 openpgp-import-key-legend = Tagh faidhle a rinn thu lethbhreac dheth roimhe.
 openpgp-import-key-description = ’S urrainn dhut iuchraichean pearsanta a chaidh a chruthachadh le bathar-bog OpenPGP eile ion-phortadh.
 openpgp-import-key-info = Dh’fhaoidte gum bi ainmean eile air iuchair phearsanta aig bathar-bog eile, can “an iuchair agad fhèin”. “iuchair rùin”, “iuchair phrìobhaideach” no “paidhir iuchraichean”.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] Lorg { -brand-short-name } { $count } iuchair as urrainn dhut ion-phortadh.
@@ -102,8 +85,6 @@ openpgp-import-key-list-caption = Ma chuir thu comharra ri iuchraichean gun tèi
 openpgp-import-keep-passphrases =
     .label = Cùm an dìon le abairtean-faire airson iuchraichean rùin a chaidh ion-phortadh
 openpgp-passphrase-prompt-title = Tha feum air abairt-fhaire
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Cuir a-steach an abairt-fhaire airson a’ ghlas a thoirt far na h-iuchrach a leanas: { $key }
 openpgp-import-key-button =
     .label = Tagh faidhle airson ion-phortadh…
     .accesskey = s
@@ -112,9 +93,7 @@ import-key-personal-checkbox =
     .label = Làimhsich seo mar iuchair phearsanta
 gnupg-file = Faidhlichean GnuPG
 import-error-file-size = <b>Mearachd!</b> Chan eil taic ri faidhlichean a tha nas motha na 5MB.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Mearachd!</b> Cha b’ urrainn dhuinn am faidhle ion-phortadh. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Mearachd!</b> Cha b’ urrainn dhuinn na h-iuchraichean ion-phortadh. { $error }
 openpgp-import-identity-label = Dearbh-aithne
 openpgp-import-fingerprint-label = Lorg-meòir
@@ -123,9 +102,6 @@ openpgp-import-bits-label = Biodan
 openpgp-import-key-props =
     .label = Roghainnean na h-iuchrach
     .accesskey = R
-
-## External Key section
-
 openpgp-external-key-title = Iuchair GnuPG air an taobh a-muigh
 openpgp-external-key-description = Rèitich iuchair GnuPG air an taobh a-muigh le bhith a’ cur a-steach ID na h-iuchrach
 openpgp-external-key-info = A bharrachd air sin, feumaidh tu manaidsear nan iuchaireach a chleachdadh airson an iuchair phoblach cho-cheangailte ion-phortadh is gabhail ris.

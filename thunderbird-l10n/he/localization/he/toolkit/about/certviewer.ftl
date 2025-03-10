@@ -1,23 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = אישור אבטחה
-
-## Error messages
-
 certificate-viewer-error-message = לא הצלחנו למצוא את פרטי אישור האבטחה, או שהאישור פגום. נא לנסות שוב.
 certificate-viewer-error-title = משהו השתבש.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = אלגוריתם
 certificate-viewer-certificate-authority = רשות אישורים
 certificate-viewer-cipher-suite = ערכת צפנים
 certificate-viewer-common-name = שם נפוץ
 certificate-viewer-email-address = כתובת דוא״ל
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = אישור אבטחה עבור { $firstCertName }
 certificate-viewer-country = מדינה
 certificate-viewer-distribution-point = נקודת הפצה
@@ -42,7 +30,6 @@ certificate-viewer-public-value = ערך ציבורי
 certificate-viewer-purposes = מטרות
 certificate-viewer-required = נדרש
 certificate-viewer-unsupported = &lt;לא נתמך&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = מדינה/מחוז הארגון
 certificate-viewer-state-province = מדינה/מחוז
 certificate-viewer-sha-1 = SHA-1
@@ -60,40 +47,21 @@ certificate-viewer-miscellaneous = שונות
 certificate-viewer-fingerprints = טביעות אצבע
 certificate-viewer-certificate-policies = מדיניות של אישור
 certificate-viewer-crl-endpoints = נקודות קצה של CRL
-
-# This message is used as a row header in the Miscellaneous section.
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = הורדה
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] כן
        *[false] לא
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (cert)
     .download = ‎{ $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (chain)
     .download = ‎{ $fileName }-chain.pem
-
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = הרחבה זו סומנה כקריטית, כלומר לקוחות חייבים לדחות את האישור אם הם לא מבינים אותו.
 certificate-viewer-export = ייצוא
     .download = { $fileName }.pem
-
-##
-
-# Label for a tab where we haven't found a better label:
 certificate-viewer-unknown-group-label = (לא ידוע)
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = האישורים שלך
 certificate-viewer-tab-people = אנשים
 certificate-viewer-tab-servers = שרתים

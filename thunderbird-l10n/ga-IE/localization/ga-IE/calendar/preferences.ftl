@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Féilire
 calendar-title-reminder = Meabhrúcháin
 calendar-title-notification = Fógraí
@@ -9,10 +5,8 @@ calendar-title-category = Catagóirí
 dateformat-label =
     .value = Formáid Téacs do Dhátaí:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Fada: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Gearr: { $date }
 use-system-timezone-radio-button =
@@ -132,10 +126,6 @@ task-due-label =
 edit-intab-label =
     .label = Cuir imeachtaí agus tascanna in eagar i gcluaisín seachas i bhfuinneog.
     .accesskey = t
-accessibility-legend = Inrochtaineacht
-accessibility-colors-label =
-    .label = Roghnaigh na dathanna is fearr ó thaobh inrochtaineachta
-    .accesskey = d
 reminder-legend = Nuair a bhíonn meabhrúchán réidh:
 reminder-play-checkbox =
     .label = Seinn fuaim

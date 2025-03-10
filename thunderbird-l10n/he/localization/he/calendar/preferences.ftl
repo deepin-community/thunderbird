@@ -1,17 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = לוח שנה
 calendar-title-reminder = תזכורות
 calendar-title-category = קטגוריות
 dateformat-label =
     .value = מבנה תאריך:
     .accesskey = ת
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = ארוך: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = קצר: { $date }
 use-system-timezone-radio-button =

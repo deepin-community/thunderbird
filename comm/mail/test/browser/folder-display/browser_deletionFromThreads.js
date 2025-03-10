@@ -30,8 +30,6 @@ var {
   "resource://testing-common/mail/FolderDisplayHelpers.sys.mjs"
 );
 
-const onHdrDeletedTimeout = 500;
-
 var singleFolder, folderA, folderB, multiFolder;
 var tab1, tab2;
 var about3Pane;
@@ -54,20 +52,26 @@ add_setup(async function () {
   tab2 = await open_folder_in_new_tab(singleFolder);
 
   about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+
+  registerCleanupFunction(() => {
+    multiFolder.deleteSelf(null);
+    singleFolder.deleteSelf(null);
+    folderA.deleteSelf(null);
+    folderB.deleteSelf(null);
+  });
 });
 
 const assertReplyCount = async replyCount => {
   await switch_tab();
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve =>
-    about3Pane.setTimeout(resolve, onHdrDeletedTimeout)
-  );
-  Assert.equal(
-    about3Pane.threadTree.getElementsByClassName("thread-replies")[0]
-      .textContent,
-    `${replyCount} replies`,
+  await new Promise(resolve => about3Pane.requestAnimationFrame(resolve));
+
+  const replies = about3Pane.threadTree.querySelector(".thread-replies");
+  Assert.deepEqual(
+    about3Pane.document.l10n.getAttributes(replies),
+    { id: "threadpane-replies", args: { count: replyCount } },
     "Thread header in background tab should show the correct message count."
   );
+
   await switch_tab();
 };
 
@@ -141,16 +145,20 @@ add_task(async function delete_from_expanded_xfthread() {
 
 const assertMessagesCount = async (unreadCount, messagesCount) => {
   await switch_tab();
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve =>
-    about3Pane.setTimeout(resolve, onHdrDeletedTimeout)
-  );
-  Assert.equal(
-    about3Pane.threadTree.getElementsByClassName("sort-header-details")[0]
-      .textContent,
-    `${unreadCount} unread of ${messagesCount} messages`,
+  await new Promise(resolve => about3Pane.requestAnimationFrame(resolve));
+  const count = about3Pane.threadTree.querySelector(".sort-header-details");
+  Assert.deepEqual(
+    about3Pane.document.l10n.getAttributes(count),
+    {
+      id: "threadpane-sort-header-unread-count",
+      args: {
+        unread: unreadCount,
+        total: messagesCount,
+      },
+    },
     "Group header in background tab should show the correct message count."
   );
+
   await switch_tab();
 };
 

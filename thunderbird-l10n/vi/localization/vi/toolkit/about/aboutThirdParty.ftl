@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Thông tin module của bên thứ ba
 third-party-section-title = Danh sách các moudle của bên thứ ba trong { -brand-short-name }
 third-party-intro =
@@ -21,8 +17,8 @@ third-party-detail-publisher = Nhà phát hành
 third-party-th-process = Tiến trình
 third-party-th-duration = Thời lượng tải (mili giây)
 third-party-th-status = Trạng thái
-third-party-tag-ime = IME
-    .title = Loại module này được tải khi bạn sử dụng IME của bên thứ ba.
+third-party-tag-ime = Bộ gõ
+    .title = Loại mô đun này được tải khi bạn sử dụng bộ gõ của bên thứ ba.
 third-party-tag-shellex = Phần mở rộng Shell
     .title = Loại module này được tải khi bạn mở hộp thoại tập tin hệ thống.
 third-party-tag-background = Nền
@@ -46,19 +42,6 @@ third-party-button-reload = Tải lại với thông tin hệ thống
     .title = Tải lại với thông tin hệ thống
 third-party-button-open =
     .title = Mở vị trí tập tin…
-third-party-button-to-block =
-    .title = Chặn module này
-    .aria-label = Chặn module này
-third-party-button-to-unblock =
-    .title = Hiện đang bị chặn. Nhấp để bỏ chặn nó.
-    .aria-label = Hiện đang bị chặn. Nhấp để bỏ chặn nó.
-third-party-button-to-unblock-disabled =
-    .title =
-        Hiện được đánh dấu là bị chặn, mặc dù danh sách chặn bị vô hiệu hóa cho lần chạy này
-        của { -brand-short-name }. Nhấp để bỏ chặn nó.
-    .aria-label =
-        Hiện được đánh dấu là bị chặn, mặc dù danh sách chặn bị vô hiệu hóa cho lần chạy này
-        của { -brand-short-name }. Nhấp để bỏ chặn nó.
 third-party-button-to-block-module = Chặn module này
     .title = Chặn module này
     .aria-label = Chặn module này

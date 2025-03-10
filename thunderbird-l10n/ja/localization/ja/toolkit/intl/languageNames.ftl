@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-## 表記は Wikipedia を基準とする。地域や部族と関連がない人工言語には「語」を付けない。
-
 language-name-aa = アファル語
 language-name-ab = アブハジア語
 language-name-ach = アチョリ語

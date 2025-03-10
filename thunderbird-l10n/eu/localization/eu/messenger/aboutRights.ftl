@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Zure eskubideei buruz
 rights-intro = { -brand-full-name } kode irekiko software librea da, mundu osoko milaka pertsonek osatutako komunitate batek eraikia. Badira jakin beharko zenituzkeen gauza batzuk:
 rights-intro-point-1 = { -brand-short-name } zure eskura dago <a data-l10n-name="mozilla-public-license-link">Mozilla Public License</a> lizentziaren baldintzapean. Honek esan nahi du, { -brand-short-name } erabili, kopiatu eta besteei bana diezaiokezula. Era berean, { -brand-short-name }(r)en iturburu-kodea alda dezakezu zure beharrizanetara moldatzeko. Egindako aldaketak banatzeko eskubidea ematen dizu Mozilla Public License-k.

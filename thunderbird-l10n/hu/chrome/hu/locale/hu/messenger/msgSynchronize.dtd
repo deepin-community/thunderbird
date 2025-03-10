@@ -1,13 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- extracted from MsgSynchronize.xul and msgSelectOffline.xul-->
-
-
-<!-- extracted from MsgSynchronize.xul and msgSelectOfflineFolders.xul-->
-
-<!-- extracted from MsgSynchronize.xhtml and msgSelectOfflineFolders.xhtml-->
-
 <!ENTITY MsgSynchronize.label "Az üzenetek letöltése és szinkronizálása">
 <!ENTITY MsgSelect.label "Elemek kiválasztása kapcsolat nélküli munkához">
 <!ENTITY MsgSyncDesc.label "Ha már kiválasztotta a levelezőmappákat vagy a hírcsoportokat a kapcsolat nélküli munkához, akkor ezeket most letöltheti és/vagy szinkronizálhatja. Egyébként nyomja meg a „Kijelölés” gombot a levelezőmappák és hírcsoportok kijelöléséhez.">

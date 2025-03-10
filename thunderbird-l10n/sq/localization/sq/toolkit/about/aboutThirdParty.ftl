@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Hollësi Moduli Palësh të Treta
 third-party-section-title = Listë modulesh palësh të treta në { -brand-short-name }
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = Ringarkoje me hollësi sistemi
     .title = Ringarkoje me hollësi sistemi
 third-party-button-open =
     .title = Hapni vendndodhje kartele…
-third-party-button-to-block =
-    .title = Bllokoje këtë modul
-    .aria-label = Bllokoje këtë modul
-third-party-button-to-unblock =
-    .title = Aktualisht i bllokuar. Klikoni që të zhbllokohet.
-    .aria-label = Aktualisht i bllokuar. Klikoni që të zhbllokohet.
-third-party-button-to-unblock-disabled =
-    .title =
-        Aktualisht me shenjë si i bllokuar, edhe pse, për këtë xhirim të { -brand-short-name }-it,
-        lista e bllokimeve është e çaktivizuar. Klikoni që të zhbllokohet.
-    .aria-label =
-        Aktualisht me shenjë si i bllokuar, edhe pse, për këtë xhirim të { -brand-short-name }-it,
-        lista e bllokimeve është e çaktivizuar. Klikoni që të zhbllokohet.
 third-party-button-to-block-module = Bllokoje këtë modul
     .title = Bllokoje këtë modul
     .aria-label = Bllokoje këtë modul

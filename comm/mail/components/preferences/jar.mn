@@ -15,6 +15,8 @@ messenger.jar:
 #ifdef NIGHTLY_BUILD
     content/messenger/preferences/sync.js
 #endif
+    content/messenger/preferences/appearance.mjs
+    content/messenger/preferences/qrExport.mjs
     content/messenger/preferences/messagestyle.js
     content/messenger/preferences/messengerLanguages.js
     content/messenger/preferences/messengerLanguages.xhtml
@@ -32,7 +34,6 @@ messenger.jar:
     content/messenger/preferences/attachmentReminder.xhtml
     content/messenger/preferences/applicationManager.xhtml
     content/messenger/preferences/applicationManager.js
-    content/messenger/preferences/actionsshared.js
     content/messenger/preferences/findInPage.js
     content/messenger/preferences/fonts.js
     content/messenger/preferences/fonts.xhtml
@@ -52,3 +53,4 @@ messenger.jar:
     content/messenger/preferences/syncDialog.js
     content/messenger/preferences/syncDialog.xhtml
 #endif
+    content/messenger/preferences/qr-code-wizard.mjs

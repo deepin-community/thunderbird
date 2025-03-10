@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 archive-options-title = Opsi Pengarsipan
 archive-granularity-prefix-label = Saat mengarsipkan pesan, letakkan di:
 archive-flat =
@@ -16,10 +12,13 @@ archive-monthly =
 keep-folder-structure =
     .label = Gunakan struktur folder yang ada untuk pesan yang diarsipkan
     .accesskey = k
+recreate-inbox =
+    .label = Buat ulang folder kotak masuk
+    .accesskey = r
 archive-example-label = Contoh
-# This should match the default name for the "Archives" folder.
 archive-folder-name =
     .label = Arsip
-# This should match the default name for the "Inbox" folder.
 inbox-folder-name =
     .label = Kotak Masuk
+child-folder-name =
+    .label = Sub Folder Kotak Masuk

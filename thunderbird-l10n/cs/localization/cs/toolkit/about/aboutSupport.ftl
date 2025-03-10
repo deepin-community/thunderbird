@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Technické informace
 page-subtitle =
     { -brand-short-name.case-status ->
@@ -52,21 +48,15 @@ app-basics-version = Verze
 app-basics-build-id = ID sestavení
 app-basics-distribution-id = ID distribuce
 app-basics-update-channel = Kanál aktualizací
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir = Složka pro aktualizace
 app-basics-update-history = Historie aktualizací
 app-basics-show-update-history = Zobrazit historii aktualizací
-# Represents the path to the binary used to start the application.
 app-basics-binary = Binární soubor aplikace
 app-basics-profile-dir = Složka s profilem
-app-basics-enabled-plugins = Povolené zásuvné moduly
 app-basics-build-config = Nastavení sestavení
 app-basics-user-agent = User agent
 app-basics-os = OS
 app-basics-os-theme = Vzhled systému
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Přeloženo pro Apple pomocí Rosetta
 app-basics-memory-use = Spotřeba paměti
 app-basics-performance = Výkon
@@ -85,9 +75,6 @@ app-basics-safe-mode = Nouzový režim
 app-basics-memory-size = Velikost paměti (RAM)
 app-basics-disk-available = Dostupné místo na disku
 app-basics-pointing-devices = Polohovací zařízení
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -122,9 +109,7 @@ graphics-decision-log-title = Protokol rozhodování
 graphics-crash-guards-title = Zakázat funkce Crash Guard
 graphics-workarounds-title = Možná řešení
 graphics-device-pixel-ratios = Poměr pixelů zařízení okna
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protokol zobrazování oken
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Desktopové prostředí
 place-database-title = Databáze Places
 place-database-stats = Statistiky
@@ -166,9 +151,6 @@ startup-cache-dialog-title2 =
     }
 startup-cache-dialog-body2 = Vaše nastavení i nainstalována rozšíření nebudou nijak ovlivněna.
 restart-button-label = Restartovat
-
-## Media titles
-
 audio-backend = Audio Backend
 max-audio-channels = Maximální počet kanálů
 sample-rate = Preferovaná vzorkovací frekvence
@@ -187,11 +169,7 @@ media-device-rate = Vzorkování
 media-device-latency = Prodleva
 media-capabilities-title = Podpora médií
 media-codec-support-info = Informace o podpoře kodeků
-# List all the entries of the database.
 media-capabilities-enumerate = Vypsat databázi
-
-## Codec support table
-
 media-codec-support-sw-decoding = Softwarové dekódování
 media-codec-support-hw-decoding = Hardwarové dekódování
 media-codec-support-codec-name = Název kodeku
@@ -199,26 +177,13 @@ media-codec-support-supported = Podporované
 media-codec-support-unsupported = Nepodporováné
 media-codec-support-error = Informace o podpoře kodeků není k dispozici. Zkuste to znovu po přehrání mediálního souboru.
 media-codec-support-lack-of-extension = Nainstalovat rozšíření
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Informace o modulech pro dešifrování obsahu
 media-key-system-name = Název systémového klíče
 media-video-robustness = Odolnost videa
 media-audio-robustness = Odolnost zvuku
 media-cdm-capabilities = Schopnosti
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Nešifrovaný úvod (Clear Lead)
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Kompatibilní s HDCP 2.2
-
-##
-
 intl-title = Internacionalizace a lokalizace
 intl-app-title = Nastavení aplikace
 intl-locales-requested = Požadované jazyky
@@ -228,56 +193,33 @@ intl-locales-default = Výchozí jazyk
 intl-os-title = Operační systém
 intl-os-prefs-system-locales = Jazyky systému
 intl-regional-prefs = Předvolby regionu
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Vzdálené ladění (protokol Chromia)
 remote-debugging-accepting-connections = Přijímá spojení
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Hlášení o pádech za poslední { $days } den
         [few] Hlášení o pádech za poslední { $days } dny
        *[other] Hlášení o pádech za posledních { $days } dní
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] Před { $minutes } minutou
         [few] Před { $minutes } minutami
        *[other] Před { $minutes } minutami
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] Před { $hours } hodinou
         [few] Před { $hours } hodinami
        *[other] Před { $hours } hodinami
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] Před { $days } dnem
         [few] Před { $days } dny
        *[other] Před { $days } dny
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Všechna hlášení o pádech (zahrnující { $reports } čekající za dané časové období)
@@ -286,18 +228,11 @@ pending-reports =
     }
 raw-data-copied = Data byla zkopírována
 text-copied = Text zkopírován do schránky
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Zakázáno kvůli verzi ovladače grafické karty.
 blocked-gfx-card = Zakázáno kvůli problémům s grafickou kartou a jejím ovladačem.
 blocked-os-version = Zakázáno kvůli verzi operačního systému.
 blocked-mismatched-version = Zakázáno kvůli nesouhlasící verzi ovladačů vaší grafické karty v registrech a DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Zakázáno kvůli verzi ovladače grafické karty. Zkuste aktualizovat ovladač grafické karty na verzi { $driverVersion } nebo novější.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Technologie ClearType
 compositing = Compositing
 support-font-determination = Informace ladění viditelnosti písma
@@ -307,11 +242,6 @@ yes = Ano
 no = Ne
 unknown = Neznámý
 virtual-monitor-disp = Zobrazení virtuálního monitoru
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Nalezeno
 missing = Chybí
 gpu-process-pid = GPUProcessPid
@@ -338,11 +268,7 @@ webgl2-driver-extensions = Rozšíření ovladače WebGL 2
 webgl2-extensions = Rozšíření WebGL 2
 webgpu-default-adapter = Výchozí adaptér WebGPU
 webgpu-fallback-adapter = Záložní adaptér WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Zablokováno kvůli známým problémům: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Zablokováno; chybový kód { $failureCode }
 d3d11layers-crash-guard = D3D11 Compositor
 glcontext-crash-guard = OpenGL
@@ -362,8 +288,6 @@ has-seccomp-bpf = Seccomp-BPF (filtrování systémových volání)
 has-seccomp-tsync = Synchronizace vláken Seccomp
 has-user-namespaces = Uživatelské jmenné prostory
 has-privileged-user-namespaces = Uživatelské jmenné prostory pro privilegované procesy
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable =
     { -brand-short-name.case-status ->
         [with-cases] { $status } — Tato funkce není v systému povolena. To může omezit bezpečnostní funkce { -brand-short-name(case: "gen") }.
@@ -388,16 +312,8 @@ launcher-process-status-0 = Povoleno
 launcher-process-status-1 = Zakázáno kvůli chybě
 launcher-process-status-2 = Násilně zakázáno
 launcher-process-status-unknown = Neznámý stav
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Zakázáno experimentem
-fission-status-experiment-treatment = Povoleno experimentem
 fission-status-disabled-by-e10s-env = Zakázáno prostředím
 fission-status-enabled-by-env = Povoleno prostředím
 fission-status-disabled-by-env = Zakázáno prostředím
@@ -406,7 +322,6 @@ fission-status-disabled-by-default = Zakázáno ve výchozím nastavení
 fission-status-enabled-by-user-pref = Povoleno uživatelem
 fission-status-disabled-by-user-pref = Zakázáno uživatelem
 fission-status-disabled-by-e10s-other = Zakázáno kvůli E10S
-fission-status-enabled-by-rollout = Povoleno postupným zaváděním
 async-pan-zoom = Asynchronní lupa/panning
 apz-none = nic
 wheel-enabled = vstup kolečka povolen
@@ -415,34 +330,20 @@ drag-enabled = táhnutí posuvníkem povoleno
 keyboard-enabled = klávesnice povolena
 autoscroll-enabled = automatické posunování povoleno
 zooming-enabled = plynulé gesto pro přiblížení zapnuto
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = asynchronní vstup kolečka zakázán vzhledem k nepodporované předvolbě: { $preferenceKey }
 touch-warning = asynchronní dotykový vstup zakázán vzhledem k nepodporované předvolbě: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Neaktivní
 policies-active = Aktivní
 policies-error = Chyba
-
-## Printing section
-
 support-printing-title = Tisk
 support-printing-troubleshoot = Řešení potíží
 support-printing-clear-settings-button = Vymazat uložené nastavení tisku
 support-printing-modified-settings = Upravená nastavení tisku
 support-printing-prefs-name = Název
 support-printing-prefs-value = Hodnota
-
-## Remote Settings sections
-
 support-remote-settings-title = Vzdálené nastavení
 support-remote-settings-status = Stav
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Nefunkční
 support-remote-settings-last-check = Poslední kontrola
 support-remote-settings-local-timestamp = Místní časová značka
@@ -450,9 +351,6 @@ support-remote-settings-sync-history = Historie
 support-remote-settings-sync-history-status = Stav
 support-remote-settings-sync-history-datetime = Datum
 support-remote-settings-sync-history-infos = Informace
-
-## Normandy sections
-
 support-remote-experiments-title = Vzdálené experimenty
 support-remote-experiments-name = Název
 support-remote-experiments-branch = Větev experimentu
@@ -460,19 +358,10 @@ support-remote-experiments-see-about-studies = Podrobnosti o experimentech { -br
 support-remote-features-title = Vzdálené funkce
 support-remote-features-name = Název
 support-remote-features-status = Stav
-
-## Pointing devices
-
 pointing-device-mouse = Myš
 pointing-device-touchscreen = Dotyková obrazovka
 pointing-device-pen-digitizer = Digitální pero
 pointing-device-none = Žádná polohovací zařízení
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Analýza obsahu (DLP)
 content-analysis-active = Aktivní
 content-analysis-connected-to-agent = Připojeno k agentovi

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Kolmansien osapuolten moduulien tiedot
 third-party-section-title = Lista { -brand-short-name }issa olevista kolmansien osapuolten moduuleista
 third-party-intro =
@@ -44,12 +40,6 @@ third-party-button-reload = Lataa uudelleen järjestelmätietojen kanssa
     .title = Lataa uudelleen järjestelmätietojen kanssa
 third-party-button-open =
     .title = Avaa tiedoston sijainti…
-third-party-button-to-block =
-    .title = Estä tämä moduuli
-    .aria-label = Estä tämä moduuli
-third-party-button-to-unblock =
-    .title = Tällä hetkellä estetty. Napsauta poistaaksesi sen eston.
-    .aria-label = Tällä hetkellä estetty. Napsauta poistaaksesi sen eston.
 third-party-button-to-block-module = Estä tämä moduuli
     .title = Estä tämä moduuli
     .aria-label = Estä tämä moduuli

@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "高级账户设置">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "IMAP 服务器目录：">
 <!ENTITY serverDirectory.accesskey "d">
 <!ENTITY usingSubscription.label "仅显示已订阅的文件夹">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "f">
 <!ENTITY maximumConnectionsNumber.label "最大服务器连接缓冲数">
 <!ENTITY maximumConnectionsNumber.accesskey "M">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "此首选项指定您的 IMAP 服务器的名字空间">
 <!ENTITY personalNamespace.label "个人名字空间：">
 <!ENTITY personalNamespace.accesskey "P">

@@ -16,10 +16,10 @@
 #include "nsServiceManagerUtils.h"
 
 nsMsgXFVirtualFolderDBView::nsMsgXFVirtualFolderDBView() {
-  mSuppressMsgDisplay = false;
   m_doingSearch = false;
   m_doingQuickSearch = false;
   m_totalMessagesInView = 0;
+  m_curFolderStartKeyIndex = -1;
   m_curFolderHasCachedHits = false;
 }
 
@@ -283,8 +283,11 @@ nsMsgXFVirtualFolderDBView::OnSearchDone(nsresult status) {
 
   // Handle any non verified hits we haven't handled yet.
   if (NS_SUCCEEDED(status) && !m_doingQuickSearch &&
-      status != NS_MSG_SEARCH_INTERRUPTED)
+      status != NS_MSG_SEARCH_INTERRUPTED) {
+    if (mJSTree) mJSTree->BeginUpdateBatch();
     UpdateCacheAndViewForPrevSearchedFolders(nullptr);
+    if (mJSTree) mJSTree->EndUpdateBatch();
+  }
 
   m_doingSearch = false;
   // We want to set imap delete model once the search is over because setting

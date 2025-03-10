@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Lue ja muokkaa kirjanmerkkejä
 webext-perms-description-browserSettings = Lue ja muokkaa selaimen asetuksia
 webext-perms-description-browsingData = Tyhjennä viimeaikainen historia, evästeet ja liittyvät tiedot
@@ -30,4 +21,6 @@ webext-perms-description-sessions = Käytä viimeksi suljettuja välilehtiä
 webext-perms-description-tabs = Käytä selaimen välilehtiä
 webext-perms-description-tabHide = Piilota ja näytä selaimen välilehtiä
 webext-perms-description-topSites = Käytä selaushistoriaa
+webext-perms-description-trialML = Lataa ja suorita tekoälymalleja laitteellasi
+webext-perms-description-userScripts = Salli vahvistamattomien kolmannen osapuolen komentosarjojen pääsy tietoihisi
 webext-perms-description-webNavigation = Tarkkaile selaimen toimintaa siirryttäessä sivulta toiselle

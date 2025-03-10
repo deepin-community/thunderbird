@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP-kulcskezelő
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Aláírás ellenőrzése
     .accesskey = e
 openpgp-has-sender-key = Ez az üzenet állítja, hogy tartalmazza a feladó OpenPGP nyilvános kulcsát.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Figyelmeztetés: Az üzenetben szereplő új OpenPGP nyilvános kulcs eltér a(z) { $email } címhez előzőleg elfogadott nyilvános kulcsoktól.
 openpgp-import-sender-key =
     .label = Importálás…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Ezt az üzenetet olyan kulccsal írták alá, amellyel még nem rendelkezik.
 openpgp-search-signature-key =
     .label = Felfedezés…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Ez egy OpenPGP-vel titkosított üzenet, amely az MS-Exchange miatt megsérült, és nem javítható, mert egy helyi fájlból nyitotta meg. Másolja az üzenetet egy e-mail mappába az automatikus javítás megpróbálása érdekében.
 openpgp-broken-exchange-info = Ez egy OpenPGP üzenet, amely úgy tűnik, hogy megsérült az MS-Exchange miatt. Ha az üzenet tartalma nem a várt módon jelenik meg, akkor kipróbálhatja az automatikus javítást.
 openpgp-broken-exchange-repair =

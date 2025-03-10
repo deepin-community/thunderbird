@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = All calendars are currently disabled. Enable an existing calendar or add a new one to create and edit events.
 calendar-deactivated-notification-tasks = All calendars are currently disabled. Enable an existing calendar or add a new one to create and edit tasks.
 calendar-notifications-label = Show notifications for upcoming events
 calendar-add-notification-button =
     .label = Add notification
-
-## Side panel
-
 calendar-list-header = Calendars
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = { $calendarName } calendar has been muted
 calendar-enable-button = Enable
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = { $calendarName } calendar options
 calendar-import-new-calendar = New Calendar…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Reload all calendars and synchronise changes
 calendar-new-event-primary-button = New Event
 calendar-new-task-primary-button = New Task
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Previous Day
     .accesskey = s
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Multiweek
     .title = Switch to multiweek view
 calendar-view-toggle-month = Month
     .title = Switch to month view
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Calendar layout options
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Define workweek days
 calendar-show-tasks-calendar-option =
     .label = Show tasks in calendar
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Previous Day
     .accesskey = s

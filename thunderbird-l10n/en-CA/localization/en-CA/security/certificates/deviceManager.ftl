@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Strings used for device manager
-
 devmgr-window =
     .title = Device Manager
     .style = min-width: 67em; min-height: 32em;
@@ -35,9 +28,6 @@ devmgr-button-enable-fips =
 devmgr-button-disable-fips =
     .label = Disable FIPS
     .accesskey = F
-
-## Strings used for load device
-
 load-device =
     .title = Load PKCS#11 Device Driver
 load-device-info = Enter the information for the module you want to add.
@@ -52,9 +42,6 @@ load-device-filename =
 load-device-browse =
     .label = Browse…
     .accesskey = B
-
-## Token Manager
-
 devinfo-status =
     .label = Status
 devinfo-status-disabled =
@@ -89,10 +76,8 @@ devinfo-serialnum =
 fips-nonempty-primary-password-required = FIPS mode requires that you have a Primary Password set for each security device. Please set the password before trying to enable FIPS mode.
 unable-to-toggle-fips = Unable to change the FIPS mode for the security device. It is recommended that you exit and restart this application.
 load-pk11-module-file-picker-title = Choose a PKCS#11 device driver to load
-# Load Module Dialog
 load-module-help-empty-module-name =
     .value = The module name cannot be empty.
-# Do not translate 'Root Certs'
 load-module-help-root-certs-module-name =
     .value = “Root Certs” is reserved and cannot be used as the module name.
 add-module-failure = Unable to add module

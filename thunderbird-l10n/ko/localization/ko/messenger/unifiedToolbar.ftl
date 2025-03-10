@@ -1,40 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = 검색
-search-bar-item =
-    .label = 검색:
+search-bar-item2 =
+    .label = 검색
 search-bar-placeholder = 검색…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = 사용자 정의…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = 새 메시지 모두 받기
     .accesskey = G
-
-## Unified Toolbar customization
-
 customize-title = 도구 모음 사용자 지정
 customize-space-tab-mail = 메일
     .title = 메일
@@ -58,32 +36,25 @@ customize-button-style-text-only-option = 텍스트만
 customize-cancel = 취소
 customize-save = 저장
 customize-unsaved-changes = 다른 스페이스에 저장되지 않은 변경 사항
-customize-search-bar =
-    .label = 툴바 버튼 검색…
+customize-search-bar2 =
+    .label = 검색 도구 모음 버튼
+    .placeholder = 검색 도구 모음 버튼…
 customize-spaces-tabs =
     .aria-label = 스페이스
 customize-main-toolbar-target =
-    .aria-label = 메인 도구모음
+    .aria-label = 기본 도구 모음
 customize-palette-generic-title = 모든 스페이스에서 사용 가능
-customize-palette-mail-specific-title = 메일 스페이스에만 사용 가능
+customize-palette-mail-specific-title = 메일 공간에만 사용 가능
 customize-palette-addressbook-specific-title = 주소록 스페이스에서만 사용 가능
-customize-palette-calendar-specific-title = 캘린더 스페이스에서만 사용 가능
-customize-palette-tasks-specific-title = 작업 스페이스에서만 사용 가능
-customize-palette-chat-specific-title = 채팅 스페이스에서만 사용 가능
-customize-palette-settings-specific-title = 설정 스페이스에서만 사용 가능
-customize-palette-extension-specific-title = 이 스페이스에서만 사용 가능
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
+customize-palette-calendar-specific-title = 캘린더 공간에서만 사용 가능
+customize-palette-tasks-specific-title = 작업 공간에서만 사용 가능
+customize-palette-chat-specific-title = 채팅 공간에서만 사용 가능
+customize-palette-settings-specific-title = 설정 공간에서만 사용 가능
+customize-palette-extension-specific-title = 이 공간에서만 사용 가능
 customize-palette-add-to =
     .label = { $target }에 추가
 customize-palette-add-everywhere =
     .label = 모든 도구 모음에 추가
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = 앞으로 이동
 customize-target-backward =

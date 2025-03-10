@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Etkinlik aramayı ve etkinlik listesini kapat
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Takvim adı
     .tooltiptext = Takvim adına göre sırala
 calendar-event-listing-column-category =
     .label = Kategoriler
     .tooltiptext = Kategoriye göre sırala
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Tamamlanmış
     .tooltiptext = Tamamlanmaya göre sırala
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Başlık
     .tooltiptext = Başlığa göre sırala
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Geçmiş etkinlikler
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = 6 ay içindeki etkinlikler
 calendar-event-listing-interval-next-12-months =
     .label = 12 ay içindeki etkinlikler
+calendar-event-listing-interval-future =
+    .label = Gelecekteki tüm etkinlikler
 calendar-event-listing-interval-all =
     .label = Tüm etkinlikler
 calendar-event-listing-interval-selected-day =

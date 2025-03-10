@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Затваряне
 preferences-doc-title2 = Настройки
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Синхронизиране
 category-sync =
     .tooltiptext = Синхронизиране
+pane-qr-export-title = Изнасяне за мобилно устройство
+category-qr-export =
+    .tooltiptext = Изнасяне за мобилно устройство
 general-language-and-appearance-header = Език и външен вид
 general-incoming-mail-header = Входящи писма
 general-files-and-attachment-header = Файлове и прикачени файлове
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Разрешаване на { -brand-short-name } да изпраща технически данни и данни за взаимодействие до { -vendor-short-name }
     .accesskey = Р
 collection-health-report-link = Научете повече
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Докладването да данни е изключено за тази конфигурация на изданието
 collection-backlogged-crash-reports =
     .label = Разрешаване на { -brand-short-name } да изпраща натрупани доклади за сривове от ваше име
@@ -64,7 +61,7 @@ privacy-certificates-title = Сертификати
 chat-pane-header = Разговори
 chat-status-title = Състояние
 chat-notifications-title = Известия
-chat-pane-styling-header = Стайлинг
+chat-pane-styling-header = Оформление
 choose-messenger-language-description = Изберете езиците, използвани за показване на менюта, съобщения и известия от { -brand-short-name }.
 manage-messenger-languages-button =
     .label = Допълнителни езици…
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Рестартирайте { -brand-short-name }, за да бъдат приложени промените
 confirm-messenger-language-change-button = Прилагане и рестартиране
 update-setting-write-failure-title = Грешка при запазване на настройките за обновяване
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     Поради възникнала грешка { -brand-short-name } не запази промяната.
     
@@ -85,26 +78,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Обновяване в процес на изпълнение
 update-in-progress-message = Желаете ли { -brand-short-name } да продължи с обновяването?
 update-in-progress-ok-button = &Отхвърляне
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Продължаване
-account-button = Настройки на регистрация
+account-button = Настройки на профила
 open-addons-sidebar-button = Добавки и теми
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = За да създадете основна парола, въведете идентификационните си данни за вход в Windows. Това помага за защитата на сигурността на вашите профили.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = създаде основна парола
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -129,9 +108,7 @@ remove-search-engine =
 add-opensearch-provider-title = Добяване на OpenSearch доставчик
 add-opensearch-provider-text = Въвеждане на URL адреса на доставчика на OpenSearch. Използвайте директния URL на файла с описание на OpenSearch, или URL, където може да бъде автоматично открит.
 adding-opensearch-provider-failed-title = Неуспешно добавяне на OpenSearch доставчик
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
-adding-opensearch-provider-failed-text = Невъзможно е да се добави OpenSearch доставчик за { $url }.
+adding-opensearch-provider-failed-text = Невъзможно е да бъде добавен доставчик на OpenSearch за { $url }.
 minimize-to-tray-label =
     .label = Когато { -brand-short-name } е минимизиран, го премества в областта за известия
     .accesskey = { "" }
@@ -210,10 +187,8 @@ always-check-default =
     .label = Проверяване дали { -brand-short-name } е стандартният пощенски клиент
     .accesskey = В
 check-default-button =
-    .label = Проверка сега…
+    .label = Проверяване…
     .accesskey = е
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -231,15 +206,13 @@ return-receipts-button =
     .label = Обратни разписки…
     .accesskey = б
 update-app-legend = Обновявания на { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Издание { $version }
 allow-description = Разрешаване на { -brand-short-name } да
 automatic-updates-label =
-    .label = Автоматично инсталиране на обновявания (препоръчва се: подобрява безопасността)
+    .label = Автоматично инсталиране на обновявания (препоръчително: подобрява безопасността)
     .accesskey = А
 check-updates-label =
-    .label = Проверка за обновявания, но пита преди да ги инсталира
+    .label = Проверка за обновяване с потвърждение преди инсталиране
     .accesskey = П
 update-history-button =
     .label = История на обновяванията
@@ -247,7 +220,7 @@ update-history-button =
 use-service =
     .label = Използване на услуга във фонов режим за инсталиране на обновявания
     .accesskey = ф
-cross-user-udpate-warning = Тази настройка ще се прилага за всички профили в Windows и профили { -brand-short-name }, използващи тази инсталация на { -brand-short-name }.
+cross-user-udpate-warning = Настройката се прилага към всички профили в Windows и профилите на { -brand-short-name }, използващи тази инсталация на { -brand-short-name }.
 networking-legend = Връзка
 proxy-config-description = Настройки на { -brand-short-name } за достъп до Мрежата
 network-settings-button =
@@ -256,7 +229,7 @@ network-settings-button =
 offline-legend = Без мрежа
 offline-settings = Конфигуриране настройките за работа извън мрежа
 offline-settings-button =
-    .label = Без връзка…
+    .label = Без мрежа…
     .accesskey = Б
 diskspace-legend = Дисково пространство
 offline-compact-folder =
@@ -267,18 +240,10 @@ offline-compact-folder-automatically =
     .accesskey = у
 compact-folder-size =
     .value = MB общо
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Използване не повече от
     .accesskey = п
 use-cache-after = МБ за кеш
-
-##
-
 smart-cache-label =
     .label = Незачитане на автоматичното управление на буфера
     .accesskey = Н
@@ -302,7 +267,6 @@ color-options-button =
     .label = Цветове…
     .accesskey = Ц
 display-width-legend = Писма в обикновен текст
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Знаците за емоции се показват в графичен вид
     .accesskey = З
@@ -332,7 +296,7 @@ quoted-text-color =
     .accesskey = я
 search-handler-table =
     .placeholder = Филтриране на типове съдържание и действия
-type-column-header = Тип съдържание
+type-column-header = Вид на съдържанието
 action-column-header = Действие
 save-to-label =
     .label = Запазване на файловете в
@@ -351,7 +315,7 @@ choose-folder-label =
 always-ask-label =
     .label = Винаги да пита къде да бъдат запазвани файловете
     .accesskey = В
-display-tags-text = Етикетите могат да бъдат използвани за подреждане и оценяване на вашите писма.
+display-tags-text = Етикетите могат да бъдат използвани за подреждане и оценяване на писмата.
 new-tag-button =
     .label = Добавяне…
     .accesskey = Д
@@ -370,17 +334,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Преглед на прикачените файлове в съобщението
     .accesskey = щ
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = След показване за
     .accesskey = д
 seconds-label = секунди
-
-##
-
 open-msg-label =
     .value = Отваряне съобщенията в:
 open-msg-tab =
@@ -395,8 +352,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Затваряне прозореца/раздела на съобщението при преместване или изтриване
     .accesskey = З
-display-name-label =
-    .value = Показвано име:
 address-display-legend = Списък със съобщения
 address-display-description = Предпочитан формат за показване на адреса:
 address-display-full =
@@ -411,9 +366,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Aко хората са в моя адресник, се показват само имената им
     .accesskey = х
-
-## Compose Tab
-
+table-layout-legend = Изглед във форма на таблица
+table-layout-horizontal-scroll-label =
+    .label = Хоризонтално прелистване
+    .accesskey = х
+conversation-view-legend = Изглед на разговор
+conversation-view-checkbox-label =
+    .label = Изглед на разговор
+    .accesskey = р
+conversation-view-checkbox-description = Експериментална възможност, на основата на Gloda, използвайте на своя отговорност
+label-experiment = Експериментално
+account-hub-legend = Център за профили
+account-hub-checkbox-label =
+    .label = Създавайте профили в новия Център за профили
+    .accesskey = п
+account-hub-checkbox-description = Експериментален процес за създаване на нов пощенски профил
 forward-label =
     .value = Препращане на писмата:
     .accesskey = П
@@ -424,17 +391,10 @@ as-attachment-label =
 extension-label =
     .label = добавяне на разширение към името на файла
     .accesskey = ф
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Автоматично запазване на всеки
     .accesskey = в
 auto-save-end = минути
-
-##
-
 warn-on-send-accel-key =
     .label = Потвърждение при използване на клавишни комбинации за изпращане на писмо
     .accesskey = о
@@ -525,9 +485,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Намиране на още доставчици...
 cloud-account-description = Добавяне на нова услуга за съхранене към Filelink
-
-## Privacy Tab
-
 mail-content = Съдържание на писмата
 remote-content-label =
     .label = Разрешаване на отдалечено съдържание в съобщенията
@@ -556,11 +513,11 @@ third-party-visited =
 cookies-button =
     .label = Показване на бисквитките…
     .accesskey = П
-do-not-track-label =
-    .label = Изпраща на сайтовете "Не следи" сигнал, че не желаете да бъдете проследявани.
-    .accesskey = й
-dnt-learn-more-button =
-    .value = Научете повече
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Искане от страниците да не продават или споделят мои данни
+    .accesskey = И
+do-not-track-removal = Вече не поддържаме сигнала „Без проследяване“.
 passwords-description = { -brand-short-name } може да запомни паролите на всичките ви регистрации.
 passwords-button =
     .label = Запазени пароли…
@@ -569,7 +526,6 @@ primary-password-description = Главната парола защитава о
 primary-password-label =
     .label = Използване на главна парола
     .accesskey = г
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Изискване за вписване от устройство за попълване и управление на паролите
 primary-password-button =
@@ -577,10 +533,7 @@ primary-password-button =
     .accesskey = в
 forms-primary-pw-fips-title = В момента сте в режим на FIPS. FIPS изисква главна парола, която не е празна.
 forms-master-pw-fips-desc = Неуспешна промяна на паролата
-junk-description = Установете началните настройки за нежеланите писма. Специфичните за всяка регистрация настройки могат да се направят в Настройки на регистрацията.
-junk-label =
-    .label = Когато отбележа някое писмо за нежелано:
-    .accesskey = К
+junk-description = Установете началните настройки за нежеланите писма. Специфичните за всеки профил настройки могат да бъдат направени в Настройки на профила.
 junk-marked-label =
     .label = Когато писмата са маркирани като нежелани:
     .accesskey = ж
@@ -590,9 +543,6 @@ junk-move-label =
 junk-delete-label =
     .label = Изтрива се
     .accesskey = И
-junk-read-label =
-    .label = Отбелязване на писмата, определени за нежелани като прочетени
-    .accesskey = О
 junk-read-description = Маркиране на съобщенията като прочетени
 junk-read-manual-label =
     .label = Когато е ръчно отбелязана като нежелана
@@ -634,7 +584,7 @@ security-devices-button =
     .label = Устройства по безопасността…
     .accesskey = б
 email-e2ee-header = Шифроване  на електронните съобщения от край до край
-account-settings = Настройки на регистрация
+account-settings = Настройки на профила
 email-e2ee-enable-info = Настройте имейл профил и самоличности за шифроване от край до край в настройките на акаунта.
 email-e2ee-automatism = Автоматично използване на шифроване
 email-e2ee-automatism-pre =
@@ -649,9 +599,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Автоматичните решения могат да бъдат отменени чрез ръчно активиране или деактивиране на шифроването при съставяне на съобщение.
     Забележка: шифроването винаги се активира автоматично, когато отговаряте на вече шифровано съобщение.
-
-## Chat Tab
-
 startup-label =
     .value = Когато се стартира { -brand-short-name }:
     .accesskey = с
@@ -659,20 +606,10 @@ offline-label =
     .label = Разговорите са изключени
 auto-connect-label =
     .label = Автоматично свързване за разговори
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Другите ще видят, че съм неактивен след
     .accesskey = н
 idle-time-label = минути
-
-##
-
 away-message-label =
     .label = и задаване на състояние Далеч със следното съобщение:
     .accesskey = ч
@@ -734,41 +671,21 @@ no-preview-description = Темата е непълна или временно 
 chat-variant-label =
     .value = Вариант:
     .accesskey = В
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
-    .style = width: 15.4em
-    .placeholder = Намиране в настройки
-
-## Settings UI Search Results
-
+    .style = width: 16em
+    .placeholder = Търсене в настройките
 search-results-header = Резултати от търсенето
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Съжаляваме! Няма резултати в настройките за „<span data-l10n-name="query"></span>“.
        *[other] Съжаляваме! Няма резултати в настройките за „<span data-l10n-name="query"></span>“.
     }
 search-results-help-link = Имате ли нужда от помощ? Посетете <a data-l10n-name="url">сайта за поддръжката на { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Вземете Мрежата със себе си
 sync-signedout-description = Синхронизирайте своите профили, адресници,  календари, добавки и настройки на всичките си устройства.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Вход за синхронизиране
 sync-pane-header = Синхронизиране
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = „{ $userEmail }“ не е потвърден.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Моля, впишете се, за да се свържете наново "{ $userEmail }"
 sync-pane-resend-verification = Повторно изпращане на потвърждение
 sync-pane-sign-in = Вписване
@@ -798,3 +715,49 @@ synced-acount-item-filters = Филтри
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Синхронизирайте вашите имейл профили, адресници, календари и самоличности на всичките си устройства.
 sync-disconnected-turn-on-sync = Включване на синхронизирането...
+qr-export-pane-header = Изнасяне на профили към { -brand-product-name } за мобилно устройство
+qr-export-description = Бързо прехвърлете настройките на профила си от настолен компютър към мобилен телефон, чрез създаване на кодове за бърза реакция. Изберете кои профили да бъдат прехвърлени, решете също дали да бъде включена и паролата и сканирайте кода с мобилното си устройство. Бързо, сигурно и лесно.
+qr-export-get-app = Все още не разполагате с { -brand-product-name } за мобилно устройство? <a data-l10n-name="app-link">Вземете от Google Play</a>
+qr-export-create = Създайте кодове за бърза реакция, за да изнесете профилите си
+qr-export-select-accounts = Изберете профилите, които да бъдат изнесени:
+qr-export-no-accounts = Не виждате всичките си профили? Някои профили може да са изключени, защото не се поддържат от { -brand-product-name } за Андроид. <a data-l10n-name="account-support-link">Поддръжка</a>
+qr-export-accounts-legend = Профили на електронна поща
+qr-export-select-all-accounts = Избиране на всичко
+qr-export-security-legend = Сигурност
+qr-export-include-passwords = Включване на всички пароли на профила
+qr-export-oauth-warning = Някои от профилите ви използват метод за удостоверяване, който може да изисква повторно удостоверяване от мобилното устройство. Възможно е да се наложи да въведете отново паролите си по време на този процес.
+qr-export-security-hint = Със сканиране на следните кодове за бърза реакция настройките на профила ви - включително електронен адрес и парола - ще бъдат прехвърлени по сигурен начин. Не събираме, не съхраняваме и не споделяме тези данни по време на процеса. Прехвърлянето става директно между устройствата.
+qr-export-security-warning = От съображения за сигурност се уверете, че сте в защитена среда и сканирате кодове за бърза реакция само от надеждни източници.
+qr-export-start-export = Изнасяне
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } от { $count } код за бърза реакция
+       *[other] { $step } от { $count } кода за бърза реакция
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Сканирайте кода с { -brand-product-name } на мобилното устройство
+       *[other] Сканирайте кодовете с { -brand-product-name } на мобилното устройство
+    }
+qr-export-scan-step1 = Отворете { -brand-product-name } на мобилното устройство
+qr-export-scan-step2 = Отворете настройките
+qr-export-scan-step3 = Изберете <strong>Внасяне на настройки</strong>
+qr-export-scan-step4-revision = Докоснете <strong>Сканиране на QR</strong> и задръжте устройството над кода отдолу
+qr-export-back = Назад
+qr-export-next = Напред
+qr-export-done = Готово
+qr-export-summary-description = Профилите са изнесени. Продължете на мобилното устройство.
+qr-export-summary-title = Обобщение на процеса:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } код е създаден
+       *[other] { $count } кода са създадени
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } профил е изнесен:
+       *[other] { $count } профила са изнесени:
+    }
+qr-export-summary-passwords-included = Паролите са включени
+qr-export-summary-passwords-excluded = Паролите не са включени
+qr-export-more-accounts = Изнасяне на други профили

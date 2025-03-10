@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Davart tes dretgs
 rights-intro = { -brand-full-name } è ina software libra cun in code avert, creada d'ina communitad da millis persunas da tut il mund. I dat in pèr chaussas che ti stuessas savair:
 rights-intro-point-1 = { -brand-short-name } è disponibel tenor las cundiziuns da la <a data-l10n-name="mozilla-public-license-link">Mozilla Public License</a>. Quai munta che ti pos utilisar, copiar e dar vinavant { -brand-short-name } ad auters. Ti dastgas era midar il code da funtauna da { -brand-short-name } ed al adattar a tes basegns. La Mozilla Public License ta dat era il dretg da distribuir tia versiun modifitgada.

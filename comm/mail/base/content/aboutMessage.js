@@ -14,7 +14,7 @@
 
 // msgHdrView.js
 /* globals AdjustHeaderView ClearCurrentHeaders ClearPendingReadTimer
-   HideMessageHeaderPane OnLoadMsgHeaderPane OnTagsChange
+   HideMessageHeaderPane initFolderDBListener OnLoadMsgHeaderPane OnTagsChange
    OnUnloadMsgHeaderPane HandleAllAttachments AttachmentMenuController */
 
 var { MailServices } = ChromeUtils.importESModule(
@@ -22,6 +22,13 @@ var { MailServices } = ChromeUtils.importESModule(
 );
 var { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+ChromeUtils.defineESModuleGetters(
+  this,
+  {
+    adaptMessageForDarkMode: "chrome://messenger/content/DarkReader.mjs",
+  },
+  { global: "current" }
 );
 
 ChromeUtils.defineESModuleGetters(this, {
@@ -34,26 +41,67 @@ const messengerBundle = Services.strings.createBundle(
   "chrome://messenger/locale/messenger.properties"
 );
 
+const prefersDarkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
 var gMessage, gMessageURI;
 var autodetectCharset;
+
+let reloadTimeout = null;
+function timeoutReload() {
+  if (reloadTimeout) {
+    return;
+  }
+  // Clear the event queue before reloading the message. Several prefs may
+  // be changed at once.
+  reloadTimeout = setTimeout(() => {
+    reloadTimeout = null;
+    ReloadMessage();
+  });
+}
 
 function getMessagePaneBrowser() {
   return document.getElementById("messagepane");
 }
 
-function messagePaneOnResize() {
+/**
+ * Handle "resize" events on the messagepane.
+ */
+async function messagePaneOnResize() {
   const doc = getMessagePaneBrowser().contentDocument;
   // Bail out if it's http content or we don't have images.
   if (doc?.URL.startsWith("http") || !doc?.images) {
     return;
   }
 
-  for (const img of doc.images) {
-    img.toggleAttribute(
-      "overflowing",
-      img.clientWidth - doc.body.offsetWidth >= 0 &&
-        (img.clientWidth <= img.naturalWidth || !img.naturalWidth)
-    );
+  const availableWidth = Math.max(
+    document.body.scrollWidth,
+    window.visualViewport.width
+  );
+
+  const adjustImg = img => {
+    if (img.hasAttribute("shrinktofit")) {
+      // overflowing: Whether the image is overflowing visible area.
+      img.toggleAttribute("overflowing", img.naturalWidth > img.clientWidth);
+    } else if (img.hasAttribute("overflowing")) {
+      const isOverflowing = img.clientWidth >= availableWidth;
+      img.toggleAttribute("overflowing", isOverflowing);
+      img.toggleAttribute("shrinktofit", !isOverflowing);
+    }
+  };
+
+  for (const img of doc.querySelectorAll(
+    "img:is([shrinktofit],[overflowing])"
+  )) {
+    if (img.closest("[href]")) {
+      continue;
+    }
+    if (!img.complete) {
+      img.addEventListener("load", event => adjustImg(event.target), {
+        once: true,
+      });
+    } else {
+      adjustImg(img);
+    }
   }
 }
 
@@ -111,7 +159,8 @@ window.addEventListener("DOMContentLoaded", event => {
 
   // There might not be a msgWindow variable on the top window
   // if we're e.g. showing a message in a dedicated window.
-  if (top.msgWindow) {
+  // For a new profile, statusFeedback will be null at this point.
+  if (top.msgWindow?.statusFeedback) {
     // Necessary plumbing to communicate status updates back to
     // the user.
     browser.docShell
@@ -122,9 +171,36 @@ window.addEventListener("DOMContentLoaded", event => {
       );
   }
 
+  if (Services.prefs.getBoolPref("mail.advance_on_spacebar")) {
+    getMessagePaneBrowser().addEventListener("keydown", ev => {
+      if (
+        ev.key == " " &&
+        !ev.altKey &&
+        !ev.ctrlKey &&
+        !ev.metaKey &&
+        ev.target.localName == "body"
+      ) {
+        ev.preventDefault();
+        top.goDoCommand("cmd_space", ev);
+      }
+    });
+  }
+
   window.dispatchEvent(
     new CustomEvent("aboutMessageLoaded", { bubbles: true })
   );
+
+  window.addEventListener("MsgLoaded", msgObserver);
+  prefersDarkQuery.addEventListener("change", msgObserver);
+
+  const disableDarkReaderToggle = document.getElementById("disableDarkReader");
+  disableDarkReaderToggle.checked = !Services.prefs.getBoolPref(
+    "mail.dark-reader.enabled",
+    true
+  );
+  disableDarkReaderToggle.addEventListener("click", e => {
+    Services.prefs.setBoolPref("mail.dark-reader.enabled", !e.target.checked);
+  });
 });
 
 window.addEventListener("unload", () => {
@@ -133,6 +209,8 @@ window.addEventListener("unload", () => {
   MailServices.mailSession.RemoveFolderListener(folderListener);
   preferenceObserver.cleanUp();
   Services.obs.removeObserver(msgObserver, "message-content-updated");
+  window.removeEventListener("MsgLoaded", msgObserver);
+  prefersDarkQuery.removeEventListener("change", msgObserver);
   gViewWrapper?.close();
 });
 
@@ -172,6 +250,7 @@ function displayMessage(uri, viewWrapper) {
   const messageService = MailServices.messageServiceFromURI(uri);
   gMessage = messageService.messageURIToMsgHdr(uri);
   gFolder = gMessage.folder;
+  initFolderDBListener();
 
   messageHistory.push(uri);
 
@@ -211,16 +290,17 @@ function displayMessage(uri, viewWrapper) {
     ensureRowIsVisible() {},
     invalidate() {},
     invalidateRange() {},
-    rowCountChanged(index, count) {
+    rowCountChanged(idx, count) {
       const wasSuppressed = gDBView.selection.selectEventsSuppressed;
       gDBView.selection.selectEventsSuppressed = true;
-      gDBView.selection.adjustSelection(index, count);
+      gDBView.selection.adjustSelection(idx, count);
       gDBView.selection.selectEventsSuppressed = wasSuppressed;
     },
     currentIndex: null,
   });
 
-  if (gMessage.flags & Ci.nsMsgMessageFlags.HasRe) {
+  const flags = gMessage.flags;
+  if (flags & Ci.nsMsgMessageFlags.HasRe) {
     document.title = `Re: ${gMessage.mime2DecodedSubject || ""}`;
   } else {
     document.title = gMessage.mime2DecodedSubject;
@@ -251,7 +331,7 @@ function displayMessage(uri, viewWrapper) {
       );
   }
 
-  if (gMessage.flags & Ci.nsMsgMessageFlags.Partial) {
+  if (flags & Ci.nsMsgMessageFlags.Partial) {
     document.body.classList.add("partial-message");
   } else if (document.body.classList.contains("partial-message")) {
     document.body.classList.remove("partial-message");
@@ -270,6 +350,12 @@ function displayMessage(uri, viewWrapper) {
         // Show error page if needed.
         HideMessageHeaderPane();
         MailE10SUtils.loadURI(getMessagePaneBrowser(), url.seeOtherURI);
+      }
+      if (flags & Ci.nsMsgMessageFlags.New) {
+        // Close any notification we might have about this message.
+        Cc["@mozilla.org/system-alerts-service;1"]
+          .getService(Ci.nsIAlertsService)
+          .closeAlert(uri);
       }
     },
   };
@@ -336,6 +422,19 @@ var msgObserver = {
       displayMessage(data, gViewWrapper);
     }
   },
+
+  handleEvent(event) {
+    switch (event.type) {
+      case "MsgLoaded":
+        if (prefersDarkQuery.matches) {
+          adaptMessageForDarkMode(getMessagePaneBrowser());
+        }
+        break;
+      case "change":
+        timeoutReload();
+        break;
+    }
+  },
 };
 
 var preferenceObserver = {
@@ -345,6 +444,7 @@ var preferenceObserver = {
     "mail.inline_attachments",
     "mail.show_headers",
     "mail.addressDisplayFormat",
+    "mail.dark-reader.enabled",
     "mail.showCondensedAddresses",
     "mailnews.display.disallow_mime_handlers",
     "mailnews.display.html_as",
@@ -352,8 +452,6 @@ var preferenceObserver = {
     "mailnews.headers.showReferences",
     "rss.show.summary",
   ],
-
-  _reloadTimeout: null,
 
   init() {
     for (const topic of this._topics) {
@@ -371,14 +469,11 @@ var preferenceObserver = {
     if (data == "mail.show_headers") {
       AdjustHeaderView(Services.prefs.getIntPref(data));
     }
-    if (!this._reloadTimeout) {
-      // Clear the event queue before reloading the message. Several prefs may
-      // be changed at once.
-      this._reloadTimeout = setTimeout(() => {
-        this._reloadTimeout = null;
-        ReloadMessage();
-      });
+    if (data == "mail.dark-reader.enabled") {
+      document.getElementById("disableDarkReader").checked =
+        !Services.prefs.getBoolPref(data);
     }
+    timeoutReload();
   },
 };
 
@@ -585,13 +680,13 @@ commandController.registerCallback(
   () => commandController.isCommandEnabled("cmd_shiftDeleteMessage")
 );
 commandController.registerCallback("cmd_find", () =>
-  document.getElementById("FindToolbar").onFindCommand()
+  document.getElementById("findToolbar").onFindCommand()
 );
 commandController.registerCallback("cmd_findAgain", () =>
-  document.getElementById("FindToolbar").onFindAgainCommand(false)
+  document.getElementById("findToolbar").onFindAgainCommand(false)
 );
 commandController.registerCallback("cmd_findPrevious", () =>
-  document.getElementById("FindToolbar").onFindAgainCommand(true)
+  document.getElementById("findToolbar").onFindAgainCommand(true)
 );
 commandController.registerCallback("cmd_print", () => {
   top.PrintUtils.startPrintWindow(getMessagePaneBrowser().browsingContext, {});

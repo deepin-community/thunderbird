@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Y blwch ticio i newid dewis y rhes gyfredol
     .title = Dewis y rhes gyfredol
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Adfer y rhes gyfredol
 tree-list-view-column-picker =
     .title = Dewis colofnau i'w dangos
-tree-list-view-column-picker-restore =
-    .label = Adfer trefn colofnau
 tree-list-view-column-picker-restore-default-columns =
     .label = Adfer colofnau rhagosodedig
 tree-list-view-row-thread-button =

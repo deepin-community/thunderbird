@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Оқиғаны іздеу және оқиғалар тізімін жабу
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Күнтізбе аты
     .tooltiptext = Күнтізбе аты бойынша сұрыптау
 calendar-event-listing-column-category =
     .label = Санат
     .tooltiptext = Санаты бойынша сұрыптау
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Дайын
     .tooltiptext = Аяқталуы бойынша сұрыптау
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Атауы
     .tooltiptext = Атауы бойынша сұрыптау
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Бұрыңғы оқиғалар
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Келесі 6 айдағы оқиғалар
 calendar-event-listing-interval-next-12-months =
     .label = Келесі 12 айдағы оқиғалар
+calendar-event-listing-interval-future =
+    .label = Барлық болашақ оқиғалар
 calendar-event-listing-interval-all =
     .label = Барлық оқиғалар
 calendar-event-listing-interval-selected-day =

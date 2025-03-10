@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = 切换选中当前行的复选框
     .title = 选中当前行
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = 恢复当前行
 tree-list-view-column-picker =
     .title = 选择要显示的列
-tree-list-view-column-picker-restore =
-    .label = 恢复列顺序
 tree-list-view-column-picker-restore-default-columns =
     .label = 恢复默认列
 tree-list-view-row-thread-button =

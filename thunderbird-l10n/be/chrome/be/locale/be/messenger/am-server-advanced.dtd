@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Пашыраныя налады ўліковага запісу">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "Каталог IMAP-сервера:">
 <!ENTITY serverDirectory.accesskey "Д">
 <!ENTITY usingSubscription.label "Паказваць толькі падпісаныя папкі">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "п">
 <!ENTITY maximumConnectionsNumber.label "Максімальная колькасць серверных злучэнняў, якія трэба кэшыраваць">
 <!ENTITY maximumConnectionsNumber.accesskey "а">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "Гэтыя перавагі вызначаюць прасторы імёнаў на вашым IMAP-серверы">
 <!ENTITY personalNamespace.label "Асабістая назвапрастора:">
 <!ENTITY personalNamespace.accesskey "А">

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Тэкст і фон
 text-color-label =
     .value = Тэкст:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Наведаныя спасылкі:
     .accesskey = в
-underline-link-checkbox =
-    .label = Падкрэсліваць спасылкі
-    .accesskey = к
 override-color-label =
     .value = Замяняць колеры, пазначаныя змесцівам, на выбраныя мной вышэй:
     .accesskey = З

@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Add a Personal OpenPGP Key for { $identity }
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Use your external key through GnuPG (e.g. from a smartcard)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Generate OpenPGP Key
 openpgp-keygen-secret-protection = Secret Key Protection
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = Your key must be valid for at least one day.
 openpgp-keygen-ongoing = Key generation already in progress!
 openpgp-keygen-error-core = Unable to initialize OpenPGP Core Service
 openpgp-keygen-error-failed = OpenPGP Key generation unexpectedly failed
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP Key created successfully, but failed to obtain revocation for key { $key }
 openpgp-keygen-abort-title = Abort key generation?
 openpgp-keygen-abort = OpenPGP Key generation currently in progress, are you sure you want to cancel it?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Generate public and secret key for { $identity }?
-
-## Import Key section
-
 openpgp-import-key-title = Import an existing personal OpenPGP Key
 openpgp-import-key-legend = Select a previously backed up file.
 openpgp-import-key-description = You may import personal keys that were created with other OpenPGP software.
 openpgp-import-key-info = Other software might describe a personal key using alternative terms such as your own key, secret key, private key or key pair.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } found one key that can be imported.
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = Treat this key as a Personal Key
 gnupg-file = GnuPG Files
 import-error-file-size = <b>Error!</b> Files larger than 5MB are not supported.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Error!</b> Failed to import file. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Error!</b> Failed to import keys. { $error }
 openpgp-import-identity-label = Identity
 openpgp-import-fingerprint-label = Fingerprint
@@ -122,9 +106,6 @@ openpgp-import-bits-label = Bits
 openpgp-import-key-props =
     .label = Key Properties
     .accesskey = K
-
-## External Key section
-
 openpgp-external-key-title = External GnuPG Key
 openpgp-external-key-description = Configure an external GnuPG key by entering the Key ID
 openpgp-external-key-info = In addition, you must use Key Manager to import and accept the corresponding Public Key.

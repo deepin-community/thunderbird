@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Sigurno povezivanje nije moguće, jer je SSL protokol deaktiviran.
 psmerr-ssl2-disabled = Sigurno povezivanje nije moguće, jer stranica koristi stariju, nesigurnu verziju protokola.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Primljen je neispravni certifikat. Kontaktiraj administratora servera ili pošalji e-poruku sa sljedećim informacijama:
     
@@ -221,7 +210,7 @@ sec-error-importing-certificates = Greška pri pokušaju uvoza certifikata.
 sec-error-pkcs12-decoding-pfx = Uvoz nije moguć. Greška dekodiranja. Datoteka nije ispravna.
 sec-error-pkcs12-invalid-mac = Uvoz nije moguć. Nevažeći MAC. Netočna lozinka ili oštećena datoteka.
 sec-error-pkcs12-unsupported-mac-algorithm = Uvoz nije moguć. MAC algoritam nije podržan.
-sec-error-pkcs12-unsupported-transport-mode = Uvoz nije moguć. Podržan je samo integritet lozinke i privatni način.
+sec-error-pkcs12-unsupported-transport-mode = Uvoz nije moguć. Podržani su samo integritet lozinke i modusi privatnosti.
 sec-error-pkcs12-corrupt-pfx-structure = Uvoz nije moguć. Struktura datoteke je oštećena.
 sec-error-pkcs12-unsupported-pbe-algorithm = Uvoz nije moguć. Algoritam šifriranja nije podržan.
 sec-error-pkcs12-unsupported-version = Uvoz nije moguć. Verzija datoteke nije podržana.
@@ -291,7 +280,7 @@ sec-error-crl-invalid-version = Izdavačev popis opozvanih certifikata nepoznate
 sec-error-crl-v1-critical-extension = Izdavačev V1 popis opozvanih certifikata ima kritično proširenje.
 sec-error-crl-unknown-critical-extension = Izdavačev V2 popis opozvanih certifikata ima nepoznato kritično proširenje.
 sec-error-unknown-object-type = Određena je nepoznata vrsta objekta.
-sec-error-incompatible-pkcs11 = PKCS #11 upravljački program krši specifikacije na nekompatibilni način.
+sec-error-incompatible-pkcs11 = Upravljački program PKCS #11 krši specifikacije na nekompatibilni način.
 sec-error-no-event = Trenutačno nijedan novi utor događaja nije slobodan.
 sec-error-crl-already-exists = CRL već postoji.
 sec-error-not-initialized = NSS nije inicijaliziran.
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Server je ponudio certifikat koji 
 mozilla-pkix-error-empty-issuer-name = Server je prezentirao certifikat s praznim imenom izdavatelja.
 mozilla-pkix-error-additional-policy-constraint-failed = Dodatno ograničenje pravila nije uspjelo prilikom provjere ovog certifikata.
 mozilla-pkix-error-self-signed-cert = Certifikat nije pouzdan jer je samo-potpisan.
+mozilla-pkix-error-issuer-no-longer-trusted = Certifikacijsko tijelo koje je izdalo certifikat nije bilo pouzdano prije izdavanja certifikata.
 xp-java-remove-principal-error = Uklanjanje upravitelja nije moguće
 xp-java-delete-privilege-error = Uklanjanje privilegija nije moguće
 xp-java-cert-not-exists-error = Upravitelj nema certifikat

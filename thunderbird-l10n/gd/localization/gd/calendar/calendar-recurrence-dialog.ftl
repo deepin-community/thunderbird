@@ -1,8 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-recurrence-preview-label = Ro-sheall
 calendar-recurrence-next = An ath-mhìos
 calendar-recurrence-previous = Am mìos roimhe
 calendar-recurrence-today = An-diugh
+monthly-order = { $ordinal } { $day }
+yearly-order-day = { $day } { $article } { $month }
+yearly-order-ordinal = { $ordinal } { $day } { $article } { $month }
+event-recurrence-monthly-last-day-label =
+    .label = An latha mu dheireadh

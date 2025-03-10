@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Ημερολόγιο
 calendar-title-reminder = Υπενθυμίσεις
 calendar-title-notification = Ειδοποιήσεις
@@ -9,10 +5,8 @@ calendar-title-category = Κατηγορίες
 dateformat-label =
     .value = Μορφή ημερομηνίας:
     .accesskey = φ
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Πλήρης: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Σύντομη: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Ερώτηση πριν από τη διαγραφή εκδηλώσεων και εργασιών.
     .accesskey = ρ
-accessibility-legend = Προσβασιμότητα
-accessibility-colors-label =
-    .label = Βελτιστοποίηση χρωμάτων για προσβασιμότητα
-    .accesskey = Β
 reminder-legend = Όταν εκπνέει η υπενθύμιση:
 reminder-play-checkbox =
     .label = Αναπαραγωγή ήχου

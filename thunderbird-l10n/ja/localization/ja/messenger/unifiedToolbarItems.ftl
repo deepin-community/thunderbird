@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = 伸縮自在のスペース
 search-bar-label = 検索
 toolbar-write-message-label = 作成
@@ -144,7 +137,7 @@ toolbar-throbber =
     .title = アクティブインジケーター
 toolbar-create-contact-label = 新しい連絡先
 toolbar-create-contact =
-    .title =  新しい連絡先を作成します
+    .title = 新しい連絡先を作成します
 toolbar-create-address-book-label = 新しいアドレス帳
 toolbar-create-address-book =
     .title = 新しいアドレス帳を作成します
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = インポート
 toolbar-import-contacts =
     .title = ファイルから連絡先をインポートします
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = ローカルアドレス帳を追加
 toolbar-new-address-book-popup-add-carddav-address-book =

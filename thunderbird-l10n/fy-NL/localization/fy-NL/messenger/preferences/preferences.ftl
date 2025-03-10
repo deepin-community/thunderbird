@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Slute
 preferences-doc-title2 = Ynstellingen
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Syngronisearje
 category-sync =
     .tooltiptext = Syngronisearje
+pane-qr-export-title = Eksportearje foar mobyl
+category-qr-export =
+    .tooltiptext = Eksportearje foar mobyl
 general-language-and-appearance-header = Taal en Foarmjouwing
 general-incoming-mail-header = Ynkommende e-mailberjochten:
 general-files-and-attachment-header = Bestannen en Bylagen
@@ -50,8 +49,6 @@ collection-health-report =
     .label = { -brand-short-name } tastean om technyske en ynteraksjegegevens nei { -vendor-short-name } te ferstjoeren
     .accesskey = r
 collection-health-report-link = Mear ynfo
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Gegevensrapporten binne foar dizze build-konfiguraasje útskeakele
 collection-backlogged-crash-reports =
     .label = { -brand-short-name } tastean om út jo namme jo efterstallige ûngelokrapporten te ferstjoeren
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Start { -brand-short-name } opnij om de fernijing ta te passen
 confirm-messenger-language-change-button = Tapasse en opnij starte
 update-setting-write-failure-title = Flater by bewarjen fernijingsfoarkarren
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } hat in flater oantroffen en hat dizze wiziging net bewarre. Merk op dat foar it ynstellen fan dizze fernijingsfoarkar skriuwrjochten foar ûndersteand bestân nedich binne. Jo of jo systeembehearder kin dizze flater oplosse troch de groep ‘Gebruikers’ folsleine tagong ta dit bestân te jaan.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Fernijing dwaande
 update-in-progress-message = Wolle jo dat { -brand-short-name } trochgiet mei dizze fernijing?
 update-in-progress-ok-button = &Ferwerpe
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Trochgean
 account-button = Accountynstellingen
 open-addons-sidebar-button = Add-ons en tema’s
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Fier jo oanmeldgegevens foar Windows yn om in haadwachtwurd yn te stellen. Hjirtroch wurdt de befeiliging fan jo accounts beskerme.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = in haadwachtwurd oanmeitsje
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = OpenSearch-provider tafoegje
 add-opensearch-provider-text = Fier de URL yn fan de OpenSearch-provider dy’t jo tafoegje wolle. Brûk de direkte URL fan it OpenSearch-beskriuwingsbestân of in URL wêr’t it automatysk fûn wurde kin.
 adding-opensearch-provider-failed-title = Tafoegjen fan OpenSearch-provider mislearre
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Kin OpenSearch-provider foar { $url } net tafoegje.
 minimize-to-tray-label =
     .label = Nei de systeembalke ferpleatse wannear { -brand-short-name } minimalisearre is
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = No kontrolearje…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Lêsbefêstigingen…
     .accesskey = L
 update-app-legend = { -brand-short-name }-fernijingen
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Ferzje { $version }
 allow-description = { -brand-short-name } tastean om
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = o
 compact-folder-size =
     .value = MB yn totaal
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Oant
     .accesskey = O
 use-cache-after = MB skiifromte brûke foar de buffer
-
-##
-
 smart-cache-label =
     .label = Automatysk bufferbehear net brûke
     .accesskey = r
@@ -304,7 +269,6 @@ color-options-button =
     .label = Kleuren…
     .accesskey = K
 display-width-legend = Platte-tekstberjochten
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Glimkes werjaan as ôfbylding
     .accesskey = m
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Bylagen ynline toane
     .accesskey = t
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Nei it toanen foar
     .accesskey = N
 seconds-label = sekonden
-
-##
-
 open-msg-label =
     .value = Nije berjochten iepenje yn:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Slút berjochtskerm/ljepblêd nei ferpleatsen of fuortsmiten
     .accesskey = S
-display-name-label =
-    .value = Werjeftenamme:
 address-display-legend = Berjochtelist
 address-display-description = Foarkarsopmaak foar adreswerjefte:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Fan minsken yn myn adresboek allinnich werjeftenamme toane
     .accesskey = m
-
-## Compose Tab
-
+table-layout-legend = Tabelwerjefte
+table-layout-horizontal-scroll-label =
+    .label = Horizontaal skowe tastean
+    .accesskey = H
+conversation-view-legend = Petearwerjefte
+conversation-view-checkbox-label =
+    .label = Petearwerjefte ynskeakelje
+    .accesskey = P
+conversation-view-checkbox-description = Eksperimintele funksje basearre op Gloda, brûk it op eigen risiko
+label-experiment = Eksperiminteel
+account-hub-legend = Accounthub
+account-hub-checkbox-label =
+    .label = Meitsje accounts oan yn de nije Accounthub
+    .accesskey = M
+account-hub-checkbox-description = Eksperimintele accountkreaasjeflow foar nije e-mailadressen
 forward-label =
     .value = Berjochten trochstjoere:
     .accesskey = t
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = Ekstinsje oan bestânsnamme tafoegje
     .accesskey = t
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Elke
     .accesskey = E
 auto-save-end = minuten automatysk bewarje
-
-##
-
 warn-on-send-accel-key =
     .label = Befêstiging freegje by gebrûk fan fluchtoets om berjochten te ferstjoeren
     .accesskey = B
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Sykje mear providers…
 cloud-account-description = In nije Filelink bewartsjinst tafoegje
-
-## Privacy Tab
-
 mail-content = E-mailynhâld
 remote-content-label =
     .label = Ynbedde ynhâld tastean yn berjochten
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Cookies toane…
     .accesskey = T
-do-not-track-label =
-    .label = Websites in ‘Net folgje’-sinjaal stjoere om litte te witten dat jo net folge wurde wol
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Mear ynfo
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Websites fertelle myn gegevens net te ferkeapjen of te dielen
+    .accesskey = m
+do-not-track-removal = Wy stypje it ‘Net folgje’-sinjaal net mear
 passwords-description = { -brand-short-name } kin wachtwurdynformaasje foar al jo accounts ûnthâlde, sadat jo net hieltyd jo oanmeldgegevens hoege yn te fieren.
 passwords-button =
     .label = Bewarre wachtwurden…
@@ -571,7 +528,6 @@ primary-password-description = In haadwachtwurd befeiliget al jo wachtwurden, ma
 primary-password-label =
     .label = In haadwachtwurd brûke
     .accesskey = h
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Apparaatoanmelding foar ynfoljen en behearen fan wachtwurden fereaskje
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Jo binne no yn FIPS-modus. FIPS fereasket dat it haadwachtwurd net leech is.
 forms-master-pw-fips-desc = Wachtwurdwiziging mislearre
 junk-description = Stel jo standertynstellingen foar net-winske-berjochtedeteksje yn. Accountspesifike ynstellingen kinne konfigurearre wurde yn Accountynstellingen.
-junk-label =
-    .label = Wannear ik berjochten markearje as net-winske:
-    .accesskey = W
 junk-marked-label =
     .label = Wannear berjochten as net-winske markearre wurde:
     .accesskey = W
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = se fuortsmite
     .accesskey = t
-junk-read-label =
-    .label = Berjochten dy’t detektearre binne as net-winske, markearje as lêzen
-    .accesskey = k
 junk-read-description = Berjochten markearje as lêzen
 junk-read-manual-label =
     .label = Wannear hânmjittich markearre as net-winske
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Automatyske beslissingen kinne opheven wurde troch fersifering hânmjittich yn of út te skeakeljen by it opstellen fan in berjocht.
     Opmerking: fersifering is altyd automatysk ynskeakele by it beäntwurdzjen fan in fersifere berjocht.
-
-## Chat Tab
-
 startup-label =
     .value = As { -brand-short-name } start:
     .accesskey = s
@@ -661,20 +608,10 @@ offline-label =
     .label = De accountbehearder iepenje
 auto-connect-label =
     .label = Myn accounts automatysk ferbine
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Myn kontakten nei
     .accesskey = k
 idle-time-label = minuten ynaktiviteit litte witte dat ik net aktyf bin
-
-##
-
 away-message-label =
     .label = en myn steat op Ofwêzich ynstelle mei dit steatberjocht:
     .accesskey = O
@@ -736,41 +673,21 @@ no-preview-description = Dit tema is net falide of is op dit stuit net beskikber
 chat-variant-label =
     .value = Fariant:
     .accesskey = F
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Sykje yn ynstellingen
-
-## Settings UI Search Results
-
 search-results-header = Sykresultaten
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Sorry! Der binne gjin resultaten yn Opsjes foar ‘<span data-l10n-name="query"></span>’.
        *[other] Sorry! Der binne gjin resultaten yn Ynstellingen foar ‘<span data-l10n-name="query"></span>’.
     }
 search-results-help-link = Help nedich? Besykje <a data-l10n-name="url">{ -brand-short-name }-stipe</a>
-
-## Sync Tab
-
 sync-signedout-caption = Nim jo web mei jo mei
 sync-signedout-description = Syngronisearje jo accounts, adresboeken, aginda’s, add-ons en ynstellingen op al jo apparaten.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Oanmelde om te syngronisearjen…
 sync-pane-header = Syngronisaasje
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = ‘{ $userEmail }’ is net ferifiearre.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Meld jo oan om opnij te ferbinen mei ‘{ $userEmail }’
 sync-pane-resend-verification = Ferifikaasje opnij ferstjoere
 sync-pane-sign-in = Oanmelde
@@ -800,3 +717,49 @@ synced-acount-item-filters = Filters
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Syngronisearje jo e-mailaccounts, adresboeken, aginda’s en identiteiten op al jo apparaten.
 sync-disconnected-turn-on-sync = Syngronisaasje ynskeakelje…
+qr-export-pane-header = Accounts eksportearje nei { -brand-product-name } Mobyl
+qr-export-description = Set fluch jo accountynstellingen oer fan desktop nei mobyl troch in QR-koade oan te meitsjen. Selektearje hokker accounts jo opnimme wolle, beslis oft jo jo wachtwurd oersette wolle en scan de koade mei jo mobile apparaat. Fluch, feilich en ienfâldich.
+qr-export-get-app = Hawwe jo { -brand-product-name } noch net op mobyl? <a data-l10n-name="app-link">Download fia Google Play</a>
+qr-export-create = In QR-koade oanmeitsje om jo accounts te eksportearjen
+qr-export-select-accounts = Selektearje de te eksportearjen accounts:
+qr-export-no-accounts = Sjogge jo net al jo accounts? Guon accounts binne mooglik útskeakele, omdat se net troch { -brand-product-name } foar Android stipe wurde. <a data-l10n-name="account-support-link">Stipe</a>
+qr-export-accounts-legend = E-mailaccounts
+qr-export-select-all-accounts = Alles selektearje
+qr-export-security-legend = Befeiliging
+qr-export-include-passwords = Alle accountwachtwurden opnimme
+qr-export-oauth-warning = Guon fan jo accounts brûke in autentikaasjemetoade dy’t mooglik opnij autentikaasje fereaskje op jo mobile apparaat. Jo moatte mooglik wylst dit proses jo wachtwurden opnij ynfiere.
+qr-export-security-hint = Troch de folgjende QR-koaden te scannen, wurde jo accountynstellingen – ynklusyf jo e-mailadres en wachtwurd – feilich oerset. Wy sammelje, bewarje of diele gjin fan dizze gegevens wylst it proses. De oerdracht bart streekrjocht tusken jo apparaten.
+qr-export-security-warning = Soargje der foar jo feilichheid foar dat jo yn in priveeomjouwing binne en scan allinnich QR-koaden fan fertroude boarnen.
+qr-export-start-export = Eksportearje
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } fan { $count } QR-koade
+       *[other] { $step } fan { $count } QR-koaden
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Scan de QR-koade mei { -brand-product-name } op jo mobile apparaat
+       *[other] Scan de QR-koaden mei { -brand-product-name } op jo mobile apparaat
+    }
+qr-export-scan-step1 = Iepenje { -brand-product-name } op jo mobile apparaat
+qr-export-scan-step2 = Nei Ynstellingen
+qr-export-scan-step3 = Selektearje <strong>Ynstellingen ymportearje</strong>
+qr-export-scan-step4-revision = Tik op <strong>QR-koade scanne</strong> en hâld jo telefoan boppe dizze koade
+qr-export-back = Tebek
+qr-export-next = Folgjende
+qr-export-done = Dien
+qr-export-summary-description = Accounts eksportearre. Gean troch op jo mobile apparaat.
+qr-export-summary-title = Eksportgearfetting:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-koade oanmakke
+       *[other] { $count } QR-koaden oanmakke
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } account eksportearre:
+       *[other] { $count } accounts eksportearre:
+    }
+qr-export-summary-passwords-included = Wachtwurden ynbegrepen
+qr-export-summary-passwords-excluded = Wachtwurden net ynbegrepen
+qr-export-more-accounts = Mear accounts eksportearje

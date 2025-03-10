@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Notice: If you're updating this list, you should also
-###         update the list in mozIntl.js.
-
 region-name-ad = Andorra
 region-name-ae = Các tiểu vương quốc Ả Rập thống nhất
 region-name-af = Afghanistan
@@ -235,7 +227,7 @@ region-name-tl = Đông Timor
 region-name-tm = Turkmenistan
 region-name-tn = Tuy-ni-di
 region-name-to = Tonga
-region-name-tr = Thổ Nhĩ Kì
+region-name-tr = Thổ Nhĩ Kỳ
 region-name-tt = Trinidad và Tobago
 region-name-tv = Tuvalu
 region-name-tw = Đài Loan

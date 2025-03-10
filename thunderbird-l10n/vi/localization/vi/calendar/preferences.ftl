@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Lịch
 calendar-title-reminder = Nhắc nhở
 calendar-title-notification = Thông báo
@@ -9,10 +5,8 @@ calendar-title-category = Thể loại
 dateformat-label =
     .value = Định dạng văn bản ngày:
     .accesskey = N
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Dài: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Ngắn: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Nhắc trước khi xóa các sự kiện và tác vụ.
     .accesskey = V
-accessibility-legend = Trợ năng
-accessibility-colors-label =
-    .label = Tối ưu hóa màu sắc cho khả năng tiếp cận
-    .accesskey = c
 reminder-legend = Khi đổ chuông báo:
 reminder-play-checkbox =
     .label = Phát ra âm thanh

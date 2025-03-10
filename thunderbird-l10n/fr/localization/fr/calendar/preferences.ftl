@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Agenda
 calendar-title-reminder = Rappels
 calendar-title-notification = Notifications
@@ -9,10 +5,8 @@ calendar-title-category = Catégories
 dateformat-label =
     .value = Format de la date :
     .accesskey = F
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Long : { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Court : { $date }
 use-system-timezone-radio-button =

@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-saved-logins =
-    .title = Vistaðar innskráningar
-window-close =
-    .key = w
 saved-logins-title = Vistaðar innskráningar
 focus-search-primary-shortcut =
     .key = f
@@ -69,20 +61,9 @@ remove-all-shown =
 remove-all-passwords-prompt = Ertu viss um að þú viljir eyða öllum lykilorðum?
 remove-all-passwords-title = Fjarlægja öll lykilorð
 no-master-password-prompt = Ertu viss um að viljir sýna lykilorðin þín?
-
-## OS Authentication dialog
-
-# This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Staðfestu auðkenni þitt til að birta vistuð lykilorð.
-# This message can be seen by trying to show or copy the passwords.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = birta vistuð lykilorð
-# Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to ".
-# This message can be seen when attempting to disable osauth in about:preferences.
 password-os-auth-change-dialog-message =
     { PLATFORM() ->
         [macos] breyttu stillingum lykilorða

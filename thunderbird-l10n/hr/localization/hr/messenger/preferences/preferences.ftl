@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Zatvori
 preferences-doc-title2 = Postavke
@@ -50,8 +46,6 @@ collection-health-report =
     .label = Dozvoli { -brand-short-name }u slati tehničke podatke i podatke o interakcijama organizaciji { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Saznaj više
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Izvještavanje podataka je deaktivirano za ovu konfiguraciju izgradnje
 collection-backlogged-crash-reports =
     .label = Dozvoli { -brand-short-name }u slati zapise o rušenju u tvoje ime
@@ -72,10 +66,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Ponovno pokrenite { -brand-short-name } kako biste primjenili ove izmjene
 confirm-messenger-language-change-button = Primjeni i ponovno pokreni
 update-setting-write-failure-title = Pogreška prilikom spremanju postavki ažuriranja
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } je naišao na pogrešku i nije spremio ovu promjenu. Uzmite u obzir da postavljanje postavki za ovo ažuriranje zahtjeva dozvole za pisanje u niže navedenu datoteku. Vi ili vaš administrator sustava možda ste u mogućnosti otkloniti ovu grešku tako da dozvolite grupi korisnika potpunu kontrolu nad ovom datotekom.
     
@@ -83,26 +73,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Ažuriranje u tijeku
 update-in-progress-message = Želiš li da { -brand-short-name } nastavi s ovim ažuriranjem?
 update-in-progress-ok-button = O&dbaci
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Nastavi
 account-button = Postavke računa
 open-addons-sidebar-button = Dodaci i teme
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
-primary-password-os-auth-dialog-message-win = Za stvaranje glavne lozinke, upiši svoje podatke za prijavu na Windows. To pomaže u zaštiti vaših računa.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
-primary-password-os-auth-dialog-message-macosx = stvori glavnu lozinku
-# Don't change this label.
+primary-password-os-auth-dialog-message-win = Za stvaranje tvoje primarne lozinke, upiši svoje podatke za prijavu na Windows. To pomaže zaštiti sigurnost tvojih računa.
+primary-password-os-auth-dialog-message-macosx = stvori primarnu lozinku
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +103,6 @@ remove-search-engine =
 add-opensearch-provider-title = Dodaj OpenSearch pružatelja usluge
 add-opensearch-provider-text = Unesite URL OpenSearch pružatelja usluge kako biste dodali. Koristite direktni URL OpenSearch datoteke opisa ili URL gdje se može automatski otkriti.
 adding-opensearch-provider-failed-title = Dodavanje OpenSearch pružatelja usluge nije uspjelo
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Nije moguće dodati OpenSearch pružatelja usluge za { $url }.
 minimize-to-tray-label =
     .label = Kada je { -brand-short-name } smanjen, premjesti ga u sistemsku traku
@@ -214,8 +188,6 @@ always-check-default =
 check-default-button =
     .label = Provjeri sada…
     .accesskey = P
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +205,6 @@ return-receipts-button =
     .label = Potvrde čitanja…
     .accesskey = r
 update-app-legend = { -brand-short-name } ažuriranja
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Inačica { $version }
 allow-description = Dozvoli { -brand-short-name } da
 automatic-updates-label =
@@ -269,18 +239,10 @@ offline-compact-folder-automatically =
     .accesskey = m
 compact-folder-size =
     .value = MB ukupno
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Koristi do
     .accesskey = K
 use-cache-after = MB prostora za priručnu memoriju
-
-##
-
 smart-cache-label =
     .label = Premosti automatsko upravljanje priručnom memorijom
     .accesskey = v
@@ -304,7 +266,6 @@ color-options-button =
     .label = Boje…
     .accesskey = B
 display-width-legend = Poruke s običnim tekstom
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Grafički prikaži smješke
     .accesskey = r
@@ -372,17 +333,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Prikaži privitke ugrađene
     .accesskey = v
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Nakon prikazivanja u trajanju od
     .accesskey = d
 seconds-label = sekundi
-
-##
-
 open-msg-label =
     .value = Otvori poruke u:
 open-msg-tab =
@@ -397,14 +351,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Zatvori prozor/karticu poruke prilikom premještanja ili brisanja
     .accesskey = Z
-display-name-label =
-    .value = Ime za prikaz:
 condensed-addresses-label =
     .label = Prikaži samo ime za prikaz osoba iz mojeg adresara
     .accesskey = P
-
-## Compose Tab
-
 forward-label =
     .value = Proslijedi poruke:
     .accesskey = P
@@ -415,17 +364,10 @@ as-attachment-label =
 extension-label =
     .label = dodaj nastavak nazivu datoteke
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Automatski spremi svakih
     .accesskey = A
 auto-save-end = minuta
-
-##
-
 warn-on-send-accel-key =
     .label = Zatraži potvrdu kod slanja poruke pomoću tipkovničke kratice
     .accesskey = o
@@ -516,9 +458,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Pronađite više davatelja usluga…
 cloud-account-description = Dodaj novu Filelink uslugu pohrane
-
-## Privacy Tab
-
 mail-content = Sadržaj poruke
 remote-content-label =
     .label = Dozvoli vanjski sadržaj u porukama
@@ -547,28 +486,20 @@ third-party-visited =
 cookies-button =
     .label = Prikaži kolačiće…
     .accesskey = k
-do-not-track-label =
-    .label = Šalji “Ne prati me” signal web stranicama (stranice ga ne moraju poštivati)
-    .accesskey = N
-dnt-learn-more-button =
-    .value = Saznajte više
 passwords-description = { -brand-short-name } može zapamtiti lozinke za sve vaše račune.
 passwords-button =
     .label = Spremljene lozinke…
     .accesskey = S
-primary-password-description = Glavna lozinka štiti sve vaše lozinke, ali se mora unijeti jednom za svaku prijavu.
+primary-password-description = Primarna lozinka štiti sve tvoje lozinke, ali je mora upisati za svaku sesiju.
 primary-password-label =
-    .label = Koristi glavnu lozinku
+    .label = Koristi primarnu lozinku
     .accesskey = u
 primary-password-button =
-    .label = Promijeni glavnu lozinku…
+    .label = Promijeni primarnu lozinku …
     .accesskey = m
-forms-primary-pw-fips-title = Trenutačno ste u FIPS načinu rada. FIPS ne dopušta praznu glavnu lozinku.
+forms-primary-pw-fips-title = Trenutačno si u FIPS modusu. FIPS ne dopušta praznu primarnu lozinku.
 forms-master-pw-fips-desc = Promjena lozinke nije uspjela
 junk-description = Postavite svoje zadane postavke neželjene pošte. Specifične postavke za pojedini račun se mogu podesiti u postavkama računa.
-junk-label =
-    .label = Kada označim poruke kao neželjenu poštu:
-    .accesskey = K
 junk-marked-label =
     .label = Kada su poruke označene kao neželjena pošta:
     .accesskey = z
@@ -578,9 +509,6 @@ junk-move-label =
 junk-delete-label =
     .label = Obriši ih
     .accesskey = O
-junk-read-label =
-    .label = Poruke za koje se utvrdi da su neželjena pošta označi kao pročitane
-    .accesskey = u
 junk-read-description = Označi poruke kao pročitane
 junk-read-manual-label =
     .label = Kada su ručno označene kao neželjena pošta
@@ -637,9 +565,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Automatske odluke se mogu nadjačati ručnim omogućavanjem ili isključivanjem šifriranja prilikom pisanja poruke.
     Napomena: Šifriranje je uvijek automatski omogućeno prilikom odgovora na šifriranu poruku.
-
-## Chat Tab
-
 startup-label =
     .value = Kada se { -brand-short-name } pokrene:
     .accesskey = s
@@ -647,20 +572,10 @@ offline-label =
     .label = Ostavi moj račun za razgovore odjavljenim
 auto-connect-label =
     .label = Automatski spoji moje računa za razgovor
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Obavjesti moje kontakte da sam neaktivan nakon
     .accesskey = i
 idle-time-label = minuta neaktivnosti
-
-##
-
 away-message-label =
     .label = i postavi moj status na Odsutan s ovom porukom:
     .accesskey = a
@@ -722,41 +637,21 @@ no-preview-description = Ovaj motiv je neispravan ili trenutačno nedostupan (is
 chat-variant-label =
     .value = Varijanta:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Pronađi u postavkama
-
-## Settings UI Search Results
-
 search-results-header = Rezultati pretrage
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Oprosti! Među postavkama nema rezultata za “<span data-l10n-name="query"></span>”.
        *[other] Oprosti! Među postavkama nema rezultata za “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Trebaš pomoć? Posjeti <a data-l10n-name="url">{ -brand-short-name } podršku</a>
-
-## Sync Tab
-
 sync-signedout-caption = Ponesi svoj web sa sobom
 sync-signedout-description = Sinkronizirajte svoje račune, adresare, kalendare, dodatke i postavke kroz sve svoje uređaje.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Prijavi se za sinkronizaciju…
 sync-pane-header = Sinkronizacija
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” nije potvrđen.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Prijavi se za ponovno povezivanje s “{ $userEmail }”
 sync-pane-resend-verification = Ponovno pošalji potvrdu
 sync-pane-sign-in = Prijava

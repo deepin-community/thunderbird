@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = 行事曆
 calendar-title-reminder = 提醒
 calendar-title-notification = 通知
@@ -9,10 +5,8 @@ calendar-title-category = 分類
 dateformat-label =
     .value = 日期文字格式:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = 長: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = 短: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = 刪除事件與工作前提示。
     .accesskey = V
-accessibility-legend = 輔助功能
-accessibility-colors-label =
-    .label = 使用較具親和力的色彩
-    .accesskey = c
 reminder-legend = 提醒時間到時:
 reminder-play-checkbox =
     .label = 播放音效

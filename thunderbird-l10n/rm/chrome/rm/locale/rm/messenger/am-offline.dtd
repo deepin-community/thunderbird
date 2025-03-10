@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "Per spargnar capacitad da memorisar, betg telechargiar:">
 <!ENTITY doNotDownloadNntp.label "Per spargnar capacitad da memorisar, betg telechargiar per l'utilisaziun senza connexiun:">
 <!ENTITY doNotDownloadImap.label "Per spargnar capacitad da memorisar, pon ins limitar tenor criteris da temp e grondezza il telechargiar da messadis dal server IMAP ed il preservar da copias localas per leger senza connexiun.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "x">
 <!ENTITY syncGroupTitle.label "Sincronisaziun da messadis">
 <!ENTITY diskspaceGroupTitle.label "Capacitad da memorisar">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Telechargiar tut ils messadis independent da lur vegliadetgna">
-<!ENTITY allAutosync.accesskey           "c">
-<!ENTITY ageAutosyncBefore.label         "Mo telechargiar messadis dals ultims">
-<!ENTITY ageAutosync.accesskey           "G">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Dis">
-<!ENTITY weekAgeInterval.label           "Emnas">
-<!ENTITY monthAgeInterval.label          "Mais">
-<!ENTITY yearAgeInterval.label           "Onns">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Telechargiar tut ils messadis independent da lur vegliadetgna">
+<!ENTITY allAutosync.accesskey "c">
+<!ENTITY ageAutosyncBefore.label "Mo telechargiar messadis dals ultims">
+<!ENTITY ageAutosync.accesskey "G">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Dis">
+<!ENTITY weekAgeInterval.label "Emnas">
+<!ENTITY monthAgeInterval.label "Mais">
+<!ENTITY yearAgeInterval.label "Onns">
+<!ENTITY ageAutosyncAfter.label "">

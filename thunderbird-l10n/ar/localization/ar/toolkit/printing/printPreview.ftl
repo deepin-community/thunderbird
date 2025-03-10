@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 printpreview-simplify-page-checkbox =
     .label = بسّط الصفحة
     .accesskey = س
@@ -38,11 +34,7 @@ printpreview-page-setup =
 printpreview-page =
     .value = الصفحة:
     .accesskey = ص
-
-## Variables
-## $percent (integer) - menuitem percent label
-## $arrow (String) - UTF-8 arrow character for navigation buttons
-
+printpreview-sheet-of-sheets = { $sheetNum } من { $sheetCount }
 printpreview-percentage-value =
     .label = { $percent }٪
 printpreview-homearrow =
@@ -57,4 +49,11 @@ printpreview-nextarrow =
 printpreview-endarrow =
     .label = { $arrow }
     .tooltiptext = الصفحة الأخيرة
-
+printpreview-homearrow-button =
+    .title = الصفحة الأولى
+printpreview-previousarrow-button =
+    .title = الصفحة السابقة
+printpreview-nextarrow-button =
+    .title = الصفحة التالية
+printpreview-endarrow-button =
+    .title = الصفحة الأخيرة

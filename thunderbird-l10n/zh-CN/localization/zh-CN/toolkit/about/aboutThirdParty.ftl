@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = 第三方模块信息
 third-party-section-title = { -brand-short-name } 中的第三方模块列表
 third-party-intro = 此页面显示注入到您 { -brand-short-name } 的第三方程序模块。任何未经 Microsoft 或 { -vendor-short-name } 签名的模块均会被视为第三方模块。
@@ -41,15 +37,6 @@ third-party-button-reload = 刷新系统信息
     .title = 刷新系统信息
 third-party-button-open =
     .title = 打开文件位置…
-third-party-button-to-block =
-    .title = 屏蔽此模块
-    .aria-label = 屏蔽此模块
-third-party-button-to-unblock =
-    .title = 当前已屏蔽，可点击取消。
-    .aria-label = 当前已屏蔽，可点击取消。
-third-party-button-to-unblock-disabled =
-    .title = 当前标记为已屏蔽，但此次运行 { -brand-short-name } 时已禁用屏蔽列表。点击以取消屏蔽。
-    .aria-label = 当前标记为已屏蔽，但此次运行 { -brand-short-name } 时已禁用屏蔽列表。点击以取消屏蔽。
 third-party-button-to-block-module = 屏蔽此模块
     .title = 屏蔽此模块
     .aria-label = 屏蔽此模块

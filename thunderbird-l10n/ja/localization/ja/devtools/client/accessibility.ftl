@@ -1,38 +1,17 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### These strings are used inside the Accessibility panel.
-
 accessibility-learn-more = 詳細
 accessibility-text-label-header = テキストラベルと名前
 accessibility-keyboard-header = キーボード
-
-## These strings are used in the overlay displayed when running an audit in the accessibility panel
-
 accessibility-progress-initializing = 初期化中...
     .aria-valuetext = 初期化中...
-# This string is displayed in the audit progress bar in the accessibility panel.
-# Variables:
-#   $nodeCount (Integer) - The number of nodes for which the audit was run so far.
 accessibility-progress-progressbar = { $nodeCount } 個のノードをチェック中
 accessibility-progress-finishing = 完了中...
     .aria-valuetext = 完了中...
-
-## Text entries that are used as text alternative for icons that depict accessibility issues.
-
 accessibility-warning =
     .alt = 警告
 accessibility-fail =
     .alt = エラー
 accessibility-best-practices =
     .alt = 最善策
-
-## Text entries for a paragraph used in the accessibility panel sidebar's checks section
-## that describe that currently selected accessible object has an accessibility issue
-## with its text label or accessible name.
-
 accessibility-text-label-issue-area = <code>alt</code> 属性を使って <span>href</span> 属性を持つ <div>area</div> 要素にラベルをつけてください。<a>詳細</a>
 accessibility-text-label-issue-dialog = ダイアログにはラベルをつけるべきです。<a>詳細</a>
 accessibility-text-label-issue-document-title = ドキュメントには <code>title</code> が必要です。<a>詳細</a>
@@ -51,11 +30,6 @@ accessibility-text-label-issue-image = 画像を含むコンテンツにはラ�
 accessibility-text-label-issue-interactive = インタラクティブな要素にはラベルをつける必要があります。<a>詳細</a>
 accessibility-text-label-issue-optgroup-label2 = <code>label</code> 属性を使って <span>optgroup</span> にラベルをつけてください。<a>詳細</a>
 accessibility-text-label-issue-toolbar = 複数のツールバーがある場合は、ラベルをつける必要があります。<a>詳細</a>
-
-## Text entries for a paragraph used in the accessibility panel sidebar's checks section
-## that describe that currently selected accessible object has a keyboard accessibility
-## issue.
-
 accessibility-keyboard-issue-semantics = フォーカス可能な要素は、対話的なセマンティクスを持つべきです。<a>詳細</a>
 accessibility-keyboard-issue-tabindex = <code>tabindex</code> 属性に 0 より大きい値を指定することは避けてください。<a>詳細</a>
 accessibility-keyboard-issue-action = インタラクティブな要素はキーボード操作でアクティブにできるようにする必要があります。<a>詳細</a>

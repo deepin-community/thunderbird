@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Käytä palveluntarjoajaa
     .accesskey = K
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (oletus)
     .tooltiptext = Käytä oletusosoitetta nimipalvelukyselyjen tekemiseksi HTTPS:n yli
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = M
     .tooltiptext = Kirjoita ensisijainen osoite nimipalvelukyselyjen tekemiseksi HTTPS:n yli
 connection-dns-over-https-custom-label = Mukautettu
-connection-dialog-window2 =
-    .title = Yhteysasetukset
 connection-dialog-title = Yhteysasetukset
 disable-extension-button = Poista laajennus käytöstä
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = Laajennus, <img data-l10n-name="extension-icon" alt="" /> { $name }, määrittää nyt miten { -brand-short-name } yhdistää Internetiin.
 connection-proxy-legend = Määritä välityspalvelinasetukset
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Ei välitystä osoitteille:
     .accesskey = v
 no-proxy-example = Esimerkiksi: 192.168.1.0/24, .mozilla.org, .fi
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Yhteyksiä kohteisiin localhost, 127.0.0.1/8 ja ::1 ei koskaan ohjata välityspalvelimen kautta.
 proxy-password-prompt =
     .label = Älä pyydä tunnistautumista, jos salasana on tallennettu

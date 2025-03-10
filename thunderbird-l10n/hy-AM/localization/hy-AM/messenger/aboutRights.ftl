@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Ձեր Իրավունքների Մասին
 rights-intro = { -brand-full-name }-ը անվճար և բաց կոդով ծրագիր է՝ ստեղծված աշխարհի տարբեր երկրների հազարավոր մարդկանց կողմից: Կան բաներ, որոնք դուք պետք է իմանաք.
 rights-intro-point-1 = { -brand-short-name }-ը ձեզ հասանելի է համաձայն հետևյալ պայմանների՝ <a data-l10n-name="mozilla-public-license-link">Mozilla-ի Հանրային Արտոնագիր</a>: Սա նշանակում է, որ դուք կարող եք օգտագործել, կրկնօրինակել և տարածել { -brand-short-name }-ը: Դուք նաև կարող էք փոփոխել { -brand-short-name }-ի ծրագրային կոդը ըստ ձեր կարիքների: Mozilla-ի Հանրային Արտոնագիրը նաև հնարավորություն է տալիս ձեզ տարածել ձեր փոփոխած տարբերակը:

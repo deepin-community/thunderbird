@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Om logning
 about-logging-page-title = Log-håndtering
 about-logging-current-log-file = Aktuel logfil:
@@ -11,7 +6,6 @@ about-logging-currently-enabled-log-modules = Aktuelt aktiverede logmoduler:
 about-logging-log-tutorial =
     Læs <a data-l10n-name="logging">HTTP Logging</a> 
     for vejledning til at bruge dette værktøj.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Åbn mappe
 about-logging-set-log-file = Angiv logfil
 about-logging-set-log-modules = Angiv logmoduler
@@ -29,9 +23,6 @@ about-logging-no-log-modules = Ingen
 about-logging-no-log-file = Ingen
 about-logging-logging-preset-selector-text = Forindstilling for logging:
 about-logging-with-profiler-stacks-checkbox = Aktiver stack-traces for logbeskeder.
-
-## Logging presets
-
 about-logging-preset-networking-label = Netværk
 about-logging-preset-networking-description = Logmoduler til at diagnosticere netværksproblemer
 about-logging-preset-networking-cookie-label = Cookies
@@ -50,18 +41,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Logmoduler til at diagnosticere WebGPU-problemer
 about-logging-preset-gfx-label = Grafik
 about-logging-preset-gfx-description = Logmoduler til at diagnosticere grafikproblemer
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Logmoduler til at diagnosticere problemer med Microsoft Windows
 about-logging-preset-custom-label = Tilpasset
 about-logging-preset-custom-description = Manuelt valgte logmoduler
-# Error handling
 about-logging-error = Fejl:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Ugyldig værdi "{ $v }" for nøglen "{ $k }"
 about-logging-unknown-logging-preset = Ukendt forindstilling for logning: "{ $v }"
 about-logging-unknown-profiler-preset = Ukendt forindstilling for profilering: "{ $v }"

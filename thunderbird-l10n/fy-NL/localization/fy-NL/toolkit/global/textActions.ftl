@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 text-action-undo =
     .label = Ungedien meitsje
     .accesskey = U
@@ -22,11 +18,9 @@ text-action-copy =
     .accesskey = K
 text-action-copy-shortcut =
     .key = C
-# This command copies the link, removing additional
-# query parameters used to track users across sites.
-text-action-strip-on-share =
-    .label = Sûnder websitetracking kopiearje
-    .accesskey = n
+text-action-copy-clean-link =
+    .label = Skjinne keppeling kopiearje
+    .accesskey = k
 text-action-paste =
     .label = Plakke
     .accesskey = P
@@ -38,6 +32,9 @@ text-action-paste-shortcut =
 text-action-delete =
     .label = Fuortsmite
     .accesskey = F
+text-action-reveal-password =
+    .label = Wachtwurd toane
+    .accesskey = u
 text-action-select-all =
     .label = Alles selektearje
     .accesskey = A

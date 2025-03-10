@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Troubleshooting Information
 page-subtitle =
     This page contains technical information that might be useful when you’re
@@ -41,8 +37,6 @@ app-basics-version = Version
 app-basics-build-id = Build ID
 app-basics-distribution-id = Distribution ID
 app-basics-update-channel = Update Channel
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Update Directory
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Update History
 app-basics-show-update-history = Show Update History
-# Represents the path to the binary used to start the application.
 app-basics-binary = Application Binary
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Profile Directory
        *[other] Profile Folder
     }
-app-basics-enabled-plugins = Enabled Plugins
 app-basics-build-config = Build Configuration
 app-basics-user-agent = User Agent
 app-basics-os = OS
 app-basics-os-theme = OS Theme
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Memory Use
 app-basics-performance = Performance
@@ -82,9 +72,6 @@ app-basics-safe-mode = Safe Mode
 app-basics-memory-size = Memory Size (RAM)
 app-basics-disk-available = Disk Space Available
 app-basics-pointing-devices = Pointing Devices
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Decision Log
 graphics-crash-guards-title = Crash Guard Disabled Features
 graphics-workarounds-title = Workarounds
 graphics-device-pixel-ratios = Window Device Pixel Ratios
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Window Protocol
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Desktop Environment
 place-database-title = Places Database
 place-database-stats = Statistics
@@ -156,9 +141,6 @@ clear-startup-cache-label = Clear startup cache…
 startup-cache-dialog-title2 = Restart { -brand-short-name } to clear startup cache?
 startup-cache-dialog-body2 = This will not change your settings or remove extensions.
 restart-button-label = Restart
-
-## Media titles
-
 audio-backend = Audio Backend
 max-audio-channels = Max Channels
 sample-rate = Preferred Sample Rate
@@ -177,11 +159,7 @@ media-device-rate = Rate
 media-device-latency = Latency
 media-capabilities-title = Media Capabilities
 media-codec-support-info = Codec Support Information
-# List all the entries of the database.
 media-capabilities-enumerate = Enumerate database
-
-## Codec support table
-
 media-codec-support-sw-decoding = Software Decoding
 media-codec-support-hw-decoding = Hardware Decoding
 media-codec-support-codec-name = Codec Name
@@ -189,26 +167,13 @@ media-codec-support-supported = Supported
 media-codec-support-unsupported = Unsupported
 media-codec-support-error = Codec support information unavailable. Try again after playing back a media file.
 media-codec-support-lack-of-extension = Install extension
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Content Decryption Modules Information
 media-key-system-name = Key System Name
 media-video-robustness = Video Robustness
 media-audio-robustness = Audio Robustness
 media-cdm-capabilities = Capabilities
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Clear Lead
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = HDCP 2.2 Compatible
-
-##
-
 intl-title = Internationalisation & Localisation
 intl-app-title = Application Settings
 intl-locales-requested = Requested Locales
@@ -218,52 +183,29 @@ intl-locales-default = Default Locale
 intl-os-title = Operating System
 intl-os-prefs-system-locales = System Locales
 intl-regional-prefs = Regional Preferences
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Remote Debugging (Chromium Protocol)
 remote-debugging-accepting-connections = Accepting Connections
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Crash Reports for the Last { $days } Day
        *[other] Crash Reports for the Last { $days } Days
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } minute ago
        *[other] { $minutes } minutes ago
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } hour ago
        *[other] { $hours } hours ago
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } day ago
        *[other] { $days } days ago
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] All Crash Reports (including { $reports } pending crash in the given time range)
@@ -271,18 +213,11 @@ pending-reports =
     }
 raw-data-copied = Raw data copied to clipboard
 text-copied = Text copied to clipboard
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Blocked for your graphics driver version.
 blocked-gfx-card = Blocked for your graphics card because of unresolved driver issues.
 blocked-os-version = Blocked for your operating system version.
 blocked-mismatched-version = Blocked for your graphics driver version mismatch between registry and DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Blocked for your graphics driver version. Try updating your graphics driver to version { $driverVersion } or newer.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType Parameters
 compositing = Compositing
 support-font-determination = Font Visibility Debug Info
@@ -292,11 +227,6 @@ yes = Yes
 no = No
 unknown = Unknown
 virtual-monitor-disp = Virtual Monitor Display
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Found
 missing = Missing
 gpu-process-pid = GPUProcessPid
@@ -323,11 +253,7 @@ webgl2-driver-extensions = WebGL 2 Driver Extensions
 webgl2-extensions = WebGL 2 Extensions
 webgpu-default-adapter = WebGPU Default Adapter
 webgpu-fallback-adapter = WebGPU Fallback Adapter
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Blocklisted due to known issues: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Blocklisted; failure code { $failureCode }
 d3d11layers-crash-guard = D3D11 Compositor
 glcontext-crash-guard = OpenGL
@@ -347,8 +273,6 @@ has-seccomp-bpf = Seccomp-BPF (System Call Filtering)
 has-seccomp-tsync = Seccomp Thread Synchronisation
 has-user-namespaces = User Namespaces
 has-privileged-user-namespaces = User Namespaces for privileged processes
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — This feature is not allowed by your system. This can restrict security features of { -brand-short-name }.
 can-sandbox-content = Content Process Sandboxing
 can-sandbox-media = Media Plugin Sandboxing
@@ -369,16 +293,8 @@ launcher-process-status-0 = Enabled
 launcher-process-status-1 = Disabled due to failure
 launcher-process-status-2 = Disabled forcibly
 launcher-process-status-unknown = Unknown status
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Disabled by experiment
-fission-status-experiment-treatment = Enabled by experiment
 fission-status-disabled-by-e10s-env = Disabled by environment
 fission-status-enabled-by-env = Enabled by environment
 fission-status-disabled-by-env = Disabled by environment
@@ -387,7 +303,6 @@ fission-status-disabled-by-default = Disabled by default
 fission-status-enabled-by-user-pref = Enabled by user
 fission-status-disabled-by-user-pref = Disabled by user
 fission-status-disabled-by-e10s-other = E10s disabled
-fission-status-enabled-by-rollout = Enabled by phased rollout
 async-pan-zoom = Asynchronous Pan/Zoom
 apz-none = none
 wheel-enabled = wheel input enabled
@@ -396,34 +311,20 @@ drag-enabled = scrollbar drag enabled
 keyboard-enabled = keyboard enabled
 autoscroll-enabled = autoscroll enabled
 zooming-enabled = smooth pinch-zoom enabled
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = async wheel input disabled due to unsupported pref: { $preferenceKey }
 touch-warning = async touch input disabled due to unsupported pref: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Inactive
 policies-active = Active
 policies-error = Error
-
-## Printing section
-
 support-printing-title = Printing
 support-printing-troubleshoot = Troubleshooting
 support-printing-clear-settings-button = Clear saved print settings
 support-printing-modified-settings = Modified print settings
 support-printing-prefs-name = Name
 support-printing-prefs-value = Value
-
-## Remote Settings sections
-
 support-remote-settings-title = Remote Settings
 support-remote-settings-status = Status
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Not working
 support-remote-settings-last-check = Last check
 support-remote-settings-local-timestamp = Local timestamp
@@ -431,9 +332,6 @@ support-remote-settings-sync-history = History
 support-remote-settings-sync-history-status = Status
 support-remote-settings-sync-history-datetime = Date
 support-remote-settings-sync-history-infos = Infos
-
-## Normandy sections
-
 support-remote-experiments-title = Remote Experiments
 support-remote-experiments-name = Name
 support-remote-experiments-branch = Experiment Branch
@@ -441,19 +339,10 @@ support-remote-experiments-see-about-studies = See <a data-l10n-name="support-ab
 support-remote-features-title = Remote Features
 support-remote-features-name = Name
 support-remote-features-status = Status
-
-## Pointing devices
-
 pointing-device-mouse = Mouse
 pointing-device-touchscreen = Touchscreen
 pointing-device-pen-digitizer = Pen Digitiser
 pointing-device-none = No pointing devices
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Content Analysis (DLP)
 content-analysis-active = Active
 content-analysis-connected-to-agent = Connected to Agent

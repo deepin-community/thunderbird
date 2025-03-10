@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ei ole asetettu)
 failed-pp-change = Pääsalasanan vaihtaminen ei onnistunut
@@ -21,7 +17,6 @@ set-password-new-password = Kirjoita uusi salasana:
 set-password-reenter-password = Toista salasana:
 set-password-meter = Salasanan laadun mittari
 set-password-meter-loading = Ladataan
-primary-password-admin = Järjestelmän ylläpitäjä vaatii pääsalasanan asettamisen ennen käyttäjätunnusten ja salasanojen tallentamista.
 primary-password-required-by-policy = Organisaatiosi edellyttää, että sinulla on pääsalasana, jotta voit tallentaa kirjautumistunnukset ja salasanat.
 primary-password-description = Pääsalasanalla suojataan tällä laitteella olevia tärkeitä tietoja, kuten käyttäjätunnuksia ja salasanoja. Jos luot pääsalasanan, { -brand-short-name } kysyy sitä kerran istunnossa, jos se tarvitsee sen suojaamia tietoja.
 primary-password-warning = Säilytä pääsalasanasi turvallisessa paikassa. Jos unohdat sen, et pääse käsiksi sen tällä laitteella suojaamiin tietoihin.

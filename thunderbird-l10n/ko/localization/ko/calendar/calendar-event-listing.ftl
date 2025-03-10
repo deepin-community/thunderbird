@@ -1,26 +1,17 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
-    .tooltiptext = 이벤트 검색 닫기 및 이벤트 리스트
-
-## Listing columns
-
+    .tooltiptext = 이벤트 검색과 이벤트 목록 닫기
 calendar-event-listing-column-calendar-name =
     .label = 캘린더 이름
-    .tooltiptext = 클릭하면 캘린더 이름으로 정렬하기
+    .tooltiptext = 캘린더 이름으로 정렬
 calendar-event-listing-column-category =
     .label = 분류
-    .tooltiptext = 클릭하면 분류명으로 정렬하기
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
+    .tooltiptext = 분류명으로 정렬
 calendar-event-listing-column-completed =
     .label = 완료
-    .tooltiptext = 클릭하면 완료 마크로 정렬하기
+    .tooltiptext = 완료도별로 정렬
 calendar-event-listing-column-completed-date =
     .label = 완료 일자
-    .tooltiptext = 클릭하면 완료 일자로 정렬하기
+    .tooltiptext = 완료 일자로 정렬하기
 calendar-event-listing-column-due-date =
     .label = 마감 일자
     .tooltiptext = 클릭하면 마감 일자로 정렬하기
@@ -48,9 +39,8 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = 제목
     .tooltiptext = 클릭하면 제목으로 정렬하기
-
-## Interval dropdown options
-
+calendar-event-listing-interval-past =
+    .label = 과거의 이벤트
 calendar-event-listing-interval-calendar-month =
     .label = 현재 캘린더달의 이벤트
 calendar-event-listing-interval-current-view =
@@ -65,6 +55,10 @@ calendar-event-listing-interval-next-6-months =
     .label = 다음 6개월간의 이벤트
 calendar-event-listing-interval-next-12-months =
     .label = 다음 12개월간의 이벤트
+calendar-event-listing-interval-future =
+    .label = 이후의 모든 이벤트
+calendar-event-listing-interval-all =
+    .label = 모든 이벤트
 calendar-event-listing-interval-selected-day =
     .label = 선택한 일자의 이벤트
 calendar-event-listing-interval-today =

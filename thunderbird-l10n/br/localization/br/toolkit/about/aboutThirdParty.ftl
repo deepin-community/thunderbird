@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Titouroù diwar-benn an trede-molladoù
 third-party-section-title = Listenn an trede-molladoù e { -brand-short-name }
 third-party-intro =
@@ -37,9 +33,6 @@ third-party-button-reload = Kargañ en-dro gant an titouroù reizhad
     .title = Kargañ en-dro gant an titouroù reizhad
 third-party-button-open =
     .title = Digeriñ lec'hiadur ar restr…
-third-party-button-to-block =
-    .title = Stankañ ar mollad-mañ
-    .aria-label = Stankañ ar mollad-mañ
 third-party-button-to-block-module = Stankañ ar mollad-mañ
     .title = Stankañ ar mollad-mañ
     .aria-label = Stankañ ar mollad-mañ

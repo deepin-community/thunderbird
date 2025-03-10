@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Criptografia de ponta a ponta
 account-otr-label = Troca de mensagens com criptografia (OTR)
@@ -18,6 +14,4 @@ otr-require-encryption =
 otr-require-encryption-info = Ao exigir criptografia de ponta a ponta, mensagens em conversas individuais não são enviadas, a menos que possam ser criptografadas. Mensagens não criptografadas recebidas não são mostradas como parte da conversa normal e também não são registradas em log.
 otr-verify-nudge =
     .label = Sempre me lembrar de verificar um contato não verificado
-
 otr-not-yet-available = não disponível ainda
-

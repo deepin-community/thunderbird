@@ -22,7 +22,7 @@
   }
 
   &[sizemode="fullscreen"],
-  &:not([tabsintitlebar]) {
+  &:not([customtitlebar]) {
     --unified-drag-space: 3px;
   }
 }
@@ -47,7 +47,7 @@ unified-toolbar {
   & .titlebar-buttonbox-container {
     flex: 0 0 auto;
 
-    @media (-moz-platform: windows) {
+    @media (-moz-platform: windows) or (-moz-platform: linux) {
       align-self: stretch;
     }
   }
@@ -113,7 +113,7 @@ unified-toolbar-customization {
   }
 
   & #unifiedToolbar > *,
-  & :is(#messengerBody, #spacesToolbar, #toolbar-menubar, #tabs-toolbar) {
+  & :is(#messengerBody, #spacesToolbar, #toolbar-menubar, #tabs-toolbar, shortcuts-container) {
     display: none;
   }
 

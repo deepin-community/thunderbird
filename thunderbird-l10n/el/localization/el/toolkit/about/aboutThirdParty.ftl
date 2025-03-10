@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Πληροφορίες μονάδων τρίτων
 third-party-section-title = Λίστα λειτουργικών μονάδων τρίτων στο { -brand-short-name }
 third-party-intro =
@@ -44,19 +40,6 @@ third-party-button-reload = Ανανέωση με πληροφορίες συσ�
     .title = Ανανέωση με πληροφορίες συστήματος
 third-party-button-open =
     .title = Άνοιγμα τοποθεσίας αρχείου…
-third-party-button-to-block =
-    .title = Αποκλεισμός μονάδας
-    .aria-label = Αποκλεισμός μονάδας
-third-party-button-to-unblock =
-    .title = Βρίσκεται σε αποκλεισμό. Κάντε κλικ για άρση.
-    .aria-label = Βρίσκεται σε αποκλεισμό. Κάντε κλικ για άρση.
-third-party-button-to-unblock-disabled =
-    .title =
-        Έχει επισημανθεί ως αποκλεισμένο, αν και η λίστα αποκλεισμού είναι ανενεργή για αυτήν την εκτέλεση
-        του { -brand-short-name }. Κάντε κλικ για άρση αποκλεισμού.
-    .aria-label =
-        Έχει επισημανθεί ως αποκλεισμένο, αν και η λίστα αποκλεισμού είναι ανενεργή για αυτήν την εκτέλεση
-        του { -brand-short-name }. Κάντε κλικ για άρση αποκλεισμού.
 third-party-button-to-block-module = Αποκλεισμός μονάδας
     .title = Αποκλεισμός μονάδας
     .aria-label = Αποκλεισμός μονάδας

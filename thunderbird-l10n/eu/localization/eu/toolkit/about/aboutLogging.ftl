@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Erregistroari buruz
 about-logging-page-title = Erregistroaren kudeatzailea
 about-logging-current-log-file = Uneko erregistro-fitxategia:
 about-logging-new-log-file = Erregistro-fitxategi berria:
 about-logging-currently-enabled-log-modules = Une honetan gaitutako erregistro-moduluak:
 about-logging-log-tutorial = Ikusi <a data-l10n-name="logging">HTTP erregistroa</a> orria tresna hau erabiltzeko argibideetarako.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Ireki direktorioa
 about-logging-set-log-file = Ezarri erregistro-fitxategia
 about-logging-set-log-modules = Ezarri erregistro-moduluak:
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Bat ere ez
 about-logging-no-log-file = Bat ere ez
 about-logging-logging-preset-selector-text = Erregistroaren aurrezarpena:
 about-logging-with-profiler-stacks-checkbox = Gaitu pilen trazak erregistro-mezuentzat
-
-## Logging presets
-
 about-logging-preset-networking-label = Sarea
 about-logging-preset-networking-description = Sarearen arazoak diagnostikatzeko erregistro-moduluak
 about-logging-preset-networking-cookie-label = Cookieak
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = WebGPU arazoak diagnostikatzeko erregistro-moduluak
 about-logging-preset-gfx-label = Grafikoak
 about-logging-preset-gfx-description = Grafikoen arazoak diagnostikatzeko erregistro-moduluak
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Microsoft Windowsi berezkoak diren arazoak diagnostikatzeko erregistro-moduluak
 about-logging-preset-custom-label = Pertsonalizatua
 about-logging-preset-custom-description = Erregistratu eskuz hautatutako moduluak
-# Error handling
 about-logging-error = Errorea:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = "{ $v }" balio baliogabea "{ $k }" gakoarentzat
 about-logging-unknown-logging-preset = Erregistroaren "{ $v }" aurrezarpen ezezaguna
 about-logging-unknown-profiler-preset = Profil sortzailearen "{ $v }" aurrezarpen ezezaguna

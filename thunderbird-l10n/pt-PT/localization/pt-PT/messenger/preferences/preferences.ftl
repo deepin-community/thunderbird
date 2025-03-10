@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Fechar
 preferences-doc-title2 = Definições
@@ -47,8 +43,6 @@ collection-health-report =
     .label = Permitir ao { -brand-short-name } enviar dados técnicos e de interação para a { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Saber mais
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = A partilha de dados está desativada para a configuração desta compilação
 collection-backlogged-crash-reports =
     .label = Permitir ao { -brand-short-name } enviar relatórios de falha pendentes em seu nome
@@ -69,10 +63,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Reiniciar o { -brand-short-name } para aplicar estas alterações
 confirm-messenger-language-change-button = Aplicar e reiniciar
 update-setting-write-failure-title = Erro ao guardar as preferências de atualização
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     O { -brand-short-name } encontrou um erro e não guardou esta alteração. Note que definir esta atualização requer permissão para escrever no ficheiro abaixo. Você ou um administrador do sistema pode resolver o erro ao conceder ao grupo Utilizadores controlo total para este ficheiro.
     
@@ -80,26 +70,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Atualização em curso
 update-in-progress-message = Pretende que o { -brand-short-name } prossiga com esta atualização?
 update-in-progress-ok-button = &Descartar
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Continuar
 account-button = Definições de conta
 open-addons-sidebar-button = Extras e temas
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Para criar uma palavra-passe principal, introduza as suas credenciais de autenticação do Windows. Isto ajuda a proteger a segurança das suas contas.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = criar uma palavra-passe principal
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -198,8 +174,6 @@ always-check-default =
 check-default-button =
     .label = Verificar agora…
     .accesskey = V
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -217,8 +191,6 @@ return-receipts-button =
     .label = Recibos de leitura…
     .accesskey = R
 update-app-legend = Atualizações do { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versão { $version }
 allow-description = Permitir ao { -brand-short-name }
 automatic-updates-label =
@@ -253,18 +225,10 @@ offline-compact-folder-automatically =
     .accesskey = c
 compact-folder-size =
     .value = MB no total
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Utilizar até
     .accesskey = U
 use-cache-after = MB de espaço para cache
-
-##
-
 smart-cache-label =
     .label = Sobrepor gestão automática da cache
     .accesskey = o
@@ -288,7 +252,6 @@ color-options-button =
     .label = Cores…
     .accesskey = C
 display-width-legend = Mensagens sem formatação
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Mostrar ícones emotivos como imagens
     .accesskey = M
@@ -356,17 +319,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Ver anexos no corpo da mensagem
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Ao exibir durante
     .accesskey = d
 seconds-label = segundos
-
-##
-
 open-msg-label =
     .value = Abrir mensagens em:
 open-msg-tab =
@@ -381,14 +337,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Fechar janela/separador de mensagem ao mover ou apagar
     .accesskey = F
-display-name-label =
-    .value = Nome de apresentação:
 condensed-addresses-label =
     .label = Mostrar apenas o nome para pessoas nos meus contactos
     .accesskey = m
-
-## Compose Tab
-
 forward-label =
     .value = Reencaminhar mensagens:
     .accesskey = r
@@ -399,17 +350,10 @@ as-attachment-label =
 extension-label =
     .label = adicionar extensão ao nome do ficheiro
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Guardar automaticamente a cada
     .accesskey = a
 auto-save-end = minutos
-
-##
-
 warn-on-send-accel-key =
     .label = Confirmar quando utilizar atalhos de teclado para enviar mensagem
     .accesskey = C
@@ -484,9 +428,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Encontre mais fornecedores…
 cloud-account-description = Adicionar um novo serviço de armazenamento Filelink
-
-## Privacy Tab
-
 mail-content = Conteúdo remoto
 remote-content-label =
     .label = Permitir conteúdo remoto nas mensagens
@@ -515,11 +456,6 @@ third-party-visited =
 cookies-button =
     .label = Mostrar cookies
     .accesskey = s
-do-not-track-label =
-    .label = Enviar aos sites um sinal de “não-monitorização” a indicar que não pretende ser monitorizado
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Saber mais
 passwords-description = O { -brand-short-name } pode memorizar palavras-passe para todas as suas contas.
 passwords-button =
     .label = Palavras-passe guardadas...
@@ -534,18 +470,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Atualmente, está no modo FIPS. Este modo requer uma palavra-passe principal não vazia.
 forms-master-pw-fips-desc = Falha ao alterar palavra-passe
 junk-description = Configure as predefinições para o lixo eletrónico. As definições específicas de lixo eletrónico podem ser efetuadas nas definições da conta.
-junk-label =
-    .label = Ao marcar uma mensagem como lixo eletrónico:
-    .accesskey = A
 junk-move-label =
     .label = Mover para a pasta "Lixo eletrónico"
     .accesskey = o
 junk-delete-label =
     .label = Apagar
     .accesskey = A
-junk-read-label =
-    .label = Marcar mensagens consideradas lixo eletrónico como lidas
-    .accesskey = m
 junk-log-label =
     .label = Ativar registo inteligente do filtro do lixo eletrónico
     .accesskey = x
@@ -580,9 +510,6 @@ security-devices-button =
     .label = Dispositivos de segurança…
     .accesskey = D
 account-settings = Definições da Conta
-
-## Chat Tab
-
 startup-label =
     .value = Ao iniciar o { -brand-short-name }:
     .accesskey = c
@@ -590,20 +517,10 @@ offline-label =
     .label = Manter a minha conta de chat offline
 auto-connect-label =
     .label = Ligar automaticamente às contas de chat
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Informar os meus contactos que estou ausente após
     .accesskey = I
 idle-time-label = minutos de inatividade
-
-##
-
 away-message-label =
     .label = e definir o meu estado para ausente com esta mensagem:
     .accesskey = a
@@ -663,34 +580,17 @@ no-preview-description = Este tema não é válido ou está atualmente indispon�
 chat-variant-label =
     .value = Variante:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Encontrar nas Definições
-
-## Settings UI Search Results
-
 search-results-header = Resultados da pesquisa
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Desculpa! Não há resultados em Opções para “<span data-l10n-name="query"></span>”.
        *[other] Desculpa! Não há resultados em Definições para  “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Precisa de ajuda? Visite o <a data-l10n-name="url">Apoio do { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-description = Sincronize as suas contas, livros de endereço, calendários, extras e definições entre todos os seus dispositivos.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Por favor, inicie a sessão para reassociar “{ $userEmail }”
 show-synced-item-address = Livros de Endereços
 show-synced-item-calendar = Calendários

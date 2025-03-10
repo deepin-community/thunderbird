@@ -1,12 +1,5 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Ievietot formulu">
-
 <!ENTITY sourceEditField.label "Ievietot LaTeX pirmkodu:">
-
 <!ENTITY options.label "Opcijas">
 <!ENTITY optionInline.label "Iekļautais režīms">
 <!ENTITY optionInline.accesskey "I">
@@ -16,6 +9,5 @@
 <!ENTITY optionLTR.accesskey "K">
 <!ENTITY optionRTL.label "Virzienā no labās uz kreiso">
 <!ENTITY optionRTL.accesskey "L">
-
 <!ENTITY insertButton.label "Ievietot">
 <!ENTITY insertButton.accesskey "I">

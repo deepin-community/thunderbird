@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-telemetry-ping-data-source = Origen de los datos de ping:
 about-telemetry-show-current-data = Datos actuales
 about-telemetry-show-archived-ping-data = Datos archivados de ping
@@ -40,88 +36,47 @@ about-telemetry-raw = JSON sin procesar
 about-telemetry-full-sql-warning = NOTA: la depuración SQL lenta está activada. Pueden mostrarse cadenas completas de SQL debajo, pero no se enviarán a Telemetry.
 about-telemetry-fetch-stack-symbols = Recuperar nombres de funciones para las pilas
 about-telemetry-hide-stack-symbols = Mostrar datos de la pila sin procesarlos
-# Selects the correct release version
-# Variables:
-#   $channel (String): represents the corresponding release data string
 about-telemetry-data-type =
     { $channel ->
         [release] datos de la versión
        *[prerelease] datos de la versión preliminar
     }
-# Selects the correct upload string
-# Variables:
-#   $uploadcase (String): represents a corresponding upload string
 about-telemetry-upload-type =
     { $uploadcase ->
         [enabled] habilitada
        *[disabled] deshabilitada
     }
-# Example Output: 1 sample, average = 0, sum = 0
-# Variables:
-#   $sampleCount (Integer): amount of histogram samples
-#   $prettyAverage (Integer): average of histogram samples
-#   $sum (Integer): sum of histogram samples
 about-telemetry-histogram-stats =
     { $sampleCount ->
         [one] { $sampleCount } muestra, media = { $prettyAverage }, suma = { $sum }
        *[other] { $sampleCount } muestras, media = { $prettyAverage }, suma = { $sum }
     }
-# Variables:
-#   $telemetryServerOwner (String): the value of the toolkit.telemetry.server_owner preference. Typically "Mozilla"
 about-telemetry-page-subtitle = Esta página muestra la información de rendimiento, hardware, uso y personalizaciones recopilada por Telemetry. Esta información se envía a { $telemetryServerOwner } para ayudar a mejorar { -brand-full-name }.
 about-telemetry-settings-explanation = Telemetry está recopilando { about-telemetry-data-type } y la subida está <a data-l10n-name="upload-link">{ about-telemetry-upload-type }</a>.
-# Variables:
-#   $name (String): ping name, e.g. “saved-session”
-#   $timeStamp (String): ping localized timestamp, e.g. “2017/07/08 10:40:46”
 about-telemetry-ping-details = Cada parte de información se envía empaquetada en "<a data-l10n-name="ping-link">pings</a>". Está viendo el ping { $name }, { $timestamp }.
 about-telemetry-data-details-current = Cada parte de información se envía agrupada en "<a data-l10n-name="ping-link">pings</a>". Está viendo los datos actuales.
-# string used as a placeholder for the search field
-# More info about it can be found here:
-# https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/main-ping.html
-# Variables:
-#   $selectedTitle (String): the section name from the structure of the ping.
 about-telemetry-filter-placeholder =
     .placeholder = Encontrar en { $selectedTitle }
 about-telemetry-filter-all-placeholder =
     .placeholder = Buscar en todas las secciones
-# Variables:
-#   $searchTerms (String): the searched terms
 about-telemetry-results-for-search = Resultados para "{ $searchTerms }"
-# More info about it can be found here: https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/data/main-ping.html
-# Variables:
-#   $sectionName (String): the section name from the structure of the ping.
-#   $currentSearchText (String): the current text in the search input
 about-telemetry-no-search-results = ¡Lo sentimos! No hay resultados en { $sectionName } de "{ $currentSearchText }"
-# Variables:
-#   $searchTerms (String): the searched terms
 about-telemetry-no-search-results-all = ¡Lo sentimos! No hay resultados para "{ $searchTerms }" en ningun sección
-# This message is displayed when a section is empty.
-# Variables:
-#   $sectionName (String): is replaced by the section name.
 about-telemetry-no-data-to-display = ¡Lo sentimos! En este momento no hay datos disponibles en "{ $sectionName }"
-# used as a tooltip for the “current” ping title in the sidebar
 about-telemetry-current-data-sidebar = datos actuales
-# used in the “Ping Type” select
 about-telemetry-telemetry-ping-type-all = todo
-# button label to copy the histogram
 about-telemetry-histogram-copy = Copiar
-# these strings are used in the “Slow SQL Statements” section
 about-telemetry-slow-sql-main = Sentencias SQL lentas en el hilo principal
 about-telemetry-slow-sql-other = Sentencias SQL lentas en hilos auxiliares
 about-telemetry-slow-sql-hits = Aciertos
 about-telemetry-slow-sql-average = Tiempo medio (ms)
 about-telemetry-slow-sql-statement = Sentencia
-# these strings are used in the “Add-on Details” section
 about-telemetry-addon-table-id = ID del complemento
 about-telemetry-addon-table-details = Detalles
-# Variables:
-#   $addonProvider (String): the name of an Add-on Provider (e.g. “XPI”, “Plugin”)
 about-telemetry-addon-provider = Proveedor { $addonProvider }
 about-telemetry-keys-header = Propiedad
 about-telemetry-names-header = Nombre
 about-telemetry-values-header = Valor
-# Variables:
-#   $lateWriteCount (Integer): the number of the late writes
 about-telemetry-late-writes-title = Escritura demorada #{ $lateWriteCount }
 about-telemetry-stack-title = Pila:
 about-telemetry-memory-map-title = Mapa de memoria:
@@ -131,6 +86,4 @@ about-telemetry-category-header = categoría
 about-telemetry-method-header = método
 about-telemetry-object-header = objeto
 about-telemetry-extra-header = extra
-# Variables:
-#  $process (String): type of process in subsection headers ( e.g. "content", "parent" )
 about-telemetry-process = { $process } proceso

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = 現在の行の選択を切り替えるチェックボックス
     .title = 現在の行を選択します
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = 現在の行を復元します
 tree-list-view-column-picker =
     .title = 表示する列を選択します
-tree-list-view-column-picker-restore =
-    .label = 列を元の順序に戻す
 tree-list-view-column-picker-restore-default-columns =
     .label = 列を既定に戻す
 tree-list-view-row-thread-button =

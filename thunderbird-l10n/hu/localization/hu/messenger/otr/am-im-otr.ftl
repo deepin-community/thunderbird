@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Végpontok közötti titkosítás
 account-otr-label = Nem rögzített üzenetküldés (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     üzenetek nem jelennek meg a szokásos beszélgetés részeként, és nem lesznek naplózva.
 otr-verify-nudge =
     .label = Mindig emlékeztessen az ellenőrizetlen kapcsolatok ellenőrzésére
-
 otr-not-yet-available = még nem érhető el
-

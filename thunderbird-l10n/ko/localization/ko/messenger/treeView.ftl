@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = 현재 행 선택을 토글하는 체크박스
     .title = 현재 행 선택
@@ -17,8 +10,8 @@ tree-list-view-row-restore =
     .title = 현재 행 복원
 tree-list-view-column-picker =
     .title = 표시할 항목 선택
-tree-list-view-column-picker-restore =
-    .label = 열 순서 복원
+tree-list-view-column-picker-restore-default-columns =
+    .label = 기본 열 복원
 tree-list-view-row-thread-button =
     .title = 스레딩된 메시지입니다
 tree-list-view-row-ignored-thread = 무시된 스레드
@@ -45,3 +38,9 @@ tree-list-view-row-spam =
 tree-list-view-row-not-spam =
     .alt = 스팸 상태 표시기
     .title = 스팸으로 표시되지 않은 메시지
+tree-list-view-row-read =
+    .alt = 읽은 상태 표시기
+    .title = 메시지 읽은 상태
+tree-list-view-row-not-read =
+    .alt = 읽지 않은 상태 표시기
+    .title = 메시지 읽지 않음 상태

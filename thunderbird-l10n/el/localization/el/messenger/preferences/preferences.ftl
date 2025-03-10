@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Κλείσιμο
 preferences-doc-title2 = Ρυθμίσεις
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Συγχρονισμός
 category-sync =
     .tooltiptext = Συγχρονισμός
+pane-qr-export-title = Εξαγωγή για κινητές συσκευές
+category-qr-export =
+    .tooltiptext = Εξαγωγή για κινητές συσκευές
 general-language-and-appearance-header = Γλώσσα και εμφάνιση
 general-incoming-mail-header = Εισερχόμενα email
 general-files-and-attachment-header = Αρχεία και συνημμένα
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Να επιτρέπεται στο { -brand-short-name } η αποστολή τεχνικών και διαδραστικών δεδομένων στη { -vendor-short-name }
     .accesskey = ρ
 collection-health-report-link = Μάθετε περισσότερα
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Η αναφορά δεδομένων είναι ανενεργή για αυτήν τη δομή
 collection-backlogged-crash-reports =
     .label = Να επιτρέπεται στο { -brand-short-name } η αποστολή εκκρεμουσών αναφορών σφαλμάτων
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Επανεκκίνηση του { -brand-short-name } για εφαρμογή αλλαγών
 confirm-messenger-language-change-button = Εφαρμογή και επανεκκίνηση
 update-setting-write-failure-title = Σφάλμα αποθήκευσης προτιμήσεων ενημερώσεων
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     Το { -brand-short-name } αντιμετώπισε σφάλμα και δεν αποθήκευσε αυτήν την αλλαγή. Σημειώστε ότι η ρύθμιση αυτής της προτίμησης ενημερώσεων απαιτεί δικαίωμα εγγραφής στο παρακάτω αρχείο. Το σφάλμα μπορεί να επιλυθεί από εσάς ή κάποιον διαχειριστή του συστήματος, χορηγώντας στην ομάδα «Χρήστες» τον πλήρη έλεγχο για αυτό το αρχείο.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Ενημέρωση σε εξέλιξη
 update-in-progress-message = Θέλετε το { -brand-short-name } να συνεχίσει με αυτήν την ενημέρωση;
 update-in-progress-ok-button = &Απόρριψη
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Συνέχεια
 account-button = Ρυθμίσεις λογαριασμού
 open-addons-sidebar-button = Πρόσθετα και θέματα
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Για να δημιουργήσετε έναν κύριο κωδικό πρόσβασης, εισαγάγετε τα διαπιστευτήρια σύνδεσης των Windows. Αυτό συμβάλλει στην προστασία των λογαριασμών σας.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = δημιουργήσει κύριο κωδικό πρόσβασης
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Προσθήκη παρόχου OpenSearch
 add-opensearch-provider-text = Εισαγάγετε το URL του παρόχου OpenSearch για προσθήκη. Χρησιμοποιήστε είτε το άμεσο URL του αρχείου περιγραφής του OpenSearch είτε ένα URL όπου μπορεί να εντοπιστεί αυτόματα.
 adding-opensearch-provider-failed-title = Αποτυχία προσθήκης παρόχου OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Δεν ήταν δυνατή η προσθήκη παρόχου OpenSearch για το { $url }.
 minimize-to-tray-label =
     .label = Μετακίνηση του { -brand-short-name } στην περιοχή ειδοποιήσεων όταν ελαχιστοποιείται
@@ -210,11 +187,9 @@ always-check-default =
 check-default-button =
     .label = Έλεγχος…
     .accesskey = λ
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
-        [macos] Spotlight
+        [macos] Αναζήτηση Spotlight
         [windows] Αναζήτηση των Windows
        *[other] { "" }
     }
@@ -229,8 +204,6 @@ return-receipts-button =
     .label = Αποδεικτικά προβολής…
     .accesskey = τ
 update-app-legend = Ενημερώσεις του { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Έκδοση { $version }
 allow-description = Να επιτρέπεται στο { -brand-short-name }
 automatic-updates-label =
@@ -265,18 +238,10 @@ offline-compact-folder-automatically =
     .accesskey = κ
 compact-folder-size =
     .value = MB συνολικά
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Χρήση έως
     .accesskey = Χ
 use-cache-after = MB χώρου για την κρυφή μνήμη
-
-##
-
 smart-cache-label =
     .label = Παράκαμψη αυτόματης διαχείρισης κρυφής μνήμης
     .accesskey = ψ
@@ -300,7 +265,6 @@ color-options-button =
     .label = Χρώματα…
     .accesskey = ρ
 display-width-legend = Μηνύματα απλού κειμένου
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Προβολή των emoticon ως γραφικών στοιχείων
     .accesskey = φ
@@ -368,17 +332,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Εμφάνιση συνημμένων ένθετα
     .accesskey = μ
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Μετά από προβολή για
     .accesskey = γ
 seconds-label = δευτερόλεπτα
-
-##
-
 open-msg-label =
     .value = Άνοιγμα μηνυμάτων σε:
 open-msg-tab =
@@ -393,8 +350,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Κλείσιμο παραθύρου/καρτέλας μηνύματος μετά από μετακίνηση ή διαγραφή
     .accesskey = Κ
-display-name-label =
-    .value = Εμφανιζόμενο όνομα:
 address-display-legend = Λίστα μηνυμάτων
 address-display-description = Προτιμώμενη μορφή εμφάνισης διεύθυνσης:
 address-display-full =
@@ -409,9 +364,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Προβολή μόνο του εμφανιζόμενου ονόματος για άτομα του ευρετηρίου μου
     .accesskey = ε
-
-## Compose Tab
-
+table-layout-legend = Προβολή πίνακα
+table-layout-horizontal-scroll-label =
+    .label = Να επιτρέπεται η οριζόντια κύλιση
+    .accesskey = π
+conversation-view-legend = Προβολή συνομιλίας
+conversation-view-checkbox-label =
+    .label = Ενεργοποίηση προβολής συνομιλίας
+    .accesskey = ρ
+conversation-view-checkbox-description = Πειραματική λειτουργία βασισμένη στο Gloda, χρησιμοποιήστε τη με δική σας ευθύνη
+label-experiment = Πειραματικό
+account-hub-legend = Κέντρο λογαριασμών
+account-hub-checkbox-label =
+    .label = Δημιουργία λογαριασμών στο νέο κέντρο λογαριασμών
+    .accesskey = Δ
+account-hub-checkbox-description = Πειραματική διαδικασία δημιουργίας νέων λογαριασμών email
 forward-label =
     .value = Προώθηση μηνυμάτων:
     .accesskey = θ
@@ -422,17 +389,10 @@ as-attachment-label =
 extension-label =
     .label = Προσθήκη επέκτασης στο όνομα αρχείου
     .accesskey = χ
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Αυτόματη αποθήκευση κάθε
     .accesskey = υ
 auto-save-end = λεπτά
-
-##
-
 warn-on-send-accel-key =
     .label = Επιβεβαίωση πριν από την αποστολή μηνύματος όταν γίνεται χρήση συντομεύσεων πληκτρολογίου
     .accesskey = β
@@ -523,9 +483,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Εύρεση περισσότερων παρόχων…
 cloud-account-description = Προσθήκη νέας υπηρεσίας αποθηκευτικού χώρου FileLink
-
-## Privacy Tab
-
 mail-content = Περιεχόμενο email
 remote-content-label =
     .label = Αποδοχή απομακρυσμένου περιεχομένου στα μηνύματα
@@ -554,11 +511,11 @@ third-party-visited =
 cookies-button =
     .label = Εμφάνιση cookie…
     .accesskey = φ
-do-not-track-label =
-    .label = Αποστολή σήματος «Αποτροπή καταγραφής», ώστε να μην καταγράφεστε από ιστοτόπους
-    .accesskey = λ
-dnt-learn-more-button =
-    .value = Μάθετε περισσότερα
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Αποστολή αιτήματος μη πώλησης ή κοινοποίησης δεδομένων στους ιστοτόπους
+    .accesskey = π
+do-not-track-removal = Δεν υποστηρίζουμε πλέον το σήμα αποτροπής καταγραφής
 passwords-description = Το { -brand-short-name } μπορεί να αποθηκεύει τους κωδικούς πρόσβασης όλων των λογαριασμών σας.
 passwords-button =
     .label = Αποθηκευμένοι κωδικοί πρόσβασης…
@@ -567,7 +524,6 @@ primary-password-description = Ο κύριος κωδικός πρόσβασης
 primary-password-label =
     .label = Χρήση κύριου κωδικού πρόσβασης
     .accesskey = Χ
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Απαίτηση σύνδεσης μέσω συσκευής για συμπλήρωση και διαχείριση κωδικών πρόσβασης
 primary-password-button =
@@ -576,9 +532,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Είστε σε λειτουργία FIPS. Το FIPS απαιτεί μη κενό κύριο κωδικό πρόσβασης.
 forms-master-pw-fips-desc = Αποτυχία αλλαγής κωδικού πρόσβασης
 junk-description = Καθορίστε τις προεπιλεγμένες ρυθμίσεις ανεπιθύμητης αλληλογραφίας σας. Οι ρυθμίσεις για συγκεκριμένους λογαριασμούς μπορούν να τροποποιηθούν στις ρυθμίσεις λογαριασμού.
-junk-label =
-    .label = Όταν ένα μήνυμα επισημαίνεται ως ανεπιθύμητο:
-    .accesskey = σ
 junk-marked-label =
     .label = Όταν τα μηνύματα επισημαίνονται ως ανεπιθύμητα:
     .accesskey = τ
@@ -588,9 +541,6 @@ junk-move-label =
 junk-delete-label =
     .label = Διαγραφή
     .accesskey = δ
-junk-read-label =
-    .label = Επισήμανση ανεπιθύμητων μηνυμάτων ως αναγνωσμένων
-    .accesskey = μ
 junk-read-description = Επισήμανση μηνυμάτων ως αναγνωσμένων
 junk-read-manual-label =
     .label = Όταν επισημαίνονται χειροκίνητα ως ανεπιθύμητα
@@ -647,9 +597,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Οι αυτόματες αποφάσεις μπορούν να παρακαμφθούν από τη μη αυτόματη (απ)ενεργοποίηση της κρυπτογράφησης κατά τη σύνταξη ενός μηνύματος.
     Σημείωση: Η κρυπτογράφηση ενεργοποιείται πάντα αυτόματα όταν απαντάτε σε κρυπτογραφημένο μήνυμα.
-
-## Chat Tab
-
 startup-label =
     .value = Κατά την εκκίνηση του { -brand-short-name }:
     .accesskey = ε
@@ -657,20 +604,10 @@ offline-label =
     .label = Διατήρηση λογαριασμών συνομιλιών εκτός σύνδεσης
 auto-connect-label =
     .label = Αυτόματη σύνδεση λογαριασμών συνομιλιών
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Να εμφανίζεται στις επαφές μου ότι είμαι αδρανής μετά από
     .accesskey = δ
 idle-time-label = λεπτά αδράνειας
-
-##
-
 away-message-label =
     .label = και να ορίζεται η κατάστασή μου σε «Εκτός υπολογιστή» με το εξής μήνυμα:
     .accesskey = ζ
@@ -732,41 +669,21 @@ no-preview-description = Αυτό το θέμα δεν είναι έγκυρο �
 chat-variant-label =
     .value = Παραλλαγή:
     .accesskey = Π
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Εύρεση στις ρυθμίσεις
-
-## Settings UI Search Results
-
 search-results-header = Αποτελέσματα αναζήτησης
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Δυστυχώς, δεν υπάρχουν αποτελέσματα για το «<span data-l10n-name="query"></span>» στις επιλογές.
        *[other] Δυστυχώς, δεν υπάρχουν αποτελέσματα για το «<span data-l10n-name="query"></span>» στις ρυθμίσεις.
     }
 search-results-help-link = Χρειάζεστε βοήθεια; Επισκεφθείτε την <a data-l10n-name="url">Υποστήριξη { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Πάρτε μαζί σας το διαδίκτυο
 sync-signedout-description = Συγχρονίστε τους λογαριασμούς, τα ευρετήρια, τα ημερολόγια, τα πρόσθετα και τις ρυθμίσεις σας με όλες τις συσκευές σας.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Σύνδεση στο Sync…
 sync-pane-header = Συγχρονισμός
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = Το «{ $userEmail }» δεν έχει επαληθευτεί.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Παρακαλώ κάντε είσοδο για επανασύνδεση στο «{ $userEmail }»
 sync-pane-resend-verification = Εκ νέου αποστολή επαλήθευσης
 sync-pane-sign-in = Σύνδεση
@@ -796,3 +713,49 @@ synced-acount-item-filters = Φίλτρα
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Συγχρονισμός των λογαριασμών email, των ευρετηρίων, των ημερολογίων και των ταυτοτήτων σε όλες τις συσκευές σας.
 sync-disconnected-turn-on-sync = Ενεργοποίηση συγχρονισμού…
+qr-export-pane-header = Εξαγωγή λογαριασμών στο { -brand-product-name } για κινητές συσκευές
+qr-export-description = Μεταφέρετε γρήγορα τις ρυθμίσεις του λογαριασμού σας από τον υπολογιστή στην κινητή σας συσκευή με έναν κωδικό QR. Επιλέξτε ποιους λογαριασμούς θα συμπεριλάβετε, αποφασίστε αν θέλετε να μεταφέρετε τους κωδικούς πρόσβασής σας και σαρώστε τον κωδικό με την κινητή σας συσκευή. Γρήγορα, εύκολα και με ασφάλεια.
+qr-export-get-app = Ακόμα να κάνετε λήψη του { -brand-product-name } στην κινητή σας συσκευή; <a data-l10n-name="app-link">Αποκτήστε το στο Google Play</a>
+qr-export-create = Δημιουργήστε έναν κωδικό QR για να εξαγάγετε τους λογαριασμούς σας
+qr-export-select-accounts = Επιλέξτε λογαριασμούς προς εξαγωγή:
+qr-export-no-accounts = Δεν βλέπετε όλους τους λογαριασμούς σας; Ορισμένοι λογαριασμοί ενδέχεται να έχουν απενεργοποιηθεί επειδή δεν υποστηρίζονται από το { -brand-product-name } για Android. <a data-l10n-name="account-support-link">Υποστήριξη</a>
+qr-export-accounts-legend = Λογαριασμοί email
+qr-export-select-all-accounts = Επιλογή όλων
+qr-export-security-legend = Ασφάλεια
+qr-export-include-passwords = Συμπερίληψη όλων των κωδικών πρόσβασης λογαριασμών
+qr-export-oauth-warning = Ορισμένοι από τους λογαριασμούς σας χρησιμοποιούν μια μέθοδο ταυτοποίησης που ενδέχεται να απαιτήσει εκ νέου ταυτοποίηση στην κινητή σας συσκευή. Ίσως χρειαστεί να εισαγάγετε ξανά τους κωδικούς πρόσβασής σας κατά τη διάρκεια αυτής της διαδικασίας.
+qr-export-security-hint = Σαρώνοντας τους ακόλουθους κωδικούς QR, οι ρυθμίσεις του λογαριασμού σας — μαζί με το email και τον κωδικό πρόσβασής σας — θα μεταφερθούν με ασφάλεια. Δεν συλλέγουμε, δεν αποθηκεύουμε και δεν κοινοποιούμε αυτά τα δεδομένα κατά τη διάρκεια αυτής της διαδικασίας. Η μεταφορά γίνεται απευθείας μεταξύ των συσκευών σας.
+qr-export-security-warning = Για την ασφάλειά σας, βεβαιωθείτε ότι βρίσκεστε σε έναν ιδιωτικό χώρο και σαρώστε μόνο τους κωδικούς QR που προέρχονται από αξιόπιστες πηγές.
+qr-export-start-export = Εξαγωγή
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } από { $count } κωδικό QR
+       *[other] { $step } από { $count } κωδικούς QR
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Σαρώστε τον κωδικό QR με το { -brand-product-name } στην κινητή σας συσκευή
+       *[other] Σαρώστε τους κωδικούς QR με το { -brand-product-name } στην κινητή σας συσκευή
+    }
+qr-export-scan-step1 = Ανοίξτε το { -brand-product-name } στην κινητή σας συσκευή
+qr-export-scan-step2 = Μεταβείτε στις ρυθμίσεις
+qr-export-scan-step3 = Επιλέξτε <strong>Εισαγωγή ρυθμίσεων</strong>
+qr-export-scan-step4-revision = Πατήστε <strong>Σάρωση κωδικού QR</strong> και στρέψτε το τηλέφωνό σας σε αυτόν τον κωδικό
+qr-export-back = Πίσω
+qr-export-next = Επόμενο
+qr-export-done = Τέλος
+qr-export-summary-description = Έγινε εξαγωγή των λογαριασμών. Συνεχίστε στην κινητή σας συσκευή.
+qr-export-summary-title = Περίληψη εξαγωγής:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] Δημιουργήθηκε { $count } κωδικός QR
+       *[other] Δημιουργήθηκαν { $count } κωδικοί QR
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] Εξήχθη { $count } λογαριασμός:
+       *[other] Εξήχθησαν { $count } λογαριασμοί:
+    }
+qr-export-summary-passwords-included = Περιλαμβάνονται οι κωδικοί πρόσβασης
+qr-export-summary-passwords-excluded = Εξαιρούνται οι κωδικοί πρόσβασης
+qr-export-more-accounts = Εξαγωγή περισσότερων λογαριασμών

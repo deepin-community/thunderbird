@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Ajouter une clé OpenPGP personnelle pour { $identity }
-key-wizard-button =
-    .buttonlabelaccept = Continuer
-    .buttonlabelhelp = Retour
 key-wizard-dialog =
     .buttonlabelaccept = Continuer
     .buttonlabelextra1 = Retour
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Utiliser votre clé externe via GnuPG (par exemple à partir d’une carte à puce)
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = Génération d’une clé OpenPGP
 openpgp-keygen-secret-protection = Protection par clé secrète
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Votre clé doit être valide pendant au moins un j
 openpgp-keygen-ongoing = Génération de clé déjà en cours.
 openpgp-keygen-error-core = Impossible d’initialiser le service principal d’OpenPGP
 openpgp-keygen-error-failed = La génération de clé OpenPGP a échoué de manière inattendue
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = La clé OpenPGP a été correctement créée, mais n’a pas réussi à obtenir la révocation de la clé { $key }
 openpgp-keygen-abort-title = Annuler la génération de la clé ?
 openpgp-keygen-abort = La génération de clé OpenPGP est en cours, voulez-vous vraiment l’annuler ?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Générer une clé publique et une clé secrète pour { $identity } ?
-
-## Import Key section
-
 openpgp-import-key-title = Importer une clé OpenPGP personnelle existante
 openpgp-import-key-legend = Sélectionnez un fichier précédemment sauvegardé.
 openpgp-import-key-description = Vous pouvez importer des clés personnelles qui ont été créées avec d’autres logiciels OpenPGP.
 openpgp-import-key-info = D’autres logiciels peuvent décrire une clé personnelle en utilisant des termes alternatifs tels que « votre propre clé », « clé secrète », « clé privée » ou « paire de clés ».
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } a trouvé une clé qui peut être importée.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Les clés marquées comme étant des clés per
 openpgp-import-keep-passphrases =
     .label = Conserver la protection par phrase de passe pour les clés secrètes importées
 openpgp-passphrase-prompt-title = Phrase de passe nécessaire
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Veuillez saisir la phrase de passe pour déverrouiller la clé suivante : { $key }
 openpgp-import-key-button =
     .label = Sélectionner le fichier à importer…
     .accesskey = S
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Considérer cette clé comme une clé personnelle
 gnupg-file = Fichiers GnuPG
 import-error-file-size = <b>Erreur :</b> les fichiers de plus de 5 Mo ne sont pas pris en charge.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Erreur :</b> échec de l’importation du fichier. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Erreur :</b> échec de l’importation des clés. { $error }
 openpgp-import-identity-label = Identité
 openpgp-import-fingerprint-label = Empreinte
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bits
 openpgp-import-key-props =
     .label = Propriétés de la clé
     .accesskey = P
-
-## External Key section
-
 openpgp-external-key-title = Clé GnuPG externe
 openpgp-external-key-description = Configurer une clé GnuPG externe en saisissant l’identifiant de la clé
 openpgp-external-key-info = De plus, vous devez utiliser le gestionnaire de clés pour importer et accepter la clé publique correspondante.

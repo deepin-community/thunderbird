@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Fleksibelt mellomrom
 toolbar-write-message-label = Skriv
 toolbar-write-message =
@@ -78,6 +71,8 @@ toolbar-mark-as-label = Merk
 toolbar-mark-as =
     .title = Merk meldingar
 toolbar-view-picker-label = Vis
+toolbar-view-picker =
+    .title = Tilpass vising av gjeldande mappe
 toolbar-address-book-label = Adressebok
 toolbar-address-book =
     .title = Opne adresseboka
@@ -134,6 +129,3 @@ toolbar-create-contact-label = Ny kontakt
 toolbar-create-address-book-label = Ny adressebok
 toolbar-create-list-label = Ny liste
 toolbar-import-contacts-label = Importer
-
-## New Address Book popup items
-

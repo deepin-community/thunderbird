@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = У дадзены момант усе календары адключаны. Уключыце існуючы каляндар або дадайце новы, каб ствараць і рэдагаваць падзеі.
 calendar-deactivated-notification-tasks = У дадзены момант усе календары адключаны. Уключыце існуючы каляндар або дадайце новы, каб ствараць і рэдагаваць задачы.
 calendar-notifications-label = Паказваць апавяшчэнні аб падзеях, якія маюць быць
 calendar-add-notification-button =
     .label = Дадаць апавяшчэнне
-
-## Side panel
-
 calendar-list-header = Календары
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Каляндар { $calendarName } адключаны
 calendar-enable-button = Уключыць
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Параметры календара { $calendarName }
 calendar-import-new-calendar = Новы каляндар…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Перазагрузіць усе календары і сінхранізаваць змены
 calendar-new-event-primary-button = Новая падзея
 calendar-new-task-primary-button = Новая задача
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Папярэдні дзень
     .accesskey = я
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Тыдні
     .title = { "" }
 calendar-view-toggle-month = Месяц
     .title = { "" }
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Параметры макета календара
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Вызначыць працоўныя дні
 calendar-show-tasks-calendar-option =
     .label = Паказваць задачы ў календары
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Папярэдні дзень
     .accesskey = я

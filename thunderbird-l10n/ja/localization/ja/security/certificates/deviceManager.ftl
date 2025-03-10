@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Strings used for device manager
-
 devmgr-window =
     .title = デバイスマネージャー
     .style = min-width: 67em; min-height: 32em;
@@ -35,9 +28,6 @@ devmgr-button-enable-fips =
 devmgr-button-disable-fips =
     .label = FIPS を無効にする
     .accesskey = F
-
-## Strings used for load device
-
 load-device =
     .title = PKCS #11 デバイスドライバーの読み込み
 load-device-info = 追加するモジュール情報を入力してください。
@@ -52,9 +42,6 @@ load-device-filename =
 load-device-browse =
     .label = 参照...
     .accesskey = B
-
-## Token Manager
-
 devinfo-status =
     .label = 状態
 devinfo-status-disabled =
@@ -86,14 +73,11 @@ devinfo-label =
     .label = ラベル
 devinfo-serialnum =
     .label = シリアル番号
-# (^m^) en-US: "Primary Password"
 fips-nonempty-primary-password-required = FIPS モードではすべてのセキュリティデバイスにマスターパスワードが設定されている必要があります。FIPS モードを有効にする前にパスワードを設定してください。
 unable-to-toggle-fips = セキュリティデバイスの FIPS モードを変更できません。このアプリケーションを終了し、再起動してください。
 load-pk11-module-file-picker-title = 読み込む PKCS#11 デバイスドライバーを選択してください
-# Load Module Dialog
 load-module-help-empty-module-name =
     .value = モジュール名が無いため読み込めません。
-# Do not translate 'Root Certs'
 load-module-help-root-certs-module-name =
     .value = ‘Root Certs’ は予約されているためモジュール名として使用できません。
 add-module-failure = モジュールを追加できません

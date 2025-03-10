@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Leggere e modificare i segnalibri
 webext-perms-description-browserSettings = Leggere e modificare le impostazioni del browser
 webext-perms-description-browsingData = Eliminare cronologia di navigazione recente, cookie e dati associati
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Accedere alle schede chiuse di recente
 webext-perms-description-tabs = Accedere alle schede del browser
 webext-perms-description-tabHide = Nascondere e mostrare schede
 webext-perms-description-topSites = Accedere alla cronologia di navigazione
+webext-perms-description-trialML = Scaricare ed eseguire modelli di intelligenza artificiale sul dispositivo
+webext-perms-description-userScripts = Consentire a script di terze parti non verificati di accedere ai tuoi dati
 webext-perms-description-webNavigation = Accedere all’attività del browser durante la navigazione
+webext-perms-extra-warning-userScripts-long = Script non verificati possono comportare rischi per la sicurezza e la privacy, come l’esecuzione di codice dannoso o il tracciamento delle attività sui siti web. Esegui script solo da estensioni o fonti affidabili.
+webext-perms-extra-warning-userScripts-short = Script non verificati possono comportare rischi per la sicurezza e la privacy. Esegui script solo da estensioni o fonti affidabili.

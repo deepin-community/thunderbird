@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = （未设定）
 failed-pp-change = 无法更改主密码。
@@ -21,7 +17,6 @@ set-password-new-password = 请输入新的密码：
 set-password-reenter-password = 重新输入密码：
 set-password-meter = 密码强度
 set-password-meter-loading = 正在加载
-primary-password-admin = 您的管理员要求设置“主密码”才可保存账号和密码。
 primary-password-required-by-policy = 您的组织要求设置主密码才可保存登录信息和密码。
 primary-password-description = 主密码用于保护敏感信息（如登录信息和密码）。创建主密码后， { -brand-short-name } 每次检索被该密码保护的信息前都将要求您再次输入主密码。
 primary-password-warning = 请您一定要记住刚才设置的主密码。如果您忘记了主密码，您将再也不能访问此设备上所有被主密码保护的信息。

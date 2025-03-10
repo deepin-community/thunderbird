@@ -8,15 +8,15 @@ Closes: #601331
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/thunderbird-l10n/sl/chrome/sl/locale/sl/communicator/utilityOverlay.dtd b/thunderbird-l10n/sl/chrome/sl/locale/sl/communicator/utilityOverlay.dtd
-index e586ac4..6572acf 100644
+index c454e96..7bf0e6b 100644
 --- a/thunderbird-l10n/sl/chrome/sl/locale/sl/communicator/utilityOverlay.dtd
 +++ b/thunderbird-l10n/sl/chrome/sl/locale/sl/communicator/utilityOverlay.dtd
-@@ -10,7 +10,7 @@
- <!ENTITY newMenu.accesskey          "N">
- 
- <!ENTITY editMenu.label          "Uredi">
--<!ENTITY editMenu.accesskey        "U">
-+<!ENTITY editMenu.accesskey        "e">
- <!ENTITY undoCmd.label            "Razveljavi">
- <!ENTITY undoCmd.accesskey          "R">
- <!ENTITY redoCmd.label            "Uveljavi">
+@@ -3,7 +3,7 @@
+ <!ENTITY newMenu.label "Novo">
+ <!ENTITY newMenu.accesskey "N">
+ <!ENTITY editMenu.label "Uredi">
+-<!ENTITY editMenu.accesskey "U">
++<!ENTITY editMenu.accesskey "e">
+ <!ENTITY undoCmd.label "Razveljavi">
+ <!ENTITY undoCmd.accesskey "R">
+ <!ENTITY redoCmd.label "Uveljavi">

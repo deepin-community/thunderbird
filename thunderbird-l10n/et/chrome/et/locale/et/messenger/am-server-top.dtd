@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Kirjade säilitamine">
 <!ENTITY securitySettings.label "Turvasätted">
 <!ENTITY serverSettings.label "Serveri sätted">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Vaikimisi:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Uusi kirju kontrollitakse iga">
 <!ENTITY biffStart.accesskey "s">
 <!ENTITY biffEnd.label "minuti järel">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Ühenduse turvalisus:">
 <!ENTITY connectionSecurity.accesskey "h">
 <!ENTITY connectionSecurityType-0.label "Puudub">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, kui võimalik">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Autentimise viis:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "m">
 <!ENTITY modelDeleteImmediately.label "eemaldatakse see koheselt">
 <!ENTITY modelDeleteImmediately.accesskey "d">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Väljudes puhastatakse saabuvate kirjade kaust">
 <!ENTITY expungeOnExit.accesskey "V">
 <!ENTITY emptyTrashOnExit.label "Väljudes tühjendatakse kustutatud kirjade kaust">
 <!ENTITY emptyTrashOnExit.accesskey "r">
 <!ENTITY loginAtStartup.label "Käivitamisel kontrollitakse uusi kirju">
 <!ENTITY loginAtStartup.accesskey "K">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Küsitakse, kui tõmmata on rohkem kui">
 <!ENTITY maxMessagesStart.accesskey "o">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "kirja">
 <!ENTITY alwaysAuthenticate.label "Selle serveriga ühendudes nõutakse alati kasutaja tuvastamist">
 <!ENTITY alwaysAuthenticate.accesskey "S">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "L">
 <!ENTITY browseNewsrc.label "Lehitse...">
 <!ENTITY browseNewsrc.accesskey "i">
-
 <!ENTITY accountTitle.label "Konto sätted">
 <!ENTITY accountSettingsDesc.label "See on eriline konto, millega pole seotud ühtegi identiteeti.">
 <!ENTITY storeType.label "Kirjade salvestamise viis:">

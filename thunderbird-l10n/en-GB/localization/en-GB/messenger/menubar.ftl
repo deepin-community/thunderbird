@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menu Bar
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Settings
     .accesskey = e
 menu-addons-and-themes =
     .label = Add-ons and Themes
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Export for Mobile…
+    .accesskey = p
 menu-help-help-title =
     .label = Help
     .accesskey = H
 menu-help-get-help =
     .label = Get Help
     .accesskey = H
-menu-help-explore-features =
-    .label = Explore Features
-    .accesskey = F
 menu-help-get-release-help =
     .label = Get Help with { -brand-short-name }
     .accesskey = R
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = About { -brand-short-name }
     .accesskey = A
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] x
            *[other] Q
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Quit { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Exit { -brand-full-name }
            *[other] Quit { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Junk
     .tooltiptext = Mark the selected messages as junk
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Undelete
     .tooltiptext = Undelete selected messages
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Repair Text Encoding
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Folder Pane Header
-    .accesskey = F
-
-## View / Layout
-
+    .accesskey = P
 menu-view-toggle-thread-pane-header =
     .label = Message List Header
     .accesskey = H
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Spaces Toolbar
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = Email Account…
     .accesskey = E

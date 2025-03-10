@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = 选用提供商
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name }（默认值）
     .tooltiptext = 使用默认 URL 完成基于 HTTPS 的 DNS 解析
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = 输入您偏好的 URL，用来完成基于 HTTPS 的 DNS 解析
 connection-dns-over-https-custom-label = 自定义
-connection-dialog-window2 =
-    .title = 连接设置
 connection-dialog-title = 连接设置
 disable-extension-button = 禁用扩展
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = 扩展 <img data-l10n-name="extension-icon" alt="" /> { $name } 正在控制 { -brand-short-name } 如何连接互联网。
 connection-proxy-legend = 配置访问互联网的代理
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = 不使用代理
     .accesskey = N
 no-proxy-example = 例如： .mozilla.org.cn, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = 与 localhost、127.0.0.1/8 和 ::1 的连接永不经过代理。
 proxy-password-prompt =
     .label = 如果密码已保存，不提示身份验证

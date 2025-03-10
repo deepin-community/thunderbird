@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = დახურვა
 preferences-doc-title2 = პარამეტრები
@@ -47,8 +43,6 @@ collection-health-report =
     .label = ნებართვა, რომ { -brand-short-name } შეძლებს გადაუგზავნოს ტექნიკური და გამოყენების მონაცემები { -vendor-short-name }-ს
     .accesskey = ტ
 collection-health-report-link = ვრცლად
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = მოხსენებები გამორთულია ანაწყობის ამ კონფიგურაციისთვის
 collection-backlogged-crash-reports =
     .label = ნებართვა, რომ { -brand-short-name } თავადვე გაგზავნის უეცარი გათიშვების მოხსენებებს
@@ -69,10 +63,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = გაუშვით { -brand-short-name } ხელახლა ცვლილებების ასახვისთვის
 confirm-messenger-language-change-button = მიღება და ხელახლა გაშვება
 update-setting-write-failure-title = შეცდომა, განახლების პარამეტრების შენახვისას
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } გადააწყდა შეცდომას და ცვლილება არ შეინახა. გაითვალისწინეთ, რომ განახლების ამ პარამეტრის ცვლილება საჭიროებს ქვემოთ მითითებულ ფაილში ჩაწერის ნებართვას. თქვენ ან თქვენი სისტემის ზედამხედველს შეუძლია ამის მოგვარება მომხმარებლის ჯგუფისთვის, ფაილის სრულად განკარგვის უფლების მინიჭებით.
     
@@ -80,26 +70,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Მიმდინარეობს განახლება
 update-in-progress-message = გსურთ განაგრძოთ, რომ განახლდეს { -brand-short-name }?
 update-in-progress-ok-button = &გაუქმება
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &გაგრძელება
 account-button = ანგარიშის პარამეტრები
 open-addons-sidebar-button = დამატებები და თემები
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = მთავარი პაროლის შესაქმნელად, დაამოწმეთ Windows-ანგარიში. ეს დაგეხმარებათ დაიცვათ თქვენი ანგარიშების უსაფრთხოება.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = მთავარი პაროლის დაყენებას
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -124,8 +100,6 @@ remove-search-engine =
 add-opensearch-provider-title = დამატება OpenSearch-მომწოდებლის
 add-opensearch-provider-text = შეიყვანეთ ბმული, OpenSearch-მომწოდებლის დასამატებლად. ან პირდაპირი ბმული გამოიყენეთ, OpenSearch-აღწერის ფაილისთვის, ან ბმული, სადაც თვითაღმოჩენით მოინახება.
 adding-opensearch-provider-failed-title = OpenSearch-მომწოდებელი ვერ დაემატა
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = ვერ ხერხდება OpenSearch-მომწოდებლის დამატება ბმულზე { $url }.
 minimize-to-tray-label =
     .label = როცა { -brand-short-name } ჩაიკეცება, გადავიდეს სისტემის არეში
@@ -203,8 +177,6 @@ always-check-default =
 check-default-button =
     .label = შემოწმება ახლავე…
     .accesskey = ხ
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -222,8 +194,6 @@ return-receipts-button =
     .label = მიღების დასტურები…
     .accesskey = რ
 update-app-legend = { -brand-short-name } – განახლებები
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = ვერსია { $version }
 allow-description = ნებართვა, რომ { -brand-short-name } შეძლებს,
 automatic-updates-label =
@@ -258,18 +228,10 @@ offline-compact-folder-automatically =
     .accesskey = ჯ
 compact-folder-size =
     .value = მბაიტი ჯამში
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = გამოყენება, მანამ
     .accesskey = ყ
 use-cache-after = მბაიტი მარაგისთვის
-
-##
-
 smart-cache-label =
     .label = მარაგის თვითგანსაზღვრის უგულებელყოფა
     .accesskey = ვ
@@ -290,7 +252,6 @@ color-options-button =
     .label = ფერები…
     .accesskey = ე
 display-width-legend = ტექსტური წერილები
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = მიმიკების გრაფიკულად ჩვენება
     .accesskey = რ
@@ -355,17 +316,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = დაუყოვნებლივ გამოჩენა
     .accesskey = უ
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = მოცემული დროით ჩვენების შემდეგ
     .accesskey = დ
 seconds-label = წამი
-
-##
-
 open-msg-label =
     .value = გაიხსნას წერილები:
 open-msg-tab =
@@ -380,14 +334,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = წერილის ფანჯრის/ჩანართის დახურვა ან გადატანა, ან წაშლა
     .accesskey = ხ
-display-name-label =
-    .value = გამოსაჩენი სახელი:
 condensed-addresses-label =
     .label = წიგნაკში, მხოლოდ გამოსაჩენი სახელების ჩვენება
     .accesskey = წ
-
-## Compose Tab
-
 forward-label =
     .value = წერილების გადაგზავნა:
     .accesskey = დ
@@ -398,17 +347,10 @@ as-attachment-label =
 extension-label =
     .label = გაფართოების დამატება ფაილის სახელისთვის
     .accesskey = გ
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = თვითშენახვა ყოველ
     .accesskey = თ
 auto-save-end = წუთში
-
-##
-
 warn-on-send-accel-key =
     .label = დასტური წერილის გაგზავნისთვის მალმხმობის გამოყენებისას
     .accesskey = დ
@@ -499,9 +441,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = სხვა მომსახურების მოძიება…
 cloud-account-description = ფაილების მიბმისთვის, მომსახურე საცავის დამატება
-
-## Privacy Tab
-
 mail-content = წერილის შიგთავსი
 remote-content-label =
     .label = ვებშიგთავსის ჩვენების დაშვება ამ შეტყობინებებში
@@ -530,11 +469,6 @@ third-party-visited =
 cookies-button =
     .label = ფუნთუშების ნახვა…
     .accesskey = ხ
-do-not-track-label =
-    .label = საიტებისთვის „არ მითვალთვალო“ მოთხოვნის გაგზავნა, მიუთითებს რომ არ გსურთ თვალი გადევნონ
-    .accesskey = ზ
-dnt-learn-more-button =
-    .value = ვრცლად
 passwords-description = { -brand-short-name }-ს შეუძლია ყველა თქვენი ანგარიშის პაროლების დამახსოვრება.
 passwords-button =
     .label = შენახული პაროლები…
@@ -549,18 +483,12 @@ primary-password-button =
 forms-primary-pw-fips-title = თქვენ FIPS-რეჟიმში იმყოფებით. FIPS-ს ესაჭიროება მთავარი პაროლი.
 forms-master-pw-fips-desc = პაროლის შეცვლა ვერ მოხერხდა
 junk-description = მიუთითეთ ჯართის პარამეტრები. ჯართის ანგარიშზე დამოკიდებული პარამეტრების მითითება შესაძლებელია ანგარიშის პარამეტრების სექციაში.
-junk-label =
-    .label = გზავნილების ჯართად მონიშვნისას:
-    .accesskey = ჯ
 junk-move-label =
     .label = მათი გადატანა ანგარიშის "ჯართის" საქაღალდეში
     .accesskey = გ
 junk-delete-label =
     .label = მათი წაშლა
     .accesskey = წ
-junk-read-label =
-    .label = ჯართად მიჩნეული წერილების წაკითხულად მონიშვნა
-    .accesskey = კ
 junk-log-label =
     .label = ჯართის მოქნილი ფილტრის აღრიცხვის ჩართვა
     .accesskey = ღ
@@ -594,9 +522,7 @@ certificate-button =
 security-devices-button =
     .label = უსაფრთხოების მოწყობილობები…
     .accesskey = წ
-
-## Chat Tab
-
+email-e2ee-enable-info = გამართეთ ელფოსტის ანგარიშები და ვინაობის მონაცემები გამჭოლი დაშიფვრისთვის ანგარიშის პარამეტრებიდან.
 startup-label =
     .value = როცა { -brand-short-name } გაეშვება:
     .accesskey = ც
@@ -604,20 +530,10 @@ offline-label =
     .label = სასაუბროს ანგარიშის ამორთვა
 auto-connect-label =
     .label = სასაუბროს ანგარიშთან ავტომატური დაკავშირება
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = ეცნობოს ხალხს ჩემი წიგნაკიდან, რომ მიუწვდომელი ვარ,
     .accesskey = უ
 idle-time-label = უქმი წუთის შემდეგ
-
-##
-
 away-message-label =
     .label = ასევე მიეთითოს „გასულია“ მოცემული შეტყობინებით:
     .accesskey = ა
@@ -679,28 +595,17 @@ no-preview-description = ეს თემა არათავსებად�
 chat-variant-label =
     .value = ვარიანტი:
     .accesskey = ვ
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = პოვნა პარამეტრებში
-
-## Settings UI Search Results
-
 search-results-header = ძიების შედეგები
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] ვწუხვართ! შედეგები ფრაზისთვის „<span data-l10n-name="query"></span>“ ვერ მოიძებნა პარამეტრებში.
        *[other] ვწუხვართ! შედეგები ფრაზისთვის „<span data-l10n-name="query"></span>“ ვერ მოიძებნა პარამეტრებში.
     }
 search-results-help-link = გესაჭიროებათ დახმარება? ეწვიეთ <a data-l10n-name="url">{ -brand-short-name } მხარდაჭერის გვერდს</a>
-
-## Sync Tab
-
+show-synced-item-account = ელფოსტის ანგარიშები
+sync-disconnected-text = დაასინქრონეთ თქვენი ელფოსტის ანგარიშები, მისამართების წიგნაკები, კალენდრები და ვინაობის მონაცემები ყველა თქვენს მოწყობილობაზე.
+qr-export-accounts-legend = ელფოსტის ანგარიშები
+qr-export-security-hint = მოცემული QR-კოდების წაკითხვით თქვენი ანგარიშის პარამეტრები — მათ შორის ელფოსტის მისამართი და პაროლი — უსაფრთხოდ იქნება გადატანილი. ჩვენ არ ვაგროვებთ, არ ვინახავთ და არ ვაზიარებთ ამ არანაირ მონაცემს დამუშავებისას. გადაიცემა პირდაპირ თქვენს მოწყობილობებს შორის.

@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = 使用するプロバイダー
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (既定)
     .tooltiptext = DNS over HTTPS の解決に既定の URL を使用します
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = DNS over HTTPS の解決に使用する URL を入力します
 connection-dns-over-https-custom-label = URL を指定:
-connection-dialog-window2 =
-    .title = インターネット接続
 connection-dialog-title = インターネット接続
 disable-extension-button = 拡張機能を無効化
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = 拡張機能 <img data-l10n-name="extension-icon" alt="" /> { $name } が { -brand-short-name } のインターネットへの接続方式の設定を変更しています。
 connection-proxy-legend = インターネット接続に使用するプロキシーの設定
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = プロキシーなしで接続:
     .accesskey = n
 no-proxy-example = 例: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = localhost、127.0.0.1/8 および ::1 への接続はプロキシーが使用されません。
 proxy-password-prompt =
     .label = パスワードを保存してある場合は認証を確認しない

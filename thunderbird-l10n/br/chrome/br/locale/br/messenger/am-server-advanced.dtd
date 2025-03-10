@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Arventennoù kont kempleshoc'h">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "Kavlec'hiad an dafariad IMAP :">
 <!ENTITY serverDirectory.accesskey "d">
 <!ENTITY usingSubscription.label "Diskouez an teuliadoù koumanantet nemetken">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "f">
 <!ENTITY maximumConnectionsNumber.label "Niver uhelañ a gennaskadurioù ouzh an dafariad da lakaat er grubuilh">
 <!ENTITY maximumConnectionsNumber.accesskey "h">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "Erspizañ a ra ar gwellvezioù-mañ an anvioù egoroù war ho tafariad IMAP">
 <!ENTITY personalNamespace.label "Anv egor personel :">
 <!ENTITY personalNamespace.accesskey "p">

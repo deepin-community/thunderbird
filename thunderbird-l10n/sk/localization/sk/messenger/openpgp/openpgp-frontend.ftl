@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Správca kľúčov OpenPGP
     .accesskey = S
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Overiť podpis
     .accesskey = O
 openpgp-has-sender-key = Táto správa údajne obsahuje OpenPGP verejný kľúč odosielateľa.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Upozornenie: Nový verejný kľúč OpenPGP v tejto správe sa líši od verejných kľúčov, ktoré ste predtým prijali pre { $email }.
 openpgp-import-sender-key =
     .label = Importovať…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Táto správa bola podpísaná kľúčom, ktorý zatiaľ nemáte.
 openpgp-search-signature-key =
     .label = Vyhľadať…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Toto je OpenPGP správa, ktorá bola zjavne poškodená programom MS-Exchange a nemožno ju opraviť, pretože bola otvorená z lokálneho súboru. Skopírujte správu do priečinka pošty a vyskúšajte automatickú opravu.
 openpgp-broken-exchange-info = Toto je OpenPGP správa, ktorá bola zjavne poškodená programom MS-Exchange. Ak sa obsah správy nezobrazuje podľa očakávaní, môžete vyskúšať automatickú opravu.
 openpgp-broken-exchange-repair =

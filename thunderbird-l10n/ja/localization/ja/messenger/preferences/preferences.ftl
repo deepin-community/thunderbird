@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = 閉じる
 preferences-doc-title2 = 設定
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = 同期
 category-sync =
     .tooltiptext = 同期
+pane-qr-export-title = モバイル向けのエクスポート
+category-qr-export =
+    .tooltiptext = モバイル向けのエクスポート
 general-language-and-appearance-header = 言語と外観
 general-incoming-mail-header = 新着メールの通知
 general-files-and-attachment-header = ファイルと添付
@@ -44,14 +43,12 @@ privacy-junk-header = 迷惑メール
 collection-header = { -brand-short-name } のデータ収集と利用について
 collection-description = 私たちはユーザーに選択肢を提供し、{ -brand-short-name } をすべての人に提供し改善するために必要なものだけを収集するよう努力しています。私たちは、個人情報を受け取る前に、常にユーザーの許可を求めます。
 collection-privacy-notice = 個人情報保護方針
-collection-health-report-telemetry-disabled = { -vendor-short-name } への技術的な対話データの送信の許可を取り消しました。過去のデータは 30 日以内にすべて削除されます。
+collection-health-report-telemetry-disabled = { -vendor-short-name } への技術データと対話データの送信の許可を取り消しました。過去のデータは 30 日以内にすべて削除されます。
 collection-health-report-telemetry-disabled-link = 詳細情報
 collection-health-report =
-    .label = { -brand-short-name } が技術的な対話データを { -vendor-short-name } へ送信することを許可する
+    .label = { -brand-short-name } が技術データと対話データを { -vendor-short-name } へ送信することを許可する
     .accesskey = r
 collection-health-report-link = 詳細情報
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = このビルド設定ではヘルスレポートが無効化されています
 collection-backlogged-crash-reports =
     .label = { -brand-short-name } があなたに代わって未送信のクラッシュレポートを送信することを許可する
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = これらの変更を適用するには { -brand-short-name } を再起動してください
 confirm-messenger-language-change-button = 適用して再起動
 update-setting-write-failure-title = 変更した設定の保存エラー
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } がエラーに遭遇したため変更を保存できませんでした。この設定変更を保存するには、以下のファイルの書き込み権限が必要なことに注意してください。あなたかシステム管理者が、このファイルにユーザーグループのフルコントロール権限を与えると、エラーを解決できる可能性があります。
     
@@ -83,27 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = 更新中
 update-in-progress-message = この { -brand-short-name } の更新を続行しますか？
 update-in-progress-ok-button = 破棄(&D)
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = 続行(&C)
 account-button = アカウント設定
 open-addons-sidebar-button = アドオンとテーマ
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
-# en-US: "Primary Password"
 primary-password-os-auth-dialog-message-win = マスターパスワードを作成するには、Windows のログイン資格情報を入力してください。これはアカウントのセキュリティ保護に役立ちます。
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = マスターパスワードを作成
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -128,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = OpenSearch プロバイダーの追加
 add-opensearch-provider-text = 追加する OpenSearch プロバイダーの URL を入力してください。OpenSearch Description ファイルの URL を直接使用するか、このファイルを自動的に発見できる URL を入力してください。
 adding-opensearch-provider-failed-title = OpenSearch プロバイダーの追加に失敗しました
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = { $url } の OpenSearch プロバイダーを追加できませんでした。
 minimize-to-tray-label =
     .label = 最小化した { -brand-short-name } をタスクトレイにしまう
@@ -215,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = 今すぐ確認...
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -234,8 +208,6 @@ return-receipts-button =
     .label = 開封確認...
     .accesskey = R
 update-app-legend = { -brand-short-name } の更新
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = バージョン { $version }
 allow-description = { -brand-short-name } の更新動作
 automatic-updates-label =
@@ -270,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = b
 compact-folder-size =
     .value = MB 以上節約できるときはフォルダーを最適化する
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = ページキャッシュとして
     .accesskey = U
 use-cache-after = MB まで使用する
-
-##
-
 smart-cache-label =
     .label = 自動キャッシュ管理設定を上書きする
     .accesskey = v
@@ -305,7 +269,6 @@ color-options-button =
     .label = 配色設定...
     .accesskey = C
 display-width-legend = プレーンテキストメッセージ
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = 顔文字をアイコンで表示する
     .accesskey = e
@@ -373,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = 添付をメッセージ本文に表示する
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = メッセージを
     .accesskey = d
 seconds-label = 秒間以上表示していたら既読にする
-
-##
-
 open-msg-label =
     .value = メッセージを次の場所に開く:
 open-msg-tab =
@@ -398,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = 移動時または削除時にメッセージウィンドウまたはタブを閉じる
     .accesskey = C
-display-name-label =
-    .value = 表示名:
 address-display-legend = メッセージリスト
 address-display-description = 優先するアドレス表示形式:
 address-display-full =
@@ -414,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = アドレス帳に登録されている人については宛先フィールドで <メールアドレス> 部を表示しない
     .accesskey = S
-
-## Compose Tab
-
+table-layout-legend = テーブルビュー
+table-layout-horizontal-scroll-label =
+    .label = 水平スクロールを許可する
+    .accesskey = h
+conversation-view-legend = 会話ビュー
+conversation-view-checkbox-label =
+    .label = 会話ビューを有効にする
+    .accesskey = c
+conversation-view-checkbox-description = Gloda を基にした実験的な機能です。ご自身の責任で使用してください。
+label-experiment = 実験的
+account-hub-legend = アカウントハブ
+account-hub-checkbox-label =
+    .label = 新しいアカウントハブでアカウントを作成する
+    .accesskey = C
+account-hub-checkbox-description = 実験的な新しいアカウントの作成フローです
 forward-label =
     .value = 転送元のメッセージを:
     .accesskey = F
@@ -427,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = ファイル名に拡張子を付加する
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = 編集中のメッセージを
     .accesskey = A
 auto-save-end = 分ごとに下書きとして自動保存する
-
-##
-
 warn-on-send-accel-key =
     .label = キーボードショートカットでメッセージを送信するときは確認する
     .accesskey = C
@@ -528,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = 他のプロバイダーを検索...
 cloud-account-description = 新しい Filelink ストレージサービスを追加してください。
-
-## Privacy Tab
-
 mail-content = メールコンテンツ
 remote-content-label =
     .label = メッセージ内のリモートコンテンツを許可する
@@ -559,21 +515,19 @@ third-party-visited =
 cookies-button =
     .label = Cookie を表示...
     .accesskey = S
-do-not-track-label =
-    .label = ウェブサイトに “Do Not Track” 信号を送り、追跡されたくないことを知らせる
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = ウェブサイトにユーザーデータの販売や共有の拒否を通知する
     .accesskey = n
-dnt-learn-more-button =
-    .value = 詳細情報
+do-not-track-removal = “Do Not Track” 信号のサポートを終了します
 passwords-description = { -brand-short-name } で利用するすべてのアカウントのパスワードを保存できます。
 passwords-button =
     .label = 保存されているパスワード...
     .accesskey = S
-# en-US: "Primary Password"
 primary-password-description = マスターパスワードを使用すると、保存されたすべてのパスワードが保護されます。ただし、セッションごとに入力を求められます。
 primary-password-label =
     .label = マスターパスワードを使用する
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = パスワードの入力と管理に端末のログイン情報を要求する
 primary-password-button =
@@ -582,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = 現在 FIPS モードです。FIPS は空でないマスターパスワードを必要とします。
 forms-master-pw-fips-desc = パスワードを変更できませんでした
 junk-description = 既定の迷惑メールフィルターの動作を設定します。アカウントごとの迷惑メールフィルターの設定は [アカウント設定] で行います。
-junk-label =
-    .label = 手動で迷惑マークを付けたときに次の処理を実行する:
-    .accesskey = W
 junk-marked-label =
     .label = 迷惑マークが付いたときに次の処理を実行する:
     .accesskey = W
@@ -594,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = メッセージを削除する
     .accesskey = D
-junk-read-label =
-    .label = 迷惑メールと判断したメッセージを既読にする
-    .accesskey = M
 junk-read-description = 次の時にメッセージを既読にします
 junk-read-manual-label =
     .label = 手動で迷惑マークを付けたとき
@@ -653,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     自動的な決定は、メッセージの作成中に暗号を手動で有効または無効にすることで上書きされます。
     注記: 暗号化されたメッセージに返信する場合、暗号が常に自動的に有効になります。
-
-## Chat Tab
-
 startup-label =
     .value = { -brand-short-name } の起動時:
     .accesskey = s
@@ -663,20 +608,10 @@ offline-label =
     .label = チャットアカウントをオフラインにする
 auto-connect-label =
     .label = チャットアカウントを自動的に接続する
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = 待機状態が
     .accesskey = I
 idle-time-label = 分間続いたらそれを相手に知らせる
-
-##
-
 away-message-label =
     .label = さらに次のステータスメッセージを送信して離席状態にする:
     .accesskey = A
@@ -736,43 +671,23 @@ preview-label = プレビュー:
 no-preview-label = プレビューできません
 no-preview-description = このテーマは正しくないか現在利用できません (理由: 無効化されたアドオン、セーフモードなど)。
 chat-variant-label =
-    .value = 色調:
+    .value = 配色:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = 設定内を検索
-
-## Settings UI Search Results
-
 search-results-header = 検索結果
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] “<span data-l10n-name="query"></span>” オプションの検索結果はありません。
        *[other] “<span data-l10n-name="query"></span>” 設定の検索結果はありません。
     }
 search-results-help-link = 助けが必要な方は、<a data-l10n-name="url">{ -brand-short-name } サポート</a> をご利用ください
-
-## Sync Tab
-
 sync-signedout-caption = ウェブを持ち歩こう
 sync-signedout-description = あなたのアカウントやアドレス帳、カレンダー、アドオン、設定をお持ちのすべての端末間で同期できます。
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Sync にログイン...
 sync-pane-header = 同期
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” は認証されていません。
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = ログインして “{ $userEmail }” に再接続してください
 sync-pane-resend-verification = 認証メールを再送信
 sync-pane-sign-in = ログイン
@@ -802,3 +717,37 @@ synced-acount-item-filters = メッセージフィルター
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = あなたのメールアカウントやアドレス帳、カレンダー、差出人情報をお持ちのすべての端末間で同期します。
 sync-disconnected-turn-on-sync = 同期をオンにする...
+qr-export-pane-header = モバイル版 { -brand-product-name } にアカウント設定をエクスポート
+qr-export-description = QR コードを生成してアカウント設定をデスクトップからモバイル端末へすばやく転送します。転送データに含めるアカウントを選択してください。パスワードも転送するかどうかを決定し、モバイル端末で QR コードをスキャンしてください。速く、安全で簡単に転送できます。
+qr-export-get-app = まだモバイル端末に { -brand-product-name } をインストールしていない場合は、<a data-l10n-name="app-link">Google Play から入手</a> してください。
+qr-export-create = QR コードを生成してアカウントをエクスポートする
+qr-export-select-accounts = エクスポートするアカウントを選択:
+qr-export-no-accounts = アカウントがすべて表示されない場合、Android 版 { -brand-product-name } でサポートされていないものが一部無効になっているかもしれません。<a data-l10n-name="account-support-link">サポート情報</a>
+qr-export-accounts-legend = メールアカウント
+qr-export-select-all-accounts = すべて選択
+qr-export-security-legend = セキュリティ
+qr-export-include-passwords = すべてのアカウントのパスワードを含める
+qr-export-oauth-warning = 一部のアカウントは、モバイル端末での再認証が必要な認証方式を使用しています。設定する過程でパスワード入力を求められることがあります。
+qr-export-security-hint = この QR コードをスキャンすると、メッセージとパスワードを含むあなたのアカウント設定が安全に転送されます。これらのデータは端末間で直接転送され、いかなるデータも転送処理中に収集、保存されることはありません。
+qr-export-security-warning = 安全のため、プライベートな場所で信頼できる生成元から QR コードをスキャンしてください。
+qr-export-start-export = エクスポート
+qr-export-scan-progress =
+    { $count ->
+        [one] QR コード { $step } / { $count } 個
+       *[other] QR コード { $step } / { $count } 個
+    }
+qr-export-scan-description = ご使用のモバイル端末の { -brand-product-name } で QR コードをスキャンしてください
+qr-export-scan-step1 = ご使用のモバイル端末で { -brand-product-name } を開きます
+qr-export-scan-step2 = 設定画面へ移動します
+qr-export-scan-step3 = <strong>設定をインポート</strong> を選択します
+qr-export-scan-step4-revision = スマートフォンでこのコードの <strong>QR コードをスキャン</strong> を長押しします
+qr-export-back = 戻る
+qr-export-next = 次へ
+qr-export-done = 完了
+qr-export-summary-description = アカウントがエクスポートされました。モバイル端末で操作を続けてください。
+qr-export-summary-title = エクスポート結果:
+qr-export-summary-qr-count = { $count } 個の QR コードが生成されました
+qr-export-summary-accounts = { $count } 件のアカウントがエクスポートされました
+qr-export-summary-passwords-included = パスワードが含まれています
+qr-export-summary-passwords-excluded = パスワードが除外されています
+qr-export-more-accounts = 他のアカウントをエクスポート

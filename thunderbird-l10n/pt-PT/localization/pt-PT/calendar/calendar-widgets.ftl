@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Todos os calendários estão neste momento desativados. Ative um calendário existente ou adicione um novo, para criar e editar eventos.
 calendar-deactivated-notification-tasks = Todos os calendários estão neste momento desativados. Ative um calendário existente ou adicione um novo, para criar e editar tarefas.
 calendar-notifications-label = Mostrar notificações de próximos eventos
 calendar-add-notification-button =
     .label = Adicionar notificação
-
-## Side panel
-
 calendar-list-header = Calendários
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = O calendário { $calendarName } foi silenciado
 calendar-enable-button = Ativar
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Opções do calendário { $calendarName }
 calendar-import-new-calendar = Novo calendário...
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Recarregar todos os calendários e sincronizar as mudanças
 calendar-new-event-primary-button = Novo evento
 calendar-new-task-primary-button = Nova tarefa
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Dia anterior
     .accesskey = a
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Multissemana
     .title = Mudar para vista multissemanal
 calendar-view-toggle-month = Mês
     .title = Mudar para vista mensal
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Opções do esquema do calendário
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Defina os dias úteis
 calendar-show-tasks-calendar-option =
     .label = Mostrar tarefas no calendário
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Dia anterior
     .accesskey = a

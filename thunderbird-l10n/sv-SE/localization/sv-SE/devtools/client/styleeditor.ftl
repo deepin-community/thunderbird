@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Skapa och lägg till en ny stilmall till dokumentet
     .accesskey = S
@@ -21,8 +17,6 @@ styleeditor-save-button = Spara
 styleeditor-options-button =
     .tooltiptext = Alternativ för stilredigerare
 styleeditor-at-rules = At-rules
-styleeditor-editor-textbox =
-    .data-placeholder = Skriv in CSS här.
 styleeditor-no-stylesheet = Den här sidan har ingen stilmall.
 styleeditor-no-stylesheet-tip = Kanske vill du <a data-l10n-name="append-new-stylesheet">lägga till en ny stilmall</a>?
 styleeditor-open-link-new-tab =
@@ -38,19 +32,13 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Gå till rad…
     .accesskey = G
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Ingen matchande stilmall har hittats.
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } regel.
        *[other] { $ruleCount } regler.
     }
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Formatera stilmall
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = Kan endast kodformatera CSS-filer

@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menubalke
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Ynstellingen
     .accesskey = e
 menu-addons-and-themes =
     .label = Add-ons en tema’s
     .accesskey = A
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Eksportearje foar mobyl…
+    .accesskey = p
 menu-help-help-title =
     .label = Help
     .accesskey = H
 menu-help-get-help =
     .label = Help krije
     .accesskey = H
-menu-help-explore-features =
-    .label = Funksjes ferkenne
-    .accesskey = F
 menu-help-get-release-help =
     .label = Help krije by { -brand-short-name }
     .accesskey = H
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Oer { -brand-short-name }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] f
            *[other] f
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } ôfslute
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] { -brand-full-name } ôfslute
            *[other] { -brand-full-name } ôfslute
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = f
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Net-winske
     .tooltiptext = De selektearre berjochten as net-winske markearje
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Fuortsmiten ûngedien meitsje
     .tooltiptext = Fuortsmiten fan selektearre berjochten ûngedien meitsje
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Tekstkodearring reparearje
     .accesskey = r
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Koptekst Mappepaniel
     .accesskey = M
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Koptekst berjochtelist
     .accesskey = K
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Taakbalke
     .accesskey = T
-
-## File
-
 file-new-email-account =
     .label = E-mailaccount…
     .accesskey = E

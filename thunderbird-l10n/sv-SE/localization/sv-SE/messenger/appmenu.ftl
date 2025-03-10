@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Synkronisera
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Logga ut…
     .accesskey = L
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nytt konto
 appmenu-new-account-panel =
     .label = Nytt konto
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Skaffa en ny e-postadress
-    .accesskey = S
-appmenu-new-mail-account =
-    .label = Befintlig e-postadress
-    .accesskey = B
 appmenu-new-email-account =
     .label = E-post
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Nyhetsgrupp
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Ny adressbok
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-adressbok
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Skapa
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Öppna från fil
     .accesskey = f
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Kalender…
     .accesskey = K
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Visa
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Öka textstorlek
 appmenuitem-font-size-reduce =
     .tooltiptext = Minska textstorlek
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Återställ textstorlek
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Verktyg
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Exportera
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = Exportera för mobil
+    .accesskey = p
 appmenu-tools-message-search =
     .label = Sök efter meddelanden
     .accesskey = S
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Utvecklarverktyg
     .accesskey = t
-
-## Help
-
 appmenu-help-panel-title =
     .title = Hjälp
 appmenu-help-get-help =
     .label = Få hjälp
     .accesskey = F
-appmenu-help-explore-features =
-    .label = Utforska funktioner
-    .accesskey = U
 appmenu-help-get-release-help =
     .label = Få hjälp med { -brand-short-name }
     .accesskey = h
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Om { -brand-short-name }
     .accesskey = m
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Hämtar { -brand-shorter-name }-uppdatering
 appmenuitem-banner-update-available =

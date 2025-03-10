@@ -23,9 +23,8 @@ ChromeUtils.defineLazyGetter(this, "ABQueryUtils", function () {
   return ChromeUtils.importESModule("resource:///modules/ABQueryUtils.sys.mjs");
 });
 ChromeUtils.defineLazyGetter(this, "ICAL", function () {
-  return ChromeUtils.importESModule(
-    "resource:///modules/calendar/Ical.sys.mjs"
-  ).default;
+  return ChromeUtils.importESModule("resource:///modules/calendar/Ical.sys.mjs")
+    .default;
 });
 
 ChromeUtils.defineESModuleGetters(this, {
@@ -90,7 +89,10 @@ window.addEventListener("load", () => {
     .addEventListener("click", event => {
       document
         .getElementById("booksPaneCreateBookContext")
-        .openPopup(event.target, "after_start", { triggerEvent: event });
+        .openPopup(event.target, {
+          position: "after_start",
+          triggerEvent: event,
+        });
     });
   document
     .getElementById("booksPaneCreateContact")
@@ -931,7 +933,6 @@ customElements.whenDefined("tree-listbox").then(() => {
             return;
           }
         }
-        event.dataTransfer.dropEffect = event.ctrlKey ? "copy" : "move";
       }
 
       this._clearDropTarget();
@@ -1181,8 +1182,6 @@ customElements.whenDefined("tree-view-table-row").then(() => {
    * @augments {TreeViewTableRow}
    */
   class AbCardRow extends customElements.get("tree-view-table-row") {
-    static ROW_HEIGHT = 52;
-
     connectedCallback() {
       if (this.hasConnected) {
         return;
@@ -1218,21 +1217,20 @@ customElements.whenDefined("tree-view-table-row").then(() => {
       this.appendChild(this.cell);
     }
 
-    get index() {
-      return super.index;
-    }
-
     /**
-     * Override the row setter to generate the layout.
+     * Generate the layout for the current card.
      *
-     * @note This element could be recycled, make sure you set or clear all
+     * NOTE: This element could be recycled, make sure you set or clear all
      * properties.
      */
-    set index(index) {
-      super.index = index;
+    _fillRow() {
+      super._fillRow();
 
-      const card = this.view.getCardFromRow(index);
-      this.name.textContent = this.view.getCellText(index, "GeneratedName");
+      const card = this.view.getCardFromRow(this._index);
+      this.name.textContent = this.view.getCellText(
+        this._index,
+        "GeneratedName"
+      );
 
       // Add the address book name for All Address Books if in the sort Context
       // Address Book is checked. This is done for the list view only.
@@ -1249,7 +1247,10 @@ customElements.whenDefined("tree-view-table-row").then(() => {
           addressBookName.classList.add("address-book-name");
           this.firstLine.appendChild(addressBookName);
         }
-        addressBookName.textContent = this.view.getCellText(index, "addrbook");
+        addressBookName.textContent = this.view.getCellText(
+          this._index,
+          "addrbook"
+        );
       } else {
         this.querySelector(".address-book-name")?.remove();
       }
@@ -1293,8 +1294,6 @@ customElements.whenDefined("tree-view-table-row").then(() => {
    * @augments {TreeViewTableRow}
    */
   class AbTableCardRow extends customElements.get("tree-view-table-row") {
-    static ROW_HEIGHT = 22;
-
     connectedCallback() {
       if (this.hasConnected) {
         return;
@@ -1312,26 +1311,22 @@ customElements.whenDefined("tree-view-table-row").then(() => {
       }
     }
 
-    get index() {
-      return super.index;
-    }
-
     /**
-     * Override the row setter to generate the layout.
+     * Generate the layout for the current card.
      *
-     * @note This element could be recycled, make sure you set or clear all
+     * NOTE: This element could be recycled, make sure you set or clear all
      * properties.
      */
-    set index(index) {
-      super.index = index;
+    _fillRow() {
+      super._fillRow();
 
-      const card = this.view.getCardFromRow(index);
+      const card = this.view.getCardFromRow(this._index);
       this.classList.toggle("MailList", card.isMailList);
 
       for (const column of cardsPane.COLUMNS) {
         const cell = this.querySelector(`.${column.id.toLowerCase()}-column`);
         if (!column.hidden) {
-          cell.textContent = this.view.getCellText(index, column.id);
+          cell.textContent = this.view.getCellText(this._index, column.id);
           continue;
         }
 
@@ -1350,7 +1345,7 @@ var cardsPane = {
   /**
    * The array of columns for the table layout.
    *
-   * @type {Array}
+   * @type {Array<object>}
    */
   COLUMNS: [
     {
@@ -1429,20 +1424,35 @@ var cardsPane = {
   densityChange() {
     const rowClass = customElements.get("ab-card-row");
     const tableRowClass = customElements.get("ab-table-card-row");
+    let densitySpacing;
+    let cardMinHeight;
+    let rowMinHeight;
     switch (UIDensity.prefValue) {
       case UIDensity.MODE_COMPACT:
-        rowClass.ROW_HEIGHT = 40;
-        tableRowClass.ROW_HEIGHT = 18;
+        densitySpacing = 0;
+        cardMinHeight = 40;
+        rowMinHeight = 18;
         break;
       case UIDensity.MODE_TOUCH:
-        rowClass.ROW_HEIGHT = 68;
-        tableRowClass.ROW_HEIGHT = 32;
+        densitySpacing = 12;
+        cardMinHeight = 68;
+        rowMinHeight = 32;
         break;
       default:
-        rowClass.ROW_HEIGHT = 52;
-        tableRowClass.ROW_HEIGHT = 22;
+        densitySpacing = 6;
+        cardMinHeight = 52;
+        rowMinHeight = 22;
         break;
     }
+    const currentFontSize = UIFontSize.size;
+    // Font-size * line-height * 2 rows and padding + density.
+    const cardRowHeight = Math.ceil(
+      currentFontSize * 1.4 * 2.5 + densitySpacing
+    );
+    rowClass.ROW_HEIGHT = Math.max(cardRowHeight, cardMinHeight);
+    // Font-size * line-height.
+    const tableRowHeight = Math.ceil(currentFontSize * 1.2);
+    tableRowClass.ROW_HEIGHT = Math.max(tableRowHeight, rowMinHeight);
     this.cardsList.reset();
   },
 
@@ -1533,6 +1543,9 @@ var cardsPane = {
     this.cardContext.addEventListener("command", this);
 
     window.addEventListener("uidensitychange", () => cardsPane.densityChange());
+    window.addEventListener("uifontsizechange", () =>
+      cardsPane.densityChange()
+    );
     customElements
       .whenDefined("ab-table-card-row")
       .then(() => cardsPane.densityChange());
@@ -1729,7 +1742,7 @@ var cardsPane = {
   /**
    * Display a list.
    *
-   * @param {bookUID} uid - The UID of the address book containing the list.
+   * @param {bookUID} bookUID - The UID of the address book containing the list.
    * @param {string} uid - The UID of the list to display.
    */
   displayList(bookUID, uid) {
@@ -1798,7 +1811,8 @@ var cardsPane = {
   /**
    * Set the name format to be displayed.
    *
-   * @param {integer} format - One of the nsIAbCard.GENERATE_* constants.
+   * @param {Event} event - Event whose value is one of the
+   *   nsIAbCard.GENERATE_* constants.
    */
   setNameFormat(event) {
     // AddrBookDataAdapter will detect this change and update automatically.
@@ -2996,6 +3010,31 @@ var detailsPane = {
   },
 
   /**
+   * Sanitize the link if linkifying is not desired (based on href value).
+   *
+   * @param {HTMLAnchorElement} anchor
+   * @returns {HTMLAnchorElement|Text} sanitized anchor
+   */
+  _sanitizeHref(anchor) {
+    if (!URL.canParse(anchor.href)) {
+      return document.createTextNode(anchor.textContent);
+    }
+    const scheme = new URL(anchor.href).protocol.slice(0, -1);
+    // Of all our exposed protocols, only allow linking to a few select.
+    if (/^(mailto|http?s|s?news|nntp)$/.test(scheme)) {
+      return anchor;
+    }
+    const externalProtoclService = Cc[
+      "@mozilla.org/uriloader/external-protocol-service;1"
+    ].getService(Ci.nsIExternalProtocolService);
+    if (externalProtoclService.isExposedProtocol(scheme)) {
+      // No business linking to e.g. data:, about:, imap:
+      return document.createTextNode(anchor.textContent);
+    }
+    return anchor;
+  },
+
+  /**
    * Set all the values for displaying a contact.
    *
    * @param {HTMLElement} element - The element to fill, either the on-screen
@@ -3051,7 +3090,7 @@ var detailsPane = {
     };
 
     let section = element.querySelector(".details-email-addresses");
-    let list = section.querySelector("ul");
+    let list = section.querySelector("ul.entry-list");
     list.replaceChildren();
     for (const entry of vCardProperties.getAllEntries("email")) {
       const li = list.appendChild(createEntryItem());
@@ -3068,7 +3107,7 @@ var detailsPane = {
     section.hidden = list.childElementCount == 0;
 
     section = element.querySelector(".details-phone-numbers");
-    list = section.querySelector("ul");
+    list = section.querySelector("ul.entry-list");
     list.replaceChildren();
     for (const entry of vCardProperties.getAllEntries("tel")) {
       const li = list.appendChild(createEntryItem());
@@ -3079,12 +3118,12 @@ var detailsPane = {
       const scheme = entry.value.split(/([a-z\+]{3,}):/)[1] || "tel";
       a.href = `${scheme}:${number.replaceAll(/[^\d\+]/g, "")}`;
       a.textContent = number;
-      li.querySelector(".entry-value").appendChild(a);
+      li.querySelector(".entry-value").appendChild(this._sanitizeHref(a));
     }
     section.hidden = list.childElementCount == 0;
 
     section = element.querySelector(".details-addresses");
-    list = section.querySelector("ul");
+    list = section.querySelector("ul.entry-list");
     list.replaceChildren();
     for (const entry of vCardProperties.getAllEntries("adr")) {
       const parts = entry.value.flat();
@@ -3113,12 +3152,12 @@ var detailsPane = {
     }
 
     section = element.querySelector(".details-websites");
-    list = section.querySelector("ul");
+    list = section.querySelector("ul.entry-list");
     list.replaceChildren();
 
     for (const entry of vCardProperties.getAllEntries("url")) {
       const value = entry.value;
-      if (!/https?:\/\//.test(value)) {
+      if (!URL.canParse(value)) {
         continue;
       }
 
@@ -3131,12 +3170,12 @@ var detailsPane = {
         url.pathname == "/" && !url.search
           ? url.host
           : `${url.host}${url.pathname}${url.search}`;
-      li.querySelector(".entry-value").appendChild(a);
+      li.querySelector(".entry-value").appendChild(this._sanitizeHref(a));
     }
     section.hidden = list.childElementCount == 0;
 
     section = element.querySelector(".details-instant-messaging");
-    list = section.querySelector("ul");
+    list = section.querySelector("ul.entry-list");
     list.replaceChildren();
 
     this._screenNamesToIMPPs(card);
@@ -3153,12 +3192,12 @@ var detailsPane = {
       a.href = entry.value;
       a.target = "_blank";
       a.textContent = url.toString();
-      li.querySelector(".entry-value").append(a);
+      li.querySelector(".entry-value").append(this._sanitizeHref(a));
     }
     section.hidden = list.childElementCount == 0;
 
     section = element.querySelector(".details-other-info");
-    list = section.querySelector("ul");
+    list = section.querySelector("ul.entry-list");
     list.replaceChildren();
 
     const formatDate = function (date) {
@@ -3677,9 +3716,8 @@ var detailsPane = {
     const listDirectory = MailServices.ab.getDirectory(listCard.mailListURI);
 
     document.querySelector("#viewContact .list-header").hidden = false;
-    document.querySelector(
-      "#viewContact .list-header > h1"
-    ).textContent = `${listDirectory.dirName}`;
+    document.querySelector("#viewContact .list-header > h1").textContent =
+      `${listDirectory.dirName}`;
 
     const cards = Array.from(listDirectory.childCards, card => {
       return {
@@ -4286,15 +4324,12 @@ var printHandler = {
   printDirectory(directory) {
     const title = directory ? directory.dirName : document.title;
 
-    let cards;
-    if (directory) {
-      cards = directory.childCards;
-    } else {
-      cards = [];
-      for (const directory of MailServices.ab.directories) {
-        cards = cards.concat(directory.childCards);
-      }
-    }
+    const cards = directory
+      ? directory.childCards
+      : MailServices.ab.directories.reduce(
+          (t, d) => t.concat(d.childCards),
+          []
+        );
 
     this._printCards(title, cards);
   },

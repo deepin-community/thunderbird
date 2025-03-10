@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Gwybodaeth am Fodiwlau Trydydd Parti
 third-party-section-title = Rhestr o fodiwlau trydydd parti yn { -brand-short-name }
 third-party-intro =
@@ -46,19 +42,6 @@ third-party-button-reload = Ail-lwytho gyda manylion y system
     .title = Ail-lwytho gyda manylion y system
 third-party-button-open =
     .title = Agor lleoliad ffeil…
-third-party-button-to-block =
-    .title = Rhwystro'r modiwl hwn
-    .aria-label = Rhwystro'r modiwl hwn
-third-party-button-to-unblock =
-    .title = Wedi'i rwystro ar hyn o bryd. Cliciwch i'w ddadrwystro.
-    .aria-label = Wedi'i rwystro ar hyn o bryd. Cliciwch i'w ddadrwystro.
-third-party-button-to-unblock-disabled =
-    .title =
-        Wedi'i nodi fel wedi'i rwystro ar hyn o bryd, er bod y rhestr rhwystro wedi'i hanalluogi ar gyfer y rhediad hwn
-        o { -brand-short-name }. Cliciwch i'w ddadrwystro.
-    .aria-label =
-        Wedi'i nodi fel wedi'i rwystro ar hyn o bryd, er bod y rhestr rhwystro wedi'i hanalluogi ar gyfer y rhediad hwn
-        o { -brand-short-name }. Cliciwch i'w ddadrwystro.
 third-party-button-to-block-module = Rhwystro'r modiwl hwn
     .title = Rhwystro'r modiwl hwn
     .aria-label = Rhwystro'r modiwl hwn

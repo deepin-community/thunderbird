@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Менеджер ключів OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Підтвердити підпис
     .accesskey = і
 openpgp-has-sender-key = У цьому повідомленні стверджується, що воно містить відкритий ключ відправника OpenPGP.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Попередження: новий відкритий ключ OpenPGP у цьому повідомленні відрізняється від відкритих ключів, які ви раніше прийняли для { $email }.
 openpgp-import-sender-key =
     .label = Імпортувати…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Це повідомлення підписано ключем, якого у вас ще немає.
 openpgp-search-signature-key =
     .label = Дослідити…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Це повідомлення OpenPGP, яке, очевидно, було пошкоджено MS-Exchange, і його неможливо відновити, оскільки його було відкрито з локального файлу. Копіюйте повідомлення до теки пошти, щоб спробувати виконати автоматичне відновлення.
 openpgp-broken-exchange-info = Схоже, що це повідомлення з OpenPGP пошкоджено службою MS-Exchange. Якщо вміст повідомлення показується неправильно, ви можете спробувати автоматичне відновлення.
 openpgp-broken-exchange-repair =

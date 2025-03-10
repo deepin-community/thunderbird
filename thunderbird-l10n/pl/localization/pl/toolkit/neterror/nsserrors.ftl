@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Nie można nawiązać bezpiecznego połączenia, ponieważ obsługa protokołu SSL została wyłączona.
 psmerr-ssl2-disabled = Nie można nawiązać bezpiecznego połączenia, ponieważ witryna używa niebezpiecznej, przestarzałej wersji protokołu SSL.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Otrzymano nieprawidłowy certyfikat. Należy skontaktować się z administratorem serwera lub osobą, od której ten certyfikat pochodzi, i przekazać jej następującą informację: 
     
@@ -327,10 +316,11 @@ mozilla-pkix-error-signature-algorithm-mismatch = Algorytm podpisu w polu algor
 mozilla-pkix-error-ocsp-response-for-cert-missing = Odpowiedź OCSP nie zawiera stanu dla weryfikowanego certyfikatu.
 mozilla-pkix-error-validity-too-long = Certyfikat przedstawiony przez serwer ma zbyt odległy termin ważności.
 mozilla-pkix-error-required-tls-feature-missing = Brak wymaganej funkcji TLS.
-mozilla-pkix-error-invalid-integer-encoding = Serwer zaprezentował certyfikat zawierający nieprawidłowe kodowanie liczb. Typowe przyczyny to ujemne numery seryjne, ujemne moduli RSA i niepotrzebne już kodowania.
-mozilla-pkix-error-empty-issuer-name = Serwer zaprezentował certyfikat zawierający pustą nazwę DN wystawcy.
+mozilla-pkix-error-invalid-integer-encoding = Serwer przedstawił certyfikat zawierający nieprawidłowe kodowanie liczb. Typowe przyczyny to ujemne numery seryjne, ujemne moduli RSA i niepotrzebne już kodowania.
+mozilla-pkix-error-empty-issuer-name = Serwer przedstawił certyfikat zawierający pustą nazwę DN wystawcy.
 mozilla-pkix-error-additional-policy-constraint-failed = Warunki dodatkowych zasad ograniczeń nie zostały spełnione podczas sprawdzania certyfikatu.
 mozilla-pkix-error-self-signed-cert = Certyfikat nie jest zaufany, ponieważ jest samopodpisany.
+mozilla-pkix-error-issuer-no-longer-trusted = Organ certyfikacji, który wydał certyfikat, utracił zaufanie jeszcze przed jego wydaniem.
 xp-java-remove-principal-error = Nie udało się usunąć podmiotu zabezpieczeń
 xp-java-delete-privilege-error = Nie udało się usunąć uprawnienia
 xp-java-cert-not-exists-error = Ten podmiot zabezpieczeń nie ma certyfikatu

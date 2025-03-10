@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 text-action-undo =
     .label = Dadwneud
     .accesskey = w
@@ -22,11 +18,9 @@ text-action-copy =
     .accesskey = C
 text-action-copy-shortcut =
     .key = C
-# This command copies the link, removing additional
-# query parameters used to track users across sites.
-text-action-strip-on-share =
-    .label = Copi Heb Tracio Gwefan
-    .accesskey = G
+text-action-copy-clean-link =
+    .label = Copïo Dolen Lân
+    .accesskey = D
 text-action-paste =
     .label = Gludo
     .accesskey = G
@@ -38,6 +32,9 @@ text-action-paste-shortcut =
 text-action-delete =
     .label = Dileu
     .accesskey = i
+text-action-reveal-password =
+    .label = Datgelu Cyfrinair
+    .accesskey = D
 text-action-select-all =
     .label = Dewis Popeth
     .accesskey = P

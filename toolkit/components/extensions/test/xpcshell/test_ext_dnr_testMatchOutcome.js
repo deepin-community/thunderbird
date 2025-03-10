@@ -180,6 +180,11 @@ add_task(async function resource_type_validation() {
   });
 });
 
+// This test confirms that there are several URLs that cannot be affected by DNR
+// despite having the maximal permissions (host_permissions:"<all_urls>") and
+// using the "block" action (which has the least permission requirements, as
+// opposed to redirect and modifyHeaders, which require host permissions for
+// the request and initiator URL).
 add_task(async function url_validation() {
   await runAsDNRExtension({
     background: async dnrTestUtils => {
@@ -198,12 +203,14 @@ add_task(async function url_validation() {
         // While host permissions permits more (e.g. file:, moz-extension:),
         // we don't list them here since they are not hooked up to the network.
         // Trying to match such URLs is undefined behavior for now.
+        // For file:-URLs, test coverage exists in test_ext_dnr_file_access.js.
       ];
       const supportedInitiators = [
         // Supported URLs are also supported initiators.
         ...supportedUrls,
         // Note: moz-extension: has more tests in match_initiator_moz_extension.
         `moz-extension://${location.host}`,
+        // Note: file: has more tests in test_ext_dnr_file_access.js.
         "file:///tmp/",
         // data:-URIs have a null principal.
         "data:text/plain,",
@@ -719,6 +726,11 @@ add_task(async function match_request_domains() {
         [2], // Rule 4 was a candidate, but excluded anyway.
         "sub.one.net: url's domain matches sub.one.net, but excluded by one.net"
       );
+      await testMatchesRequest(
+        { url: "http://sub1.sub2.one.net/", type },
+        [2, 3],
+        "sub1.sub2.one.net: url's domain matches one.net, but not sub.one.net"
+      );
 
       // Tests related to IP addresses
       await testMatchesRequest(
@@ -882,6 +894,13 @@ add_task(async function match_initiator_domains() {
             },
             action,
           },
+          {
+            id: 7,
+            condition: {
+              initiatorDomains: ["d.com"],
+            },
+            action,
+          },
         ],
       });
 
@@ -925,6 +944,11 @@ add_task(async function match_initiator_domains() {
         { url: "http://a.com/", type },
         [2, 5],
         "initiatorDomains should not match the request URL (initiator=null)"
+      );
+      await testMatchesRequest(
+        { url, type, initiator: "http://sub1.sub2.d.com" },
+        [2, 5, 7],
+        "initiatorDomains matches subdomain"
       );
 
       browser.test.notifyPass();

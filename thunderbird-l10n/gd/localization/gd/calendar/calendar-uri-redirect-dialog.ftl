@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-calendar-uri-redirect-window =
-    .title = Ath-stiùireadh URI a’ mhìosachain
 calendar-uri-redirect-window-title = Ath-stiùireadh URI a’ mhìosachain
 calendar-uri-redirect-description =
     Tha am frithealaichte ag ath-stiùireadh an URI aig a’ mhìosachan “{ $calendarName }”.

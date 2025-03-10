@@ -82,9 +82,8 @@ add_task(async function test_accounts() {
         browser.test.assertEq(null, account.folders, "Folders not included");
       }
 
-      const [account2Id, account2Name] = await window.sendMessage(
-        "create account 2"
-      );
+      const [account2Id, account2Name] =
+        await window.sendMessage("create account 2");
       // The new account is defined as default and should be returned first.
       const result2 = await browser.accounts.list();
       browser.test.assertEq(2, result2.length);
@@ -246,7 +245,6 @@ add_task(async function test_accounts() {
             isUnified: false,
             isVirtual: false,
             accountId: result2[0].id,
-            subFolders: null,
           },
           identities: [],
           folders: null,
@@ -258,7 +256,6 @@ add_task(async function test_accounts() {
 
       // Remove properties, which will be different, if folders are included.
       delete defaultAccountFalse.folders;
-      delete defaultAccountFalse.rootFolder.subFolders;
 
       // Lazy check for accounts.getDefault(): It should return at least the same
       // values as accounts.getDefault(false). The additional folder and subFolder

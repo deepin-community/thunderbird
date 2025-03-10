@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-calendar-uri-redirect-window =
-    .title = 캘린더 URI 리디렉션
 calendar-uri-redirect-window-title = 캘린더 URI 리디렉션
 calendar-uri-redirect-description =
     서버가 "{ $calendarName }" 달력의 URI를 리디렉션 합니다.

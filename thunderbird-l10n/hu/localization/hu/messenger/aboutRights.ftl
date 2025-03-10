@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Az Ön jogai
 rights-intro = A { -brand-full-name } ingyenes és nyílt forrású szoftver, amelyet világszerte több ezer ember fejleszt. Néhány dologról tudnia kell:
 rights-intro-point-1 = A { -brand-short-name } a <a data-l10n-name="mozilla-public-license-link">Mozilla Public License</a> feltételei szerint lett közreadva. Ez azt jelenti, hogy a  { -brand-short-name } használható, másolható és terjeszthető. A { -brand-short-name } forráskódjának igény szerinti módosítása szintén megengedett. A Mozilla Public License megadja a jogot a módosított verziók terjesztésére is.

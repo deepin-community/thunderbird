@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Thông tin về trình phân loại URL
 url-classifier-search-title = Tìm kiếm
 url-classifier-search-result-title = Kết quả
@@ -21,7 +17,7 @@ url-classifier-provider-back-off-time = Độ trễ
 url-classifier-provider-last-update-status = Trạng thái cập nhật cuối
 url-classifier-provider-update-btn = Cập nhật
 url-classifier-cache-title = Bộ nhớ đệm
-url-classifier-cache-refresh-btn = Tải lại
+url-classifier-cache-refresh-btn = Làm mới
 url-classifier-cache-clear-btn = Xóa
 url-classifier-cache-table-name = Tên bảng
 url-classifier-cache-ncache-entries = Số lượng bộ nhớ đệm âm
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Mô-đun nhật ký duyệt web an toàn
 url-classifier-debug-modules = Mô-đun nhật ký hiện tại
 url-classifier-debug-sbjs-modules = Nhật ký JS duyệt web an toàn
 url-classifier-debug-file = Tập tin nhật ký hiện tại
-
 url-classifier-trigger-update = Cập nhật
 url-classifier-not-available = Không có
 url-classifier-disable-sbjs-log = Tắt nhật ký JS duyệt web an toàn
@@ -50,9 +45,5 @@ url-classifier-disabled = Đã tắt
 url-classifier-updating = đang cập nhật
 url-classifier-cannot-update = không thể cập nhật
 url-classifier-success = thành công
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = lỗi cập nhật ({ $error })
 url-classifier-download-error = lỗi tải xuống ({ $error })

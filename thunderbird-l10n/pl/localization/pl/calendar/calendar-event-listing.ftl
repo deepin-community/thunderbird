@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Zamknij wyszukiwanie i listę zdarzeń
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Nazwa kalendarza
     .tooltiptext = Sortowanie według nazwy kalendarza
 calendar-event-listing-column-category =
     .label = Kategoria
     .tooltiptext = Sortowanie według kategorii
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Wykonane
     .tooltiptext = Sortowanie według wykonanych zadań
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Nazwa
     .tooltiptext = Sortowanie według nazwy
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Wydarzenia z przeszłości
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Wydarzenia w przeciągu następnych 6 miesięcy
 calendar-event-listing-interval-next-12-months =
     .label = Wydarzenia w przeciągu następnych 12 miesięcy
+calendar-event-listing-interval-future =
+    .label = Wszystkie przyszłe wydarzenia
 calendar-event-listing-interval-all =
     .label = Wszystkie wydarzenia
 calendar-event-listing-interval-selected-day =

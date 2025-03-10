@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP 金鑰管理員
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = 驗證簽章
     .accesskey = V
 openpgp-has-sender-key = 此訊息聲稱包含寄件者的 OpenPGP 公鑰。
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = 警告: 此訊息中的 OpenPGP 新公鑰與您先前接受的 { $email } 公鑰不同。
 openpgp-import-sender-key =
     .label = 匯入…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = 此訊息是使用您沒有的金鑰所簽署的。
 openpgp-search-signature-key =
     .label = 尋找…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = 這是一封被 MS-Exchange 毀損的 OpenPGP 訊息，由於是用本機檔案的方式開啟，無法修復。請嘗試將訊息複製到郵件資料夾，進行自動修復。
 openpgp-broken-exchange-info = 這是一封被 MS Exchange 修改毀損的 OpenPGP 訊息。若訊息內容不正確，可以試試看進行自動修復。
 openpgp-broken-exchange-repair =

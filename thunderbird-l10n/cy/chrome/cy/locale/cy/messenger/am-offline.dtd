@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY doNotDownloadPop3Movemail.label "I arbed lle, peidio llwytho i lawr:">
 <!ENTITY doNotDownloadNntp.label "I arbed lle, peidio llwytho i lawr ar gyfer defnydd all-lein:">
 <!ENTITY doNotDownloadImap.label "I arbed lle ar ddisg, mae modd cyfyngu ar lwytho negeseuon i lawr o'r gweinydd a chadw copïau lleol yn ôl oed a maint.">
@@ -38,20 +34,13 @@
 <!ENTITY offlineImapAdvancedOffline.accesskey "U">
 <!ENTITY syncGroupTitle.label "Cydweddu Negeseuon">
 <!ENTITY diskspaceGroupTitle.label "Lle ar Ddisg">
-
-<!-- LOCALIZATION NOTE: (ageAutosyncBefore.label, ageAutosyncMiddle.label, ageAutosyncAfter.label):
-  The entities ageAutosyncBefore.label, ageAutosyncMiddle.label, and ageAutosyncAfter.label appear
-  on a single line within the scope of useAutosync.ByAge as follows:
-
-  &ageAutosyncBefore.label [textbox for autosync value] &ageAutosyncMiddle.label; [dropdown for autosync interval] &ageAutosyncAfter.label;
--->
-<!ENTITY allAutosync.label               "Cydweddu pob neges yn lleol beth bynnag yw eu hoed">
-<!ENTITY allAutosync.accesskey           "C">
-<!ENTITY ageAutosyncBefore.label         "Cydweddu'r mwyaf diweddar">
-<!ENTITY ageAutosync.accesskey           "z">
-<!ENTITY ageAutosyncMiddle.label         "">
-<!ENTITY dayAgeInterval.label            "Diwrnod">
-<!ENTITY weekAgeInterval.label           "Wythnos">
-<!ENTITY monthAgeInterval.label          "Mis">
-<!ENTITY yearAgeInterval.label           "Blwyddyn">
-<!ENTITY ageAutosyncAfter.label          "">
+<!ENTITY allAutosync.label "Cydweddu pob neges yn lleol beth bynnag yw eu hoed">
+<!ENTITY allAutosync.accesskey "C">
+<!ENTITY ageAutosyncBefore.label "Cydweddu'r mwyaf diweddar">
+<!ENTITY ageAutosync.accesskey "z">
+<!ENTITY ageAutosyncMiddle.label "">
+<!ENTITY dayAgeInterval.label "Diwrnod">
+<!ENTITY weekAgeInterval.label "Wythnos">
+<!ENTITY monthAgeInterval.label "Mis">
+<!ENTITY yearAgeInterval.label "Blwyddyn">
+<!ENTITY ageAutosyncAfter.label "">

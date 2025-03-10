@@ -1,84 +1,14 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY calendar.calendar.label "Calendario">
 <!ENTITY calendar.calendar.accesskey "C">
 <!ENTITY calendar.newevent.button.tooltip "Crear un nuevo evento en el calendario">
 <!ENTITY calendar.newtask.button.tooltip "Crear una tarea nueva">
-<!ENTITY calendar.unifinder.todoitems.label "Tareas">
 <!ENTITY calendar.unifinder.showcompletedtodos.label "Mostrar tareas completadas">
 <!ENTITY calendar.today.button.label "Hoy">
 <!ENTITY calendar.tomorrow.button.label "Mañana">
-<!ENTITY calendar.upcoming.button.label "Próximamente">
-<!ENTITY calendar.events.filter.all.label "Todos los eventos">
-<!ENTITY calendar.events.filter.today.label "Eventos de hoy">
-<!ENTITY calendar.events.filter.future.label "Todos los eventos futuros">
-<!ENTITY calendar.events.filter.current.label "Día seleccionado">
-<!ENTITY calendar.events.filter.currentview.label "Eventos en la vista actual">
-<!ENTITY calendar.events.filter.next7Days.label "Eventos en los próximos 7 días">
-<!ENTITY calendar.events.filter.next14Days.label "Eventos en los próximos 14 días">
-<!ENTITY calendar.events.filter.next31Days.label "Eventos en los próximos 31 días">
-<!ENTITY calendar.events.filter.thisCalendarMonth.label "Eventos en este mes del calendario">
-<!ENTITY calendar.unifinder.tree.done.label "Hecho">
-<!ENTITY calendar.unifinder.tree.done.tooltip2 "Ordenar por progreso">
-<!ENTITY calendar.unifinder.tree.priority.label "Prioridad">
-<!ENTITY calendar.unifinder.tree.priority.tooltip2 "Ordenar por prioridad">
-<!ENTITY calendar.unifinder.tree.title.label "Título">
-<!ENTITY calendar.unifinder.tree.title.tooltip2 "Ordenar por tamaño">
-<!ENTITY calendar.unifinder.tree.percentcomplete.label "&#037; completo">
-<!ENTITY calendar.unifinder.tree.percentcomplete.tooltip2 "Ordenar por &#037; progreso">
-<!ENTITY calendar.unifinder.tree.startdate.label "Inicio">
-<!ENTITY calendar.unifinder.tree.startdate.tooltip2 "Ordenar por fecha de inicio">
-<!ENTITY calendar.unifinder.tree.enddate.label "Fin">
-<!ENTITY calendar.unifinder.tree.enddate.tooltip2 "Ordenar por fecha final">
-<!ENTITY calendar.unifinder.tree.duedate.label "Vencimiento">
-<!ENTITY calendar.unifinder.tree.duedate.tooltip2 "Ordenar por fecha límite">
-<!ENTITY calendar.unifinder.tree.completeddate.label "Completado">
-<!ENTITY calendar.unifinder.tree.completeddate.tooltip2 "Ordenar por fecha en la que se completó">
-<!ENTITY calendar.unifinder.tree.categories.label "Categoría">
-<!ENTITY calendar.unifinder.tree.categories.tooltip2 "Ordenar por categoría">
-<!ENTITY calendar.unifinder.tree.location.label "Lugar">
-<!ENTITY calendar.unifinder.tree.location.tooltip2 "Ordenar por ubicación">
-<!ENTITY calendar.unifinder.tree.status.label "Estado">
-<!ENTITY calendar.unifinder.tree.status.tooltip2 "Ordenar por estado">
-<!ENTITY calendar.unifinder.tree.calendarname.label "Nombre del calendario">
-<!ENTITY calendar.unifinder.tree.calendarname.tooltip2 "Ordenar por nombre de calendario">
-<!ENTITY calendar.unifinder.tree.duration.label "Vence en">
-<!ENTITY calendar.unifinder.tree.duration.tooltip2 "Ordenar por tiempo hasta vencimiento">
-<!ENTITY calendar.unifinder.close.tooltip "Cerrar búsqueda y lista de eventos">
 <!ENTITY calendar.today.button.tooltip "Ir a hoy">
 <!ENTITY calendar.todaypane.button.tooltip "Mostrar panel Para hoy">
-<!ENTITY calendar.day.button.tooltip "Cambiar a vista diaria">
-<!ENTITY calendar.week.button.tooltip "Cambiar a vista semanal">
-<!ENTITY calendar.month.button.tooltip "Cambiar a vista mensual">
-<!ENTITY calendar.multiweek.button.tooltip "Cambiar a vista multisemanal">
-<!ENTITY calendar.nextday.label "Día siguiente">
-<!ENTITY calendar.prevday.label "Día anterior">
-<!ENTITY calendar.nextday.accesskey "s">
-<!ENTITY calendar.prevday.accesskey "t">
-<!ENTITY calendar.nextweek.label "Semana siguiente">
-<!ENTITY calendar.prevweek.label "Semana anterior">
-<!ENTITY calendar.nextweek.accesskey "s">
-<!ENTITY calendar.prevweek.accesskey "t">
-<!ENTITY calendar.nextmonth.label "Mes siguiente">
-<!ENTITY calendar.prevmonth.label "Mes anterior">
-<!ENTITY calendar.nextmonth.accesskey "s">
-<!ENTITY calendar.prevmonth.accesskey "t">
-<!ENTITY calendar.navigation.nextday.tooltip "Un día hacia delante">
-<!ENTITY calendar.navigation.prevday.tooltip "Un día hacia atrás">
-<!ENTITY calendar.navigation.nextweek.tooltip "Una semana hacia delante">
-<!ENTITY calendar.navigation.prevweek.tooltip "Una semana hacia atrás">
-<!ENTITY calendar.navigation.nextmonth.tooltip "Un mes hacia delante">
-<!ENTITY calendar.navigation.prevmonth.tooltip "Un mes hacia atrás">
 <!ENTITY calendar.newevent.button.label "Nuevo evento">
 <!ENTITY calendar.newtask.button.label "Nueva tarea">
-<!ENTITY calendar.print.button.label "Imprimir">
-<!ENTITY calendar.print.button.accesskey "P">
-<!ENTITY calendar.day.button.label "Día">
-<!ENTITY calendar.week.button.label "Semana">
-<!ENTITY calendar.month.button.label "Mes">
-<!ENTITY calendar.multiweek.button.label "Multisemana">
 <!ENTITY calendar.onlyworkday.checkbox.label "Sólo días laborables">
 <!ENTITY calendar.onlyworkday.checkbox.accesskey "d">
 <!ENTITY calendar.displaytodos.checkbox.label "Tareas en la vista">
@@ -226,8 +156,6 @@
 <!ENTITY calendar.context.removeserver.accesskey "E">
 <!ENTITY calendar.context.unsubscribeserver.label "Cancelar suscripción a calendario…">
 <!ENTITY calendar.context.unsubscribeserver.accesskey "C">
-<!ENTITY calendar.context.synccalendars.label "Sincronizar calendarios">
-<!ENTITY calendar.context.synccalendars.accesskey "S">
 <!ENTITY calendar.context.publish.label "Publicar calendario…">
 <!ENTITY calendar.context.publish.accesskey "b">
 <!ENTITY calendar.context.export.label "Exportar calendario...">
@@ -275,7 +203,6 @@
 <!ENTITY calendarproperties.color.label "Color:">
 <!ENTITY calendarproperties.webdav.label "iCalendar (ICS)">
 <!ENTITY calendarproperties.caldav.label "CalDAV">
-<!ENTITY calendarproperties.wcap.label "Sun Java System Calendar Server (WCAP)">
 <!ENTITY calendarproperties.format.label "Formato:">
 <!ENTITY calendarproperties.location.label "Lugar:">
 <!ENTITY calendarproperties.refreshInterval.label "Refrescar calendario:">
@@ -284,7 +211,6 @@
 <!ENTITY calendarproperties.readonly.label "Sólo lectura">
 <!ENTITY calendarproperties.firealarms.label "Mostrar avisos">
 <!ENTITY calendarproperties.cache3.label "Compatible con el modo sin conexión">
-<!ENTITY calendarproperties.enabled.label "Activar este calendario">
 <!ENTITY calendarproperties.enabled2.label "Activar este calendario">
 <!ENTITY calendarproperties.forceDisabled.label "No se ha encontrado el proveedor de este calendario. Esto sucede a menudo si ha desactivado o desinstalado ciertos complementos.">
 <!ENTITY calendarproperties.unsubscribe.label "Cancelar suscripción">
@@ -293,23 +219,7 @@
 <!ENTITY calendar.publish.url.label "URL de publicación">
 <!ENTITY calendar.publish.publish.button "Publicar">
 <!ENTITY calendar.publish.close.button "Cerrar">
-<!ENTITY calendar.publish.example.url.description "Algo como http://www.myserver.com/webdav/test.ics">
 <!ENTITY calendar.select.dialog.title "Seleccionar calendario">
-<!ENTITY calendar.print.window.title "Imprimir un calendario">
-<!ENTITY calendar.print.title.label "Título:">
-<!ENTITY calendar.print.layout.label "Disposición:">
-<!ENTITY calendar.print.range.label "Qué imprimir">
-<!ENTITY calendar.print.currentView2.label "Vista actual">
-<!ENTITY calendar.print.selectedEventsAndTasks.label "Eventos/tareas seleccionados">
-<!ENTITY calendar.print.tasks.label "Tareas">
-<!ENTITY calendar.print.events.label "Eventos">
-<!ENTITY calendar.print.custom.label "Rango de fechas personalizado:">
-<!ENTITY calendar.print.from.label "De:">
-<!ENTITY calendar.print.to.label "A:">
-<!ENTITY calendar.print.settingsGroup.label "Configuración de impresión">
-<!ENTITY calendar.print.optionsGroup.label "Opciones">
-<!ENTITY calendar.print.taskswithnoduedate.label "Tareas sin fecha límite">
-<!ENTITY calendar.print.completedtasks.label "Tareas completadas">
 <!ENTITY calendar.error.detail "Detalles…">
 <!ENTITY calendar.error.code "Código de error:">
 <!ENTITY calendar.error.description "Descripción:">

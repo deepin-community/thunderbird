@@ -15,7 +15,7 @@ const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   EventEmitter: "resource://gre/modules/EventEmitter.sys.mjs",
   clearXULToolbarState: "resource:///modules/ToolbarMigration.sys.mjs",
-  migrateMailnews: "resource:///modules/MailnewsMigrator.sys.mjs",
+  MailUtils: "resource:///modules/MailUtils.sys.mjs",
   migrateToolbarForSpace: "resource:///modules/ToolbarMigration.sys.mjs",
   setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
@@ -28,10 +28,7 @@ export var MailMigrator = {
   _migrateUI() {
     // The code for this was ported from
     // mozilla/browser/components/nsBrowserGlue.js
-    const UI_VERSION = 43;
-    const MESSENGER_DOCURL = "chrome://messenger/content/messenger.xhtml";
-    const MESSENGERCOMPOSE_DOCURL =
-      "chrome://messenger/content/messengercompose/messengercompose.xhtml";
+    const UI_VERSION = 46;
     const UI_VERSION_PREF = "mail.ui-rdf.version";
     let currentUIVersion = Services.prefs.getIntPref(UI_VERSION_PREF, 0);
 
@@ -39,129 +36,13 @@ export var MailMigrator = {
       return;
     }
 
-    const xulStore = Services.xulStore;
-
     const newProfile = currentUIVersion == 0;
     if (newProfile) {
-      // Collapse the main menu by default if the override pref
-      // "mail.main_menu.collapse_by_default" is set to true.
-      if (Services.prefs.getBoolPref("mail.main_menu.collapse_by_default")) {
-        xulStore.setValue(
-          MESSENGER_DOCURL,
-          "toolbar-menubar",
-          "autohide",
-          "true"
-        );
-      }
-
       // Set to current version to skip all the migration below.
       currentUIVersion = UI_VERSION;
     }
 
     try {
-      // Migrate mail.biff.use_new_count_in_mac_dock to
-      // mail.biff.use_new_count_in_badge.
-      if (currentUIVersion < 29) {
-        if (
-          Services.prefs.getBoolPref(
-            "mail.biff.use_new_count_in_mac_dock",
-            false
-          )
-        ) {
-          Services.prefs.setBoolPref("mail.biff.use_new_count_in_badge", true);
-          Services.prefs.clearUserPref("mail.biff.use_new_count_in_mac_dock");
-        }
-      }
-
-      // Clear ui.systemUsesDarkTheme after bug 1736252.
-      if (currentUIVersion < 30) {
-        Services.prefs.clearUserPref("ui.systemUsesDarkTheme");
-      }
-
-      if (currentUIVersion < 32) {
-        this._migrateIncomingToOAuth2("imap.gmail.com");
-        this._migrateIncomingToOAuth2("pop.gmail.com");
-        this._migrateOutgoingServerToOAuth2("smtp.gmail.com");
-      }
-
-      if (currentUIVersion < 33) {
-        // Put button-encryption and button-encryption-options on the
-        // Composition Toolbar.
-        // First, get value of currentset (string of comma-separated button ids).
-        let cs = xulStore.getValue(
-          MESSENGERCOMPOSE_DOCURL,
-          "composeToolbar2",
-          "currentset"
-        );
-        if (cs) {
-          // Button ids from currentset string.
-          const buttonIds = cs.split(",");
-
-          // We want to insert the two buttons at index 2 and 3.
-          buttonIds.splice(2, 0, "button-encryption");
-          buttonIds.splice(3, 0, "button-encryption-options");
-
-          cs = buttonIds.join(",");
-          // Apply changes to currentset.
-          xulStore.setValue(
-            MESSENGERCOMPOSE_DOCURL,
-            "composeToolbar2",
-            "currentset",
-            cs
-          );
-        }
-      }
-
-      if (currentUIVersion < 34) {
-        // Migrate from
-        // + mailnews.sendformat.auto_downgrade - Whether we should
-        //   auto-downgrade to plain text when the message is plain.
-        // + mail.default_html_action - The default sending format if we didn't
-        //   auto-downgrade.
-        // to mail.default_send_format
-        const defaultHTMLAction = Services.prefs.getIntPref(
-          "mail.default_html_action",
-          3
-        );
-        Services.prefs.clearUserPref("mail.default_html_action");
-        const autoDowngrade = Services.prefs.getBoolPref(
-          "mailnews.sendformat.auto_downgrade",
-          true
-        );
-        Services.prefs.clearUserPref("mailnews.sendformat.auto_downgrade");
-
-        let sendFormat;
-        switch (defaultHTMLAction) {
-          case 0:
-            // Was AskUser. Move to the new Auto default.
-            sendFormat = Ci.nsIMsgCompSendFormat.Auto;
-            break;
-          case 1:
-            // Was PlainText only. Keep as plain text. Note, autoDowngrade has
-            // no effect on this option.
-            sendFormat = Ci.nsIMsgCompSendFormat.PlainText;
-            break;
-          case 2:
-            // Was HTML. Keep as HTML if autoDowngrade was false, otherwise use
-            // the Auto default.
-            sendFormat = autoDowngrade
-              ? Ci.nsIMsgCompSendFormat.Auto
-              : Ci.nsIMsgCompSendFormat.HTML;
-            break;
-          case 3:
-            // Was Both. If autoDowngrade was true, this is the same as the
-            // new Auto default. Otherwise, keep as Both.
-            sendFormat = autoDowngrade
-              ? Ci.nsIMsgCompSendFormat.Auto
-              : Ci.nsIMsgCompSendFormat.Both;
-            break;
-          default:
-            sendFormat = Ci.nsIMsgCompSendFormat.Auto;
-            break;
-        }
-        Services.prefs.setIntPref("mail.default_send_format", sendFormat);
-      }
-
       if (currentUIVersion < 35) {
         // Both IMAP and POP settings currently use this domain
         this._migrateIncomingToOAuth2("outlook.office365.com");
@@ -274,6 +155,69 @@ export var MailMigrator = {
         });
       }
 
+      if (currentUIVersion < 44) {
+        // Upgrade all (former) tryStartTLS (==1) uses to alwaysStartTLS.
+        for (const account of MailServices.accounts.accounts) {
+          const server = account.incomingServer;
+          if (server.socketType == 1) {
+            server.socketType = Ci.nsMsgSocketType.alwaysSTARTTLS;
+          }
+        }
+        for (const server of MailServices.outgoingServer.servers) {
+          if (server.socketType == 1) {
+            server.socketType = Ci.nsMsgSocketType.alwaysSTARTTLS;
+          }
+        }
+      }
+
+      if (currentUIVersion < 45) {
+        // Fix bad hostName for feeds in anchient profiles.
+        // Newer profiles use a valid hostname which is Feeds, Feeds-2 etc.
+        // This migration is a bit of a hack and for proper functionality
+        // of these feeds, a restart will be required...
+        let i = 2;
+        const migrations = [];
+        for (const server of MailServices.accounts.accounts
+          .map(a => a.incomingServer)
+          .filter(s => s.type == "rss" && !s.hostName.startsWith("Feeds"))) {
+          server.QueryInterface(Ci.nsIRssIncomingServer);
+          const path = server.subscriptionsPath.path;
+          const migrateJSON = async () => {
+            const feeds = await IOUtils.readJSON(path);
+            let hostname = "Feeds"; // What the corrected hostname will be.
+            while (
+              MailServices.accounts.findServer("nobody", hostname, "rss")
+            ) {
+              // If "Feeds" exists, try "Feeds-2", then "Feeds-3", etc.
+              hostname = "Feeds-" + i++;
+            }
+            for (const feed of feeds) {
+              // Values are like "mailbox://nobody@RSS-News & Weblogs/comm-central%20Changelog"
+              feed.destFolder = feed.destFolder.replace(
+                /mailbox:\/\/([^@])+[^\/]+/,
+                `mailbox://nobody@${hostname}`
+              );
+            }
+            await IOUtils.writeJSON(path, feeds);
+            server.hostName = hostname;
+          };
+          migrations.push(migrateJSON());
+        }
+        if (migrations.length) {
+          // Restart after migrations, as the UI can't really handle this.
+          Promise.all(migrations).then(() => {
+            lazy.MailUtils.restartApplication();
+          });
+        }
+      }
+
+      if (currentUIVersion < 46) {
+        // Clean out an old default value that got stuck in a lot of profiles.
+        if (Services.prefs.getIntPref("mail.purge_threshhold_mb") == 20) {
+          Services.prefs.clearUserPref("mail.purge_threshhold_mb");
+        }
+      }
+
       // Migration tasks that may take a long time are not run immediately, but
       // added to the MigrationTasks object then run at the end.
       //
@@ -332,12 +276,91 @@ export var MailMigrator = {
   },
 
   /**
+   * Scan through a profile, removing 'nstmp' / 'nstmp-N'
+   * files left over from failed folder compactions.
+   * See Bug 1878541.
+   */
+  async _nstmpCleanup() {
+    // Latch to ensure this only ever runs once.
+    if (Services.prefs.getBoolPref("mail.nstmp_cleanup_completed", false)) {
+      return;
+    }
+
+    const logger = console.createInstance({
+      prefix: "nstmp cleanup",
+      maxLogLevel: "Log",
+    });
+    logger.log("Looking for left-over nstmp files to remove...");
+
+    // Go through all known folders, building up a list of the directories
+    // and all the potential mbox files in those directories.
+    // Each entry is a set of the potential mbox filenames in the dir.
+    const dirs = {};
+    for (const s of MailServices.accounts.allServers) {
+      if (s.msgStore.storeType != "mbox") {
+        continue;
+      }
+      // Don't process the root folder here (it shouldn't have an mbox).
+      for (const child of s.rootFolder.descendants) {
+        const mbox = child.filePath.path;
+        const d = PathUtils.parent(mbox);
+        if (!Object.hasOwn(dirs, d)) {
+          dirs[d] = new Set();
+        }
+        // We'll be doing case-insensitive compares.
+        dirs[d].add(PathUtils.filename(mbox).toLowerCase());
+      }
+    }
+
+    // For each directory, find nstmp files, excluding names of known folders.
+    const doomed = [];
+    for (const [dir, mboxes] of Object.entries(dirs)) {
+      const files = await IOUtils.getChildren(dir, { ignoreAbsent: true });
+      for (const file of files) {
+        // Skip anything that isn't a regular file.
+        const info = await IOUtils.stat(file);
+        if (info.type != "regular") {
+          continue;
+        }
+
+        // Looks like an nstmp file? (as created by createUnique()).
+        const bare = PathUtils.filename(file);
+        if (/^nstmp(-[0-9]{1,4})?$/.test(bare)) {
+          // Make sure it doesn't match any of the potential mbox files (case
+          // insensitive).
+          if (mboxes.has(bare.toLowerCase())) {
+            continue;
+          }
+          doomed.push(file);
+        }
+      }
+    }
+
+    if (doomed.length > 0) {
+      logger.log("Found left-over nstmp files to remove:", doomed);
+    }
+    for (const f of doomed) {
+      await IOUtils.remove(f);
+    }
+
+    Services.prefs.setBoolPref("mail.nstmp_cleanup_completed", true);
+    logger.log(`nstmp cleanup completed: ${doomed.length} files removed.`);
+  },
+
+  /**
    * Perform any migration work that needs to occur once the user profile has
    * been loaded.
    */
   migrateAtProfileStartup() {
-    lazy.migrateMailnews();
     this._migrateUI();
+  },
+
+  /**
+   * Perform any migration work that needs to occur once everything is up and
+   * running.
+   */
+  async migrateAfterStartupComplete() {
+    await this._nstmpCleanup();
   },
 };
 
@@ -446,7 +469,7 @@ export var MigrationTasks = {
   },
 
   /**
-   * @type MigrationTask[]
+   * @type {MigrationTask[]}
    */
   get tasks() {
     return this._tasks;
@@ -462,7 +485,7 @@ class MigrationTask {
    * migration.ftl. If not specified, this task won't appear in the list of
    * migration tasks.
    *
-   * @type string
+   * @type {string}
    */
   fluentID = null;
 
@@ -470,16 +493,16 @@ class MigrationTask {
    * Smaller tasks for this task. If there are sub-tasks, a progress bar will
    * be displayed to the user, showing how many sub-tasks are complete.
    *
-   * @note A sub-task may not have sub-sub-tasks.
+   * Note: A sub-task may not have sub-sub-tasks.
    *
-   * @type MigrationTask[]
+   * @type {MigrationTask[]}
    */
   subTasks = [];
 
   /**
    * Current status of the task. Either "pending", "running" or "finished".
    *
-   * @type string
+   * @type {string}
    */
   _status = "pending";
 
@@ -497,7 +520,7 @@ class MigrationTask {
    * Current status of the task. Either "pending", "running" or "finished".
    * Emits a "status-change" notification on change.
    *
-   * @type string
+   * @type {string}
    */
   get status() {
     return this._status;

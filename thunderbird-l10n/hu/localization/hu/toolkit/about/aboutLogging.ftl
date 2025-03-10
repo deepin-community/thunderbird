@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = A naplózásról
 about-logging-page-title = Naplókezelő
 about-logging-current-log-file = Jelenlegi naplófájl:
@@ -11,7 +6,6 @@ about-logging-currently-enabled-log-modules = Jelenleg engedélyezett naplómodu
 about-logging-log-tutorial =
     Az eszköz használatáról lásd a
     <a data-l10n-name="logging">HTTP Logging</a> leírást.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Könyvtár megnyitása
 about-logging-set-log-file = Naplófájl beállítása
 about-logging-set-log-modules = Naplómodulok beállítása
@@ -29,9 +23,6 @@ about-logging-no-log-modules = Nincs
 about-logging-no-log-file = Nincs
 about-logging-logging-preset-selector-text = Naplózási előbeállítás:
 about-logging-with-profiler-stacks-checkbox = Veremkiíratások engedélyezése a naplóüzeneteknél
-
-## Logging presets
-
 about-logging-preset-networking-label = Hálózat
 about-logging-preset-networking-description = Naplómodulok a hálózati problémák diagnosztizálásához
 about-logging-preset-networking-cookie-label = Sütik
@@ -50,18 +41,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Naplómodulok a WebGPU problémák diagnosztizálásához
 about-logging-preset-gfx-label = Grafika
 about-logging-preset-gfx-description = Naplómodulok a grafikai problémák diagnosztizálásához
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Naplómodulok a Microsoft Windowsra jellemző problémák diagnosztizálásához
 about-logging-preset-custom-label = Egyéni
 about-logging-preset-custom-description = Kézzel kiválasztott naplómodulok
-# Error handling
 about-logging-error = Hiba:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Érvénytelen „{ $v }“ érték a(z) „{ $k }“ kulcshoz
 about-logging-unknown-logging-preset = Ismeretlen „{ $v }” naplózási előbeállítás
 about-logging-unknown-profiler-preset = Ismeretlen „{ $v }” profil-előbeállítás

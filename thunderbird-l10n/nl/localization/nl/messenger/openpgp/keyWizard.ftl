@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Een persoonlijke OpenPGP-sleutel voor { $identity } toevoegen
-key-wizard-button =
-    .buttonlabelaccept = Doorgaan
-    .buttonlabelhelp = Terug
 key-wizard-dialog =
     .buttonlabelaccept = Doorgaan
     .buttonlabelextra1 = Teruggaan
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Uw externe sleutel via GnuPG (b.v. vanaf een smartcard) gebruiken
     .accesskey = U
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP-sleutel aanmaken
 openpgp-keygen-secret-protection = Geheime sleutelbeveiliging
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Uw sleutel moet ten minste een dag geldig zijn.
 openpgp-keygen-ongoing = Er wordt al een sleutel aangemaakt!
 openpgp-keygen-error-core = Kan OpenPGP Core Service niet initialiseren
 openpgp-keygen-error-failed = Het aanmaken van de OpenPGP-sleutel is onverwacht mislukt
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = De OpenPGP-sleutel is met succes aangemaakt, maar de intrekking voor sleutel { $key } kon niet verkregen worden
 openpgp-keygen-abort-title = Aanmaken sleutel afbreken?
 openpgp-keygen-abort = Er wordt momenteel een OpenPGP-sleutel aangemaakt, weet u zeker dat u dit wilt annuleren?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Publieke en geheime sleutel voor { $identity } aanmaken?
-
-## Import Key section
-
 openpgp-import-key-title = Een bestaande persoonlijke OpenPGP-sleutel importeren
 openpgp-import-key-legend = Selecteer een eerder reservekopiebestand.
 openpgp-import-key-description = U kunt persoonlijke sleutels die zijn aangemaakt met andere OpenPGP-software importeren.
 openpgp-import-key-info = Andere software beschrijft een persoonlijke sleutel mogelijk met alternatieve termen, zoals uw eigen sleutel, geheime sleutel, privésleutel of sleutelpaar.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } heeft een sleutel gevonden die kan worden geïmporteerd.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Sleutels die worden gemarkeerd om als persoonl
 openpgp-import-keep-passphrases =
     .label = Wachtwoordzinbeveiliging voor geïmporteerde geheime sleutels behouden
 openpgp-passphrase-prompt-title = Wachtwoordzin vereist
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Voer de wachtwoordzin in om de volgende sleutel te ontgrendelen: { $key }
 openpgp-import-key-button =
     .label = Selecteer te importeren bestand…
     .accesskey = S
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Deze sleutel als een persoonlijke sleutel behandelen
 gnupg-file = GnuPG-bestanden
 import-error-file-size = <b>Fout!</b> Bestanden groter dan 5 MB worden niet ondersteund.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Fout!</b> Kon bestand niet importeren. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Fout!</b> Kon sleutels niet importeren. { $error }
 openpgp-import-identity-label = Identiteit
 openpgp-import-fingerprint-label = Vingerafdruk
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bits
 openpgp-import-key-props =
     .label = Sleuteleigenschappen
     .accesskey = S
-
-## External Key section
-
 openpgp-external-key-title = Externe GnuPG-sleutel
 openpgp-external-key-description = Configureer een externe GnuPG-sleutel door de sleutel-ID in te voeren
 openpgp-external-key-info = Daarnaast moet u Sleutelbeheerder gebruiken om de bijbehorende publieke sleutel te importeren en te accepteren.

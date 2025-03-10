@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Avancerede kontoindstillinger">
 <!ENTITY serverDirectory.label "IMAP-servermappe:">
 <!ENTITY serverDirectory.accesskey "I">
@@ -20,7 +16,7 @@
 <!ENTITY otherUsersNamespace.accesskey "A">
 <!ENTITY overrideNamespaces.label "Tillad serveren at se bort fra disse navneområder">
 <!ENTITY overrideNamespaces.accesskey "n">
-<!ENTITY pop3DeferringDesc.label "Når der hentes mails fra denne kontos server, så benyt følgende mapper til nye meddelelser:" >
+<!ENTITY pop3DeferringDesc.label "Når der hentes mails fra denne kontos server, så benyt følgende mapper til nye meddelelser:">
 <!ENTITY accountInbox.label "Indbakke for denne konto">
 <!ENTITY accountInbox.accesskey "I">
 <!ENTITY deferToServer.label "Indbakke for en anden konto">

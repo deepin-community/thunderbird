@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Strings used for device manager
-
 devmgr-window =
     .title = Tækjastjóri
     .style = min-width: 67em; min-height: 32em;
@@ -35,9 +28,6 @@ devmgr-button-enable-fips =
 devmgr-button-disable-fips =
     .label = Gera FIPS óvirkt
     .accesskey = F
-
-## Strings used for load device
-
 load-device =
     .title = Hlaða inn PKCS#11 rekil
 load-device-info = Settu inn upplýsingar um eininguna sem þú vilt bæta við.
@@ -52,9 +42,6 @@ load-device-filename =
 load-device-browse =
     .label = Velja…
     .accesskey = V
-
-## Token Manager
-
 devinfo-status =
     .label = Staða
 devinfo-status-disabled =
@@ -89,10 +76,8 @@ devinfo-serialnum =
 fips-nonempty-primary-password-required = FIPS hamur þarfnast þess að aðallykilorð sé skilgreint fyrir hvert öryggistæki. Settu upp lykilorðið áður en þú reynir að virkja FIPS-ham.
 unable-to-toggle-fips = Get ekki breytt FIPS ham fyrir öryggistæki. Mælt er með að þú hættir og endurræsir þetta forrit.
 load-pk11-module-file-picker-title = Veldu PKCS#11 rekil til að hlaða inn
-# Load Module Dialog
 load-module-help-empty-module-name =
     .value = Nafn einingar má ekki vera tómt.
-# Do not translate 'Root Certs'
 load-module-help-root-certs-module-name =
     .value = ‘Root Certs‘ er frátekið og er ekki hægt að nota sem nafn á einingu.
 add-module-failure = Get ekki sett upp einingu

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = End-to-end Encryption
 account-otr-label = Off-the-Record Messaging (OTR)
@@ -21,6 +17,4 @@ otr-require-encryption-info =
     will not be shown as part of the regular conversation, and not logged either.
 otr-verify-nudge =
     .label = Always remind me to verify an unverified contact
-
 otr-not-yet-available = not yet available
-

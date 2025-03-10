@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Жоғары жылжыту
     .accesskey = ы
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Қосу
     .accesskey = о
-messenger-languages-window2 =
-    .title = { -brand-short-name } тіл баптаулары
 messenger-languages-dialog-title = { -brand-short-name } тіл баптаулары
 messenger-languages-description = { -brand-short-name } бірінші тілді сіздің негізгі тілі ретінде көрсетеді, және қосымша тілдерді керек болған кезде олардың пайда болу ретімен көрсететін болады.
 messenger-languages-search = Көбірек тілдерді іздеу…

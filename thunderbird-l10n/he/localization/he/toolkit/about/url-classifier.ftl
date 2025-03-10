@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = פרטי מסווג כתובות
 url-classifier-search-title = חיפוש
 url-classifier-search-result-title = תוצאות
@@ -39,7 +35,6 @@ url-classifier-debug-sb-modules = מודולי רישום לגלישה בטוח�
 url-classifier-debug-modules = המודולים הנוכחיים לרישום
 url-classifier-debug-sbjs-modules = רישום JS לגלישה בטוחה
 url-classifier-debug-file = קובץ הרישום הנוכחי
-
 url-classifier-trigger-update = בקשת עדכון
 url-classifier-not-available = לא זמין
 url-classifier-disable-sbjs-log = נטרול רישום JS לגלישה בטוחה
@@ -49,9 +44,5 @@ url-classifier-disabled = מנוטרל
 url-classifier-updating = מתעדכן
 url-classifier-cannot-update = לא ניתן לעדכן
 url-classifier-success = הצלחה
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = שגיאת עדכון ({ $error })
 url-classifier-download-error = שגיאת הורדה ({ $error })

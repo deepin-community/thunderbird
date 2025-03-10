@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "การตั้งค่าบัญชีขั้นสูง">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "ไดเรกทอรีเซิร์ฟเวอร์ IMAP:">
 <!ENTITY serverDirectory.accesskey "ด">
 <!ENTITY usingSubscription.label "แสดงเฉพาะโฟลเดอร์ที่บอกรับเท่านั้น">
@@ -12,8 +7,7 @@
 <!ENTITY dualUseFolders.accesskey "ซ">
 <!ENTITY maximumConnectionsNumber.label "จำนวนการเชื่อมต่อเซิร์ฟเวอร์สูงสุดที่จะแคช">
 <!ENTITY maximumConnectionsNumber.accesskey "จ">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
-<!ENTITY namespaceDesc.label "ค่ากำหนดเหล่านี้ระบุเนมสเปซที่อยู่บนเซิร์ฟเวอร์ IMAP ของคุณ">
+<!ENTITY namespaceDesc.label "ค่าปรับแต่งเหล่านี้ระบุเนมสเปซที่อยู่บนเซิร์ฟเวอร์ IMAP ของคุณ">
 <!ENTITY personalNamespace.label "เนมสเปซส่วนตัว:">
 <!ENTITY personalNamespace.accesskey "น">
 <!ENTITY publicNamespace.label "สาธารณะ (ที่แบ่งปัน):">

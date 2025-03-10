@@ -1,24 +1,13 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Message List Header Bar
-
 quick-filter-button =
     .title = Schnellfilterleiste ein-/ausblenden
 quick-filter-button-label = Schnellfilter
 thread-pane-header-display-button =
     .title = Anzeigeoptionen für Nachrichtenliste
-# Variables:
-# $count (Number) - The number of messages in this folder.
 thread-pane-folder-message-count =
     { $count ->
         [one] { $count } Nachricht
        *[other] { $count } Nachrichten
     }
-# Variables:
-# $count (Number) - The number of messages currently selected.
 thread-pane-folder-selected-count =
     { $count ->
        *[other] { $count } ausgewählt
@@ -29,18 +18,8 @@ thread-pane-header-context-cards-view =
     .label = Kartenansicht
 thread-pane-header-context-hide =
     .label = Kopfzeile der Nachrichtenliste ausblenden
-
-## Quick Filter Bar
-
-# The tooltip to display when the user hovers over the sticky button
-# (currently displayed as a push-pin). When active, the sticky button
-# causes the current filter settings to be retained when the user changes
-# folders or opens new tabs. (When inactive, only the state of the text
-# filters are propagated between folder changes and when opening new tabs.)
 quick-filter-bar-sticky =
     .title = Beim Wechseln des Ordners die Filterkriterien aktiviert lassen
-# The tooltip for the filter button that replaces the quick filter buttons with
-# a dropdown menu.
 quick-filter-bar-dropdown =
     .title = Schnellfiltermenü
 quick-filter-bar-dropdown-unread =
@@ -53,128 +32,54 @@ quick-filter-bar-dropdown-tags =
     .label = Schlagwörter
 quick-filter-bar-dropdown-attachment =
     .label = Anhang
-# The tooltip for the filter button that causes us to filter results to only
-# include unread messages.
 quick-filter-bar-unread =
     .title = Nur ungelesene Nachrichten auflisten
-# The label for the filter button that causes us to filter results to only
-# include unread messages.
 quick-filter-bar-unread-label = Ungelesen
-# The tooltip for the filter button that causes us to filter results to only
-# include messages that have been starred/flagged.
 quick-filter-bar-starred =
     .title = Nur gekennzeichnete Nachrichten auflisten
-# The label for the filter button that causes us to filter results to only
-# include messages that have been starred/flagged.
 quick-filter-bar-starred-label = Gekennzeichnet
-# The tooltip for the filter button that causes us to filter results to only
-# include messages from contacts in one of the user's non-remote address
-# books.
 quick-filter-bar-inaddrbook =
     .title = Nur Nachrichten von Absendern aus dem Adressbuch auflisten
-# The label for the filter button that causes us to filter results to only
-# include messages from contacts in one of the user's non-remote address
-# books.
 quick-filter-bar-inaddrbook-label = Kontakt
-# The tooltip for the filter button that causes us to filter results to only
-# include messages with at least one tag on them.
 quick-filter-bar-tags =
     .title = Nur Nachrichten mit Schlagwörtern auflisten
-# The label for the filter button that causes us to filter results to only
-# include messages with at least one tag on them.
 quick-filter-bar-tags-label = Schlagwörter
-# The tooltip for the filter button that causes us to filter results to only
-# include messages with attachments.
 quick-filter-bar-attachment =
     .title = Nur Nachrichten mit Anhang auflisten
-# The label for the filter button that causes us to filter results to only
-# include messages with attachments.
 quick-filter-bar-attachment-label = Anhang
-# The contents of the results box when there is a filter active but there
-# are no messages matching the filter.
 quick-filter-bar-no-results = Keine passenden Nachrichten
-# This is used to populate the results box; it either displays the
-# number of messages found using this string, that there are no messages
-# (using quick-filter-bar-no-results), or the box is hidden.
-# Variables:
-# $count (Number) - The number of messages that match selected filters.
 quick-filter-bar-results =
     { $count ->
         [one] { $count } Nachricht
        *[other] { $count } Nachrichten
     }
-# Keyboard shortcut for the text search box.
-# This should match quick-filter-bar-show in messenger.ftl.
-quick-filter-bar-textbox-shortcut =
-    { PLATFORM() ->
-        [macos] ⇧ ⌘ K
-       *[other] Strg+Umschalt+K
-    }
-# This is the empty text for the text search box.
-# The goal is to convey to the user that typing in the box will filter
-# the messages and that there is a hotkey they can press to get to the
-# box faster.
-quick-filter-bar-textbox =
-    .placeholder = Diese Nachrichten durchsuchen <{ quick-filter-bar-textbox-shortcut }>
 quick-filter-bar-search2 =
     .label = Nachrichten filtern
 quick-filter-bar-searching =
     .title = Suche läuft…
-# Keyboard shortcut for the text search box.
-# This should match quick-filter-bar-show in messenger.ftl.
 quick-filter-bar-search-shortcut =
     { PLATFORM() ->
         [macos] <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] <kbd>Strg</kbd> + <kbd>Umschalt</kbd> + <kbd>K</kbd>
     }
-# This is the empty text for the text search box.
-# The goal is to convey to the user that typing in the box will filter the
-# messages and that there is a hotkey they can press to get to the box faster.
 quick-filter-bar-search-placeholder-with-key = Nachrichten filtern… { quick-filter-bar-search-shortcut }
-# Label of the search button in the quick filter bar text box. Clicking it will
-# launch a global search.
 quick-filter-bar-search-button =
     .alt = Überall suchen
-# Tooltip of the Any-of/All-of tagging mode selector.
 quick-filter-bar-boolean-mode =
     .title = Schlagwort-Filterungsmodus
-# The Any-of tagging mode.
 quick-filter-bar-boolean-mode-any =
     .label = Eins der Ausgewählten
     .title = Nachricht muss mindestens eins der ausgewählten Schlagwörter besitzen.
-# The All-of tagging mode.
 quick-filter-bar-boolean-mode-all =
     .label = Alle Ausgewählten
     .title = Nachricht muss alle ausgewählten Schlagwörter besitzen.
-# This label explains what the sender/recipients/subject/body buttons do.
-# This string should ideally be kept short because the label and the text
-# filter buttons share their bar (that appears when there is text in the text
-# filter box) with the list of tags when the tag filter is active, and the
-# tag sub-bar wants as much space as possible. (Overflow is handled by an
-# arrow scroll box.)
 quick-filter-bar-text-filter-explanation = Filtern nach:
-# The button label that toggles whether the text filter searches the message
-# sender for the string.
 quick-filter-bar-text-filter-sender = Absender
-# The button label that toggles whether the text filter searches the message
-# recipients (to, cc) for the string.
 quick-filter-bar-text-filter-recipients = Empfänger
-# The button label that toggles whether the text filter searches the message
-# subject for the string.
 quick-filter-bar-text-filter-subject = Betreff
-# The button label that toggles whether the text filter searches the message
-# body for the string.
 quick-filter-bar-text-filter-body = Nachrichteninhalt
-# The first line of the panel popup that tells the user we found no matches
-# but we can convert to a global search for them.
 quick-filter-bar-gloda-upsell-line1 = Als globale Volltextsuche in allen Konten fortsetzen
-# The second line of the panel popup that tells the user we found no matches.
-# Variables:
-# $text (String) - What the user has typed so far.
 quick-filter-bar-gloda-upsell-line2 = Eingabetaste erneut drücken für Volltextsuche nach: { $text }
-
-## Folder pane
-
 folder-pane-get-messages-button =
     .title = Nachrichten abrufen
 folder-pane-get-all-messages-menuitem =
@@ -184,20 +89,16 @@ folder-pane-write-message-button = Neue Nachricht
     .title = Eine neue Nachricht verfassen
 folder-pane-more-menu-button =
     .title = Optionen für den Ordnerbereich
-# Context menu item to show/hide different folder types in the folder pane
 folder-pane-header-folder-modes =
     .label = Ordnermodi
-# Context menu item to toggle display of "Get messages" button in folder pane header
 folder-pane-header-context-toggle-get-messages =
     .label = „Nachrichten abrufen” anzeigen
-# Context menu item to toggle display of "New Message" button in folder pane header
 folder-pane-header-context-toggle-new-message =
     .label = „Neue Nachricht” anzeigen
 folder-pane-header-context-hide =
     .label = Kopfzeile des Ordnerbereichs ausblenden
 folder-pane-show-total-toggle =
     .label = Gesamtanzahl der Nachrichten anzeigen
-# Context menu item to show or hide folder sizes
 folder-pane-header-toggle-folder-size =
     .label = Ordnergröße anzeigen
 folder-pane-header-hide-local-folders =
@@ -211,23 +112,16 @@ folder-pane-mode-move-up =
     .label = Nach oben
 folder-pane-mode-move-down =
     .label = Nach unten
-# Variables:
-# $count (Number) - Number of unread messages.
 folder-pane-unread-aria-label =
     { $count ->
         [one] 1 ungelesene Nachricht
        *[other] { $count } ungelesene Nachrichten
     }
-# Variables:
-# $count (Number) - Number of total messages.
 folder-pane-total-aria-label =
     { $count ->
         [one] 1 Nachricht insgesamt
        *[other] { $count } Nachrichten insgesamt
     }
-
-## Message thread pane
-
 threadpane-column-header-select =
     .title = Auswahl der angezeigten Nachrichten umschalten
 threadpane-column-header-select-all =
@@ -277,10 +171,6 @@ threadpane-column-header-sender = Von
     .title = Nach Von sortieren
 threadpane-column-label-sender =
     .label = Von
-threadpane-cell-sender =
-    .aria-label = Von
-# Variables:
-# $title (String) - Message sender for tooltip.
 threadpane-cell-sender-title =
     .aria-label = Von
     .title = { $title }
@@ -288,10 +178,6 @@ threadpane-column-header-recipient = Empfänger
     .title = Nach Empfänger sortieren
 threadpane-column-label-recipient =
     .label = Empfänger
-threadpane-cell-recipient =
-    .aria-label = Empfänger
-# Variables:
-# $title (String) - Message recipient for tooltip.
 threadpane-cell-recipient-title =
     .aria-label = Empfänger
     .title = { $title }
@@ -299,10 +185,6 @@ threadpane-column-header-correspondents = Beteiligte
     .title = Nach Beteiligten sortieren
 threadpane-column-label-correspondents =
     .label = Beteiligte
-threadpane-cell-correspondents =
-    .aria-label = Beteiligte
-# Variables:
-# $title (String) - Message correspondents for tooltip.
 threadpane-cell-correspondents-title =
     .aria-label = Beteiligte
     .title = { $title }
@@ -310,10 +192,6 @@ threadpane-column-header-subject = Betreff
     .title = Nach Betreff sortieren
 threadpane-column-label-subject =
     .label = Betreff
-threadpane-cell-subject =
-    .aria-label = Betreff
-# Variables:
-# $title (String) - Message subject for tooltip.
 threadpane-cell-subject-title =
     .aria-label = Betreff
     .title = { $title }
@@ -321,10 +199,6 @@ threadpane-column-header-date = Datum
     .title = Nach Datum sortieren
 threadpane-column-label-date =
     .label = Datum
-threadpane-cell-date =
-    .aria-label = Datum
-# Variables:
-# $title (String) - Message date for tooltip.
 threadpane-cell-date-title =
     .aria-label = Datum
     .title = { $title }
@@ -332,10 +206,6 @@ threadpane-column-header-received = Empfangen
     .title = Nach Empfangsdatum sortieren
 threadpane-column-label-received =
     .label = Empfangen
-threadpane-cell-received =
-    .aria-label = Empfangen am
-# Variables:
-# $title (String) - Message received date for tooltip.
 threadpane-cell-received-title =
     .aria-label = Empfangen am
     .title = { $title }
@@ -343,10 +213,6 @@ threadpane-column-header-status = Status
     .title = Nach Status sortieren
 threadpane-column-label-status =
     .label = Status
-threadpane-cell-status =
-    .aria-label = Status
-# Variables:
-# $title (String) - Message status for tooltip.
 threadpane-cell-status-title =
     .aria-label = Status
     .title = { $title }
@@ -354,10 +220,6 @@ threadpane-column-header-size = Größe
     .title = Nach Größe sortieren
 threadpane-column-label-size =
     .label = Größe
-threadpane-cell-size =
-    .aria-label = Größe
-# Variables:
-# $title (String) - Message size for tooltip.
 threadpane-cell-size-title =
     .aria-label = Größe
     .title = { $title }
@@ -365,10 +227,6 @@ threadpane-column-header-tags = Schlagwörter
     .title = Nach Schlagwörtern sortieren
 threadpane-column-label-tags =
     .label = Schlagwörter
-threadpane-cell-tags =
-    .aria-label = Schlagwörter
-# Variables:
-# $title (String) - Tags for tooltip.
 threadpane-cell-tags-title =
     .aria-label = Schlagwörter
     .title = { $title }
@@ -376,10 +234,6 @@ threadpane-column-header-account = Konto
     .title = Nach Konto sortieren
 threadpane-column-label-account =
     .label = Konto
-threadpane-cell-account =
-    .aria-label = Konto
-# Variables:
-# $title (String) - Message account for tooltip.
 threadpane-cell-account-title =
     .aria-label = Konto
     .title = { $title }
@@ -387,10 +241,6 @@ threadpane-column-header-priority = Priorität
     .title = Nach Priorität sortieren
 threadpane-column-label-priority =
     .label = Priorität
-threadpane-cell-priority =
-    .aria-label = Priorität
-# Variables:
-# $title (String) - Priority for tooltip.
 threadpane-cell-priority-title =
     .aria-label = Priorität
     .title = { $title }
@@ -398,10 +248,6 @@ threadpane-column-header-unread = Ungelesen
     .title = Anzahl der ungelesenen Nachrichten im Thema
 threadpane-column-label-unread =
     .label = Ungelesen
-threadpane-cell-unread =
-    .aria-label = Anzahl ungelesener Nachrichten
-# Variables:
-# $title (String) - Number of unread messages for tooltip.
 threadpane-cell-unread-title =
     .aria-label = Anzahl ungelesener Nachrichten
     .title = { $title }
@@ -409,10 +255,6 @@ threadpane-column-header-total = Gesamt
     .title = Gesamtzahl der Nachrichten im Thema
 threadpane-column-label-total =
     .label = Gesamt
-threadpane-cell-total =
-    .aria-label = Gesamtzahl der Nachrichten
-# Variables:
-# $title (String) - Total messages for tooltip.
 threadpane-cell-total-title =
     .aria-label = Gesamtzahl der Nachrichten
     .title = { $title }
@@ -420,10 +262,6 @@ threadpane-column-header-location = Ablageort
     .title = Nach Ablageort sortieren
 threadpane-column-label-location =
     .label = Ablageort
-threadpane-cell-location =
-    .aria-label = Ort
-# Variables:
-# $title (String) - Message location for tooltip.
 threadpane-cell-location-title =
     .aria-label = Ort
     .title = { $title }
@@ -431,10 +269,6 @@ threadpane-column-header-id = Eingangsreihenfolge
     .title = Nach Eingangsreihenfolge sortieren
 threadpane-column-label-id =
     .label = Eingangsreihenfolge
-threadpane-cell-id =
-    .aria-label = Eingangsreihenfolge
-# Variables:
-# $title (String) - Message id for tooltip.
 threadpane-cell-id-title =
     .aria-label = Eingangsreihenfolge
     .title = { $title }
@@ -444,16 +278,11 @@ threadpane-column-label-delete =
     .label = Löschen
 threadpane-cell-delete =
     .aria-label = Löschen
-# Variables:
-# $count (Number) - Number of replies in thread.
 threadpane-replies =
     { $count ->
         [one] { $count } Antwort
        *[other] { $count } Antworten
     }
-
-## Message state variations
-
 threadpane-message-new =
     .alt = Anzeige für neue Nachricht
     .title = Neue Nachricht
@@ -486,25 +315,11 @@ apply-current-view-to-folder =
     .label = Ordner…
 apply-current-view-to-folder-children =
     .label = Ordner und alle Unterordner…
-
-## Apply columns confirmation dialog
-
 apply-changes-to-folder-title = Änderungen übernehmen?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-columns-to-folder-message = Spalteneinstellungen des aktuellen Ordners für „{ $name }“ übernehmen?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-columns-to-folder-with-children-message = Spalteneinstellungen des aktuellen Ordners für „{ $name }“ und dessen Unterordner übernehmen?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-message = Ansicht des aktuellen Ordners für „{ $name }“ übernehmen?
-# Variables:
-#  $name (String): The name of the folder to apply to.
 apply-current-view-to-folder-with-children-message = Ansicht des aktuellen Ordners für „{ $name }“ und dessen Unterordner übernehmen?
-# Variables:
-# $unread (Number) - Number of unread messages in thread.
-# $total (Number) - Number of messages in thread.
 threadpane-sort-header-unread-count =
     { $unread ->
         [one]
@@ -518,8 +333,6 @@ threadpane-sort-header-unread-count =
                *[other] <span>{ $unread }</span> ungelesene von <span>{ $total }</span> Nachricht
             }
     }
-# Variables:
-# $total (Number) - Number of messages in thread.
 threadpane-sort-header-count =
     { $total ->
         [one] <span>1</span> Nachricht
@@ -529,11 +342,6 @@ threadpane-card-menu-button =
     .title = Nachrichtenmenü
 message-list-placeholder-no-messages = Keine Nachricht gefunden
 message-list-placeholder-multiple-folders = Mehrere Ordner ausgewählt
-
-## Folder pane context menu
-
-# Variables:
-# $count (Number) - Number of selected folders.
 folder-pane-context-mark-folder-read =
     .label =
         { $count ->

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = 关闭
 preferences-doc-title2 = 设置
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = 同步
 category-sync =
     .tooltiptext = 同步
+pane-qr-export-title = 导出到移动设备
+category-qr-export =
+    .tooltiptext = 导出到移动设备
 general-language-and-appearance-header = 语言与外观
 general-incoming-mail-header = 接收邮件
 general-files-and-attachment-header = 文件与附件
@@ -50,8 +49,6 @@ collection-health-report =
     .label = 允许 { -brand-short-name } 向 { -vendor-short-name } 发送技术信息及交互数据
     .accesskey = r
 collection-health-report-link = 详细了解
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = 在此构建配置下数据反馈被禁用
 collection-backlogged-crash-reports =
     .label = 允许 { -brand-short-name } 代您发送积压的崩溃报告
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = 重启 { -brand-short-name } 以应用这些更改
 confirm-messenger-language-change-button = 应用并重启客户端
 update-setting-write-failure-title = 保存“更新”首选项时出错
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } 遇到错误，未能保存此更改。请注意，设置此更新首选项需要写入下列文件的权限。您或系统管理员可以通过授予用户组对此文件的完全控制权来解决此错误。
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = 正在更新
 update-in-progress-message = 您要继续 { -brand-short-name } 的此次更新吗？
 update-in-progress-ok-button = 放弃(&D)
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = 继续(&C)
 account-button = 账户设置
 open-addons-sidebar-button = 扩展和主题
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = 请输入 Windows 登录凭据，以创建主密码。这有助于保护您的账户安全。
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = 创建主密码
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = 添加 OpenSearch 搜索引擎
 add-opensearch-provider-text = 请输入要添加的 OpenSearch 搜索引擎网址。OpenSearch 描述文件的网址，或是可被自动发现的网址。
 adding-opensearch-provider-failed-title = 添加 OpenSearch 搜索引擎失败
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = 无法添加 { $url } 的 OpenSearch 搜索引擎。
 minimize-to-tray-label =
     .label = 最小化 { -brand-short-name } 到系统托盘
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = 立即检查…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] 聚焦
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = 回执…
     .accesskey = R
 update-app-legend = { -brand-short-name } 更新
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = 版本：{ $version }
 allow-description = 允许 { -brand-short-name }：
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = b
 compact-folder-size =
     .value = MB 合计
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = 最多使用
     .accesskey = U
 use-cache-after = MB 磁盘空间作为缓存
-
-##
-
 smart-cache-label =
     .label = 覆盖自动缓存管理
     .accesskey = v
@@ -304,7 +269,6 @@ color-options-button =
     .label = 颜色…
     .accesskey = C
 display-width-legend = 纯文本消息
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = 以图形显示颜文字
     .accesskey = e
@@ -372,33 +336,24 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = 查看内联附件
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = 显示
     .accesskey = d
 seconds-label = 秒之后
-
-##
-
 open-msg-label =
     .value = 打开消息于：
 open-msg-tab =
-    .label = 在新标签页
+    .label = 新标签页
     .accesskey = t
 open-msg-window =
     .label = 新窗口
     .accesskey = n
 open-msg-ex-window =
-    .label = 在现有的窗口
+    .label = 现有的窗口
     .accesskey = e
 close-move-delete =
     .label = 移动或删除后关闭消息窗口/标签页
     .accesskey = C
-display-name-label =
-    .value = 显示名称
 address-display-legend = 消息列表
 address-display-description = 首选地址显示格式：
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = 只显示我的通讯录中的显示名称
     .accesskey = S
-
-## Compose Tab
-
+table-layout-legend = 表格视图
+table-layout-horizontal-scroll-label =
+    .label = 允许水平滚动
+    .accesskey = h
+conversation-view-legend = 会话视图
+conversation-view-checkbox-label =
+    .label = 启用会话视图
+    .accesskey = c
+conversation-view-checkbox-description = 此实验功能基于 Gloda 运作，使用时由您自担风险
+label-experiment = 实验功能
+account-hub-legend = 账户中心
+account-hub-checkbox-label =
+    .label = 通过新版账户中心创建账户
+    .accesskey = C
+account-hub-checkbox-description = 实验性新邮箱账户创建流程
 forward-label =
     .value = 转发消息方式
     .accesskey = F
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = 添加扩展名至文件名
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = 自动保存间隔
     .accesskey = A
 auto-save-end = 分钟
-
-##
-
 warn-on-send-accel-key =
     .label = 当使用键盘快捷键发送消息时需确认
     .accesskey = C
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = 寻找更多提供商...
 cloud-account-description = 添加一个新的“文件链接”存储服务
-
-## Privacy Tab
-
 mail-content = 邮件内容
 remote-content-label =
     .label = 允许消息中的远程内容
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = 显示 Cookie…
     .accesskey = S
-do-not-track-label =
-    .label = 向网站发出“请勿跟踪”信号，示明您不想被跟踪
+global-privacy-control-search = 全球隐私控制（GCP）
+global-privacy-control-description =
+    .label = 要求网站不许出售或共享我的数据
     .accesskey = n
-dnt-learn-more-button =
-    .value = 详细了解
+do-not-track-removal = 我们已停止支持“请勿跟踪”信号
 passwords-description = { -brand-short-name } 能记住您所有账户的密码信息，因此您不必在每次登录时重复输入密码。
 passwords-button =
     .label = 已保存密码…
@@ -571,7 +528,6 @@ primary-password-description = 主密码可以保护您的所有密码 ，但设
 primary-password-label =
     .label = 使用主密码
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = 需要通过设备登录，才能填写和管理密码
 primary-password-button =
@@ -582,9 +538,6 @@ forms-master-pw-fips-desc = 密码更改失败
 junk-description =
     设定您默认的垃圾邮件设置。
     可以在“账户设置”中设定特定于账户的垃圾邮件设置。
-junk-label =
-    .label = 当我将消息标记为垃圾邮件时
-    .accesskey = W
 junk-marked-label =
     .label = 当消息被标记为垃圾邮件时：
     .accesskey = W
@@ -594,9 +547,6 @@ junk-move-label =
 junk-delete-label =
     .label = 删除它们
     .accesskey = D
-junk-read-label =
-    .label = 将垃圾消息自动标记为已读
-    .accesskey = M
 junk-read-description = 将消息标记为已读
 junk-read-manual-label =
     .label = 手动标记为垃圾邮件时
@@ -653,9 +603,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     在撰写消息时，可以通过手动启用或禁用加密来覆盖自动决策。
     注意：回复加密消息时，加密始终自动启用。
-
-## Chat Tab
-
 startup-label =
     .value = 启动 { -brand-short-name } 时
     .accesskey = s
@@ -663,20 +610,10 @@ offline-label =
     .label = 保持我的聊天账户离线
 auto-connect-label =
     .label = 自动连接我的聊天账户
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = 当我闲置超过
     .accesskey = I
 idle-time-label = 分钟时，让我的联系人获知
-
-##
-
 away-message-label =
     .label = 同时设置我的状态为离开，并添加此状态信息
     .accesskey = A
@@ -738,41 +675,21 @@ no-preview-description = 此主题无效或目前不可用（原因例如：已�
 chat-variant-label =
     .value = 配色
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = 查找设置
-
-## Settings UI Search Results
-
 search-results-header = 搜索结果
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] 抱歉！未找到与“<span data-l10n-name="query"></span>”有关的选项。
        *[other] 抱歉！未找到与“<span data-l10n-name="query"></span>”有关的设置。
     }
 search-results-help-link = 需要帮助？访问 <a data-l10n-name="url">{ -brand-short-name } 技术支持</a>
-
-## Sync Tab
-
 sync-signedout-caption = 让您个性化的网络体验随身相伴
 sync-signedout-description = 在您的各种设备间同步您的账户、通讯录、日历、附加组件与设置。
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = 登录以同步…
 sync-pane-header = 同步
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }”未验证。
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = 请登录以重新绑定“{ $userEmail }”
 sync-pane-resend-verification = 重发验证邮件
 sync-pane-sign-in = 登录
@@ -802,3 +719,33 @@ synced-acount-item-filters = 过滤器
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = 在您所有设备中同步您的电子邮件账户、通讯录、日历和身份。
 sync-disconnected-turn-on-sync = 开启同步...
+qr-export-pane-header = 导出账户到 { -brand-product-name } 移动版
+qr-export-description = 通过生成二维码，将账户设置从桌面设备快速传输到移动设备。只需选择要传输的账户、决定是否一并传输密码，然后用移动设备扫码即可。快速、安全、简易。
+qr-export-get-app = 移动设备上未安装 { -brand-product-name }？<a data-l10n-name="app-link">前往 Google Play 下载</a>
+qr-export-create = 创建二维码以导出账户
+qr-export-select-accounts = 选择要导出的账户：
+qr-export-no-accounts = 有账户未显示在此？相关账户可能未受 Android 版 { -brand-product-name } 支持，因此无法选择。<a data-l10n-name="account-support-link">技术支持</a>
+qr-export-accounts-legend = 邮箱账户
+qr-export-select-all-accounts = 全选
+qr-export-security-legend = 安全性
+qr-export-include-passwords = 一并传输所有账户的密码
+qr-export-oauth-warning = 基于您的部分账户采用的身份验证方式，您可能需要在移动设备端重新进行身份验证。此过程可能需要再次输入密码。
+qr-export-security-hint = 扫描接下来出现的二维码后，您的账户设置（包括邮箱和密码）将被安全传输。在此过程中，我们不会收集、存储、共享此数据中的任何部分。传输过程在您的设备间直接进行。
+qr-export-security-warning = 为安全起见，请确认您所处环境私密，并仅扫描来源可信的二维码。
+qr-export-start-export = 导出
+qr-export-scan-progress = 第 { $step }/{ $count } 个二维码
+qr-export-scan-description = 在移动设备上用 { -brand-product-name } 扫码
+qr-export-scan-step1 = 在移动设备上打开 { -brand-product-name }
+qr-export-scan-step2 = 前往设置
+qr-export-scan-step3 = 选择<strong>导入设置</strong>
+qr-export-scan-step4-revision = 点按<strong>扫描二维码</strong>，将手机对准此二维码
+qr-export-back = 上一步
+qr-export-next = 下一步
+qr-export-done = 完成
+qr-export-summary-description = 已导出账户，现可在移动设备上继续操作。
+qr-export-summary-title = 导出摘要：
+qr-export-summary-qr-count = 已生成 { $count } 个二维码
+qr-export-summary-accounts = 已导出 { $count } 个账户：
+qr-export-summary-passwords-included = 密码已包含在内
+qr-export-summary-passwords-excluded = 密码未包含在内
+qr-export-more-accounts = 导出更多账户

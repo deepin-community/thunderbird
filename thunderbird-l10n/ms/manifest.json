@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ms@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: Melayu (Malay)",
   "description": "Thunderbird Language Pack for Melayu (ms) – Malay",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "ms": {
-      "version": "20240930174602",
+      "version": "20250227153811",
       "chrome_resources": {
         "alerts": "chrome/ms/locale/ms/alerts/",
         "autoconfig": "chrome/ms/locale/ms/autoconfig/",

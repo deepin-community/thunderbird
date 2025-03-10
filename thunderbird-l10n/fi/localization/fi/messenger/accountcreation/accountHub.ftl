@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Tässä <span data-l10n-name="brand-name">{ -brand-full-name }</span>, tervetuloa
 account-hub-title = Tilikeskus
-
-## Footer
-
 account-hub-release-notes = Julkaisutiedot
 account-hub-support = Tuki
 account-hub-donate = Lahjoita
-
-## Initial setup page
-
 account-hub-email-setup-button = Sähköpostitili
     .title = Määritä sähköpostitili
 account-hub-calendar-setup-button = Kalenteri
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Keskusteluryhmä
     .title = Määritä keskusteluryhmätili
 account-hub-import-setup-button = Tuo
     .title = Tuo varmuuskopioitu profiili
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Kirjaudu Sync-palveluun…
-
-## Email page
-
-account-hub-email-title = Määritä sähköpostitilisi
 account-hub-add-email-title = Lisää tili
 account-hub-manually-configure-email-title = Määritä tilin asetukset
 account-hub-email-cancel-button = Peruuta
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Valmis
 account-hub-email-manually-configure-button = Määritä manuaalisesti
 account-hub-email-continue-button = Jatka
 account-hub-email-confirm-button = Vahvista
-account-hub-incoming-server-legend = Saapuvan postin palvelin
-account-hub-outgoing-server-legend = Lähtevän postin palvelin
+account-hub-result-incoming-server-legend = Saapuvan postin palvelin
+    .title = Saapuvan postin palvelin
+account-hub-result-outgoing-server-legend = Lähtevän postin palvelin
+    .title = Lähtevän postin palvelin
 account-hub-protocol-label = Yhteyskäytäntö
-account-hub-hostname-label = Palvelin
+account-hub-result-hostname-label = Palvelin
+    .title = Palvelin
+account-hub-result-authentication-label = Todennus
+    .title = Todennus
 account-hub-port-label = Portti
     .title = Aseta portin numeroksi 0 automaattista havaitsemista varten
 account-hub-auto-description = { -brand-short-name } yrittää tunnistaa tyhjiksi jätetyt kentät automaattisesti.
 account-hub-ssl-label = Yhteyden suojaus
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Tunnista automaattisesti
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = Normaali salasana
 account-hub-ssl-encrypted-password-option =
     .label = Salattu salasana
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = Ei mitään
 account-hub-auth-no-authentication-option =
     .label = Ei todennusta
 account-hub-auth-label = Todennustapa
-account-hub-username-label = Käyttäjätunnus
+account-hub-result-username-label = Käyttäjätunnus
+    .title = Käyttäjätunnus
 account-hub-name-label = Koko nimi
     .accesskey = n
 account-hub-adding-account-title = Lisätään tili
@@ -97,3 +75,28 @@ account-hub-email-enter-password = Kirjoita sähköpostitilisi salasana
 account-hub-email-sync-accounts = Synkronoi kalenterisi ja osoitekirjasi
 account-hub-test-configuration = Testaa
 account-hub-add-new-email = Lisää toinen sähköpostiosoite
+account-hub-result-imap-description = Pidä kansiot ja sähköpostit synkronoituna palvelimellesi
+account-hub-result-pop-description = Säilytä kansiot ja sähköpostit tietokoneellasi
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Käytä Microsoft Exchange Web Services -palvelua kansioiden ja sähköpostien synkronoimiseen
+account-hub-result-ews-text = Palvelin
+account-hub-result-recommended-label = Suositeltu
+account-hub-edit-configuration = Muokkaa asetuksia
+account-hub-config-success = Kokoonpanon määritys löytyi Mozillan ISP-tietokannasta
+account-hub-password-info = Kirjautumistietosi tallennetaan vain paikallisesti tietokoneellesi
+account-hub-sync-success = Thunderbird löysi joitain yhdistettyjä palveluita
+account-hub-sync-failure = Thunderbird ei löytänyt yhdistettyjä palveluita
+account-hub-unable-to-sync-accounts = Thunderbird ei pystynyt yhdistämään valittuja palveluita
+account-hub-email-added-success = Sähköpostitilin yhdistäminen onnistui
+account-hub-config-test-success = Asetukset ovat kelvolliset
+account-hub-select-all = Valitse kaikki
+account-hub-deselect-all = Poista kaikkien valinta
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] { $count } valittu
+       *[other] { $count } valittu
+    }
+account-hub-no-address-books = Osoitekirjoja ei löytynyt
+account-hub-no-calendars = Kalentereita ei löytynyt
+account-hub-email-added-success-links-title = Tutustu suojaus- ja mukautusvaihtoehtoihin:
+account-hub-signature-link = Sähköpostin allekirjoitus

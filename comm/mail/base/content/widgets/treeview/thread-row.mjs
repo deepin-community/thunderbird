@@ -6,10 +6,11 @@ import { TreeViewTableRow } from "chrome://messenger/content/tree-view.mjs";
 
 /**
  * The tr element row of the TreeView table.
+ * NOTE: The main child is a clone of the `#threadPaneRowTemplate` template.
  *
- * @note The main child is a clone of the `#threadPaneRowTemplate` template.
- * @extends TreeViewTableRow
- * @tagname thread-row
+ * tagname: thread-row
+ *
+ * @augments {TreeViewTableRow}
  */
 class ThreadRow extends TreeViewTableRow {
   /**
@@ -31,22 +32,11 @@ class ThreadRow extends TreeViewTableRow {
     );
   }
 
-  get index() {
-    return super.index;
-  }
-
-  set index(index) {
-    super.index = index;
-
-    // Check if a only a single column should be updated.
-    const columns = this.invalidateSingleColumn
-      ? window.threadPane.columns.filter(
-          column => column.id == this.invalidateSingleColumn
-        )
-      : window.threadPane.columns;
+  _fillRow() {
+    super._fillRow();
 
     const textColumns = [];
-    for (const column of columns) {
+    for (const column of window.threadPane.columns) {
       // No need to update the text of this cell if it's hidden, the selection
       // column, or a non-custom icon column that doesn't match a specific flag.
       if (column.hidden || (!column.custom && column.icon) || column.select) {
@@ -60,7 +50,7 @@ class ThreadRow extends TreeViewTableRow {
     const properties = {};
     const threadLevel = {};
     const cellTexts = this.view.cellDataForColumns(
-      index,
+      this._index,
       textColumns,
       properties,
       threadLevel
@@ -75,7 +65,7 @@ class ThreadRow extends TreeViewTableRow {
 
     this.dataset.properties = properties.value.trim();
 
-    for (const column of columns) {
+    for (const column of window.threadPane.columns) {
       // Skip this column if it's hidden.
       if (column.hidden) {
         continue;

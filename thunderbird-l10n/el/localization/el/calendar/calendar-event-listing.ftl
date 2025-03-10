@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Κλείσιμο αναζήτησης και λίστας εκδηλώσεων
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Όνομα ημερολογίου
     .tooltiptext = Ταξινόμηση κατά όνομα ημερολογίου
 calendar-event-listing-column-category =
     .label = Κατηγορία
     .tooltiptext = Ταξινόμηση κατά κατηγορία
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Τέλος
     .tooltiptext = Ταξινόμηση με βάση το αν έχει ολοκληρωθεί ή όχι
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Τίτλος
     .tooltiptext = Ταξινόμηση με βάση τον τίτλο
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = Εκδηλώσεις στο παρελθόν
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = Εκδηλώσεις στους επόμενους 6 μήνες
 calendar-event-listing-interval-next-12-months =
     .label = Εκδηλώσεις στους επόμενους 12 μήνες
+calendar-event-listing-interval-future =
+    .label = Όλες οι μελλοντικές εκδηλώσεις
 calendar-event-listing-interval-all =
     .label = Όλες οι εκδηλώσεις
 calendar-event-listing-interval-selected-day =

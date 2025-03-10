@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Панель меню
     .accesskey = М
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Налаштування
     .accesskey = а
 menu-addons-and-themes =
     .label = Додатки й теми
     .accesskey = о
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Експорт для мобільного пристрою…
+    .accesskey = б
 menu-help-help-title =
     .label = Довідка
     .accesskey = в
 menu-help-get-help =
     .label = Отримати допомогу
     .accesskey = т
-menu-help-explore-features =
-    .label = Ознайомитися з функціями
-    .accesskey = О
 menu-help-get-release-help =
     .label = Отримати допомогу з { -brand-short-name }
     .accesskey = О
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Про { -brand-short-name }
     .accesskey = П
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] В
            *[other] В
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Вийти з { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Вийти з { -brand-full-name }
            *[other] Вийти з { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Небажане
     .tooltiptext = Позначте вибрані повідомлення небажаними
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Відновити
     .tooltiptext = Відновити вибрані повідомлення
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Відновити кодування тексту
     .accesskey = к
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Заголовок панелі тек
     .accesskey = т
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Заголовок списку повідомлень
     .accesskey = З
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Панель місць
     .accesskey = м
-
-## File
-
 file-new-email-account =
     .label = Обліковий запис електронної пошти…
     .accesskey = О

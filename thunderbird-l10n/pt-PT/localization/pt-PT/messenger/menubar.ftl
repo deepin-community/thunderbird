@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Barra de menu
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Definições
     .accesskey = D
 menu-addons-and-themes =
     .label = Extras e temas
     .accesskey = x
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exportar para dispositivo móvel
+    .accesskey = p
 menu-help-help-title =
     .label = Ajuda
     .accesskey = A
 menu-help-get-help =
     .label = Obter ajuda
     .accesskey = O
-menu-help-explore-features =
-    .label = Explorar funcionalidades
-    .accesskey = { "" }
 menu-help-get-release-help =
     .label = Obter ajuda com o { -brand-short-name }
     .accesskey = m
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Sobre o { -brand-short-name }
     .accesskey = S
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] r
            *[other] r
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Sair do { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Sair do { -brand-full-name }
            *[other] Sair do { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Spam
     .tooltiptext = Marcas as mensagens selecionadas como spam
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Anular eliminação
     .tooltiptext = Anular a eliminação das mensagens selecionadas
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Reparar a codificação de texto
     .accesskey = c
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Cabeçalho do painel de pastas
     .accesskey = p
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Cabeçalho da lista de mensagens
     .accesskey = m
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Barra de ferramentas de espaços
     .accesskey = s
-
-## File
-
 file-new-email-account =
     .label = Conta de correio eletrónico…
     .accesskey = C

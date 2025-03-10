@@ -1,21 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# LOCALIZATION NOTE (reminder-custom-title):
-# $unit  =  unit, $reminderCustomOrigin  =  reminderCustomOrigin
-# Example: "3 minutes" "before the task starts"
 reminder-custom-title = { $unit } ‏{ $reminderCustomOrigin }
 reminder-title-at-start-event = لحظة بدء الحدث
 reminder-title-at-start-task = لحظة بدء المهمة
 reminder-title-at-end-event = لحظة انتهاء الحدث
 reminder-title-at-end-task = لحظة انتهاء المهمة
-# LOCALIZATION NOTE (reminder-snooze-ok-a11y)
-# This string is not seen in the UI, it is read by screen readers when the user
-# focuses the "OK" button in the "Snooze for..." popup of the alarm dialog.
-# $unit  =  any of unit*
-reminder-snooze-ok-a11y =
-    .aria-label = غفوة لمدة { $unit }
 reminder-custom-origin-begin-before-event = قبل بدء الحدث
 reminder-custom-origin-begin-after-event = بعد بدء الحدث
 reminder-custom-origin-end-before-event = قبل انتهاء الحدث
@@ -40,7 +27,6 @@ reminder-custom-origin-end-before-task-dom =
     .label = { reminder-custom-origin-end-before-task }
 reminder-custom-origin-end-after-task-dom =
     .label = { reminder-custom-origin-end-after-task }
-# $count max count
 reminder-error-max-count-reached-event =
     { $count ->
         [zero] لا يسمح التقويم المحدد بأي تذكير على الحدث.
@@ -50,7 +36,6 @@ reminder-error-max-count-reached-event =
         [many] يسمح التقويم المحدد ب‍ { $count } تذكيرا فقط لكلّ حدث.
        *[other] يسمح التقويم المحدد ب‍ { $count } تذكير فقط لكلّ حدث.
     }
-# $count max count
 reminder-error-max-count-reached-task =
     { $count ->
         [zero] لا يسمح التقويم المحدد بأي تذكير على المهمة.
@@ -60,8 +45,4 @@ reminder-error-max-count-reached-task =
         [many] يسمح التقويم المحدد ب‍ { $count } تذكيرا فقط لكلّ مهمة.
        *[other] يسمح التقويم المحدد ب‍ { $count } تذكير فقط لكلّ مهمة.
     }
-# LOCALIZATION NOTE (reminder-readonly-notification)
-# This notification will be presented in the alarm dialog if reminders for not
-# writable items/calendars are displayed.
-# $label - localized value of calendar.alarm.snoozeallfor.label (defined in calendar.dtd)
 reminder-readonly-notification = لا يمكنك (حاليًا على الأقل) إلا تأجيل التذكيرات للتقويمات بوضع القراءة فقط. سيؤجّل الزر ”{ $label }“ تذكيرات التقويمات التي تسمح بالكتابة فقط.

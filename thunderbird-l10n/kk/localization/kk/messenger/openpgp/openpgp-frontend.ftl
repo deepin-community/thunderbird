@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = OpenPGP кілттер басқарушысы
     .accesskey = а
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Қолтаңбаны растау
     .accesskey = р
 openpgp-has-sender-key = Бұл хабарлама оның ішінде жіберушінің OpenPGP ашық кілті бар деп мәлімдейді.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Ескерту: Бұл хабарламадағы жаңа OpenPGP ашық кілті сіз бұрын { $email } үшін қабылдаған ашық кілттерден өзгеше.
 openpgp-import-sender-key =
     .label = Импорттау…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Бұл хабарламаға сізде әлі жоқ кілтпен қолтаңба қойылды.
 openpgp-search-signature-key =
     .label = Іздеу…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Бұл OpenPGP хабарламасы MS-Exchange салдарынан зақымдалған сияқты, және ол жергілікті файлдан ашылған соң, оны жөндеу мүмкін емес. Автожөндеуді қолданып көру үшін, хабарламаны пошта бумасына көшіріңіз.
 openpgp-broken-exchange-info = Бұл OpenPGP хабарламасы және ол MS-Exchange салдарынан зақымдалған сияқты. Егер хабарлама құрамасы күтілгендей көрсетілмесе, автожөндеуді қолданып көруге болады.
 openpgp-broken-exchange-repair =

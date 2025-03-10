@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Informacije wo URL-klasifikatorje
 url-classifier-search-title = Pytać
 url-classifier-search-result-title = Wuslědki
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Protokolowe module wěsteho přehladowanja
 url-classifier-debug-modules = Aktualne protokolowe module
 url-classifier-debug-sbjs-modules = Javaskriptowy protokol wěsteho přehladowanja
 url-classifier-debug-file = Aktualna protokolowa dataja
-
 url-classifier-trigger-update = Aktualizacija zahibaka
 url-classifier-not-available = Ničo k dispoziciji
 url-classifier-disable-sbjs-log = Javaskriptowy protokol wěsteho přehladowanja znjemóžnić
@@ -50,9 +45,5 @@ url-classifier-disabled = Znjemóžnjeny
 url-classifier-updating = aktualizowanje
 url-classifier-cannot-update = njeda so aktualizować
 url-classifier-success = wuspěch
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = aktualizowanski zmylk ({ $error })
 url-classifier-download-error = sćehnjenski zmylk ({ $error })

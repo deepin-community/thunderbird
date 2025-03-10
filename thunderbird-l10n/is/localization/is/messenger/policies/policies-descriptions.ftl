@@ -1,15 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## The Enterprise Policies feature is aimed at system administrators
-## who want to deploy these settings across several Thunderbird installations
-## all at once. This is traditionally done through the Windows Group Policy
-## feature, but the system also supports other forms of deployment.
-## These are short descriptions for individual policies, to be displayed
-## in the documentation section in about:policies.
-
 policy-3rdparty = Stilla stefnur sem WebExtensions hafa aðgang að í gegnum chrome.storage.managed.
 policy-AppAutoUpdate = Virkja eða slökkva á sjálfvirkri uppfærslu á forriti.
 policy-AppUpdatePin = Koma í veg fyrir að { -brand-short-name } sé uppfært umfram tiltekna útgáfu.
@@ -43,13 +31,8 @@ policy-DisplayMenuBar = Birta valmyndastikuna sjálfgefið.
 policy-DNSOverHTTPS = Stilla DNS yfir HTTPS.
 policy-DontCheckDefaultClient = Slökkva á athugun á sjálfgefnum vafra við ræsingu.
 policy-DownloadDirectory = Stilla og læsa möppu fyrir sóttar skrár.
-# “lock” means that the user won’t be able to change this setting
 policy-EnableTrackingProtection = Virkja eða slökkva á efnisútilokun (Content Blocking) og mögulega læsa henni.
-# “lock” means that the user won’t be able to change this setting
 policy-EncryptedMediaExtensions = Virkja eða slökkva á dulrituðum margmiðlunarviðbótum (Encrypted Media Extensions) og mögulega læsa þeim.
-# A “locked” extension can’t be disabled or removed by the user. This policy
-# takes 3 keys (“Install”, ”Uninstall”, ”Locked”), you can either keep them in
-# English or translate them as verbs.
 policy-Extensions = Setja upp, fjarlægja eða læsa forritsaukum. Uppsetningarvalkosturinn samþykkir vefslóðir og leiðir sem breytur. Valkostir um að fjarlægja viðauka eða læstir valkostir krefjast auðkennis viðaukans.
 policy-ExtensionSettings = Stjórnaðu öllum uppsetningarþáttum forritsauka.
 policy-ExtensionUpdate = Virkja eða slökkva á sjálfvirkri uppfærslu á viðbótum.
@@ -57,14 +40,8 @@ policy-Handlers = Stilla meðhöndlun með sjálfgefnum forritum.
 policy-HardwareAcceleration = Ef ósatt, skal slökkva á vélbúnaðarhröðun.
 policy-InstallAddonsPermission = Leyfa ákveðnum vefsvæðum að setja upp viðbætur.
 policy-LegacyProfiles = Slökkva á eiginleikanum sem framfylgir sérstöku notandasniði fyrir hverja uppsetningu.
-
-## Do not translate "SameSite", it's the name of a cookie attribute.
-
 policy-LegacySameSiteCookieBehaviorEnabled = Virkja sjálfgefna stillingu á eldri SameSite-hegðun fyrir vefkökur.
 policy-LegacySameSiteCookieBehaviorEnabledForDomainList = Fara aftur í eldri SameSite-hegðun fyrir vefkökur á tiltekum vefsvæðum.
-
-##
-
 policy-LocalFileLinks = Leyfa tilteknum vefsvæðum að tengja í staðbundnar skrár.
 policy-ManualAppUpdateOnly = Leyfa einungis handvirkar uppfærslur og ekki láta notanda vita um uppfærslur.
 policy-NetworkPrediction = Virkja eða slökkva á netforspá (DNS prefetching).
@@ -73,7 +50,6 @@ policy-OfferToSaveLoginsDefault = Setja sjálfgefið gildi um að leyfa { -brand
 policy-OverrideFirstRunPage = Setja aðra upphafssíðu. Stilltu þetta á tómt gildi til að gera síðuna óvirka.
 policy-OverridePostUpdatePage = Setja aðra síðu í stað "Hvað er nýtt"-síðunnar sem birtist eftir uppfærslur. Stilltu þetta á tómt gildi til að gera síðuna óvirka.
 policy-PasswordManagerEnabled = Virkja vistun lykilorða í lykilorðastýringunni.
-# PDF.js and PDF should not be translated
 policy-PDFjs = Stilla eða gera PDF.js óvirkt, innbyggða PDF-lesarann í { -brand-short-name }.
 policy-Permissions2 = Stilla heimildir fyrir myndavél, hljóðnema, staðsetningu, tilkynningar og sjálfvirka afspilun.
 policy-Preferences = Stilltu og læstu gildinu fyrir undirmengi kjörstillinga.
@@ -84,11 +60,9 @@ policy-RequestedLocales = Stilla lista yfir tungumál sem óskað er eftir af fo
 policy-SanitizeOnShutdown2 = Hreinsa ferilsgögn við lokun.
 policy-SearchEngines = Stilla leitarvélar. Þessi stefna er aðeins í boði í ESR-langtímaútgáfum (Extended Support Release).
 policy-SearchSuggestEnabled = Virkja eða slökkva á leitartillögum.
-# For more information, see https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/PKCS11/Module_Installation
 policy-SecurityDevices = Setja inn PKCS #11 forritseiningar.
 policy-SSLVersionMax = Stilltu hámarksútgáfu SSL.
 policy-SSLVersionMin = Stilltu lágmarksútgáfu SSL.
 policy-SupportMenu = Bæta sérsniðinni færslu fyrir aðstoð við hjálparvalmyndina.
 policy-UserMessaging = Ekki sýna notandanum ákveðin skilaboð.
-# “format” refers to the format used for the value of this policy.
 policy-WebsiteFilter = Loka fyrir heimsóknir á vefsvæði. Sjá hjálparskjöl fyrir frekari upplýsingar um sniðið.

@@ -1,30 +1,34 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## OS Prompt Dialog
-
-# The links lead users to Form Autofill browser preferences.
+autofill-use-payment-method-os-prompt-macos = utilizar información almacenada del método de pago
+autofill-use-payment-method-os-prompt-windows = { -brand-short-name } está intentando utilizar la información del método de pago almacenada. Confirme el acceso a esta cuenta de Windows a continuación.
+autofill-use-payment-method-os-prompt-other = { -brand-short-name } está intentando utilizar la información del método de pago almacenada.
+autofill-edit-payment-method-os-prompt-macos = mostrar información del método de pago almacenado
+autofill-edit-payment-method-os-prompt-windows = { -brand-short-name } está intentando mostrar la información del método de pago almacenado. Confirme el acceso a esta cuenta de Windows a continuación.
+autofill-edit-payment-method-os-prompt-other = { -brand-short-name } está intentando mostrar la información del método de pago almacenado.
 autofill-options-link = Opciones de llenado automático de formularios
 autofill-options-link-osx = Preferencias de llenado automático de formularios
-
-## The credit card capture doorhanger
-
+credit-card-doorhanger-credit-cards-sync-checkbox = Sincronizar todas las tarjetas guardadas en mis dispositivos
+credit-card-save-doorhanger-header = ¿Guardar de forma segura esta tarjeta?
+credit-card-save-doorhanger-description = { -brand-short-name } cifra su número de tarjeta. Su código de seguridad no se guardará.
 credit-card-capture-save-button =
     .label = Guardar
     .accessKey = S
 credit-card-capture-cancel-button =
     .label = Ahora no
     .accessKey = W
-
-# Used on the doorhanger when an credit card change is detected.
-
-# Label for the button in the dropdown menu used to clear the populated form.
+credit-card-capture-never-save-button =
+    .label = Nunca guardar tarjetas
+    .accessKey = N
+credit-card-update-doorhanger-header = ¿Actualizar tarjeta?
+credit-card-update-doorhanger-description = Tarjeta para actualizar:
+credit-card-capture-save-new-button =
+    .label = Guardar como tarjeta nueva
+    .accessKey = C
+credit-card-capture-update-button =
+    .label = Actualizar tarjeta existente
+    .accessKey = U
 autofill-clear-form-label = Limpiar formularios de autollenado
-
-## These are brand names and should only be translated when a locale-specific name for that brand is in common use
-
+autofill-manage-addresses-label = Administrar direcciones
+autofill-manage-payment-methods-label = Administrar métodos de pago
 autofill-card-network-amex = American Express
 autofill-card-network-cartebancaire = Carte Bancaire
 autofill-card-network-diners = Diners Club
@@ -34,17 +38,8 @@ autofill-card-network-mastercard = MasterCard
 autofill-card-network-mir = MIR
 autofill-card-network-unionpay = Union Pay
 autofill-card-network-visa = Visa
-# The warning text that is displayed for informing users what categories are
-# about to be filled.  The text would be, for example,
-#   Also autofills organization, phone, email.
-# Variables:
-#   $categories - one or more of the categories, see autofill-category-X below
 autofill-phishing-warningmessage-extracategory = También llenar automáticamente { $categories }
-# Variation when all are in the same category.
-# Variables:
-#   $categories - one or more of the categories
 autofill-phishing-warningmessage = Rellena { $categories } automáticamente
-# Used in autofill drop down suggestion to indicate what other categories Form Autofill will attempt to fill.
 autofill-category-address = dirección
 autofill-category-name = nombre
 autofill-category-organization = organización

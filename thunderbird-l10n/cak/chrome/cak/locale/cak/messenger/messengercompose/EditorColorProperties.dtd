@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Ruxaq taq B'onil chuqa' Rupam">
 <!ENTITY pageColors.label "Ruxaq taq B'onil">
 <!ENTITY defaultColorsRadio.label "Taq rub'onil sik'inel kan k'o wi (Man kejikib'äx taq b'onil pa ruxaq)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Ke'okisäx ichinan taq b'onil:">
 <!ENTITY customColorsRadio.accessKey "C">
 <!ENTITY customColorsRadio.tooltip "Re runuk'ulem b'onil nujäl runuk'ulem ri rokik'amaya'l tz'etöy">
-
 <!ENTITY normalText.label "Relik rucholajem tzij">
 <!ENTITY normalText.accessKey "R">
 <!ENTITY linkText.label "Rucholajem tzij ximonel">

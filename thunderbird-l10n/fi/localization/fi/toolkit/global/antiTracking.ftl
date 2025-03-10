@@ -1,3 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+btp-warning-tracker-classified =
+    { $gracePeriodSeconds ->
+        [one] "{ $siteHost }" on luokiteltu hyppyseuraimeksi. Jos se ei vastaanota käyttäjän aktivointia seuraavan { $gracePeriodSeconds } sekunnin kuluessa, sen tila tyhjennetään.
+       *[other] "{ $siteHost }" on luokiteltu hyppyseuraimeksi. Jos se ei vastaanota käyttäjän aktivointia seuraavan { $gracePeriodSeconds } sekunnin kuluessa, sen tila tyhjennetään.
+    }
+btp-warning-tracker-purged = Sivuston "{ $siteHost }" tila tyhjennettiin äskettäin, koska sen havaittiin olevan hyppyseurain.

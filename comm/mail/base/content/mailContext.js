@@ -10,8 +10,6 @@
 /* globals goDoCommand */ // globalOverlay.js
 /* globals gDBView, gFolder, gViewWrapper, messengerBundle */
 
-/* globals gEncryptedURIService */ // mailCommon.js
-
 var { MailServices } = ChromeUtils.importESModule(
   "resource:///modules/MailServices.sys.mjs"
 );
@@ -71,7 +69,7 @@ var mailContextMenu = {
     "mailContext-openConversation": "cmd_openConversation",
     "mailContext-replyNewsgroup": "cmd_replyGroup",
     "mailContext-replySender": "cmd_replySender",
-    "navContext-reply": "cmd_replyall",
+    "navContext-reply": "cmd_reply",
     "mailContext-replyAll": "cmd_replyall",
     "mailContext-replyList": "cmd_replylist",
     "mailContext-forward": "cmd_forward",
@@ -109,6 +107,7 @@ var mailContextMenu = {
     "mailContext-markAllRead": "cmd_markAllRead",
     "navContext-markAsJunk": "cmd_markAsJunk",
     "mailContext-markAsJunk": "cmd_markAsJunk",
+    "navContext-markAsNotJunk": "cmd_markAsNotJunk",
     "mailContext-markAsNotJunk": "cmd_markAsNotJunk",
     "mailContext-recalculateJunkScore": "cmd_recalculateJunkScore",
   },
@@ -367,6 +366,19 @@ var mailContextMenu = {
       numSelectedMessages >= 1 && !isNewsgroup && folder?.canDeleteMessages;
     const canCopy = numSelectedMessages >= 1;
 
+    const isJunk =
+      message.getStringProperty("junkscore") ==
+      Ci.nsIJunkMailPlugin.IS_SPAM_SCORE;
+
+    if (numSelectedMessages == 1) {
+      // Hide junk button that isn't opposite of current state.
+      showItem("navContext-markAsJunk", !isJunk);
+      showItem("navContext-markAsNotJunk", isJunk);
+    } else {
+      showItem("navContext-markAsJunk", true);
+      showItem("navContext-markAsNotJunk", false);
+    }
+
     setSingleSelection("mailContext-openNewTab", inThreadTree);
     setSingleSelection("mailContext-openNewWindow", inThreadTree);
     setSingleSelection(
@@ -564,7 +576,7 @@ var mailContextMenu = {
           false, // skipPrompt
           null, // referrerInfo
           null, // cookieJarSettings
-          this.browsingContext.window.document, // sourceDocument
+          this.browsingContext.window?.document, // sourceDocument
           null, // isContentWindowPrivate,
           Services.scriptSecurityManager.getSystemPrincipal() // principal
         );
@@ -708,9 +720,6 @@ var mailContextMenu = {
    * Refresh the contents of the tag popup menu/panel.
    * Used for example for appmenu/Message/Tag panel.
    *
-   * @param {Element} parent - Parent element that will contain the menu items.
-   * @param {string} [elementName] - Type of menu item, e.g. "menuitem", "toolbarbutton".
-   * @param {string} [classes] - Classes to set on the menu items.
    * @see InitMessageTags()
    */
   _initMessageTags() {

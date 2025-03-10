@@ -25,13 +25,6 @@ ChromeUtils.defineESModuleGetters(lazy, {
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.sys.mjs",
 });
 
-// Get the necko URL for the message URI.
-function neckoURLForMessageURI(aMessageURI) {
-  const msgSvc = MailServices.messageServiceFromURI(aMessageURI);
-  const neckoURI = msgSvc.getUrlForUri(aMessageURI);
-  return neckoURI.spec;
-}
-
 var gIgnoreStatusFromMimePart = null;
 
 function setIgnoreStatusFromMimePart(mimePart) {
@@ -190,7 +183,7 @@ var smimeSink = {
       return null;
     }
 
-    return neckoURLForMessageURI(gMessageURI);
+    return MailServices.neckoURLForMessageURI(gMessageURI);
   },
 
   /**
@@ -350,7 +343,7 @@ var smimeSink = {
       gMyLastEncryptedURI = gMessageURI;
       gEncryptedURIService.rememberEncrypted(gMyLastEncryptedURI);
       gEncryptedURIService.rememberEncrypted(
-        neckoURLForMessageURI(gMyLastEncryptedURI)
+        MailServices.neckoURLForMessageURI(gMyLastEncryptedURI)
       );
     }
 
@@ -378,6 +371,9 @@ var smimeSink = {
               `<html>
               <head>
                 <title>${title}</title>
+                <link rel="stylesheet"
+                      href="chrome://messenger/skin/error-pages.css"
+                      type="text/css">
               </head>
               <body>
                 <h1>${title}</h1>
@@ -405,7 +401,7 @@ function forgetEncryptedURI() {
   if (gMyLastEncryptedURI && gEncryptedURIService) {
     gEncryptedURIService.forgetEncrypted(gMyLastEncryptedURI);
     gEncryptedURIService.forgetEncrypted(
-      neckoURLForMessageURI(gMyLastEncryptedURI)
+      MailServices.neckoURLForMessageURI(gMyLastEncryptedURI)
     );
     gMyLastEncryptedURI = null;
   }

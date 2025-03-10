@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Huqularingiz haqida
 rights-intro = { -brand-full-name } butun dunyo boʻyicha minglab jamoalar hissasini qoʻshib, tuzilgan erkin va ochiq kodli dasturiy ta`minot. Bu yerda bilishingiz kerak boʻlgan ba`zi narsalar bor:
 rights-intro-point-1 = { -brand-short-name } <a data-l10n-name="mozilla-public-license-link">"Mozilla Public License" (Mozilla ochiq litsenziyasi) shartlari boʻyicha mavjud.</a>. Bu degani siz { -brand-short-name }dan foydalanishingiz, nusxa koʻchirishingiz va boshqalarga tarqatishingiz mumkin. Shuningdek, kerak boʻlsa { -brand-short-name }ning kodlarini oʻzgartirishingiz ham mumkin. "The Mozilla Public License" (Mozilla ochiq litsenziyasi) sizga kodlari oʻzgartiriglan versiyalarini tarqatish huquqini ham beradi.

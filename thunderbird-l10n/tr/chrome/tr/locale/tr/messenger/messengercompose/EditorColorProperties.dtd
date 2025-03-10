@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Sayfa Renkleri ve Arka Plan">
 <!ENTITY pageColors.label "Sayfa Renkleri">
 <!ENTITY defaultColorsRadio.label "Okuyucunun varsayılan renkleri (Sayfada renk belirleme)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Özel renkleri kullan:">
 <!ENTITY customColorsRadio.accessKey "r">
 <!ENTITY customColorsRadio.tooltip "Bu renkler okuyucunun tarayıcı ayarlarından önceliklidir">
-
 <!ENTITY normalText.label "Normal metin">
 <!ENTITY normalText.accessKey "N">
 <!ENTITY linkText.label "Bağlantı metni">

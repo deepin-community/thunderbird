@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (nicht festgelegt)
 failed-pp-change = Hauptpasswort konnte nicht geändert werden.
@@ -21,7 +17,6 @@ set-password-new-password = Neues Passwort:
 set-password-reenter-password = Neues Passwort (nochmals):
 set-password-meter = Passwort-Qualitätsmessung
 set-password-meter-loading = Laden
-primary-password-admin = Der Administrator hat festgelegt, dass zum Speichern von Passwörtern ein Hauptpasswort gesetzt sein muss.
 primary-password-required-by-policy = Ihre Organisation hat festgelegt, dass zum Speichern von Passwörtern ein Hauptpasswort gesetzt sein muss.
 primary-password-description = Das Hauptpasswort wird verwendet, um Ihre vertraulichen Daten, wie Zugangsdaten und Passwörter, zu schützen. Wenn Sie ein Hauptpasswort festlegen, werden Sie einmal pro Sitzung danach gefragt, sobald { -brand-short-name } auf die geschützten Daten zugreifen muss.
 primary-password-warning = Bitte stellen Sie sicher, dass Sie das Hauptpasswort nicht vergessen. Falls Sie das Hauptpasswort vergessen sollten, gibt es keine Möglichkeit, an die Daten zu gelangen, die davon geschützt werden.

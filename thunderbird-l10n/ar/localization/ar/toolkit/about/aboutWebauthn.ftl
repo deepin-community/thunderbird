@@ -1,3 +1,34 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+about-webauthn-page-title = حول WebAuthn
+about-webauthn-info-section-title = معلومات الجهاز
+about-webauthn-info-subsection-title = معلومات المصادقة
+about-webauthn-options-subsection-title = خيارات المصادقة
+about-webauthn-pin-section-title = إدارة رقم التعريف الشخصي
+about-webauthn-credential-management-section-title = إدارة بيانات الاعتماد
+about-webauthn-pin-required-section-title = رقم التعريف الشخصي مطلوب
+about-webauthn-confirm-deletion-section-title = أكّد الحذف
+about-webauthn-text-not-available = غير متوفر على هذه المنصة.
+about-webauthn-bio-enrollment-list-subsection-title = التسجيلات:
+about-webauthn-add-bio-enrollment-section-title = إضافة تسجيل جديد
+about-webauthn-results-success = تم!
+about-webauthn-results-general-error = خطأ!
+about-webauthn-cancel-button = ألغِ
+about-webauthn-send-pin-button = حسنا
+about-webauthn-delete-button = احذف
+about-webauthn-start-enrollment-button = بدء التسجيل
+about-webauthn-update-button = حدّث
+about-webauthn-auth-option-uv = التحقق من المستخدم
+about-webauthn-auth-option-clientpin = رقم التعريف الشخصي للعميل
+about-webauthn-auth-option-true = صحيح
+about-webauthn-auth-option-false = خاطئ
+about-webauthn-auth-option-null = غير مدعوم
+about-webauthn-auth-info-certifications = الشهادات
+about-webauthn-auth-info-min-pin-length = الحد الأدنى لطول رقم التعريف الشخصي
+about-webauthn-auth-info-algorithms = الخوارزميات
+about-webauthn-auth-info-pin-protocols = بروتوكولات رقم التعريف الشخصي
+about-webauthn-auth-info-max-msg-size = الحد الأقصى لحجم الرسالة
+about-webauthn-auth-info-aaguid = AAGUID
+about-webauthn-auth-info-extensions = الامتدادات
+about-webauthn-auth-info-versions = الإصدارات
+about-webauthn-auth-info-true = صحيح
+about-webauthn-auth-info-false = خاطئ
+about-webauthn-auth-info-null = غير مدعوم

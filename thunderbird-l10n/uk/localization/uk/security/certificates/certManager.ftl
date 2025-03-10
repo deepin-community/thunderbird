@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Менеджер сертифікатів
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Невідома помилка резервного
 pkcs12-unknown-err = Операція PKCS #12 завершена невдало з невідомих причин.
 pkcs12-info-no-smartcard-backup = Неможливо відновити сертифікати з такого апаратного пристрою захисту, як смарт-карта.
 pkcs12-dup-data = Сертифікат і закритий ключ уже існують на пристрої безпеки.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Назва файлу резервної копії
 file-browse-pkcs12-spec = Файли PKCS12
 choose-p12-restore-file-dialog = Файл сертифіката для імпорту
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Файли сертифікатів
 import-ca-certs-prompt = Виберіть для імпорту файл, що містить сертифікат центру
 import-email-cert-prompt = Виберіть для імпорту файл, що містить чий-небудь сертифікат електронної пошти
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Сертифікат "{ $certName }" представляє центр сертифікації.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Вилучення власних сертифікатів
 delete-user-cert-confirm = Ви дійсно хочете вилучити ці сертифікати?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Вилучення сертифікатів електронної пошти
 delete-email-cert-confirm = Ви дійсно хочете вилучити сертифікати електронної пошти цих людей?
 delete-email-cert-impact = Якщо ви вилучите поштовий сертифікат певної особи, ви більше не зможете надсилати їй шифровані.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Сертифікат з серійним номером: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Не надсилати сертифікат клієнта
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (Не збережено)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (Недоступно)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Постійний
 temporary-override = Тимчасовий
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Ви збираєтесь знехтувати тим, як { -brand-short-name } ідентифікує цей сайт.
 add-exception-invalid-header = Цей сайт намагається ідентифікувати себе, використовуючи недійсну інформацію.
 add-exception-domain-mismatch-short = Неправильний сайт
@@ -170,9 +139,6 @@ add-exception-checking-short = Перевіряється інформація
 add-exception-checking-long = Спроба ідентифікації цього сайту…
 add-exception-no-cert-short = Немає доступної інформації
 add-exception-no-cert-long = Не вдалося отримати інформацію про ідентифікаційний статус цього сайту.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Зберегти сертифікат у файл
 cert-format-base64 = Сертифікат X.509 (PEM)
 cert-format-base64-chain = Сертифікат X.509 з ланцюжком (PEM)

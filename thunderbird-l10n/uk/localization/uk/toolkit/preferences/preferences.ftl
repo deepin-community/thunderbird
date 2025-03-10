@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (не встановлено)
 failed-pp-change = Не вдається змінити головний пароль.
@@ -21,7 +17,6 @@ set-password-new-password = Введіть новий пароль:
 set-password-reenter-password = Введіть пароль ще раз:
 set-password-meter = Рівень якості пароля
 set-password-meter-loading = Завантаження
-primary-password-admin = Для можливості зберігання паролів ваш адміністратор вимагає встановити головний пароль.
 primary-password-required-by-policy = Для можливості зберігання паролів ваша організація вимагає встановити головний пароль.
 primary-password-description = Головний пароль використовується для захисту вразливої інформації на цьому пристрої, такої, як паролі. Якщо ви створите головний пароль, то його необхідно буде вводити один раз за сеанс, коли { -brand-short-name } знадобиться захищена ним інформація.
 primary-password-warning = Переконайтесь, що ви запам'ятали встановлений головний пароль. Якщо ви забудете головний пароль, то не зможете отримати доступ до будь-якої захищеної ним інформації.

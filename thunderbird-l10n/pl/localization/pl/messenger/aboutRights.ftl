@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = O prawach użytkownika
 rights-intro = { -brand-full-name } to wolne oprogramowanie o otwartym kodzie źródłowym (open source), stworzone przez społeczność tysięcy ludzi z całego świata. Jest kilka zagadnień związanych z tym programem, o których należy wiedzieć:
 rights-intro-point-1 = { -brand-short-name } został udostępniony użytkownikowi na warunkach licencji <a data-l10n-name="mozilla-public-license-link">Mozilla Public License</a>. Oznacza to, że użytkownik ma prawo używać, kopiować i rozpowszechniać program { -brand-short-name }. Może on też modyfikować kod źródłowy programu { -brand-short-name }, by dostosować go do swoich potrzeb. Licencja MPL (Mozilla Public License) daje użytkownikowi także prawo do rozpowszechniania zmodyfikowanych wersji.

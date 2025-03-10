@@ -1,42 +1,18 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-button =
     .alt = Пошук
-search-bar-item =
-    .label = Пошук:
 search-bar-item2 =
     .label = Пошук
 search-bar-placeholder = Пошук…
-# Search bar placeholder with formatted key shortcut hint (platform dependent).
-# The key after the control modifier should match the key from quickSearchCmd.key
-# in messenger.dtd.
 search-bar-placeholder-with-key2 =
     { PLATFORM() ->
         [macos] { search-bar-placeholder } <kbd>⌘</kbd> <kbd>K</kbd>
        *[other] { search-bar-placeholder } <kbd>Ctrl</kbd> + <kbd>K</kbd>
     }
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Налаштувати…
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Отримати всі нові повідомлення
     .accesskey = О
-
-## Unified Toolbar customization
-
 customize-title = Налаштувати панелі інструментів
 customize-space-tab-mail = Пошта
     .title = Пошта
@@ -60,8 +36,6 @@ customize-button-style-text-only-option = Тільки текст
 customize-cancel = Скасувати
 customize-save = Зберегти
 customize-unsaved-changes = Незбережені зміни в інших місцях
-customize-search-bar =
-    .label = Шукати кнопки панелі інструментів…
 customize-search-bar2 =
     .label = Кнопки панелі пошуку
     .placeholder = Кнопки панелі пошуку…
@@ -77,18 +51,10 @@ customize-palette-tasks-specific-title = Доступно тільки для з
 customize-palette-chat-specific-title = Доступно тільки для чатів
 customize-palette-settings-specific-title = Доступно тільки для налаштувань
 customize-palette-extension-specific-title = Доступно лише для цього простору
-
-## Unified toolbar customization palette context menu
-
-# Variables:
-# $target (String) - Name of the target the item should be added to.
 customize-palette-add-to =
     .label = Додати до { $target }
 customize-palette-add-everywhere =
     .label = Додати до всіх панелей інструментів
-
-## Unified toolbar customization target context menu
-
 customize-target-forward =
     .label = Перемістити вперед
 customize-target-backward =

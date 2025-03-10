@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-settings-title = Подешавања аутентификације
 account-channel-title = Подразумевани канали
 chat-autologin =
@@ -10,8 +6,6 @@ chat-encryption-generic = Генерички
 chat-encryption-log =
     .label = Укључи с краја на крај шифроване поруке у записницима разговора
 chat-encryption-label = Изворно шифровање с краја на крај
-# Variables:
-# $protocol (String) - Name of the chat protocol. Example: Matrix
 chat-encryption-description = { $protocol } обезбеђује шифровање с краја на крај за поруке ћаскања. Ово спречава треће стране да прислушкују разговор. Можда ће бити потребна додатна подешавања у наставку да би шифровање функционисало.
 chat-encryption-status = Стање шифровања
 chat-encryption-placeholder = Шифровање није започето.

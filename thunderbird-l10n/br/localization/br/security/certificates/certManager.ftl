@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Ardoer testenioù
 certmgr-tab-mine =
@@ -95,27 +91,13 @@ pkcs12-unknown-err-backup = C'hwitadenn war grouiñ ar restr atoriñ PKCS #12 ev
 pkcs12-unknown-err = Ar gwezhiadur PKCS #12 en deus c'hwitet evit abegoù dianav.
 pkcs12-info-no-smartcard-backup = N'haller ket atoriñ testenioù diouzh un trevnad diogelroez periantel evel ur gartenn grug.
 pkcs12-dup-data = An testeni hag an alc'hwez prevez zo anezho endeo gant an trevnad diogelroez.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Anv ar restr da atoriñ
 file-browse-pkcs12-spec = Restroù PKCS12
 choose-p12-restore-file-dialog = Restr an testeni da vezañ enporzhiet
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Restroù testeni
 import-ca-certs-prompt = Diuzañ ar restr oc'h enderc'hel testeni(où) an aotrouniezh testeniañ da enporzhiañ
 import-email-cert-prompt = Diuzañ ar restr oc'h enderc'hel testeni postel unan bennak da enporzhiañ
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Derc'houezañ a ra an testeni "{ $certName }" un aotrouniezh testeniañ.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Dilemel ho testenioù
 delete-user-cert-confirm = Fellout a ra deoc'h dilemel an testenioù-mañ?
@@ -132,24 +114,12 @@ delete-email-cert-title =
     .title = Dilemel an testenioù posteloù
 delete-email-cert-confirm = Fellout a ra deoc'h dilemel testenioù posteloù an dud-mañ?
 delete-email-cert-impact = Mar bez dilamet testeni postel un den ne viot ket mui evit kas posteloù enrinek d'an den-mañ.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Testeni gant steudriñv: { $serialNumber }
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (N’eo ket gwaredet)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (dihegerz)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Peurzalc’hus
 temporary-override = Padennek
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Emaoc'h o tilemel penaos e vez hennadet al lec'hienn-mañ gant { -brand-short-name }.
 add-exception-invalid-header = Emañ al lec'hienn o klask reiñ he fivelezh gant stlennoù didalvoudek.
 add-exception-domain-mismatch-short = Lec'hienn fall
@@ -164,9 +134,6 @@ add-exception-checking-short = O wiriañ ar stlennoù
 add-exception-checking-long = O klask naoudiañ al lec'hienn-mañ…
 add-exception-no-cert-short = N'eus stlennoù hegerz ebet
 add-exception-no-cert-long = N'haller ket kaout ar stad naoudiañ evit al lec'hienn lavaret.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Enrollañ an testeni en ur restr
 cert-format-base64 = Testeni X.509 (PEM)
 cert-format-base64-chain = Testeni X.509 gant steudadoù (PEM)

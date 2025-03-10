@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Všechny vaše kalendáře jsou v tuto chvíli zakázané. Pro vytváření a úpravu událostí povolte nějaký stávající kalendář nebo vytvořte nový.
 calendar-deactivated-notification-tasks = Všechny vaše kalendáře jsou v tuto chvíli zakázané. Pro vytváření a úpravu úkolů povolte nějaký stávající kalendář nebo vytvořte nový.
 calendar-notifications-label = Zobrazit oznámení pro nadcházející události
 calendar-add-notification-button =
     .label = Přidat oznámení
-
-## Side panel
-
 calendar-list-header = Kalendáře
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Kalendář { $calendarName } byl ztlumen
 calendar-enable-button = Povolit
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Možnosti kalendáře { $calendarName }
 calendar-import-new-calendar = Nový kalendář…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Znovu načíst kalendáře a synchronizovat změny
 calendar-new-event-primary-button = Nová událost
 calendar-new-task-primary-button = Nový úkol
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Předchozí den
     .accesskey = P
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Vícetýden
     .title = Přepne do vícetýdenního pohledu
 calendar-view-toggle-month = Měsíc
     .title = Přepne do měsíčního pohledu
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Možnosti rozložení kalendáře
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Nastavit pracovní dny
 calendar-show-tasks-calendar-option =
     .label = Zobrazit úkoly v kalendáři
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Předchozí den
     .accesskey = e

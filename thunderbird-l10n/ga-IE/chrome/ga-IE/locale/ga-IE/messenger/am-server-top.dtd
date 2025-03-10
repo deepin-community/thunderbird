@@ -1,9 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-<!-- extracted from am-server-top.xul -->
-
-
 <!ENTITY messageStorage.label "Stóráil na dTeachtaireachtaí">
 <!ENTITY securitySettings.label "Socruithe Slándála">
 <!ENTITY serverSettings.label "Socruithe an Fhreastalaí">
@@ -15,11 +9,6 @@
 <!ENTITY port.label "Port:">
 <!ENTITY port.accesskey "P">
 <!ENTITY serverPortDefault.label "Réamhshocrú:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammer dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Lorg teachtaireachtaí nua gach ">
 <!ENTITY biffStart.accesskey "g">
 <!ENTITY biffEnd.label "nóiméad">
@@ -28,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Slándáil an cheangail:">
 <!ENTITY connectionSecurity.accesskey "n">
 <!ENTITY connectionSecurityType-0.label "Gan sonrú">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, má tá sé ar fáil">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Modh fíordheimhnithe:">
@@ -51,42 +39,34 @@
 <!ENTITY modelMarkDeleted.accesskey "c">
 <!ENTITY modelDeleteImmediately.label "Bain é amach láithreach">
 <!ENTITY modelDeleteImmediately.accesskey "l">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Glan an bosca isteach ag am scortha">
 <!ENTITY expungeOnExit.accesskey "G">
 <!ENTITY emptyTrashOnExit.label "Folmhaigh an Bruscar ag an Scor">
 <!ENTITY emptyTrashOnExit.accesskey "S">
 <!ENTITY loginAtStartup.label "Lorg teachtaireachtaí nua ag am tosaithe">
 <!ENTITY loginAtStartup.accesskey "c">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-   of messages between them
--->
 <!ENTITY maxMessagesStart.label "Fiafraigh díom sula n-íoslódálfar níos mó ná">
 <!ENTITY maxMessagesStart.accesskey "m">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "teachtaireacht is déanaí">
 <!ENTITY alwaysAuthenticate.label "Iarr fíordheimhniú i gcónaí nuair a cheanglófar leis an bhfreastalaí seo">
 <!ENTITY alwaysAuthenticate.accesskey "f">
+<!ENTITY newsrcFilePath1.label "News.rc File:">
+<!ENTITY newsrcPicker1.label "Select News.rc File">
 <!ENTITY abbreviate.label "Taispeáin ainmneacha na ngrúpaí nuachta i bpána na bhFillteán Ríomhphoist mar:">
 <!ENTITY abbreviateOn.label "Ainmneacha iomlána (m.sh. &quot;netscape.public.mozilla.mail-news&quot;)">
 <!ENTITY abbreviateOff.label "Ainmneacha giorraithe (m.sh. &quot;n.p.m.mail-news&quot;)">
 <!ENTITY advancedButton.label "Ardroghanna…">
 <!ENTITY advancedButton.accesskey "A">
 <!ENTITY serverDefaultCharset2.label "Ionchódú Réamhshocraithe:">
+<!ENTITY localPath1.label "Local Directory:">
 <!ENTITY localFolderPicker.label "Roghnaigh Comhadlann Logánta">
 <!ENTITY browseFolder.label "Brabhsáil…">
 <!ENTITY browseFolder.accesskey "B">
 <!ENTITY browseNewsrc.label "Brabhsáil…">
 <!ENTITY browseNewsrc.accesskey "B">
-
 <!ENTITY accountTitle.label "Socruithe Cuntais">
 <!ENTITY accountSettingsDesc.label "Cuntas speisialta é seo. Níl aon aitheantas comhcheangailte leis.">
 <!ENTITY storeType.label "Cineál Stórais na dTeachtaireachtaí:">
 <!ENTITY storeType.accesskey "T">
 <!ENTITY mboxStore2.label "Gach fillteán ina chomhad féin (mbox)">
 <!ENTITY maildirStore.label "Gach teachtaireacht ina comhad féin (maildir)">
-
-<!ENTITY newsrcFilePath1.label "News.rc File:">
-<!ENTITY newsrcPicker1.label "Select News.rc File">
-<!ENTITY localPath1.label "Local Directory:">

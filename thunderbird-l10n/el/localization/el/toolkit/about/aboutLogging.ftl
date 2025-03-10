@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Σχετικά με την καταγραφή
 about-logging-page-title = Διαχείριση καταγραφής
 about-logging-current-log-file = Τρέχον αρχείο καταγραφής:
 about-logging-new-log-file = Νέο αρχείο καταγραφής:
 about-logging-currently-enabled-log-modules = Τρέχουσες ενεργές μονάδες καταγραφής:
 about-logging-log-tutorial = Δείτε την <a data-l10n-name="logging">Καταγραφή HTTP</a> για οδηγίες σχετικά με τη χρήση αυτού του εργαλείου.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Άνοιγμα καταλόγου
 about-logging-set-log-file = Ορισμός αρχείου καταγραφής
 about-logging-set-log-modules = Ορισμός μονάδων καταγραφής
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Καμία
 about-logging-no-log-file = Κανένα
 about-logging-logging-preset-selector-text = Προκαθορισμένη καταγραφή:
 about-logging-with-profiler-stacks-checkbox = Ενεργοποίηση ιχνών στοίβας για μηνύματα καταγραφής
-
-## Logging presets
-
 about-logging-preset-networking-label = Δικτύωση
 about-logging-preset-networking-description = Μονάδες καταγραφής για τη διάγνωση προβλημάτων δικτύωσης
 about-logging-preset-networking-cookie-label = Cookie
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Μονάδες καταγραφής για τη διάγνωση προβλημάτων WebGPU
 about-logging-preset-gfx-label = Γραφικά
 about-logging-preset-gfx-description = Μονάδες καταγραφής για τη διάγνωση προβλημάτων γραφικών
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Μονάδες καταγραφής για τη διάγνωση ζητημάτων ειδικά για τα Microsoft Windows
 about-logging-preset-custom-label = Προσαρμοσμένο
 about-logging-preset-custom-description = Οι μονάδες καταγραφής επιλέχθηκαν χειροκίνητα
-# Error handling
 about-logging-error = Σφάλμα:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Μη έγκυρη τιμή «{ $v }» για το κλειδί «{ $k }»
 about-logging-unknown-logging-preset = Άγνωστη προκαθορισμένη τιμή καταγραφής «{ $v }»
 about-logging-unknown-profiler-preset = Άγνωστη προκαθορισμένη τιμή καταγραφής σε προφίλ «{ $v }»

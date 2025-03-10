@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Dùin
 category-list =
@@ -46,8 +42,6 @@ collection-health-report =
     .label = Leig le { -brand-short-name } dàta teicnigeach is dàta mu eadar-ghabhail a chur gu { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Barrachd fiosrachaidh
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Tha aithriseadh dàta à comas airson rèiteachadh a’ bhuild seo
 collection-backlogged-crash-reports =
     .label = Leig le { -brand-short-name } aithisgean tuislidh a chàirn roimhe a chur às do leth
@@ -68,10 +62,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Ath-thòisich { -brand-short-name } gus na h-atharraichean seo a chur an sàs
 confirm-messenger-language-change-button = Cuir an sàs is ath-thòisich
 update-setting-write-failure-title = Mearachd le sàbhaladh roghainnean an ùrachaidh
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     Thachair { -brand-short-name } ri mearachd agus cha deach an t-atharrachadh seo a shàbhaladh. Thoir an aire gu bheil suidheachadh roghainn an ùrachaidh seo feumach air cead sgrìobhaidh dhan fhaidhle gu h-ìosal. Feuch an càraich thu fhèin no rianaire an t-siostaim a’ mhearachd seo a’ toirt smachd slàn dhan bhuidheann “Users” air an fhaidhle seo.
     
@@ -79,26 +69,12 @@ update-setting-write-failure-message =
 update-in-progress-title = ’Ga ùrachadh
 update-in-progress-message = A bheil thu airson ’s gun cùm { -brand-short-name } a’ dol leis an ùrachadh seo?
 update-in-progress-ok-button = &Tilg air falbh
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Lean air adhart
 account-button = Roghainnean a’ chunntais
 open-addons-sidebar-button = Tuilleadain ’s ùrlaran
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Airson prìomh fhacal-faire a chruthachadh, cuir a-steach teisteas clàraidh a-steach Windows. Cuiridh seo ri dìon tèarainteachd nan cunntasan agad.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = prìomh fhacal-faire a chruthachadh
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -189,8 +165,6 @@ always-check-default =
 check-default-button =
     .label = Thoir sùil an-dràsta…
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -208,8 +182,6 @@ return-receipts-button =
     .label = Bannan-cuidhteis…
     .accesskey = B
 update-app-legend = Ùrachaidhean { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Tionndadh { $version }
 allow-description = Thoir cead dha { -brand-short-name }
 automatic-updates-label =
@@ -244,18 +216,10 @@ offline-compact-folder-automatically =
     .accesskey = g
 compact-folder-size =
     .value = MB uile gu lèir
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Cleachd suas gu
     .accesskey = u
 use-cache-after = MB a dh'àite airson an tasgadan
-
-##
-
 smart-cache-label =
     .label = Leig seachad stiùireadh fèin-obrachail an tasgadain
     .accesskey = f
@@ -276,7 +240,6 @@ color-options-button =
     .label = Dathan…
     .accesskey = D
 display-width-legend = Teachdaireachdan ann an teacsa lom
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Seall na samhlaidhean-gnùis mar dhealbhan
     .accesskey = d
@@ -339,17 +302,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Sa bhad nuair a choimheadas mi air
     .accesskey = o
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Nuair a bhios mi air coimhead air fad
     .accesskey = d
 seconds-label = diog(an)
-
-##
-
 open-msg-label =
     .value = Fosgail teachdaireachdan ann an:
 open-msg-tab =
@@ -364,14 +320,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Dùin uinneag/taba na teachdaireachd nuair a sguabas mi às fear no ma ghluaiseas mi fear
     .accesskey = c
-display-name-label =
-    .value = Ainm-taisbeanaidh:
 condensed-addresses-label =
     .label = Na seall ach an t-ainm-taisbeanaidh airson nan daoine ann an leabhar nan seòladh agam
     .accesskey = s
-
-## Compose Tab
-
 forward-label =
     .value = Sìn air adhart teachdaireachdan:
     .accesskey = S
@@ -382,17 +333,10 @@ as-attachment-label =
 extension-label =
     .label = cuir leudachan ri ainm an fhaidhle
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Dèanar sàbhaladh leis fhèin a h-uile
     .accesskey = a
 auto-save-end = mionaid(ean)
-
-##
-
 warn-on-send-accel-key =
     .label = Iarr dearbhadh ma thèid ath-ghoirid a' mheur-chlàir a chleachdadh gus teachdaireachd a chur
     .accesskey = c
@@ -467,9 +411,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Lorg barrachd solaraichean…
 cloud-account-description = Cuir seirbheis stòrais Filelink ùr ris
-
-## Privacy Tab
-
 mail-content = Susbaint puist
 remote-content-label =
     .label = Ceadaich susbaint chèin ann an teachdaireachdan
@@ -495,25 +436,9 @@ third-party-never =
     .label = Chan ann idir
 third-party-visited =
     .label = O fheadhainn air an deach tadhal
-keep-label =
-    .value = Cum gus:
-    .accesskey = C
-keep-expire =
-    .label = am falbh an ùine orra
-keep-close =
-    .label = an dùin mi { -brand-short-name }
-keep-ask =
-    .label = faighnich dhìom gach turas
 cookies-button =
     .label = Seall na briosgaidean…
     .accesskey = S
-do-not-track-label =
-    .label = Cuir sanas “Na dèan tracadh orm” gu làraichean-lìn a dh’innseas nach eil thu ag iarraidh gun dèanar tracadh ort
-    .accesskey = N
-learn-button =
-    .label = Barrachd fiosrachaidh
-dnt-learn-more-button =
-    .value = Barrachd fiosrachaidh
 passwords-description = 'S urrainn do { -brand-short-name } na faclan-faire airson gach cunntas agad a chumail 'na chuimhne.
 passwords-button =
     .label = Faclan-faire a chaidh a shàbhaladh…
@@ -528,18 +453,12 @@ primary-password-button =
 forms-primary-pw-fips-title = Tha thu ann am modh FIPS an-dràsta. Feumaidh FIPS prìomh fhacal-faire nach eil falamh.
 forms-master-pw-fips-desc = Dh’fhàillig atharrachadh an fhacail-fhaire
 junk-description = Suidhich na roghainnean bunaiteach agad airson post-truilleis. 'S urrainn dhut roghainnean a shònrachadh ann an "Roghainnean nan cunntasan" aig am bi buaidh air cunntasan fa leth.
-junk-label =
-    .label = Nuair a chuireas mi comharra gu bheil teachdaireachd 'na phost-truilleis:
-    .accesskey = N
 junk-move-label =
     .label = Gluais iad gu pasgan "Truilleis" a' chunntais sin
     .accesskey = G
 junk-delete-label =
     .label = Sguab às iad
     .accesskey = d
-junk-read-label =
-    .label = Cuir comharra mar gum biodh teachdaireachd air a leughadh ma tha comharra truilleis ris
-    .accesskey = m
 junk-log-label =
     .label = Cuir an comas logadh criathradh glic na truilleis
     .accesskey = e
@@ -573,9 +492,6 @@ certificate-button =
 security-devices-button =
     .label = Uidheaman tèarainteachd...
     .accesskey = d
-
-## Chat Tab
-
 startup-label =
     .value = Nuair a thòisicheas { -brand-short-name }:
     .accesskey = s
@@ -583,20 +499,10 @@ offline-label =
     .label = Cum na cunntasan cabadich agam far loidhne
 auto-connect-label =
     .label = Dèan ceangal ris na cunntasan cabadaich agam gu fèin-obrachail
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Nochd dhan luchd-aithne agam gu bheil mi 'nam thàmh an dèidh
     .accesskey = N
 idle-time-label = mionaid(ean) 's mi gun dad a dhèanamh
-
-##
-
 away-message-label =
     .label = agus cuir an teachdaireachd a leanas ris a' chomharra "Air falbh":
     .accesskey = A
@@ -656,11 +562,5 @@ no-preview-description = Chan eil an t-ùrlar seo dligheach no chan eil e ri fha
 chat-variant-label =
     .value = Eug-samhail:
     .accesskey = V
-
-## Settings UI Search Results
-
 search-results-header = Toraidhean luirg
 search-results-help-link = A bheil cobhair a dhìth ort? Tadhail air <a data-l10n-name="url">Taic { -brand-short-name }</a>
-
-## Sync Tab
-

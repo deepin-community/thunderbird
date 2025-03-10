@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Crittografia end-to-end
 account-otr-label = Messaggi off-the-record (OTR)
@@ -18,6 +14,4 @@ otr-require-encryption =
 otr-require-encryption-info = Se si imposta il requisito della crittografia end-to-end, i messaggi in una conversazioni a due verranno inviati esclusivamente se è possibile crittarli. Eventuali messaggi non crittati ricevuti non verranno visualizzati nella conversazione, né registrarti.
 otr-verify-nudge =
     .label = Ricordami sempre di verificare un contatto non verificato
-
 otr-not-yet-available = non ancora disponibile
-

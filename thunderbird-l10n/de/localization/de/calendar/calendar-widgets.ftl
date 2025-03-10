@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Derzeit sind alle Kalender deaktiviert. Aktivieren Sie einen bestehenden Kalender oder fügen Sie einen neuen hinzu, um Termine zu erstellen und bearbeiten.
 calendar-deactivated-notification-tasks = Derzeit sind alle Kalender deaktiviert. Aktivieren Sie einen bestehenden Kalender oder fügen Sie einen neuen hinzu, um Aufgaben zu erstellen und bearbeiten.
 calendar-notifications-label = Benachrichtigungen für demnächst anstehende Termine anzeigen
 calendar-add-notification-button =
     .label = Benachrichtigung hinzufügen
-
-## Side panel
-
 calendar-list-header = Kalender
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Der Kalender { $calendarName } wurde stummgeschaltet
 calendar-enable-button = Aktivieren
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = { $calendarName } Kalenderoptionen
 calendar-import-new-calendar = Neuer Kalender…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Alle Kalender neu laden und Änderungen synchronisieren
 calendar-new-event-primary-button = Neuer Termin
 calendar-new-task-primary-button = Neue Aufgabe
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Vorheriger Tag
     .accesskey = V
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Mehrere Wochen
     .title = Zur mehrwöchigen Ansicht wechseln
 calendar-view-toggle-month = Monat
     .title = Zur Monatsansicht wechseln
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Kalender-Layout-Optionen
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Tage der Arbeitswoche festlegen
 calendar-show-tasks-calendar-option =
     .label = Aufgaben im Kalender anzeigen
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Vorheriger Tag
     .accesskey = V

@@ -1,3 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+date-picker-label =
+    .aria-label = اختر تاريخًا
+date-spinner-label =
+    .aria-label = اختر شهرًا وسنة
+date-picker-clear-button = امسح
+date-picker-previous =
+    .aria-label = الشهر الماضي
+date-picker-next =
+    .aria-label = الشهر المقبل
+date-spinner-month =
+    .aria-label = الشهر
+date-spinner-year =
+    .aria-label = السنة
+date-spinner-month-previous =
+    .aria-label = الشهر الماضي
+date-spinner-month-next =
+    .aria-label = الشهر المقبل
+date-spinner-year-previous =
+    .aria-label = السنة الماضية
+date-spinner-year-next =
+    .aria-label = السنة المقبلة

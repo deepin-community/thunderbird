@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Διαχείριση πιστοποιητικών
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Αποτυχία δημιουργίας αντιγρ
 pkcs12-unknown-err = Η λειτουργία PKCS #12  απέτυχε για άγνωστους λόγους.
 pkcs12-info-no-smartcard-backup = Δεν είναι δυνατή η αντιγραφή πιστοποιητικών από συσκευές ασφαλείας hardware όπως οι "έξυπνες κάρτες"
 pkcs12-dup-data = Το πιστοποιητικό και το ιδιωτικό κλειδί υπάρχουν ήδη στη συσκευή ασφάλειας.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = Όνομα αρχείου για αντίγραφο ασφάλειας
 file-browse-pkcs12-spec = Αρχεία PKCS12
 choose-p12-restore-file-dialog = Αρχείο πιστοποιητικού προς εισαγωγή
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Αρχεία πιστοποιητικού
 import-ca-certs-prompt = Επιλογή αρχείου που περιέχει πιστοποιητικό CA για εισαγωγή
 import-email-cert-prompt = Επιλογή αρχείου που περιέχει πιστοποιητικό κάποιου για εισαγωγή
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = Το πιστοποιητικό "{ $certName }" αντιπροσωπεύει μια Αρχή Πιστοποίησης.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Διαγραφή των πιστοποιητικών σας
 delete-user-cert-confirm = Θέλετε σίγουρα να διαγράψετε αυτά τα πιστοποιητικά;
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Διαγραφή πιστοποιητικών email
 delete-email-cert-confirm = Θέλετε σίγουρα να διαγράψετε τα πιστοποιητικά email αυτών των ατόμων;
 delete-email-cert-impact = Εάν διαγράψετε το πιστοποιητικό email ενός ατόμου, δεν θα μπορείτε πλέον να του στέλνετε κρυπτογραφημένα email.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Πιστοποιητικό με σειριακό αριθμό: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Χωρίς αποστολή πιστοποιητικού πελάτη
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (Μη αποθηκευμένο)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (Μη διαθέσιμο)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Μόνιμο
 temporary-override = Προσωρινό
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = Πρόκειται να παρακάμψετε τον τρόπο με τον οποίο το { -brand-short-name } αναγνωρίζει τη σελίδα.
 add-exception-invalid-header = Αυτή σελίδα προσπαθεί να πιστοποιήσει τον εαυτό της με μη έγκυρες πληροφορίες.
 add-exception-domain-mismatch-short = Εσφαλμένος ιστότοπος
@@ -170,9 +139,6 @@ add-exception-checking-short = Έλεγχος πληροφοριών
 add-exception-checking-long = Γίνεται προσπάθεια πιστοποίησης της σελίδας…
 add-exception-no-cert-short = Δεν υπάρχουν διαθέσιμες πληροφορίες
 add-exception-no-cert-long = Αδυναμία λήψης κατάστασης ταυτότητας για αυτή τη σελίδα.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Αποθήκευση πιστοποιητικού στο αρχείο
 cert-format-base64 = Πιστοποιητικό X.509 (PEM)
 cert-format-base64-chain = Πιστοποιητικό X.509 με chain (PKCS#7)

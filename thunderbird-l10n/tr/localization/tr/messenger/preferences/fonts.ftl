@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Yazı tipleri
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Varsayılan ({ $name })
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = Orantılı:
     .accesskey = O
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latince
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = Seylanca
 font-language-group-tibetan =
     .label = Tibet Dili
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = z
 min-size-none =
     .label = Hiçbiri
-
-## Fonts in message
-
 font-control-legend = Yazı tipi denetimi
 use-document-fonts-checkbox =
     .label = İletilerin diğer yazı tiplerini kullanmasına izin ver
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Düz metin iletilerde sabit genişlikli yazı tipi kullan
     .accesskey = l
-
-## Language settings
-
 text-encoding-legend = Metin Kodlaması
 text-encoding-description = E-posta alma ve gönderme için varsayılan metin kodlamasını ayarla
 font-outgoing-email-label =

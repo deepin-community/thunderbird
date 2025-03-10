@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (njepostajeny)
 failed-pp-change = Njeje móžno, hłowne hesło změnić.
@@ -21,7 +17,6 @@ set-password-new-password = Nowe hesło zapisać:
 set-password-reenter-password = Hesło wospjetować:
 set-password-meter = Měridło kajkosće hesła
 set-password-meter-loading = Začituje so
-primary-password-admin = Waš administrator sej žada, zo hłowne hesło nastajeće, zo byšće přizjewjenja a hesła składował.
 primary-password-required-by-policy = Waša organizacija sej žada, zo hłowne hesło nastajeće, zo byšće přizjewjenja a hesła składował.
 primary-password-description = Hłowne hesło so wužiwa, zo bychu so někotre diskretne informacije kaž přizjewjenja a hesła na tutym graće škitali. Jeli hłowne hesło wutworiće, budźe so was jónkróc na posedźenje za nim prašeć, hdyž { -brand-short-name } składowane informacije škitane z tutym hesłom wotwołuje.
 primary-password-warning = Prošu zawěsćće, zo sej hłowne hesło, kotrež scé stajił, spomjatkujeće. Jeli swoje hłowne hesło zabudźeće, njemóžeće na z nim škitane informacije na tutym graće přistup měć.

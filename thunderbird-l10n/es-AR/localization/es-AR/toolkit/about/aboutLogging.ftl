@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Acerca del registro
 about-logging-page-title = Administrador de registro
 about-logging-current-log-file = Archivo de registro actual:
 about-logging-new-log-file = Nuevo archivo de registro:
 about-logging-currently-enabled-log-modules = Módulos de registro habilitados actualmente:
 about-logging-log-tutorial = Vea <a data-l10n-name="logging">HTTP Logging</a> para más instrucciones sobre como usar esta herramienta.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Abrir el directorio
 about-logging-set-log-file = Establecer archivo de registro
 about-logging-set-log-modules = Establecer módulos de registro
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Ninguno
 about-logging-no-log-file = Ninguno
 about-logging-logging-preset-selector-text = Registro preestablecido:
 about-logging-with-profiler-stacks-checkbox = Habilitar seguimientos de pila para mensajes de registro
-
-## Logging presets
-
 about-logging-preset-networking-label = Red
 about-logging-preset-networking-description = Módulos de registro para diagnosticar problemas de red
 about-logging-preset-networking-cookie-label = Cookies
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Registrar módulos para diagnosticar problemas de WebGPU
 about-logging-preset-gfx-label = Gráficos
 about-logging-preset-gfx-description = Registrar módulos para diagnosticar problemas gráficos
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Módulos de registro para diagnosticar problemas específicos de Microsoft Windows
 about-logging-preset-custom-label = Personalizado
 about-logging-preset-custom-description = Módulos de registro seleccionados manualmente
-# Error handling
 about-logging-error = Error:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Valor inválido “{ $v }“ para la clave “{ $k }“
 about-logging-unknown-logging-preset = Valor preestablecido de inicio de sesión desconocido “{ $v }“
 about-logging-unknown-profiler-preset = Perfilador predeterminado desconocido “{ $v }“

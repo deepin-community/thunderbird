@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Nie je možné bezpečne sa pripojiť, pretože protokol SSL je zakázaný.
 psmerr-ssl2-disabled = Nie je možné bezpečne sa pripojiť, pretože server používa staršiu a nie veľmi bezpečnú verziu protokolu SSL.
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Prijali ste neplatný certifikát. Obráťte sa na správcu servera alebo odosielateľa e‑mailovej správy a poskytnite im tieto informácie:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = Server predložil certifikát, kto
 mozilla-pkix-error-empty-issuer-name = Server poskytol certifikát s prázdnym názvom vydavateľa.
 mozilla-pkix-error-additional-policy-constraint-failed = Pri overovaní tohto certifikátu nebolo splnené dodatočné obmedzujúce pravidlo.
 mozilla-pkix-error-self-signed-cert = Certifikát nie je dôveryhodný, pretože je podpísaný vlastným podpisom.
+mozilla-pkix-error-issuer-no-longer-trusted = Certifikačná autorita, ktorá vydala certifikát, bola pred vydaním certifikátu nedôveryhodná.
 xp-java-remove-principal-error = Nie je možné odstrániť predstaviteľa
 xp-java-delete-privilege-error = Nie je možné odstrániť právo
 xp-java-cert-not-exists-error = Tento predstaviteľ nemá certifikát

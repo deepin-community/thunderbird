@@ -1,15 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# This is the title of the page
 about-logging-title = Um atvikaskráningu
 about-logging-page-title = Umsýsla atvikaskráningar
 about-logging-current-log-file = Núverandi skráningarskrá:
 about-logging-new-log-file = Ný atvikaskrá:
 about-logging-currently-enabled-log-modules = Núna virkar skráningareiningar:
 about-logging-log-tutorial = Kíktu á<a data-l10n-name="logging">HTTP Logging</a> fyrir upplýsngar um hvernig á að nota þetta verkfæri.
-# This message is used as a button label, "Open" indicates an action.
 about-logging-open-log-file-dir = Opna möppu
 about-logging-set-log-file = Setja skráningarskrá
 about-logging-set-log-modules = Setja skráningareiningar
@@ -27,9 +21,6 @@ about-logging-no-log-modules = Ekkert
 about-logging-no-log-file = Ekkert
 about-logging-logging-preset-selector-text = Forstilling atvikaskráningar:
 about-logging-with-profiler-stacks-checkbox = Virkja staflarakningu fyrir skilaboð í atvikaskráningu
-
-## Logging presets
-
 about-logging-preset-networking-label = Netvinnsla
 about-logging-preset-networking-description = Atvikaskráningareiningar til að greina vandamál í netkerfi
 about-logging-preset-networking-cookie-label = Vefkökur
@@ -48,18 +39,11 @@ about-logging-preset-webgpu-label = WebGPU
 about-logging-preset-webgpu-description = Atvikaskráningareiningar til að greina vandamál með WebGPU
 about-logging-preset-gfx-label = Myndefni
 about-logging-preset-gfx-description = Atvikaskráningareiningar til að greina vandamál með skjá/myndgerð
-# This is specifically "Microsoft Windows". Microsoft normally doesn't localize it, and we should follow their convention here.
 about-logging-preset-windows-label = Windows
 about-logging-preset-windows-description = Atvikaskráningareiningar til að greina sértæk vandamál varðandi Microsoft Windows
 about-logging-preset-custom-label = Sérsniðið
 about-logging-preset-custom-description = Handvirkt valdar atvikaskráningareiningar
-# Error handling
 about-logging-error = Villa:
-
-## Variables:
-##   $k (String) - Variable name
-##   $v (String) - Variable value
-
 about-logging-invalid-output = Ógilt gildi „{ $v }“ fyrir lykil „{ $k }“
 about-logging-unknown-logging-preset = Óþekkt skráningarforstilling „{ $v }“
 about-logging-unknown-profiler-preset = Óþekkt forstilling afkastavaktar „{ $v }“

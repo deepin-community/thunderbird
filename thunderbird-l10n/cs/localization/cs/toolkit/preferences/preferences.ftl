@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (není nastaveno)
 failed-pp-change = Nelze změnit hlavní heslo.
@@ -29,7 +25,6 @@ set-password-new-password = Zadejte nové heslo:
 set-password-reenter-password = Zopakujte heslo:
 set-password-meter = Kvalita hesla
 set-password-meter-loading = Načítání
-primary-password-admin = Správce vašeho systému vyžaduje před ukládání hesel nastavení hlavního hesla.
 primary-password-required-by-policy = Vaše organizace vyžaduje, abyste měli nastavené primární heslo, abyste mohli ukládat přihlašovací jména a hesla.
 primary-password-description = Hlavní heslo slouží k ochraně citlivých údajů, jako jsou třeba hesla k webovým účtům. Pokud si vytvoříte hlavní heslo, budete na něj dotázáni jednou během každé relace, pokud bude { -brand-short-name } potřebovat pracovat s uloženými údaji chráněnými tímto heslem.
 primary-password-warning = Ujistěte se, že si toto hlavní heslo opravdu pamatujete. Bez jeho znalosti nebudete moci přistupovat k uloženým údajům chráněným tímto heslem.

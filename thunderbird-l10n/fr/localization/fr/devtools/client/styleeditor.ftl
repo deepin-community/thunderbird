@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Créer et ajouter une nouvelle feuille de style au document
     .accesskey = N
@@ -21,8 +17,6 @@ styleeditor-save-button = Enregistrer
 styleeditor-options-button =
     .tooltiptext = Options de l’éditeur de style
 styleeditor-at-rules = Règles @
-styleeditor-editor-textbox =
-    .data-placeholder = Saisissez du CSS ici.
 styleeditor-no-stylesheet = Cette page n’a aucune feuille de style.
 styleeditor-no-stylesheet-tip = Peut-être désirez-vous <a data-l10n-name="append-new-stylesheet">ajouter une nouvelle feuille de style</a> ?
 styleeditor-open-link-new-tab =
@@ -38,19 +32,13 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Aller à la ligne…
     .accesskey = r
-# Label displayed when searching a term that is not found in any stylesheet path
 styleeditor-stylesheet-all-filtered = Aucune feuille de style trouvée.
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } règle.
        *[other] { $ruleCount } règles.
     }
-# Title for the pretty print button in the editor footer.
 styleeditor-pretty-print-button =
     .title = Formater la feuille de style
-# Title for the pretty print button in the editor footer, when it's disabled
 styleeditor-pretty-print-button-disabled =
     .title = Formatage des fichiers CSS uniquement

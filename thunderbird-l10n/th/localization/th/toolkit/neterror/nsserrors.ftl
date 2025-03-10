@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = ไม่สามารถเชื่อมต่ออย่างปลอดภัยเนื่องจากโพรโทคอล SSL ถูกปิดใช้งาน
 psmerr-ssl2-disabled = ไม่สามารถเชื่อมต่ออย่างปลอดภัยเนื่องจากไซต์ใช้โพรโทคอล SSL รุ่นเก่าที่ไม่ปลอดภัย
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     คุณได้รับใบรับรองที่ไม่ถูกต้อง โปรดติดต่อผู้ดูแลเซิร์ฟเวอร์หรือส่งอีเมลหาผู้ที่เกี่ยวข้องโดบแนบข้อมูลดังกล่าวไปด้วย:
     
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = เซิร์ฟเวอร์�
 mozilla-pkix-error-empty-issuer-name = เซิร์ฟเวอร์เสนอใบรับรองที่มีชื่อต่างหากของผู้ออกที่ว่างเปล่า
 mozilla-pkix-error-additional-policy-constraint-failed = ข้อจำกัดนโยบายเพิ่มเติมล้มเหลวเมื่อตรวจสอบความถูกต้องของใบรับรองนี้
 mozilla-pkix-error-self-signed-cert = ใบรับรองของไม่น่าเชื่อถือเพราะเป็นการออกใบรับรองโดยเจ้าของเว็บไซต์เอง
+mozilla-pkix-error-issuer-no-longer-trusted = ผู้ออกใบรับรองที่ออกใบรับรองนี้ถูกไม่เชื่อถือก่อนที่จะมีการออกใบรับรองนี้มาให้
 xp-java-remove-principal-error = ไม่สามารถเอา principal ออกได้
 xp-java-delete-privilege-error = ไม่สามารถลบ privilege ได้
 xp-java-cert-not-exists-error = Principle นี้ไม่มีใบรับรอง

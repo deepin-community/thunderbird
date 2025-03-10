@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = 关于您的权利
 rights-intro = { -brand-full-name } 是一款自由开源软件，由来自世界各地成千上万的社区志愿者共同完成。以下几点您应该了解：
 rights-intro-point-1 = { -brand-short-name } 提供给您时依照的条款为 <a data-l10n-name="mozilla-public-license-link">Mozilla 公共许可证（MPL）</a>。这表示您可以使用、复制和向他人分发 { -brand-short-name }。我们也非常欢迎您按自己的需要修改 { -brand-short-name } 的源代码。Mozilla 公共许可证还授予您分发您自己修改过的软件版本的权利。

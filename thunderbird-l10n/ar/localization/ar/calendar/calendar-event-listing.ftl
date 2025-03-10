@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = أغلق قائمة الأحداث وكذلك مربع البحث
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = اسم التقويم
     .tooltiptext = رتّب باسم التقويم
 calendar-event-listing-column-category =
     .label = الفئة
     .tooltiptext = رتّب بالفئة
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = تم
     .tooltiptext = رتّب بالإتمام
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = العنوان
     .tooltiptext = رتّب بالعنوان
-
-## Interval dropdown options
-
 calendar-event-listing-interval-calendar-month =
     .label = أحداث هذا الشهر
 calendar-event-listing-interval-current-view =

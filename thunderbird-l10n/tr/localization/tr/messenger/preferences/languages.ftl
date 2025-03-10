@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Yukarı taşı
     .accesskey = Y
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Ekle
     .accesskey = E
-messenger-languages-window2 =
-    .title = { -brand-short-name } dil ayarları
 messenger-languages-dialog-title = { -brand-short-name } dil ayarları
 messenger-languages-description = { -brand-short-name } ilk dili varsayılan olarak kullanacak, gerekirse alternatif dilleri göründükleri sırayla kullanacaktır.
 messenger-languages-search = Daha fazla dil ara…

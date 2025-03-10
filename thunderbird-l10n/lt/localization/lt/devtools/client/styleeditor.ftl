@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 styleeditor-new-button =
     .tooltiptext = Sukurti ir pridėti į dokumentą naują stilių aprašą
     .accesskey = N
@@ -16,8 +12,6 @@ styleeditor-save-button = Įrašyti
     .accesskey = r
 styleeditor-options-button =
     .tooltiptext = Stilių rengyklės nuostatos
-styleeditor-editor-textbox =
-    .data-placeholder = Čia rašykite CSS taisykles.
 styleeditor-no-stylesheet = Šis tinklalapis nenaudoja stilių aprašų.
 styleeditor-no-stylesheet-tip = Galbūt norite <a data-l10n-name="append-new-stylesheet">pridėti naują stilių aprašą</a>?
 styleeditor-open-link-new-tab =
@@ -33,10 +27,6 @@ styleeditor-find-again =
 styleeditor-go-to-line =
     .label = Eiti į eilutę…
     .accesskey = E
-
-# This string is shown in the style sheets list
-# Variables:
-#   $ruleCount (Integer) - The number of rules in the stylesheet.
 styleeditor-stylesheet-rule-count =
     { $ruleCount ->
         [one] { $ruleCount } taisyklė.

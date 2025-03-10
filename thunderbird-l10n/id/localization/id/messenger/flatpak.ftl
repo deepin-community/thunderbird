@@ -1,3 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+flatpak-desktop-name = { -brand-short-name }
+flatpak-desktop-comment = Kirim dan terima surel dengan { -brand-product-name }
+flatpak-desktop-generic-name = Klien Surel
+flatpak-desktop-action-compose = Tulis Pesan Baru
+flatpak-desktop-action-addressbook = Buka Buku Alamat
+flatpak-desktop-action-calendar = Buka Kalender
+flatpak-desktop-action-keymanager = Buka Manajer Kunci OpenPGP

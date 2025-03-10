@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Información del clasificador d'URLs
 url-classifier-search-title = Busca
 url-classifier-search-result-title = Resultaos
@@ -21,11 +17,6 @@ url-classifier-cache-refresh-btn = Refrescar
 url-classifier-cache-clear-btn = Llimpiar
 url-classifier-cache-prefix = Prefixu
 url-classifier-debug-title = Depuración
-
 url-classifier-trigger-update = Aicionar l'anovamientu
 url-classifier-not-available = N/D
 url-classifier-cannot-update = nun pue anovase
-
-## Variables
-##   $error (string) - Error message
-

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Lat att
 preferences-doc-title2 = Innstillingar
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Synkronisering
 category-sync =
     .tooltiptext = Synkronisering
+pane-qr-export-title = Eksporter til mobil
+category-qr-export =
+    .tooltiptext = Eksporter til mobil
 general-language-and-appearance-header = Språk og utsjånad
 general-incoming-mail-header = Innkomande e-postar
 general-files-and-attachment-header = Filer og vedlegg
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Tillat { -brand-short-name } å sende tekniske data og data for bruk til { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = Les meir
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Datarapportering er slått av for denne byggekonfigurasjonen
 collection-backlogged-crash-reports =
     .label = Tillat { -brand-short-name } å sende etterslepne krasjrapportar på dine vegne
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Start om { -brand-short-name } for å bruka disse endringane
 confirm-messenger-language-change-button = Bruk og start om
 update-setting-write-failure-title = Klarte ikkje å lagre oppdateringsinnstillingar
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } oppdaga ein feil og lagra ikkje denne endringa. Merk, for å kunne lagre endringa av denne oppdateringsinnstillinga, vert det krevd løyve til å skrive til fila nedanfor. Du eller ein systemadministrator kan kanskje løyse feilen ved å gje gruppa Brukarar full tilgang til denne fila.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Oppdatering i framdrift
 update-in-progress-message = Vil du at { -brand-short-name } skal fortsetje med denne oppdateringa?
 update-in-progress-ok-button = &Avvis
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Fortset
 account-button = Kontoinnstillingar
 open-addons-sidebar-button = Tillegg og tema
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Skriv inn innloggingsinformasjonen din for Windows for å lage eit hovydpassord. Dette vil gjere kontoane dine tryggare.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = lag eit hovudpassord
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Legg til OpenSearch-tilbydar
 add-opensearch-provider-text = Skriv inn adressa til OpenSearch-tilbydaren du vil leggje til. Bruk anten den direkte adressa til OpenSearch-skildringsfila, eller ei adresse der ho kan oppdagast automatisk.
 adding-opensearch-provider-failed-title = Klarte ikkje leggje til OpenSearch-tilbydar
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Klarte ikke leggje til OpenSearch-tilbydar for { $url }.
 minimize-to-tray-label =
     .label = Når { -brand-short-name } er minimert, flytt han til systemstatusfeltet
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Sjekk no …
     .accesskey = n
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Kvitteringar …
     .accesskey = K
 update-app-legend = { -brand-short-name }-oppdateringar
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versjon { $version }
 allow-description = Tillat { -brand-short-name } å
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = k
 compact-folder-size =
     .value = MB totalt
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Bruk opptil
     .accesskey = B
 use-cache-after = MB diskplass for snøgglageret
-
-##
-
 smart-cache-label =
     .label = Sett til side automatisk cachehandsaming
     .accesskey = s
@@ -304,7 +269,6 @@ color-options-button =
     .label = Fargar…
     .accesskey = F
 display-width-legend = Meldingar i normal tekst
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Vis smilefjes som bilde
     .accesskey = V
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Vis vedlegg som ein del av meldinga
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Etter dei er viste i
     .accesskey = E
 seconds-label = sekund
-
-##
-
 open-msg-label =
     .value = Opne meldingar i:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Lat att meldingsvindauge/fane ved flytting eller sletting
     .accesskey = L
-display-name-label =
-    .value = Visingsnamn:
 address-display-legend = Meldingsliste
 address-display-description = Føretrekt visingsformat for adresse:
 address-display-full =
@@ -413,9 +368,16 @@ address-display-name =
 condensed-addresses-label =
     .label = Vis berre visings-namnet for personar i adresseboka
     .accesskey = V
-
-## Compose Tab
-
+table-layout-legend = Tabellvising
+table-layout-horizontal-scroll-label =
+    .label = Tillat horisontal rulling
+    .accesskey = T
+conversation-view-legend = Samtalevising
+conversation-view-checkbox-label =
+    .label = Aktiver samtalevising
+    .accesskey = k
+conversation-view-checkbox-description = Eksperimentell funksjon basert på Gloda, bruk han på eige ansvar
+label-experiment = Eksperimentell
 forward-label =
     .value = Vidaresend meldingar:
     .accesskey = V
@@ -426,17 +388,10 @@ as-attachment-label =
 extension-label =
     .label = legg til filtype i filnamnet
     .accesskey = l
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Lagre meldingar automatisk kvart
     .accesskey = L
 auto-save-end = minutt
-
-##
-
 warn-on-send-accel-key =
     .label = Stadfest når tastatursnarveg vert brukt for å sende meldingar
     .accesskey = f
@@ -527,9 +482,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Finn fleire leverandørar…
 cloud-account-description = Legg til ei Filelink-lagringsteneste
-
-## Privacy Tab
-
 mail-content = E-postinnhald
 remote-content-label =
     .label = Tillat eksternt innhald i meldingar
@@ -558,11 +510,6 @@ third-party-visited =
 cookies-button =
     .label = Vis infokapslar…
     .accesskey = V
-do-not-track-label =
-    .label = Send nettsider eit «Ikkje spor»-signal om at du ikkje vil bli spora
-    .accesskey = n
-dnt-learn-more-button =
-    .value = Les meir
 passwords-description = { -brand-short-name } kan hugse passordinformasjon for alle kontoane dine, slik at du ikkje treng å skriva inn innloggingsdetaljane fleire gonger.
 passwords-button =
     .label = Lagra passord…
@@ -571,7 +518,6 @@ primary-password-description = Du kan bruke eit hovudpassord for å beskytte all
 primary-password-label =
     .label = Bruk eit hovudpassord
     .accesskey = B
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Krev einingsinnlogging for å fylle ut og behandle passord
 primary-password-button =
@@ -580,9 +526,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Du er for tida i FIPS-modus. FIPS krev at du brukar eit hovudpassord.
 forms-master-pw-fips-desc = Mislykka passordendring
 junk-description = Vel standard-innstilling for uønskt e-post. Konto-spesifikke innstillingar for uønskt e-post kan stillast inn i Konto-innstillingar.
-junk-label =
-    .label = Når eg merkar meldingar som uønskte:
-    .accesskey = N
 junk-marked-label =
     .label = Når meldingar er markerte som uønskte
     .accesskey = N
@@ -592,9 +535,6 @@ junk-move-label =
 junk-delete-label =
     .label = Slett dei
     .accesskey = t
-junk-read-label =
-    .label = Merk uønskte søppelmeldingar som lesne
-    .accesskey = M
 junk-read-description = Merk meldingar som lesne
 junk-read-manual-label =
     .label = Når meldingane manuelt er markerte som uønskt
@@ -651,9 +591,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Automatiske avgjerder kan tilsidesettast ved å manuelt aktivere eller deaktivere kryptering når du skriv ei melding.
     Merk: kryptering vert alltid automatisk aktivert når du svarar på ei kryptert melding.
-
-## Chat Tab
-
 startup-label =
     .value = Når { -brand-short-name } startar:
     .accesskey = s
@@ -661,20 +598,10 @@ offline-label =
     .label = Behald nettprat-kontoane fråkopla
 auto-connect-label =
     .label = Kopla til nettprat-kontoane automatisk
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = La kontaktane mine vita at eg er inaktiv etter
     .accesskey = i
 idle-time-label = minutt med inaktivitet
-
-##
-
 away-message-label =
     .label = og set status til borte med denne statusmeldinga:
     .accesskey = a
@@ -736,41 +663,21 @@ no-preview-description = Dette temaet er ikkje gyldig eller er for tida utilgjen
 chat-variant-label =
     .value = Variant:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Finn i innstillingane
-
-## Settings UI Search Results
-
 search-results-header = Søkjeresultat
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Beklagar! Det er ingen resultat i innstillingane for «<span data-l10n-name="query"></span>».
        *[other] Beklagar! Det er ingen resultat i innstillingane for «<span data-l10n-name="query"></span>».
     }
 search-results-help-link = Treng du hjelp? Gå til <a data-l10n-name="url">{ -brand-short-name } brukarstøtte</a>
-
-## Sync Tab
-
 sync-signedout-caption = Ta med deg nettet
 sync-signedout-description = Synkroniser kontoane dine, adressebøker, kalendrar, tillegg og innstillingar på alle einingane dine.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Logg inn for å synkronisere…
 sync-pane-header = Synkronisering
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = { $userEmail } er ikkje stadfesta.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Logg inn for å kople til på nytt «{ $userEmail }»
 sync-pane-resend-verification = Send stadfesting på nytt
 sync-pane-sign-in = Logg inn
@@ -800,3 +707,47 @@ synced-acount-item-filters = Filter
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Synkroniser e-postkontoane dine, adressebøker, kalendrar, og identitetar på alle einingane dine.
 sync-disconnected-turn-on-sync = Slå på synkronisering…
+qr-export-pane-header = Eksporter kontoar til { -brand-product-name } mobil
+qr-export-description = Overfør kontoinnstillingane dine raskt frå datamaskin til mobil ved å generere ein QR-kode. Vel kva kontoar som skal inkluderast, avgjer om du vil overføre passordet ditt, og skann koden med mobileininga di. Rask, sikkert og enkelt.
+qr-export-get-app = Har du ikkje { -brand-product-name } på mobilen din enno? <a data-l10n-name="app-link">Last han ned frå Google Play</a>
+qr-export-create = Lag ein QR-kode for å eksportere kontoane dine
+qr-export-select-accounts = Vel kva for konto du vil eksportere:
+qr-export-accounts-legend = E-postkontoar
+qr-export-select-all-accounts = Marker alle
+qr-export-security-legend = Sikkerheit
+qr-export-include-passwords = Inkluder alle kontopassord
+qr-export-security-hint = Ved å skanne følgjande QR-kodar vil kontoinnstillingane dine – inkludert e-post og passord – blir overført sikkert. Vi samlar ikkje inn, lagrar eller deler nokon av desse dataa under prosessen. Overføringa skjer direkte mellom einingane dine.
+qr-export-security-warning = For eiga sikkerheit, sørg for at du er i ein privat setting og berre skann QR-kodar frå pålitelege kjelder.
+qr-export-start-export = Eksporter
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } av { $count } QR-kode
+       *[other] { $step } av { $count } QR-kodar
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skann QR-koden med { -brand-product-name } på mobileininga di
+       *[other] Skann QR-kodar med { -brand-product-name } på mobileininga di
+    }
+qr-export-scan-step1 = Opne { -brand-product-name } på mobileininga di
+qr-export-scan-step2 = Gå til Innstillingar
+qr-export-scan-step3 = Vel <strong>Importer innstillingar</strong>
+qr-export-scan-step4-revision = Trykk på <strong>Skann QR-kode</strong> og hald telefonen over denne koden
+qr-export-back = Tilbake
+qr-export-next = Neste
+qr-export-done = Ferdig
+qr-export-summary-description = Kontoar er eksporterte. Hald fram på mobileininga di.
+qr-export-summary-title = Eksportsamandrag:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-kode generert
+       *[other] { $count } QR-kodar genererte
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } konto eksportert:
+       *[other] { $count } kontoar eksporterte:
+    }
+qr-export-summary-passwords-included = Passord inkludert
+qr-export-summary-passwords-excluded = Passord eksludert
+qr-export-more-accounts = Eksporter fleire kontoar

@@ -1,8 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = { $identity } için Kişisel OpenPGP Anahtarı Ekle
 key-wizard-dialog =
@@ -19,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = GnuPG aracılığıyla harici anahtarımı kullan (örn. bir akıllı karttan)
     .accesskey = k
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP Anahtarı Oluştur
 openpgp-keygen-secret-protection = Gizli anahtar koruması
 radio-keygen-no-protection =
@@ -79,20 +71,14 @@ openpgp-keygen-short-expiry = Anahtarınız en az bir gün geçerli olmalıdır.
 openpgp-keygen-ongoing = Anahtar üretimi devam ediyor!
 openpgp-keygen-error-core = OpenPGP Temel Hizmeti başlatılamadı
 openpgp-keygen-error-failed = OpenPGP anahtar üretimi beklenmedik bir şekilde başarısız oldu
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP anahtarı başarıyla oluşturuldu ama { $key } anahtarının iptali sağlanamadı
 openpgp-keygen-abort-title = Anahtar üretimi iptal edilsin mi?
 openpgp-keygen-abort = OpenPGP anahtar üretimi şu anda devam ediyor. İptal etmek istediğinizden emin misiniz?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = { $identity } için ortak ve gizli anahtar oluşturulsun mu?
-
-## Import Key section
-
 openpgp-import-key-title = Mevcut bir kişisel OpenPGP anahtarını içe aktar
 openpgp-import-key-legend = Önceden yedeklenmiş bir dosya seçin.
 openpgp-import-key-description = Diğer OpenPGP yazılımlarıyla oluşturulan kişisel anahtarları içe aktarabilirsiniz.
 openpgp-import-key-info = Başka yazılımlarda "kişisel anahtar" yerine "kendi anahtarınız", "gizli anahtar", "özel anahtar", "anahtar çifti" gibi terimler de kullanılabilir.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } içe aktarılabilecek 1 anahtar buldu.
@@ -111,9 +97,7 @@ import-key-personal-checkbox =
     .label = Bu anahtarı kişisel anahtarım olarak kullan
 gnupg-file = GnuPG dosyaları
 import-error-file-size = <b>Hata!</b> 5 MB’den büyük dosyalar desteklenmez.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Hata! </b> Dosya içe aktarılamadı. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Hata!</b> Anahtarlar içe aktarılamadı. { $error }
 openpgp-import-identity-label = Kimlik
 openpgp-import-fingerprint-label = Parmak izi
@@ -122,9 +106,6 @@ openpgp-import-bits-label = Bit
 openpgp-import-key-props =
     .label = Anahtar özellikleri
     .accesskey = A
-
-## External Key section
-
 openpgp-external-key-title = Harici GnuPG anahtarı
 openpgp-external-key-description = Anahtar kimliğini girerek harici bir GnuPG anahtarını yapılandır
 openpgp-external-key-info = Buna ek olarak, Anahtar Yöneticisi üzerinden ilgili ortak anahtarı da içe aktarıp kabul etmelisiniz.

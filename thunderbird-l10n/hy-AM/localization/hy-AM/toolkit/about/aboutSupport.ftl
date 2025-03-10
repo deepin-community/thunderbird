@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Անսարքության տեղեկատվությունը
 page-subtitle = Այս էջը պարունակում է տեխնիկական ինֆորմացիա, որը կարող է օգտակար լինել, երբ դուք փորձում եք լուծել խնդիրը:Եթե դուք փնտրում եք { -brand-short-name }-ին վերաբերող ընդհանուր հարցերին պատասխաններ,փորձեք մեր <a data-l10n-name="support-link"> աջակցող կայքը </a>:
 crashes-title = Վթարի զեկույցներ
@@ -34,8 +30,6 @@ app-basics-version = Տարբերակ
 app-basics-build-id = Կառուցման ID
 app-basics-distribution-id = Բաշխման ID
 app-basics-update-channel = Թարմացումների աղբյուր
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Թարմացրեք գրացուցակը
@@ -43,14 +37,12 @@ app-basics-update-dir =
     }
 app-basics-update-history = Թարմացումների մատյան
 app-basics-show-update-history = Ցուցադրել Թարմացումների Պատմությունը
-# Represents the path to the binary used to start the application.
 app-basics-binary = Տեղեկություն հավելվածի մասին
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Պրոֆիլի պահոց
        *[other] Պրոֆիլի թղթապանակը
     }
-app-basics-enabled-plugins = Միացված բաղադրիչներ
 app-basics-build-config = Հավաքման ձևաչափ
 app-basics-user-agent = Օգտետերի Դիտարկիչը
 app-basics-os = OS
@@ -92,9 +84,7 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Որոշման մատյան
 graphics-crash-guards-title = Վթարի պաշտպանի անջատած յուրահատկություններ
 graphics-workarounds-title = Շրջանցիկներ
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Պատուհանի հաղորդակարգ
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Աշխատասեղանի միջավայր
 place-database-title = Տվյալների շտեմարան
 place-database-integrity = Շտեմարաններ
@@ -120,9 +110,6 @@ restart-in-troubleshoot-mode-label = Խափանաշտկման կերպ…
 clear-startup-cache-title = Փորձեք մաքրել ինքնամեկնարկի շտեմը
 clear-startup-cache-label = Մաքրել ինքնամեկնարկի շտեմը…
 restart-button-label = Վերամեկնարկել
-
-## Media titles
-
 audio-backend = Ձայնային հետընթաց
 max-audio-channels = Առավելագույն կապուղիներ
 sample-rate = Նախընտրելի նմուշի փոխարժեք
@@ -140,19 +127,7 @@ media-device-channels = Ալիքներ
 media-device-rate = ԳՆահատական
 media-device-latency = Սպասում
 media-capabilities-title = Մեդիա հնարավորություններ
-# List all the entries of the database.
 media-capabilities-enumerate = Վերցրեք գրառումները տվյալների բազայից
-
-## Codec support table
-
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
-
-##
-
 intl-title = Միջազգայնացում և տեղայնացում
 intl-app-title = ՀԱվելվածի կարգավորումներ
 intl-locales-requested = Հարցված լեզուներ
@@ -162,52 +137,29 @@ intl-locales-default = Սկզբնադիր լեզու
 intl-os-title = Օպերացիոն համակարգ
 intl-os-prefs-system-locales = Համակարգային լեզուներ
 intl-regional-prefs = Տաածաշրջանային նախապատվություններ
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Հեռակա վրիպազերծման (Chromium հաղորդակարգ)
 remote-debugging-accepting-connections = Ընդունում է միացումները
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Վթարի զեկույցները վերջին { $days } օրում
        *[other] Վթարի զեկույցները վերջին { $days } օրում
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } րոպե առաջ
        *[other] { $minutes } րոպե առաջ
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } ժամ առաջ
        *[other] { $hours } ժամ առաջ
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } օր առաջ
        *[other] { $days } օր առաջ
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Վթարի բոլոր զեկույցները (ներառյալ նշված ժամանակում { $reports } սպասող վթար)
@@ -215,18 +167,11 @@ pending-reports =
     }
 raw-data-copied = Չմշակված տվյալները պատճենվել են մեկուսաշրջույթ
 text-copied = Տեքստը պատճենուած է
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Արգելված է տեսասարքի սարքավարի տարբերակի կողմից։
 blocked-gfx-card = Արգելված է տեսաքարտի կողմից՝ անհայտ պատճառով։
 blocked-os-version = Կասեցված է ձեր օպերացիոն համակարգի տարբերակի համար:
 blocked-mismatched-version = Արգելափակված է ձեր գրաֆիկայի սարքավարի տարբերակի՝ գրանցատեղիի և DLL-ի միջև բացի պատճառով:
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Արգելված է տեսասարքի սարքավարի տարբերակի կողմից։ Փորձեք թարմացնել տեսաքարտի տարբերակը { $driverVersion }-ի կամ ավելի նորի։
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType-ի ցուցիչները
 compositing = Կազմում
 hardware-h264 = Սարքաշարի H264 ապակոդավորում
@@ -235,11 +180,6 @@ yes = Այո
 no = Ոչ
 unknown = Անհայտ
 virtual-monitor-disp = Վիրտուալ ցուցասարքի ցուցադրում
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Գտնվել է
 missing = Բացակայում է
 gpu-process-pid = GPUProcessPid
@@ -264,8 +204,6 @@ webgl2-renderer = WebGL 2 սարքավարի նյութավորիչ
 webgl2-version = WebGL 2 սարքավարի տարբերակ
 webgl2-driver-extensions = WebGL 2 սարքավարի ընդլայնումներ
 webgl2-extensions = WebGL 2 ընդլայնումներ
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Սև ցուցակում, վթարի կոդը՝ { $failureCode }
 d3d11layers-crash-guard = D3D11 կազմարկիչ
 glcontext-crash-guard = OpenGL
@@ -302,9 +240,6 @@ launcher-process-status-0 = Միացված
 launcher-process-status-1 = Անջատված է ձախողման պատճառով
 launcher-process-status-2 = Ուժով անջատված
 launcher-process-status-unknown = Անհայտ իրավիճակ
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
 fission-status-enabled-by-default = Միացված՝ ըստ սկզբնադիրի
 fission-status-disabled-by-default = Անջատված՝ ըստ սկզբնադիրի
@@ -316,29 +251,10 @@ drag-enabled = գլորագոտու քաշելը միացված է
 keyboard-enabled = ստեղնաշարի միացված է
 autoscroll-enabled = ինքնապտտումը միացված է
 zooming-enabled = շարժումների սահուն չափափոխումը միացված է
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = async անիվի ներածումը անջատված է չաջակցվող նախ. պատճառով. { $preferenceKey }
 touch-warning = async հպմամբ ներածումը անջատված է չաջակցվող նախ. պատճառով. { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Անգործուն
 policies-active = Գործուն
 policies-error = Սխալ
-
-## Printing section
-
 support-printing-title = Տպում է
 support-printing-troubleshoot = Խափանաշտկում
-
-## Normandy sections
-
-
-## Pointing devices
-
-
-## Content Analysis (DLP)
-

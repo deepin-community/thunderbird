@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY messageStorage.label "Хабарламалар қоймасы">
 <!ENTITY securitySettings.label "Қауіпсіздік баптаулары">
 <!ENTITY serverSettings.label "Сервер баптаулары">
@@ -13,11 +9,6 @@
 <!ENTITY port.label "Порт:">
 <!ENTITY port.accesskey "П">
 <!ENTITY serverPortDefault.label "Бастапқы:">
-<!-- LOCALIZATION NOTE (biffStart.label) : translate below 2 line with grammar dependency
-        For example, in Japanese cases:
-                biffStart.label "every"
-                biffEnd.label   "minutes for new messages Check"
--->
 <!ENTITY biffStart.label "Жаңа хабарламаларға тексеру уақыт аралығы ">
 <!ENTITY biffStart.accesskey "а">
 <!ENTITY biffEnd.label "минут">
@@ -26,7 +17,6 @@
 <!ENTITY connectionSecurity.label "Байланыс қауіпсіздігі:">
 <!ENTITY connectionSecurity.accesskey "с">
 <!ENTITY connectionSecurityType-0.label "Ешнәрсе">
-<!ENTITY connectionSecurityType-1.label "STARTTLS, қолжетімді болса">
 <!ENTITY connectionSecurityType-2.label "STARTTLS">
 <!ENTITY connectionSecurityType-3.label "SSL/TLS">
 <!ENTITY authMethod.label "Аутентификация тәсілі:">
@@ -49,20 +39,14 @@
 <!ENTITY modelMarkDeleted.accesskey "г">
 <!ENTITY modelDeleteImmediately.label "Оны лезде өшіру">
 <!ENTITY modelDeleteImmediately.accesskey "д">
-<!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
 <!ENTITY expungeOnExit.label "Шыққанда Кіріс бумасын сығу">
 <!ENTITY expungeOnExit.accesskey "ы">
 <!ENTITY emptyTrashOnExit.label "Шыққанда, &quot;Қоқыс шелегі&quot; бумасын тазарту">
 <!ENTITY emptyTrashOnExit.accesskey "x">
 <!ENTITY loginAtStartup.label "Іске қосылғанда жаңа хабарламаларға тексеру">
 <!ENTITY loginAtStartup.accesskey "с">
-<!-- LOCALIZATION NOTE (maxMessagesStart.label) : translate below 2 lines with grammar dependency
-    maxMessengerStart.label will be followed by maxMessagesEnd.label with the number
-    of messages between them
--->
 <!ENTITY maxMessagesStart.label "Келесіден көп нәрсені жүктеп алу алдында мені сұрау">
 <!ENTITY maxMessagesStart.accesskey "м">
-<!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "хабарлама">
 <!ENTITY alwaysAuthenticate.label "Бұл серверге байланысу кезінде әрқашан да аутентификацияны сұрау">
 <!ENTITY alwaysAuthenticate.accesskey "ш">
@@ -80,7 +64,6 @@
 <!ENTITY browseFolder.accesskey "ш">
 <!ENTITY browseNewsrc.label "Қарап шығу…">
 <!ENTITY browseNewsrc.accesskey "ш">
-
 <!ENTITY accountTitle.label "Тіркелгі баптаулары">
 <!ENTITY accountSettingsDesc.label "Келесі арнайы тіркелгі болып табылады.  Онымен байланысқан жеке мәліметтер жоқ.">
 <!ENTITY storeType.label "Хабарламаларды сақтау түрі:">

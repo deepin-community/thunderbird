@@ -42,6 +42,7 @@ enum class NativeKeyBindingsType : uint8_t;
   BOOL mDisabledNeedsDisplay;
 
   NSTrackingArea* mTrackingArea;
+  NSView* mViewWithTrackingArea;
 
   NSRect mDirtyRect;
 
@@ -70,8 +71,9 @@ enum class NativeKeyBindingsType : uint8_t;
 - (void)mouseEntered:(NSEvent*)aEvent;
 - (void)mouseExited:(NSEvent*)aEvent;
 - (void)mouseMoved:(NSEvent*)aEvent;
-- (void)updateTrackingArea;
 - (NSView*)trackingAreaView;
+- (void)createTrackingArea;
+- (void)removeTrackingArea;
 
 - (void)setBeingShown:(BOOL)aValue;
 - (BOOL)isBeingShown;
@@ -184,18 +186,16 @@ enum class NativeKeyBindingsType : uint8_t;
 
 class nsCocoaWindow final : public nsBaseWidget {
  private:
+  friend class nsChildView;
   typedef nsBaseWidget Inherited;
 
  public:
   nsCocoaWindow();
 
-  [[nodiscard]] nsresult Create(nsIWidget* aParent,
-                                nsNativeWidget aNativeParent,
-                                const DesktopIntRect& aRect,
+  [[nodiscard]] nsresult Create(nsIWidget* aParent, const DesktopIntRect& aRect,
                                 InitData* = nullptr) override;
 
   [[nodiscard]] nsresult Create(nsIWidget* aParent,
-                                nsNativeWidget aNativeParent,
                                 const LayoutDeviceIntRect& aRect,
                                 InitData* = nullptr) override;
 
@@ -283,8 +283,7 @@ class nsCocoaWindow final : public nsBaseWidget {
   void SetSupportsNativeFullscreen(bool aShow) override;
   void SetWindowAnimationType(WindowAnimationType aType) override;
   void SetDrawsTitle(bool aDrawTitle) override;
-  nsresult SetNonClientMargins(const LayoutDeviceIntMargin&) override;
-  void SetDrawsInTitlebar(bool aState);
+  void SetCustomTitlebar(bool) override;
   void UpdateThemeGeometries(
       const nsTArray<ThemeGeometry>& aThemeGeometries) override;
   nsresult SynthesizeNativeMouseEvent(LayoutDeviceIntPoint aPoint,
@@ -367,7 +366,6 @@ class nsCocoaWindow final : public nsBaseWidget {
   void DestroyNativeWindow();
   void UpdateBounds();
   int32_t GetWorkspaceID();
-  void SendSetZLevelEvent();
 
   void DoResize(double aX, double aY, double aWidth, double aHeight,
                 bool aRepaint, bool aConstrainToCurrentScreen);
@@ -379,9 +377,12 @@ class nsCocoaWindow final : public nsBaseWidget {
     return nsIWidget::CreateTopLevelWindow();
   }
 
-  nsIWidget* mParent;        // if we're a popup, this is our parent [WEAK]
-  nsIWidget* mAncestorLink;  // link to traverse ancestors [WEAK]
-  BaseWindow* mWindow;       // our cocoa window [STRONG]
+  BaseWindow* mWindow;                // our cocoa window [STRONG]
+  BaseWindow* mClosedRetainedWindow;  // a second strong reference to our
+  // window upon closing it, held through our destructor. This is useful
+  // to ensure that macOS run loops which reference the window will still
+  // have something to point to even if they don't use proper retain and
+  // release patterns.
   WindowDelegate*
       mDelegate;  // our delegate for processing window msgs [STRONG]
   RefPtr<nsMenuBarX> mMenuBar;
@@ -407,6 +408,10 @@ class nsCocoaWindow final : public nsBaseWidget {
 
   mozilla::Maybe<TransitionType> mTransitionCurrent;
   std::queue<TransitionType> mTransitionsPending;
+
+  // A runnable we might assign to run ProcessTransitions at a later event loop.
+  // Cancelable so we can cancel it in CancelAllTransitions(), if needed.
+  RefPtr<mozilla::CancelableRunnable> mProcessTransitionsPending;
 
   // Sometimes we add a transition that wasn't requested by a caller. We do this
   // to manage transitions between states that otherwise would be rejected by

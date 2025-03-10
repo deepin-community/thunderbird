@@ -1,25 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = Sertifika
-
-## Error messages
-
 certificate-viewer-error-message = Sertifika bilgilerini bulamadık veya sertifika bozuk. Lütfen yeniden deneyin.
 certificate-viewer-error-title = Yanlış giden bir şeyler var.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = Algoritma
 certificate-viewer-certificate-authority = Sertifika makamı
 certificate-viewer-cipher-suite = Şifre paketi
 certificate-viewer-common-name = Yaygın ad
 certificate-viewer-email-address = E-posta adresi
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = { $firstCertName } Sertifikası
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-country = Kuruluş ülkesi
 certificate-viewer-country = Ülke
 certificate-viewer-curve = Eğri
@@ -32,7 +19,6 @@ certificate-viewer-id = Kimlik
 certificate-viewer-key-exchange-group = Anahtar değişim grubu
 certificate-viewer-key-id = Anahtar kimliği
 certificate-viewer-key-size = Anahtar boyutu
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-locality = Kuruluş yeri
 certificate-viewer-locality = Bölge
 certificate-viewer-location = Konum
@@ -52,7 +38,6 @@ certificate-viewer-qualifier = Niteleyici
 certificate-viewer-qualifiers = Niteleyiciler
 certificate-viewer-required = Gerekli
 certificate-viewer-unsupported = &lt;desteklenmiyor&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = Kuruluş ili
 certificate-viewer-state-province = Eyalet/il
 certificate-viewer-sha-1 = SHA-1
@@ -81,40 +66,21 @@ certificate-viewer-authority-info-aia = Makam Bilgileri (AIA)
 certificate-viewer-certificate-policies = Sertifika İlkeleri
 certificate-viewer-embedded-scts = Gömülü SCT’ler
 certificate-viewer-crl-endpoints = CRL uç noktaları
-
-# This message is used as a row header in the Miscellaneous section.
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = İndir
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] Evet
        *[false] Hayır
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (sertifika)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (zincir)
     .download = { $fileName }-chain.pem
-
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = Bu uzantı kritik olarak işaretlenmiş. Yani istemciler sertifikayı anlamadılarsa sertifikayı reddetmeleri gerekir.
 certificate-viewer-export = Dışa aktar
     .download = { $fileName }.pem
-
-##
-
-# Label for a tab where we haven't found a better label:
 certificate-viewer-unknown-group-label = (bilinmiyor)
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = Sertifikalarınız
 certificate-viewer-tab-people = Kişiler
 certificate-viewer-tab-servers = Sunucular

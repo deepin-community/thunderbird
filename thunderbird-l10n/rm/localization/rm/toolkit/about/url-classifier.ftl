@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Infurmaziuns davart la classificaziun dad URLs
 url-classifier-search-title = Tschertga
 url-classifier-search-result-title = Resultats
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Moduls da protocol per Safe Browsing
 url-classifier-debug-modules = Moduls da protocol actuals
 url-classifier-debug-sbjs-modules = Protocol JS da Safe Browsing
 url-classifier-debug-file = Datoteca da protocol actuala
-
 url-classifier-trigger-update = Exequir l'actualisaziun
 url-classifier-not-available = Betg disponibel
 url-classifier-disable-sbjs-log = Deactivar il protocol JS per Safe Browsing
@@ -50,9 +45,5 @@ url-classifier-disabled = Deactivà
 url-classifier-updating = actualisar
 url-classifier-cannot-update = impussibel dad actualisar
 url-classifier-success = success
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = errur d'actualisaziun ({ $error })
 url-classifier-download-error = errur da telechargiar ({ $error })

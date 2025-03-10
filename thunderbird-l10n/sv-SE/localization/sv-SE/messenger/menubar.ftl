@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menyrad
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Inställningar
     .accesskey = n
 menu-addons-and-themes =
     .label = Tillägg och teman
     .accesskey = T
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Exportera för mobil…
+    .accesskey = p
 menu-help-help-title =
     .label = Hjälp
     .accesskey = H
 menu-help-get-help =
     .label = Få hjälp
     .accesskey = F
-menu-help-explore-features =
-    .label = Utforska funktioner
-    .accesskey = t
 menu-help-get-release-help =
     .label = Få hjälp med { -brand-short-name }
     .accesskey = h
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Om { -brand-short-name }
     .accesskey = m
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] A
            *[other] A
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Avsluta { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Avsluta { -brand-full-name }
            *[other] Avsluta { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Skräppost
     .tooltiptext = Markera de valda meddelandena som skräp
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Ångra ta bort
     .tooltiptext = Ångra borttagning av valda meddelanden
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Reparera textkodning
     .accesskey = k
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Mappfönsterraden
     .accesskey = M
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Meddelandelistans rubrik
     .accesskey = r
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Flikmeny
     .accesskey = F
-
-## File
-
 file-new-email-account =
     .label = E-postkonto…
     .accesskey = E

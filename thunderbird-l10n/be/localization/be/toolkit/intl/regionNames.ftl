@@ -1,11 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Notice: If you're updating this list, you should also
-###         update the list in mozIntl.js.
-
 region-name-ad = Андора
 region-name-ae = А.А.Э.
 region-name-af = Аўганістан
@@ -101,7 +93,7 @@ region-name-gt = Гватэмала
 region-name-gu = Гуам
 region-name-gw = Гвінея-Бісау
 region-name-gy = Гайана
-region-name-hk = Гон Конг
+region-name-hk = Ганконг
 region-name-hm = Выспа Гіард і Выспы Мак-Дональда
 region-name-hn = Гандурас
 region-name-hr = Харватыя

@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Të lexojë dhe ndryshojë faqerojtës
 webext-perms-description-browserSettings = Të lexojë dhe ndryshojë rregullime shfletuesi
 webext-perms-description-browsingData = Të spastrojë historikun e shfletimeve së fundi, cookies dhe të dhënat përkatëse
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Të hyjë te skeda të mbyllura së fundi
 webext-perms-description-tabs = Të hyjë në skeda shfletuesi
 webext-perms-description-tabHide = Fshihni dhe shfaqni skeda shfletuesi
 webext-perms-description-topSites = Të hyjë në historik shfletimesh
+webext-perms-description-trialML = Shkarkoni dhe xhironi modele IA në pajisjen tuaj
+webext-perms-description-userScripts = Lejo programthe të paverifikuar palësh të treta të hyjnë në të dhënat tuaja
 webext-perms-description-webNavigation = Të hyjë në veprimtarinë e shfletuesit gjatë lëvizjeve
+webext-perms-extra-warning-userScripts-long = Programthet e paverifikuar mund të përbëjnë rreziqe sigurie dhe privatësie, f.v., xhirim kodi të dëmshëm, ose ndjekje veprimtarie sajti. Xhironi vetëm programthe nga zgjerime apo burime të cilëve u zini besë.
+webext-perms-extra-warning-userScripts-short = Programthet e paverifikuar mund të përbëjnë rreziqe sigurie dhe privatësie. Xhironi vetëm programthe nga zgjerime apo burime të cilëve u zini besë.

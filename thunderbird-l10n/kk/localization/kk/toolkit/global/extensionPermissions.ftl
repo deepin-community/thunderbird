@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Бетбелгілерді оқу және түзету
 webext-perms-description-browserSettings = Браузер баптауларын оқу және өзгерту
 webext-perms-description-browsingData = Жуырдағы шолу тарихын, cookies файлдарын және сәйкес деректерін өшіру
@@ -30,4 +21,6 @@ webext-perms-description-sessions = Жуырда жабылған беттерг
 webext-perms-description-tabs = Браузер беттеріне қатынау
 webext-perms-description-tabHide = Браузер беттерін жасыру және көрсету
 webext-perms-description-topSites = Шолу тарихына қатынау
+webext-perms-description-trialML = Құрылғыңызға ЖИ модельдерін жүктеп алыңыз және орындаңыз
+webext-perms-description-userScripts = Тексерілмеген үшінші тарап скрипттеріне деректеріңізге қол жеткізуге рұқсат беру
 webext-perms-description-webNavigation = Навигация кезіндегі браузер белсенділігіне қатынау

@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Pisma
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Standard ({ $name })
 fonts-label-default-unnamed =
     .label = Standard
-fonts-encoding-dialog-title =
-    .title = Pisma a koděrowanja
 fonts-language-legend =
     .value = Pisma:
     .accesskey = P
 fonts-proportional-label =
     .value = Proporcionalne:
     .accesskey = r
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Łatyńske
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Singaleziske
 font-language-group-tibetan =
     .label = Tibetiske
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = i
 min-size-none =
     .label = Žedna
-
-## Fonts in message
-
 font-control-legend = Pismowa kontrola
 use-document-fonts-checkbox =
     .label = Dokumentam dowóliś, druge pisma wužywaś
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Pismo z kšuteju šyrokosću za powěsći z lutnego teksta wužywaś
     .accesskey = l
-
-## Language settings
-
 text-encoding-legend = Tekstowe koděrowanje
 text-encoding-description = Standardnej tekstowej koděrowani za słanje a dostawanje e-maile nastajiś
 font-outgoing-email-label =

@@ -82,16 +82,20 @@ add_setup(async function () {
  * Checks that a message has particular status stored in the mbox file,
  * in the X-Mozilla-Status header.
  *
- * @param folder         The folder containing the message to check.
- * @param offset         Offset to the start of the message within mbox file.
- * @param expectedStatus The required status of the message.
+ * @param {nsIMsgFolder} folder - The folder containing the message to check.
+ * @param {string} storeToken - Offset to the start of the message within mbox
+ *    file (as a string).
+ * @param {integer} expectedStatus - The required status of the message.
  */
-async function check_status(folder, offset, expectedStatus) {
+async function check_status(folder, storeToken, expectedStatus) {
   const mboxstring = await IOUtils.readUTF8(folder.filePath.path);
+
+  const offset = parseInt(storeToken, 10);
+  Assert.ok(!isNaN(offset), "storeToken should be an integer as a string");
 
   // Ah-hoc header parsing. Only check the first 1KB because the X-Mozilla-*
   // headers should be near the start.
-  let msg = mboxstring.slice(offset, offset + 1024);
+  let msg = mboxstring.slice(storeToken, offset + 1024);
   msg = msg.replace(/\r/g, ""); // Simplify by using LFs only.
   for (const line of msg.split("\n")) {
     if (line == "") {
@@ -122,7 +126,7 @@ add_task(async function test_mark_messages_read() {
   let curMessage = await select_click_row(0);
   // Store the offset because it will be unavailable via the hdr
   // after the message is deleted.
-  const offset = curMessage.messageOffset;
+  const offset = curMessage.storeToken;
   await check_status(gInbox, offset, 0); // status = unread
   await press_delete(window);
   Assert.notEqual(curMessage, await select_click_row(0));
@@ -134,7 +138,7 @@ add_task(async function test_mark_messages_read() {
 
   // 4 messages in the folder.
   curMessage = await select_click_row(0);
-  await check_status(gInbox, curMessage.messageOffset, 0); // status = unread
+  await check_status(gInbox, curMessage.storeToken, 0); // status = unread
 
   // Make sure we can mark all read with >0 messages unread.
   await right_click_on_row(0);
@@ -151,32 +155,16 @@ add_task(async function test_mark_messages_read() {
 
   // All the 4 messages should now be read.
   Assert.ok(curMessage.isRead, "Message should have been marked Read!");
-  await check_status(
-    gInbox,
-    curMessage.messageOffset,
-    Ci.nsMsgMessageFlags.Read
-  );
+  await check_status(gInbox, curMessage.storeToken, Ci.nsMsgMessageFlags.Read);
   curMessage = await select_click_row(1);
   Assert.ok(curMessage.isRead, "Message should have been marked Read!");
-  await check_status(
-    gInbox,
-    curMessage.messageOffset,
-    Ci.nsMsgMessageFlags.Read
-  );
+  await check_status(gInbox, curMessage.storeToken, Ci.nsMsgMessageFlags.Read);
   curMessage = await select_click_row(2);
   Assert.ok(curMessage.isRead, "Message should have been marked Read!");
-  await check_status(
-    gInbox,
-    curMessage.messageOffset,
-    Ci.nsMsgMessageFlags.Read
-  );
+  await check_status(gInbox, curMessage.storeToken, Ci.nsMsgMessageFlags.Read);
   curMessage = await select_click_row(3);
   Assert.ok(curMessage.isRead, "Message should have been marked Read!");
-  await check_status(
-    gInbox,
-    curMessage.messageOffset,
-    Ci.nsMsgMessageFlags.Read
-  );
+  await check_status(gInbox, curMessage.storeToken, Ci.nsMsgMessageFlags.Read);
 
   // Let's have the last message unread.
   await right_click_on_row(3);
@@ -192,7 +180,7 @@ add_task(async function test_mark_messages_read() {
   await new Promise(resolve => requestAnimationFrame(resolve));
 
   Assert.ok(!curMessage.isRead, "Message should have not been marked Read!");
-  await check_status(gInbox, curMessage.messageOffset, 0);
+  await check_status(gInbox, curMessage.storeToken, 0);
 });
 
 add_task(async function test_mark_messages_flagged() {
@@ -213,7 +201,7 @@ add_task(async function test_mark_messages_flagged() {
   Assert.ok(curMessage.isFlagged, "Message should have been marked Flagged!");
   await check_status(
     gInbox,
-    curMessage.messageOffset,
+    curMessage.storeToken,
     Ci.nsMsgMessageFlags.Read + Ci.nsMsgMessageFlags.Marked
   );
 });
@@ -222,18 +210,14 @@ async function subtest_check_queued_message() {
   // Always check the last message in the Outbox for the correct flag.
   await be_in_folder(gOutbox);
   const lastMsg = [...gOutbox.messages].pop();
-  await check_status(
-    gOutbox,
-    lastMsg.messageOffset,
-    Ci.nsMsgMessageFlags.Queued
-  );
+  await check_status(gOutbox, lastMsg.storeToken, Ci.nsMsgMessageFlags.Queued);
 }
 
 /**
  * Create a reply or forward of a message and queue it for sending later.
  *
- * @param aMsgRow  Row index of message in Inbox that is to be replied/forwarded.
- * @param aReply   true = reply, false = forward.
+ * @param {integer} aMsgRow - Row index of message in Inbox that is to be replied/forwarded.
+ * @param {boolean} aReply - true = reply, false = forward.
  */
 async function reply_forward_message(aMsgRow, aReply) {
   await be_in_folder(gInbox);
@@ -284,7 +268,7 @@ add_task(async function test_mark_messages_replied() {
   const curMessage = await select_click_row(2);
   await check_status(
     gInbox,
-    curMessage.messageOffset,
+    curMessage.storeToken,
     Ci.nsMsgMessageFlags.Replied + Ci.nsMsgMessageFlags.Read
   );
 });
@@ -296,7 +280,7 @@ add_task(async function test_mark_messages_forwarded() {
   let curMessage = await select_click_row(3);
   await check_status(
     gInbox,
-    curMessage.messageOffset,
+    curMessage.storeToken,
     Ci.nsMsgMessageFlags.Forwarded
   );
 
@@ -304,13 +288,13 @@ add_task(async function test_mark_messages_forwarded() {
   curMessage = await select_click_row(2);
   await check_status(
     gInbox,
-    curMessage.messageOffset,
+    curMessage.storeToken,
     Ci.nsMsgMessageFlags.Replied + Ci.nsMsgMessageFlags.Read
   );
   await reply_forward_message(2, false);
   await check_status(
     gInbox,
-    curMessage.messageOffset,
+    curMessage.storeToken,
     Ci.nsMsgMessageFlags.Forwarded +
       Ci.nsMsgMessageFlags.Replied +
       Ci.nsMsgMessageFlags.Read

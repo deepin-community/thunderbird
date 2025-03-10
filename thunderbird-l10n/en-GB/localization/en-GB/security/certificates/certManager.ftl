@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = Certificate Manager
 certmgr-tab-mine =
@@ -99,27 +95,13 @@ pkcs12-unknown-err-backup = Failed to create the PKCS #12 backup file for unknow
 pkcs12-unknown-err = The PKCS #12 operation failed for unknown reasons.
 pkcs12-info-no-smartcard-backup = It is not possible to back up certificates from a hardware security device such as a smart card.
 pkcs12-dup-data = The certificate and private key already exist on the security device.
-
-## PKCS#12 file dialogs
-
 choose-p12-backup-file-dialog = File Name to Backup
 file-browse-pkcs12-spec = PKCS12 Files
 choose-p12-restore-file-dialog = Certificate File to Import
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = Certificate Files
 import-ca-certs-prompt = Select File containing CA certificate(s) to import
 import-email-cert-prompt = Select File containing somebody’s Email certificate to import
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = The certificate “{ $certName }” represents a Certificate Authority.
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = Delete your Certificates
 delete-user-cert-confirm = Are you sure you want to delete these certificates?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = Delete Email Certificates
 delete-email-cert-confirm = Are you sure you want to delete these people’s email certificates?
 delete-email-cert-impact = If you delete a person’s email certificate, you will no longer be able to send encrypted email to that person.
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = Certificate with serial number: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = Send no client certificate
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (Not Stored)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (Unavailable)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = Permanent
 temporary-override = Temporary
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = You are about to override how { -brand-short-name } identifies this site.
 add-exception-invalid-header = This site attempts to identify itself with invalid information.
 add-exception-domain-mismatch-short = Wrong Site
@@ -170,9 +139,6 @@ add-exception-checking-short = Checking Information
 add-exception-checking-long = Attempting to identify this site…
 add-exception-no-cert-short = No Information Available
 add-exception-no-cert-long = Unable to obtain identification status for this site.
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = Save Certificate To File
 cert-format-base64 = X.509 Certificate (PEM)
 cert-format-base64-chain = X.509 Certificate with chain (PEM)

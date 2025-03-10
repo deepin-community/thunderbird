@@ -1,28 +1,14 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Skrifttyper
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Standard ({ $name })
 fonts-label-default-unnamed =
     .label = Standard
-fonts-encoding-dialog-title =
-    .title = Skrifttyper & tegnkodning
 fonts-language-legend =
     .value = Skrifttyper for:
     .accesskey = f
 fonts-proportional-label =
     .value = Proportional:
     .accesskey = P
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Latinsk
 font-language-group-japanese =
@@ -81,9 +67,6 @@ font-language-group-sinhala =
     .label = Sinhala
 font-language-group-tibetan =
     .label = Tibetansk
-
-## Default font type
-
 default-font-serif =
     .label = Serif
 default-font-sans-serif =
@@ -108,9 +91,6 @@ font-min-size-label =
     .accesskey = i
 min-size-none =
     .label = Ingen
-
-## Fonts in message
-
 font-control-legend = Vælg skrifttype
 use-document-fonts-checkbox =
     .label = Tillad meddelelser at bruge andre skrifttyper
@@ -118,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Anvend skrifttype med fast bredde til ren tekst-meddelelser
     .accesskey = F
-
-## Language settings
-
 text-encoding-legend = Tegnkodning
 text-encoding-description = Sæt standardtegnkodning for udgående og indkommende meddelelser
 font-outgoing-email-label =

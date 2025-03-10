@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Informazioni sui moduli di terze parti
 third-party-section-title = Elenco dei moduli di terze parti in { -brand-short-name }
 third-party-intro =
@@ -28,11 +24,11 @@ third-party-tag-shellex = Estensione shell
 third-party-tag-background = Background
     .title = Questo modulo non ha bloccato l’applicazione in quanto è stato caricato in background.
 third-party-icon-unsigned =
-    .alt = Questo modulo non è firmato.
     .title = Questo modulo non è firmato.
+    .alt = Questo modulo non è firmato.
 third-party-icon-warning =
-    .alt = { -brand-short-name } si è arrestato in modo anomalo eseguendo codice in questo modulo
     .title = { -brand-short-name } si è arrestato in modo anomalo eseguendo codice in questo modulo
+    .alt = { -brand-short-name } si è arrestato in modo anomalo eseguendo codice in questo modulo
 third-party-status-loaded = Caricato
 third-party-status-blocked = Bloccato
 third-party-status-redirected = Reindirizzato
@@ -44,15 +40,6 @@ third-party-button-reload = Ricarica con informazioni di sistema
     .title = Ricarica con informazioni di sistema
 third-party-button-open =
     .title = Apri posizione file……
-third-party-button-to-block =
-    .title = Blocca questo modulo
-    .aria-label = Blocca questo modulo
-third-party-button-to-unblock =
-    .title = Attualmente bloccato. Fai clic per sbloccarlo.
-    .aria-label = Attualmente bloccato. Fai clic per sbloccarlo.
-third-party-button-to-unblock-disabled =
-    .title = Attualmente contrassegnato come bloccato, anche se il blocco tramite elenco è disattivato per questa esecuzione di { -brand-short-name }. Fai clic per sbloccarlo.
-    .aria-label = Attualmente contrassegnato come bloccato, anche se il blocco tramite elenco è disattivato per questa esecuzione di { -brand-short-name }. Fai clic per sbloccarlo.
 third-party-button-to-block-module = Blocca questo modulo
     .title = Blocca questo modulo
     .aria-label = Blocca questo modulo

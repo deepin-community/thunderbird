@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 bounce-system-dock-icon =
     .label = Blivañ arlun an arload pa vez degemeret ur gemennadenn nevez
     .accesskey = B

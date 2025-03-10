@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, you can obtain one at http://mozilla.org/MPL/2.0/.
-
 carddav-window-title = 新しい CardDAV アドレス帳
 carddav-dialog =
     .buttonlabelaccept = 次へ
@@ -15,8 +11,6 @@ carddav-location-label =
 carddav-location =
     .default-placeholder = アドレス帳サーバーの URL またはホスト名
 carddav-loading = 設定を探しています...
-# Variables:
-# $url (String) - CardDAV endpoint hostname. For example "example.com".
 carddav-known-incompatible = { $url } は { -brand-short-name } と互換性がありません。
 carddav-connection-error = 接続に失敗しました。
 carddav-none-found = 指定されたアカウントに追加するアドレス帳が見つかりませんでした。

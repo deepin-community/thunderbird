@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ekki sett)
 failed-pp-change = Get ekki breytt aðallykilorði.
@@ -21,7 +17,6 @@ set-password-new-password = Settu inn nýtt lykilorð:
 set-password-reenter-password = Staðfestu lykilorðið:
 set-password-meter = Gæðamæling lykilorðs
 set-password-meter-loading = Hleður
-primary-password-admin = Kerfisstjórinn þinn krefst þess að þú hafir stillt aðallykilorð til að vista innskráningar og lykilorð.
 primary-password-required-by-policy = Kerfisstjórinn krefst þess að þú hafir stillt aðallykilorð til að vista innskráningar og lykilorð.
 primary-password-description = Aðallykilorð er notað til að vernda viðkvæmar upplýsingar eins og innskráningar og lykilorð að vefsvæðum.  Ef þú býrð til aðallykilorð, verður beðið um það einu sinni í hverri vafralotu þegar { -brand-short-name } sækir vistaðar upplýsingar sem verndaðar eru af lykilorðinu.
 primary-password-warning = Gakktu úr skugga um að þú munir aðallykilorðið sem þú hefur stillt. Ef þú gleymir aðallykilorðinu þínu muntu ekki geta fengið aðgang að neinum þeirra upplýsinga sem það er að vernda á þessu tæki.

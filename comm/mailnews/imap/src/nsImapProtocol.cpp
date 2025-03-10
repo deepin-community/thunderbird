@@ -89,6 +89,7 @@ using namespace mozilla;
 LazyLogModule IMAP("IMAP");
 LazyLogModule IMAP_CS("IMAP_CS");
 LazyLogModule IMAPCache("IMAPCache");
+extern LazyLogModule IMAP_DC;  // For imap folder discovery
 
 #define ONE_SECOND ((uint32_t)1000)  // one second
 
@@ -99,7 +100,8 @@ LazyLogModule IMAPCache("IMAPCache");
   "Priority X-Priority References Newsgroups In-Reply-To Content-Type " \
   "Reply-To"
 #define IMAP_ENV_AND_DB_HEADERS IMAP_ENV_HEADERS IMAP_DB_HEADERS
-static const PRIntervalTime kImapSleepTime = PR_MillisecondsToInterval(60000);
+MOZ_RUNINIT static const PRIntervalTime kImapSleepTime =
+    PR_MillisecondsToInterval(60000);
 static int32_t gPromoteNoopToCheckCount = 0;
 static const uint32_t kFlagChangesBeforeCheck = 10;
 static const int32_t kMaxSecondsBeforeCheck = 600;
@@ -276,7 +278,7 @@ static int32_t gTooFastTime = 2;
 static int32_t gIdealTime = 4;
 static int32_t gChunkAddSize = 16384;
 static int32_t gChunkSize = 250000;
-static int32_t gChunkThreshold = gChunkSize + gChunkSize / 2;
+MOZ_RUNINIT static int32_t gChunkThreshold = gChunkSize + gChunkSize / 2;
 static bool gChunkSizeDirty = false;
 static bool gFetchByChunks = true;
 static bool gInitialized = false;
@@ -287,10 +289,9 @@ static bool gUseLiteralPlus = true;
 static bool gExpungeAfterDelete = false;
 static bool gCheckDeletedBeforeExpunge = false;  // bug 235004
 static int32_t gResponseTimeout = 100;
-static int32_t gAppendTimeout = gResponseTimeout / 5;
+MOZ_RUNINIT static int32_t gAppendTimeout = gResponseTimeout / 5;
 static nsImapProtocol::TCPKeepalive gTCPKeepalive;
 static bool gUseDiskCache2 = true;  // Use disk cache instead of memory cache
-static nsCOMPtr<nsICacheStorage> gCache2Storage;
 
 // let delete model control expunging, i.e., don't ever expunge when the
 // user chooses the imap delete model, otherwise, expunge when over the
@@ -508,7 +509,7 @@ nsImapProtocol::nsImapProtocol()
   m_prefAuthMethods = kCapabilityUndefined;
   m_failedAuthMethods = 0;
   m_currentAuthMethod = kCapabilityUndefined;
-  m_socketType = nsMsgSocketType::trySTARTTLS;
+  m_socketType = nsMsgSocketType::alwaysSTARTTLS;
   m_connectionStatus = NS_OK;
   m_safeToCloseConnection = false;
   m_hostSessionList = nullptr;
@@ -804,6 +805,7 @@ nsresult nsImapProtocol::SetupWithUrl(nsIURI* aURL, nsISupports* aConsumer) {
   nsresult rv = NS_ERROR_FAILURE;
   NS_ASSERTION(aURL, "null URL passed into Imap Protocol");
   if (aURL) {
+    MutexAutoLock mon(mLock);
     nsCOMPtr<nsIImapUrl> imapURL = do_QueryInterface(aURL, &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     m_runningUrl = imapURL;
@@ -994,10 +996,6 @@ nsresult nsImapProtocol::SetupWithUrlCallback(nsIProxyInfo* aProxyInfo) {
     connectionType = "ssl";
   else if (m_socketType == nsMsgSocketType::alwaysSTARTTLS)
     connectionType = "starttls";
-  // This can go away once we think everyone is migrated
-  // away from the trySTARTTLS socket type.
-  else if (m_socketType == nsMsgSocketType::trySTARTTLS)
-    connectionType = "starttls";
 
   int32_t port = -1;
   nsCOMPtr<nsIURI> uri = do_QueryInterface(m_runningUrl, &rv);
@@ -1011,13 +1009,7 @@ nsresult nsImapProtocol::SetupWithUrlCallback(nsIProxyInfo* aProxyInfo) {
   rv = socketService->CreateTransport(connectionTypeArray, m_hostName, port,
                                       aProxyInfo, nullptr,
                                       getter_AddRefs(m_transport));
-  if (NS_FAILED(rv) && m_socketType == nsMsgSocketType::trySTARTTLS) {
-    connectionType = nullptr;
-    m_socketType = nsMsgSocketType::plain;
-    rv = socketService->CreateTransport(connectionTypeArray, m_hostName, port,
-                                        aProxyInfo, nullptr,
-                                        getter_AddRefs(m_transport));
-  }
+  NS_ENSURE_SUCCESS(rv, rv);
 
   // remember so we can know whether we can issue a start tls or not...
   m_connectionType = connectionType;
@@ -1495,19 +1487,31 @@ void nsImapProtocol::ImapThreadMainLoop() {
     bool urlReadyToRun;
 
     // wait for a URL or idle response to process...
-    {
-      ReentrantMonitorAutoEnter mon(m_urlReadyToRunMonitor);
-
-      while (NS_SUCCEEDED(rv) && !DeathSignalReceived() &&
-             !m_nextUrlReadyToRun && !m_idleResponseReadyToHandle &&
-             !m_threadShouldDie) {
-        rv = mon.Wait(sleepTime);
-        if (idlePending) break;
+    while (!DeathSignalReceived()) {
+      {
+        ReentrantMonitorAutoEnter mon(m_threadDeathMonitor);
+        if (m_threadShouldDie) {
+          break;
+        }
       }
-
-      urlReadyToRun = m_nextUrlReadyToRun;
-      m_nextUrlReadyToRun = false;
+      {
+        ReentrantMonitorAutoEnter mon(m_urlReadyToRunMonitor);
+        if (m_nextUrlReadyToRun || m_idleResponseReadyToHandle) {
+          break;
+        }
+        rv = mon.Wait(sleepTime);
+        if (NS_FAILED(rv)) {
+          break;
+        }
+        if (idlePending) {
+          break;
+        }
+      }
     }
+
+    urlReadyToRun = m_nextUrlReadyToRun;
+    m_nextUrlReadyToRun = false;
+
     // This will happen if the UI thread signals us to die
     if (m_threadShouldDie) {
       TellThreadToDie();
@@ -1684,8 +1688,7 @@ void nsImapProtocol::EstablishServerConnection() {
     // We can skip sending a password and transition right into the
     // kAuthenticated state; but we won't if the user has configured STARTTLS.
     // (STARTTLS can only occur with the server in non-authenticated state.)
-    if (!(m_socketType == nsMsgSocketType::alwaysSTARTTLS ||
-          m_socketType == nsMsgSocketType::trySTARTTLS)) {
+    if (m_socketType != nsMsgSocketType::alwaysSTARTTLS) {
       GetServerStateParser().PreauthSetAuthenticatedState();
 
       if (GetServerStateParser().GetCapabilityFlag() == kCapabilityUndefined)
@@ -1872,11 +1875,7 @@ bool nsImapProtocol::ProcessCurrentURL() {
 
       SetConnectionStatus(NS_ERROR_FAILURE);  // stop netlib
     } else {
-      if ((m_connectionType.EqualsLiteral("starttls") &&
-           (m_socketType == nsMsgSocketType::trySTARTTLS &&
-            (GetServerStateParser().GetCapabilityFlag() &
-             kHasStartTLSCapability))) ||
-          m_socketType == nsMsgSocketType::alwaysSTARTTLS) {
+      if (m_socketType == nsMsgSocketType::alwaysSTARTTLS) {
         StartTLS();  // Send imap STARTTLS command
         if (GetServerStateParser().LastCommandSuccessful()) {
           NS_ENSURE_TRUE(m_transport, false);
@@ -1918,14 +1917,6 @@ bool nsImapProtocol::ProcessCurrentURL() {
             // the TLS negotiation handshakes.
             Capability();
 
-            // If user has set pref mail.server.serverX.socketType to 1
-            // (trySTARTTLS, now deprecated in UI) and Capability()
-            // succeeds, indicating TLS handshakes succeeded, set and
-            // latch the socketType to 2 (alwaysSTARTTLS) for this server.
-            if ((m_socketType == nsMsgSocketType::trySTARTTLS) &&
-                GetServerStateParser().LastCommandSuccessful())
-              m_imapServerSink->UpdateTrySTARTTLSPref(true);
-
             // Courier imap doesn't return STARTTLS capability if we've done
             // a STARTTLS! But we need to remember this capability so we'll
             // try to use STARTTLS next time.
@@ -1948,30 +1939,12 @@ bool nsImapProtocol::ProcessCurrentURL() {
             if (m_socketType == nsMsgSocketType::alwaysSTARTTLS) {
               SetConnectionStatus(rv);  // stop netlib
               if (m_transport) m_transport->Close(rv);
-            } else if (m_socketType == nsMsgSocketType::trySTARTTLS)
-              m_imapServerSink->UpdateTrySTARTTLSPref(false);
+            }
           }
         } else if (m_socketType == nsMsgSocketType::alwaysSTARTTLS) {
           SetConnectionStatus(NS_ERROR_FAILURE);  // stop netlib
           if (m_transport) m_transport->Close(rv);
-        } else if (m_socketType == nsMsgSocketType::trySTARTTLS) {
-          // STARTTLS failed, so downgrade socket type
-          m_imapServerSink->UpdateTrySTARTTLSPref(false);
         }
-      } else if (m_socketType == nsMsgSocketType::trySTARTTLS) {
-        // we didn't know the server supported TLS when we created
-        // the socket, so we're going to retry with a STARTTLS socket
-        if (GetServerStateParser().GetCapabilityFlag() &
-            kHasStartTLSCapability) {
-          ClearFlag(IMAP_CONNECTION_IS_OPEN);
-          TellThreadToDie();
-          SetConnectionStatus(NS_ERROR_FAILURE);
-          return RetryUrl();
-        }
-        // trySTARTTLS set, but server doesn't have TLS capability,
-        // so downgrade socket type
-        m_imapServerSink->UpdateTrySTARTTLSPref(false);
-        m_socketType = nsMsgSocketType::plain;
       }
       if (!DeathSignalReceived() && (NS_SUCCEEDED(GetConnectionStatus()))) {
         // Run TryToLogon() under the protection of the server's logon monitor.
@@ -2386,6 +2359,9 @@ NS_IMETHODIMP nsImapProtocol::LoadImapUrl(nsIURI* aURL,
     m_imapMailFolderSink = nullptr;
     rv = SetupWithUrl(aURL, aConsumer);
     m_lastActiveTime = PR_Now();
+    if (NS_FAILED(rv)) {
+      TellThreadToDie(true);
+    }
   }
   return rv;
 }
@@ -2530,12 +2506,13 @@ NS_IMETHODIMP nsImapProtocol::CanHandleUrl(nsIImapUrl* aImapUrl,
                                            bool* aCanRunUrl, bool* hasToWait) {
   if (!aCanRunUrl || !hasToWait || !aImapUrl) return NS_ERROR_NULL_POINTER;
   nsresult rv = NS_OK;
-  MutexAutoLock mon(mLock);
 
   *aCanRunUrl = false;  // assume guilty until proven otherwise...
   *hasToWait = false;
 
   if (DeathSignalReceived()) return NS_ERROR_FAILURE;
+
+  MutexAutoLock mon(mLock);
 
   bool isBusy = false;
   bool isInboxConnection = false;
@@ -2687,11 +2664,12 @@ void nsImapProtocol::IncrementCommandTagNumber() {
   } else if (++m_currentServerCommandTagNumber == 0) {
     m_currentServerCommandTagNumber = 1;
   }
-  sprintf(m_currentServerCommandTag, "%u", m_currentServerCommandTagNumber);
+  m_currentServerCommandTag =
+      nsPrintfCString("%u", m_currentServerCommandTagNumber);
 }
 
 const char* nsImapProtocol::GetServerCommandTag() {
-  return m_currentServerCommandTag;
+  return m_currentServerCommandTag.get();
 }
 
 /**
@@ -2710,6 +2688,10 @@ void nsImapProtocol::ProcessSelectedStateURL() {
   // this can't fail, can it?
   nsresult res;
   res = m_runningUrl->GetImapAction(&m_imapAction);
+  // See nsIImapUrl.idl for m_imapAction values.
+  MOZ_LOG(IMAP, LogLevel::Debug,
+          ("ProcessSelectedStateURL [this=%p], m_imapAction = 0x%" PRIx32, this,
+           m_imapAction));
   m_runningUrl->MessageIdsAreUids(&bMessageIdsAreUids);
   m_runningUrl->GetMsgFlags(&msgFlags);
   m_runningUrl->GetMoreHeadersToDownload(&moreHeadersToDownload);
@@ -3029,6 +3011,9 @@ void nsImapProtocol::ProcessSelectedStateURL() {
           }
         } break;
         case nsIImapUrl::nsImapDeleteMsg: {
+          // Note: this never actually occurs to delete a message. Instead
+          // when messages are deleted or moved to another server, m_imapAction
+          // nsIImapUrl::nsImapAddMsgFlags occurs.
           nsCString messageIdString;
           m_runningUrl->GetListOfMessageIds(messageIdString);
 
@@ -3053,6 +3038,20 @@ void nsImapProtocol::ProcessSelectedStateURL() {
               m_imapMessageSink->NotifyMessageDeleted(
                   canonicalName.get(), false, messageIdString.get());
             // notice we don't wait for this to finish...
+
+            // Only when pref "expunge_after_delete" is set: if server is
+            // IMAPPLUS capable, expunge the UIDs just marked deleted;
+            // otherwise, go ahead and expunge the full mailbox of ALL
+            // emails marked as deleted in mailbox, not just the ones
+            // marked as deleted here.
+            if (gExpungeAfterDelete) {
+              if (GetServerStateParser().GetCapabilityFlag() &
+                  kUidplusCapability) {
+                UidExpunge(messageIdString);
+              } else {
+                Expunge();
+              }
+            }
           } else
             HandleMemoryFailure();
         } break;
@@ -3092,8 +3091,85 @@ void nsImapProtocol::ProcessSelectedStateURL() {
           nsCString messageIdString;
           m_runningUrl->GetListOfMessageIds(messageIdString);
 
+          // If server is gmail and \deleted flag is being set and not doing
+          // "just mark as deleted" and pref "expunge_after_delete" is set true
+          // and there exists a [Gmail]/Trash folder, move each message to be
+          // deleted to trash folder and mark each of these in trash as deleted
+          // and expunge from trash only these messages. With default gmail.com
+          // imap setting this completely removes the deleted messages, even
+          // from All Mail. Gmail supports UIDPLUS so no check of imap
+          // capabilites is needed, but if a command fails or is not supported
+          // below, the added flags (including \deleted) are set for the folder.
+          if (m_isGmailServer && !GetShowDeletedMessages() &&
+              (msgFlags & kImapMsgDeletedFlag) && gExpungeAfterDelete) {
+            // Check that trash exists
+            bool trashFolderExists = false;
+            m_hostSessionList->GetOnlineTrashFolderExistsForHost(
+                GetImapServerKey(), trashFolderExists);
+            if (trashFolderExists && !m_trashFolderPath.IsEmpty()) {
+              // Trash folder exists and have the trash folder path so do a
+              // "copy" of the message set to Trash. (Note: Copy of gmail
+              // messages to Trash actually expunges the messages from source
+              // folder so gmail copy to trash is effective move to trash.)
+              Copy(messageIdString.get(), m_trashFolderPath.get(), true);
+              if (GetServerStateParser().LastCommandSuccessful()) {
+                // Obtain new UIDs for the trash folder from COPYUID response
+                // code
+                nsCString trashIdString = GetServerStateParser().fCopyUidSet;
+                if (trashIdString.Last() == ']')
+                  trashIdString.Cut(trashIdString.Length() - 1, 1);
+                if (!trashIdString.IsEmpty()) {
+                  // Have new UIDs of message just moved into Trash, mark them
+                  // \deleted and expunge these UIDs. But first, since gmail
+                  // returns the destination response in COPYUID as a comma
+                  // separated descending list of each destination UID, it is
+                  // helpful to change the list to ranges. This will minimize
+                  // the string length when lots of messages are deleted.
+
+                  // Get array of UIDs from the COPYUID destination UIDs.
+                  nsTArray<nsMsgKey> msgKeys;
+                  ParseUidString(trashIdString.get(), msgKeys);
+
+                  // Re-create trashIdString as a ascending range or ranges.
+                  trashIdString.Truncate();
+                  nsImapMailFolder::AllocateUidStringFromKeys(msgKeys,
+                                                              trashIdString);
+
+                  // Imap SELECT trash folder and do UID Expunge on messages
+                  // just moved to trash. However, don't do a folder update to
+                  // avoid showing a temporary message count change and unread
+                  // message indication.
+                  SelectMailbox(m_trashFolderPath.get(), true);
+                  if (GetServerStateParser().LastCommandSuccessful()) {
+                    // Now selected on Trash.
+                    ProcessStoreFlags(trashIdString, true, kImapMsgDeletedFlag,
+                                      true);
+                    UidExpunge(trashIdString);
+                    if (!GetServerStateParser().LastCommandSuccessful()) {
+                      MOZ_LOG(IMAP_CS, LogLevel::Error,
+                              ("UidExpunge() of gmail Trash messages failed"));
+                    }
+                    // Select original mailbox.
+                    SelectMailbox(mailboxName.get(), true);
+                    break;
+                  }
+                }
+              }
+            }
+          }
           ProcessStoreFlags(messageIdString, bMessageIdsAreUids, msgFlags,
                             true);
+          // If flags contain \deleted and pref "expunge_after_delete" is set,
+          // if server is IMAPPLUS capable, expunge the UIDs just marked
+          // deleted; otherwise, go ahead and expunge the full mailbox of ALL
+          // emails marked as deleted in mailbox, not just the ones
+          // marked as deleted here.
+          if ((msgFlags & kImapMsgDeletedFlag) && gExpungeAfterDelete) {
+            if (GetServerStateParser().GetCapabilityFlag() & kUidplusCapability)
+              UidExpunge(messageIdString);
+            else
+              Expunge();
+          }
         } break;
         case nsIImapUrl::nsImapSubtractMsgFlags: {
           nsCString messageIdString;
@@ -3103,6 +3179,10 @@ void nsImapProtocol::ProcessSelectedStateURL() {
                             false);
         } break;
         case nsIImapUrl::nsImapSetMsgFlags: {
+          // This changes the flags to the value in msgFlags. Any flags that
+          // are currently set and not in msgFlags are reset. Currently, the
+          // \deleted flag is not set by this imap action (see assertion).
+          MOZ_ASSERT(!(msgFlags & kImapMsgDeletedFlag));
           nsCString messageIdString;
           m_runningUrl->GetListOfMessageIds(messageIdString);
 
@@ -3162,18 +3242,30 @@ void nsImapProtocol::ProcessSelectedStateURL() {
             bool storeSuccessful =
                 GetServerStateParser().LastCommandSuccessful();
             if (storeSuccessful) {
+              // We are simulating a imap MOVE (on the same server). The
+              // message(s) has/(have) been COPY'd and marked deleted. Only when
+              // pref "expunge_after_delete" is set: if server is IMAPPLUS
+              // capable, expunge the UIDs just marked \deleted; otherwise, go
+              // ahead and expunge the full mailbox of ALL emails marked as
+              // deleted in mailbox, not just the ones copied.
               if (gExpungeAfterDelete) {
-                // This will expunge all emails marked as deleted in mailbox,
-                // not just the ones marked as deleted above.
-                Expunge();
+                if (GetServerStateParser().GetCapabilityFlag() &
+                    kUidplusCapability) {
+                  UidExpunge(messageIdString);
+                } else {
+                  // This will expunge all emails marked as deleted in mailbox,
+                  // not just the ones marked as deleted above.
+                  Expunge();
+                }
               } else {
-                // Check if UIDPLUS capable so we can just expunge emails we
-                // just copied and marked as deleted. This prevents expunging
-                // emails that other clients may have marked as deleted in the
-                // mailbox and don't want them to disappear. Only do
-                // UidExpunge() when user selected delete method is "Move it
-                // to this folder" or "Remove it immediately", not when the
-                // delete method is "Just mark it as deleted".
+                // When "expunge_after_delete" is not true, check if UIDPLUS
+                // capable so we can just expunge emails we just copied and
+                // marked as deleted. This prevents expunging emails that other
+                // clients may have marked as deleted in the mailbox and don't
+                // want them to disappear. Only do UidExpunge() when user
+                // selected delete method is "Move it to this folder" or "Remove
+                // it immediately", not when the delete method is "Just mark it
+                // as deleted".
                 if (!GetShowDeletedMessages() &&
                     (GetServerStateParser().GetCapabilityFlag() &
                      kUidplusCapability)) {
@@ -3193,6 +3285,7 @@ void nsImapProtocol::ProcessSelectedStateURL() {
         } break;
         case nsIImapUrl::nsImapOnlineToOfflineCopy:
         case nsIImapUrl::nsImapOnlineToOfflineMove: {
+          // Only happens for copy between servers, not for move.
           nsCString messageIdString;
           nsresult rv = m_runningUrl->GetListOfMessageIds(messageIdString);
           if (NS_SUCCEEDED(rv)) {
@@ -3213,14 +3306,27 @@ void nsImapProtocol::ProcessSelectedStateURL() {
               m_imapMailFolderSink->OnlineCopyCompleted(this, copyStatus);
               if (GetServerStateParser().LastCommandSuccessful() &&
                   (m_imapAction == nsIImapUrl::nsImapOnlineToOfflineMove)) {
+                // Note: action nsImapOnlineToOfflineMove never occurs.
                 Store(messageIdString, "+FLAGS (\\Deleted \\Seen)",
                       bMessageIdsAreUids);
                 if (GetServerStateParser().LastCommandSuccessful()) {
                   copyStatus = ImapOnlineCopyStateType::kSuccessfulDelete;
-                  if (gExpungeAfterDelete) Expunge();
-                } else
+                  // Only when pref "expunge_after_delete" is set: if server is
+                  // IMAPPLUS capable, expunge the UIDs just marked deleted;
+                  // otherwise, go ahead and expunge the full mailbox of ALL
+                  // emails marked as deleted in mailbox, not just the ones
+                  // marked as deleted here.
+                  if (gExpungeAfterDelete) {
+                    if (GetServerStateParser().GetCapabilityFlag() &
+                        kUidplusCapability) {
+                      UidExpunge(messageIdString);
+                    } else {
+                      Expunge();
+                    }
+                  }
+                } else {
                   copyStatus = ImapOnlineCopyStateType::kFailedDelete;
-
+                }
                 m_imapMailFolderSink->OnlineCopyCompleted(this, copyStatus);
               }
             }
@@ -3363,7 +3469,13 @@ void nsImapProtocol::CreateEscapedMailboxName(const char* rawName,
       escapedName.Insert('\\', strIndex++);
   }
 }
-void nsImapProtocol::SelectMailbox(const char* mailboxName) {
+
+// SELECT a mailbox and do a folder update unless noUpdate is set to true.
+// For example, when gmail messages are shift-deleted to gmail Trash, we don't
+// want to update. This prevents Trash folder message count badge from
+// temporarily increasing.
+void nsImapProtocol::SelectMailbox(const char* mailboxName,
+                                   bool noUpdate /* = false */) {
   ProgressEventFunctionUsingNameWithString("imapStatusSelectingMailbox",
                                            mailboxName);
   IncrementCommandTagNumber();
@@ -3390,6 +3502,9 @@ void nsImapProtocol::SelectMailbox(const char* mailboxName) {
   m_imapMailFolderSinkSelected = m_imapMailFolderSink;
   MOZ_ASSERT(m_imapMailFolderSinkSelected);
   Log("SelectMailbox", nullptr, "got m_imapMailFolderSinkSelected");
+
+  // Check for need to skip possible call to ProcessMailboxUpdate() below
+  if (noUpdate) return;
 
   int32_t numOfMessagesInFlagState = 0;
   nsImapAction imapAction;
@@ -3745,8 +3860,9 @@ void nsImapProtocol::PostLineDownLoadEvent(const char* line,
         NS_ASSERTION(count == byteCount,
                      "IMAP channel pipe couldn't buffer entire write");
         if (NS_SUCCEEDED(rv)) {
-          m_channelListener->OnDataAvailable(m_mockChannel,
-                                             m_channelInputStream, 0, count);
+          rv = m_channelListener->OnDataAvailable(
+              m_mockChannel, m_channelInputStream, 0, count);
+          NS_ENSURE_SUCCESS_VOID(rv);
         }
         // else some sort of explosion?
       }
@@ -3756,8 +3872,14 @@ void nsImapProtocol::PostLineDownLoadEvent(const char* line,
 
     m_bytesToChannel += byteCount;
     if (m_imapMessageSink && line && echoLineToMessageSink &&
-        !GetPseudoInterrupted())
-      m_imapMessageSink->ParseAdoptedMsgLine(line, uidOfMessage, m_runningUrl);
+        !GetPseudoInterrupted()) {
+      nsresult rv = m_imapMessageSink->ParseAdoptedMsgLine(line, uidOfMessage,
+                                                           m_runningUrl);
+      if (NS_FAILED(rv)) {
+        // If the folder failed to accept the message, stop piping it across!
+        PseudoInterrupt(true);
+      }
+    }
   }
   // ***** We need to handle the pseudo interrupt here *****
 }
@@ -4617,10 +4739,13 @@ uint32_t nsImapProtocol::CountMessagesInIdString(const char* idString) {
 bool nsImapProtocol::DeathSignalReceived() {
   // ignore mock channel status if we've been pseudo interrupted
   // ### need to make sure we clear pseudo interrupted status appropriately.
-  if (!GetPseudoInterrupted() && m_mockChannel) {
-    nsresult returnValue;
-    m_mockChannel->GetStatus(&returnValue);
-    if (NS_FAILED(returnValue)) return false;
+  if (!GetPseudoInterrupted()) {
+    MutexAutoLock mon(mLock);
+    if (m_mockChannel) {
+      nsresult returnValue;
+      m_mockChannel->GetStatus(&returnValue);
+      if (NS_FAILED(returnValue)) return false;
+    }
   }
 
   // Check the other way of cancelling.
@@ -5709,14 +5834,24 @@ nsresult nsImapProtocol::AuthLogin(const char* userName,
                                    const nsString& aPassword,
                                    eIMAPCapabilityFlag flag) {
   nsresult rv;
-  // If we're shutting down, bail out.
+  // If we're shutting down, bail out (usually).
   nsCOMPtr<nsIMsgAccountManager> accountMgr =
       do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   bool shuttingDown = false;
   (void)accountMgr->GetShutdownInProgress(&shuttingDown);
   if (shuttingDown) {
-    return NS_ERROR_ABORT;
+    MOZ_LOG(IMAP, LogLevel::Debug, ("AuthLogin() while shutdown in progress"));
+    nsImapAction imapAction;
+    rv = m_runningUrl->GetImapAction(&imapAction);
+    // If we're shutting down, and not running the kinds of urls we run at
+    // shutdown, then this should fail because running urls during
+    // shutdown will very likely fail and potentially hang.
+    if (NS_FAILED(rv) || (imapAction != nsIImapUrl::nsImapExpungeFolder &&
+                          imapAction != nsIImapUrl::nsImapDeleteAllMsgs &&
+                          imapAction != nsIImapUrl::nsImapDeleteFolder)) {
+      return NS_ERROR_ABORT;
+    }
   }
 
   ProgressEventFunctionUsingName("imapStatusSendingAuthLogin");
@@ -7328,33 +7463,18 @@ void nsImapProtocol::DiscoverMailboxList() {
           DiscoverMailboxSpec(boxSpec);
         }
 
-        // now do the folders within this namespace
-        nsCString pattern;
-        nsCString pattern2;
-        if (usingSubscription) {
-          pattern.Append(prefix);
-          pattern.Append('*');
-        } else {
-          pattern.Append(prefix);
-          pattern.Append('%');  // mscott just need one percent right?
-          // pattern = PR_smprintf("%s%%", prefix);
-          char delimiter = ns->GetDelimiter();
-          if (delimiter) {
-            // delimiter might be NIL, in which case there's no hierarchy anyway
-            pattern2 = prefix;
-            pattern2 += "%";
-            pattern2 += delimiter;
-            pattern2 += "%";
-            // pattern2 = PR_smprintf("%s%%%c%%", prefix, delimiter);
-          }
-        }
+        // Now do the folders within this namespace
+
         // Note: It is important to make sure we are respecting the
         // server_sub_directory preference when calling List and Lsub (2nd arg =
         // true), otherwise we end up with performance issues or even crashes
         // when connecting to servers that expose the users entire home
         // directory (like UW-IMAP).
-        if (usingSubscription) {  // && !GetSubscribingNow())  should never get
-                                  // here from subscribe pane
+        if (usingSubscription) {
+          nsCString pattern;
+          pattern.Append(prefix);
+          pattern.Append('*');
+
           if (GetServerStateParser().GetCapabilityFlag() &
               kHasListExtendedCapability)
             Lsub(pattern.get(), true);  // do LIST (SUBSCRIBED)
@@ -7369,8 +7489,14 @@ void nsImapProtocol::DiscoverMailboxList() {
             m_standardListMailboxes.Clear();
           }
         } else {
-          List(pattern.get(), true, hasXLIST);
-          List(pattern2.get(), true, hasXLIST);
+          // Not using subscriptions. Do no imap lists here. This will keep all
+          // folders "unverified" so that all folders will be checked for new
+          // children in nsImapIncomingServer::DiscoveryDone when
+          // discoverallboxes URL stop is signaled. This must be done instead of
+          // 'list "" *' (list all folders) so that database for each
+          // individually listed or newly discovered folder is properly closed
+          // when discoverchildren URL stop is signaled as required by
+          // test_listClosesDB.js.
         }
       }
     }
@@ -7828,7 +7954,7 @@ void nsImapProtocol::Copy(const char* messageList,
     IncrementCommandTagNumber();
     nsAutoCString protocolString(GetServerCommandTag());
     if (idsAreUid) protocolString.AppendLiteral(" uid");
-    if ((m_imapAction == nsIImapUrl::nsImapOnlineMove) &&
+    if (m_imapAction == nsIImapUrl::nsImapOnlineMove &&
         GetServerStateParser().GetCapabilityFlag() & kHasMoveCapability)
       protocolString.AppendLiteral(" move ");
     else
@@ -7865,6 +7991,8 @@ void nsImapProtocol::NthLevelChildList(const char* onlineMailboxPrefix,
   while (count < depth) {
     pattern += suffix;
     count++;
+    MOZ_LOG(IMAP_DC, LogLevel::Debug,
+            ("NthLevelChildList: list pattern=%s", pattern.get()));
     List(pattern.get(), false);
   }
 }
@@ -7878,6 +8006,10 @@ void nsImapProtocol::ProcessAuthenticatedStateURL() {
   nsImapAction imapAction;
   nsCString sourceMailbox;
   m_runningUrl->GetImapAction(&imapAction);
+  // See nsIImapUrl.idl for imapAction values.
+  MOZ_LOG(IMAP, LogLevel::Debug,
+          ("ProcessAuthenticatedStateURL [this=%p], imapAction = 0x%" PRIx32,
+           this, imapAction));
 
   // switch off of the imap url action and take an appropriate action
   switch (imapAction) {
@@ -8702,7 +8834,10 @@ NS_INTERFACE_MAP_BEGIN(nsImapCacheStreamListener)
   NS_INTERFACE_MAP_ENTRY(nsIStreamListener)
 NS_INTERFACE_MAP_END
 
-nsImapCacheStreamListener::nsImapCacheStreamListener() {}
+nsImapCacheStreamListener::nsImapCacheStreamListener() {
+  mCache2 = false;
+  mStarting = true;
+}
 bool nsImapCacheStreamListener::mGoodCache2 = false;
 const uint32_t nsImapCacheStreamListener::kPeekBufSize = 101;
 
@@ -8714,6 +8849,7 @@ nsresult nsImapCacheStreamListener::Init(nsIStreamListener* aStreamListener,
   NS_ENSURE_ARG(aStreamListener);
   NS_ENSURE_ARG(aMockChannelToUse);
 
+  MOZ_ASSERT(NS_IsMainThread());
   mChannelToUse = aMockChannelToUse;
   mListener = aStreamListener;
   mCache2 = aCache2;
@@ -8724,6 +8860,7 @@ nsresult nsImapCacheStreamListener::Init(nsIStreamListener* aStreamListener,
 
 NS_IMETHODIMP
 nsImapCacheStreamListener::OnStartRequest(nsIRequest* request) {
+  MOZ_ASSERT(NS_IsMainThread());
   if (!mChannelToUse) {
     NS_ERROR("OnStartRequest called after OnStopRequest");
     return NS_ERROR_NULL_POINTER;
@@ -8737,6 +8874,7 @@ nsImapCacheStreamListener::OnStartRequest(nsIRequest* request) {
 NS_IMETHODIMP
 nsImapCacheStreamListener::OnStopRequest(nsIRequest* request,
                                          nsresult aStatus) {
+  MOZ_ASSERT(NS_IsMainThread());
   if (!mListener) {
     NS_ERROR("OnStopRequest called twice");
     return NS_ERROR_NULL_POINTER;
@@ -8766,9 +8904,9 @@ nsresult nsImapCacheStreamListener::Peeker(nsIInputStream* aInStr,
                                            uint32_t aOffset, uint32_t aCount,
                                            uint32_t* aCountWritten) {
   char peekBuf[kPeekBufSize];
-  aCount = aCount > sizeof peekBuf ? sizeof peekBuf : aCount;
+  aCount = aCount >= sizeof peekBuf ? sizeof peekBuf - 1 : aCount;
   memcpy(peekBuf, aBuffer, aCount);
-  peekBuf[aCount] = 0;  // Null terminate the starting header data.
+  peekBuf[aCount] = '\0';  // Null terminate the starting header data.
   int32_t findPos = MsgFindCharInSet(nsDependentCString(peekBuf), ":\n\r", 0);
   // Check that the first line is a header line, i.e., with a ':' in it
   // Or that it begins with "From " because some IMAP servers allow that,
@@ -8783,6 +8921,7 @@ nsImapCacheStreamListener::OnDataAvailable(nsIRequest* request,
                                            nsIInputStream* aInStream,
                                            uint64_t aSourceOffset,
                                            uint32_t aCount) {
+  MOZ_ASSERT(NS_IsMainThread());
   if (mCache2 && mStarting) {
     // Peeker() does check of leading bytes and sets mGoodCache2.
     uint32_t numRead;
@@ -8806,6 +8945,86 @@ nsImapCacheStreamListener::OnDataAvailable(nsIRequest* request,
   return mListener->OnDataAvailable(mChannelToUse, aInStream, aSourceOffset,
                                     aCount);
 }
+
+//
+// ImapOfflineMsgStreamListener
+//
+// Listener wrapper, helper for ReadFromLocalCache().
+// It knows which offline message it's streaming out, and if the operation
+// fails it'll cause the local copy to be discarded (on the grounds that it's
+// likely damaged) before letting the underlying listener proceed with it's
+// own error handling.
+// Works on the Main thread.
+//
+// ***NOTE*** (BenC 2024-11-12):
+// We pass in the underlying channel to use as the request param to the
+// underlying listener callbacks. I'm not totally sure this is required.
+// It'd be nicer to just pass along whatever request that we're called
+// with.
+// But nsImapCacheStreamListener (which this is based upon) did it, so I'm
+// cargo-culting it. For now.
+//
+class ImapOfflineMsgStreamListener : public nsIStreamListener {
+ public:
+  NS_DECL_ISUPPORTS
+
+  ImapOfflineMsgStreamListener() = delete;
+  ImapOfflineMsgStreamListener(nsIMsgFolder* folder, nsMsgKey msgKey,
+                               nsIStreamListener* listener,
+                               nsIImapMockChannel* channel)
+      : mFolder(folder),
+        mMsgKey(msgKey),
+        mAlreadyStarted(false),
+        mListener(listener),
+        mChannel(channel) {
+    MOZ_RELEASE_ASSERT(mFolder);
+    MOZ_RELEASE_ASSERT(mListener);
+    MOZ_RELEASE_ASSERT(mChannel);
+  }
+
+  NS_IMETHOD OnStartRequest(nsIRequest* request) override {
+    MOZ_RELEASE_ASSERT(NS_IsMainThread());
+    MOZ_RELEASE_ASSERT(!mAlreadyStarted);
+    mAlreadyStarted = true;
+    return mListener->OnStartRequest(mChannel);
+  }
+
+  NS_IMETHOD OnDataAvailable(nsIRequest* request, nsIInputStream* stream,
+                             uint64_t offset, uint32_t count) override {
+    MOZ_RELEASE_ASSERT(NS_IsMainThread());
+    return mListener->OnDataAvailable(mChannel, stream, offset, count);
+  }
+
+  NS_IMETHOD OnStopRequest(nsIRequest* request, nsresult status) override {
+    MOZ_RELEASE_ASSERT(NS_IsMainThread());
+    nsresult rv = mListener->OnStopRequest(mChannel, status);
+    mListener = nullptr;
+    mChannel->Close();
+    mChannel = nullptr;
+    if (NS_FAILED(status)) {
+      // The streaming failed, discard the offline copy of the message.
+      mFolder->DiscardOfflineMsg(mMsgKey);
+    }
+    return rv;
+  }
+
+ protected:
+  virtual ~ImapOfflineMsgStreamListener() {}
+  // Remember the folder and key of the offline message we're streaming out,
+  // so if anything goes wrong we can discard it on the grounds that it's
+  // damaged.
+  nsCOMPtr<nsIMsgFolder> mFolder;
+  nsMsgKey mMsgKey;
+  bool mAlreadyStarted;
+  nsCOMPtr<nsIStreamListener> mListener;  // The listener we're wrapping.
+  nsCOMPtr<nsIImapMockChannel> mChannel;
+};
+
+NS_IMPL_ISUPPORTS(ImapOfflineMsgStreamListener, nsIStreamListener);
+
+//
+// nsImapMockChannel implementation
+//
 
 NS_IMPL_ISUPPORTS_INHERITED(nsImapMockChannel, nsHashPropertyBag,
                             nsIImapMockChannel, nsIMailChannel, nsIChannel,
@@ -9164,22 +9383,20 @@ nsImapMockChannel::OnCacheEntryCheck(nsICacheEntry* entry, uint32_t* aResult) {
 
 nsresult nsImapMockChannel::OpenCacheEntry() {
   nsresult rv;
-  if (!gCache2Storage) {
-    // Only need to do this once since cache2 is used by all accounts and
-    // folders. Get the cache storage object from the imap service.
-    nsCOMPtr<nsIImapService> imapService =
-        do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsICacheStorage> cache2Storage;
 
-    // Obtain the cache storage object used by all channels in this session.
-    // This will return disk cache (default) or memory cache as determined by
-    // the boolean pref "mail.imap.use_disk_cache2"
-    rv = imapService->GetCacheStorage(getter_AddRefs(gCache2Storage));
-    NS_ENSURE_SUCCESS(rv, rv);
-    MOZ_LOG(IMAPCache, LogLevel::Debug,
-            ("%s: Obtained storage obj for |%s| cache2", __func__,
-             gUseDiskCache2 ? "disk" : "mem"));
-  }
+  nsCOMPtr<nsIImapService> imapService =
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // Obtain the cache storage object used by all channels in this session.
+  // This will return disk cache (default) or memory cache as determined by
+  // the boolean pref "mail.imap.use_disk_cache2"
+  rv = imapService->GetCacheStorage(getter_AddRefs(cache2Storage));
+  NS_ENSURE_SUCCESS(rv, rv);
+  MOZ_LOG(IMAPCache, LogLevel::Debug,
+          ("%s: Obtained storage obj for |%s| cache2", __func__,
+           gUseDiskCache2 ? "disk" : "mem"));
 
   int32_t uidValidity = -1;
   uint32_t cacheAccess = nsICacheStorage::OPEN_NORMALLY;
@@ -9250,7 +9467,7 @@ nsresult nsImapMockChannel::OpenCacheEntry() {
             ("%s: Call AsyncOpenURI to read part from entire message cache",
              __func__));
   }
-  return gCache2Storage->AsyncOpenURI(newUri, extension, cacheAccess, this);
+  return cache2Storage->AsyncOpenURI(newUri, extension, cacheAccess, this);
 }
 
 // Pumps content of cache2 entry to channel listener. If a part was
@@ -9425,6 +9642,7 @@ NS_IMETHODIMP nsImapMockChannel::ReadFromImapConnection() {
 // that... If it's in the local cache, we return true and we can abort the
 // download because this method does the rest of the work.
 bool nsImapMockChannel::ReadFromLocalCache() {
+  MOZ_ASSERT(NS_IsMainThread());
   nsresult rv = NS_OK;
 
   nsCOMPtr<nsIImapUrl> imapUrl = do_QueryInterface(m_url);
@@ -9438,7 +9656,13 @@ bool nsImapMockChannel::ReadFromLocalCache() {
 
   nsAutoCString messageIdString;
 
+  // The following call may set a new/replacement m_channelListener.
   SetupPartExtractorListener(imapUrl, m_channelListener);
+
+  // The code below assumes that m_channelListener is non-null,
+  if (!m_channelListener) {
+    return false;
+  }
 
   imapUrl->GetListOfMessageIds(messageIdString);
   nsCOMPtr<nsIMsgFolder> folder;
@@ -9452,20 +9676,34 @@ bool nsImapMockChannel::ReadFromLocalCache() {
   nsCOMPtr<nsIMsgDBHdr> hdr;
   rv = folder->GetMessageHeader(msgKey, getter_AddRefs(hdr));
   NS_ENSURE_SUCCESS(rv, false);
+
+  // Attempt to open the local message and pump it out asynchronously.
+  // If any of this fails we assume the local message is damaged.
+  // In that case we'll discard it and tell the caller there is no local
+  // copy.
   nsCOMPtr<nsIInputStream> msgStream;
   rv = folder->GetLocalMsgStream(hdr, getter_AddRefs(msgStream));
   NS_ENSURE_SUCCESS(rv, false);
-  // dougt - This may break the ablity to "cancel" a read from offline
-  // mail reading. fileChannel->SetLoadGroup(m_loadGroup);
-  RefPtr<nsImapCacheStreamListener> cacheListener =
-      new nsImapCacheStreamListener();
-  cacheListener->Init(m_channelListener, this);
 
-  // create a stream pump that will async read the message.
+  // Create a stream pump that will async read the message.
   nsCOMPtr<nsIInputStreamPump> pump;
   rv = NS_NewInputStreamPump(getter_AddRefs(pump), msgStream.forget());
   NS_ENSURE_SUCCESS(rv, false);
-  rv = pump->AsyncRead(cacheListener);
+
+  // Wrap the listener with another one which knows which message offline
+  // message we're reading from. If the read fails, our wrapper will discard
+  // the offline copy as damaged.
+  // We use a wrapper around the real listener because we don't know who is
+  // consuming this data (A docshell, gloda indexing, calendar, whatever), so
+  // we don't have any control over how read errors are handled. This lets
+  // us intercept errors in OnStopRequest() and respond by discarding the
+  // offline copy on the grounds that it's likely damaged.
+  // Then the underlying listener can proceed with it's own OnStopRequest()
+  // handling.
+  RefPtr<ImapOfflineMsgStreamListener> offlineMsgListener =
+      new ImapOfflineMsgStreamListener(folder, msgKey, m_channelListener, this);
+
+  rv = pump->AsyncRead(offlineMsgListener);
   NS_ENSURE_SUCCESS(rv, false);
 
   // if the msg is unread, we should mark it read on the server. This lets
@@ -9475,6 +9713,9 @@ bool nsImapMockChannel::ReadFromLocalCache() {
 }
 
 NS_IMETHODIMP nsImapMockChannel::AsyncOpen(nsIStreamListener* aListener) {
+  MOZ_ASSERT(NS_IsMainThread(),
+             "nsIChannel methods must be called from main thread");
+  mLoadFlags |= nsIChannel::LOAD_REPLACE;
   nsCOMPtr<nsIStreamListener> listener = aListener;
   nsresult rv =
       nsContentSecurityManager::doContentSecurityCheck(this, listener);

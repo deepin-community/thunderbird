@@ -1,9 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY serverAdvanced.label "Papildu konta iestatījumi">
-<!-- LOCALIZATION NOTE (serverDirectory.label): Do not translate "IMAP" -->
 <!ENTITY serverDirectory.label "IMAP servera katalogs:">
 <!ENTITY serverDirectory.accesskey "k">
 <!ENTITY usingSubscription.label "Rādīt tikai abonētās mapes">
@@ -12,7 +7,6 @@
 <!ENTITY dualUseFolders.accesskey "S">
 <!ENTITY maximumConnectionsNumber.label "Maksimālais kešoto servera savienojumu skaits">
 <!ENTITY maximumConnectionsNumber.accesskey "M">
-<!-- LOCALIZATION NOTE (namespaceDesc.label): Do not translate "IMAP" -->
 <!ENTITY namespaceDesc.label "Šie iestatījumi nosaka jūsu IMAP servera nosaukumvietas">
 <!ENTITY personalNamespace.label "Personiskā nosaukumvieta:">
 <!ENTITY personalNamespace.accesskey "P">

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Informasi Pemecahan Masalah
 page-subtitle = Laman ini berisi informasi teknis yang mungkin berguna ketika Anda berusaha mengatasi masalah. Jika Anda mencari jawaban untuk pertanyaan umum tentang { -brand-short-name }, silakan kunjungi <a data-l10n-name="support-link">situs web layanan dukungan kami</a>.
 crashes-title = Laporan Kerusakan
@@ -15,7 +11,10 @@ support-addons-type = Tipe
 support-addons-enabled = Diaktifkan
 support-addons-version = Versi
 support-addons-id = ID
+legacy-user-stylesheets-title = Stylesheet Pengguna Lawas
 legacy-user-stylesheets-enabled = Aktif
+legacy-user-stylesheets-stylesheet-types = Stylesheet
+legacy-user-stylesheets-no-stylesheets-found = Tidak ada stylesheet ditemukan
 security-software-title = Perangkat Lunak Keamanan
 security-software-type = Jenis
 security-software-name = Nama
@@ -35,8 +34,6 @@ app-basics-version = Versi
 app-basics-build-id = ID Build
 app-basics-distribution-id = ID Distribusi
 app-basics-update-channel = Kanal Pemutakhiran
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Direktori Pemutakhiran
@@ -44,20 +41,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Riwayat Pemutakhiran
 app-basics-show-update-history = Tampilkan Riwayat Pemutakhiran
-# Represents the path to the binary used to start the application.
 app-basics-binary = Biner Aplikasi
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Direktori Profil
        *[other] Folder Profil
     }
-app-basics-enabled-plugins = Plugin Terpasang
 app-basics-build-config = Konfigurasi Build
 app-basics-user-agent = User Agent
 app-basics-os = OS
 app-basics-os-theme = Tema Sistem Operasi
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Penggunaan Memori
 app-basics-performance = Kinerja
@@ -75,9 +68,7 @@ app-basics-key-mozilla = Kunci Layanan Lokasi Mozilla
 app-basics-safe-mode = Mode Aman
 app-basics-memory-size = Ukuran Memori (RAM)
 app-basics-disk-available = Kapasitas Disk Tersedia
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
+app-basics-pointing-devices = Perangkat Penunjuk
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -109,9 +100,7 @@ graphics-decision-log-title = Log Keputusan
 graphics-crash-guards-title = Fitur Penjaga Kerusakan yang Dinonaktifkan
 graphics-workarounds-title = Solusi sementara
 graphics-device-pixel-ratios = Rasio Piksel Perangkat Jendela
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protokol Jendela
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Lingkungan Desktop
 place-database-title = Basis Data Places
 place-database-stats = Statistik
@@ -149,9 +138,6 @@ clear-startup-cache-label = Hapus tembolok permulaan...
 startup-cache-dialog-title2 = Mulai ulang { -brand-short-name } untuk membersihkan tembolok mulai?
 startup-cache-dialog-body2 = Ini tidak akan mengubah pengaturan Anda atau menghapus ekstensi.
 restart-button-label = Mulai Ulang
-
-## Media titles
-
 audio-backend = Backend Audio
 max-audio-channels = Kanal Maksimal
 sample-rate = Tingkat Sampel Pilihan
@@ -170,17 +156,21 @@ media-device-rate = Nilai
 media-device-latency = Latensi
 media-capabilities-title = Kemampuan Media
 media-codec-support-info = Informasi Dukungan Codec
-# List all the entries of the database.
 media-capabilities-enumerate = Daftar basis data
-
-## Codec support table
-
+media-codec-support-sw-decoding = Dekode Perangkat Lunak
 media-codec-support-hw-decoding = Dekode Perangkat Keras
+media-codec-support-codec-name = Nama Codec
 media-codec-support-supported = Didukung
 media-codec-support-unsupported = Tidak didukung
-
-##
-
+media-codec-support-error = Informasi dukungan codec tidak tersedia. Coba lagi setelah memutar berkas media.
+media-codec-support-lack-of-extension = Pasang ekstensi
+media-content-decryption-modules-title = Informasi Modul Dekripsi Konten
+media-key-system-name = Nama Sistem Kunci
+media-video-robustness = Kekokohan Video
+media-audio-robustness = Kekokohan Audio
+media-cdm-capabilities = Kemampuan
+media-cdm-clear-lead = Clear Lead
+media-hdcp-22-compatible = Kompatibel dengan HDCP 2.2
 intl-title = Pelokalan dan Internasional
 intl-app-title = Setelan Aplikasi
 intl-locales-requested = Bahasa yang Diminta
@@ -190,64 +180,30 @@ intl-locales-default = Bahasa Baku
 intl-os-title = Sistem Operasi
 intl-os-prefs-system-locales = Bahasa Sistem
 intl-regional-prefs = Pengaturan Regional
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Debugging Jarak Jauh (Protokol Chromium)
 remote-debugging-accepting-connections = Menerima Koneksi
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days = Laporan Kerusakan dalam { $days } Hari Terakhir
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes = { $minutes } menit yang lalu
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours = { $hours } jam yang lalu
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days = { $days } hari yang lalu
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports = Semua Laporan Kerusakan (termasuk { $reports } kerusakan yang tertunda pada rentang waktu yang ditentukan)
 raw-data-copied = Data mentah telah disalin ke papan klip
 text-copied = Teks telah disalin ke clipboard
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Diblokir untuk versi penggerak grafik Anda.
 blocked-gfx-card = Diblokir untuk kartu grafik Anda karena masalah pada penggerak yang tidak bisa diatasi.
 blocked-os-version = Diblokir untuk versi sistem operasi Anda.
 blocked-mismatched-version = Diblokir karena versi driver kartu grafis Anda tidak cocok antara registry dan DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Diblokir untuk versi penggerak grafik Anda. Coba perbarui penggerak grafik Anda ke versi { $driverVersion } atau yang lebih baru.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parameter ClearType
 compositing = Compositing
+support-font-determination = Info Debug Visibilitas Font
 hardware-h264 = Dekode H264 Perangkat Keras
 main-thread-no-omtc = thread utama, tanpa OMTC
 yes = Ya
 no = Tidak
 unknown = Tidak diketahui
 virtual-monitor-disp = Layar Monitor Virtual
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Ditemukan
 missing = Hilang
 gpu-process-pid = GPUProcessPid
@@ -272,11 +228,9 @@ webgl2-renderer = Perender WebGL2
 webgl2-version = Versi Penggerak WebGL 2
 webgl2-driver-extensions = Ekstensi Penggerak WebGL 2
 webgl2-extensions = Ekstensi WebGL 2
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
+webgpu-default-adapter = Adaptor Baku WebGPU
+webgpu-fallback-adapter = Adaptor Pengganti WebGPU
 support-blocklisted-bug = Dicekal karena masalah yang diketahui: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Dicekal: kode kegagalan { $failureCode }
 d3d11layers-crash-guard = Compositor D3D11
 glcontext-crash-guard = OpenGL
@@ -296,6 +250,7 @@ has-seccomp-bpf = Seccomp-BPF (Pemfilteran Pemanggilan Sistem - System Call Filt
 has-seccomp-tsync = Sinkronisasi Utas Seccomp
 has-user-namespaces = Ruang Nama Pengguna
 has-privileged-user-namespaces = Ruang Nama Pengguna untuk proses istimewa
+support-user-namespaces-unavailable = { $status } — Fitur ini tidak diizinkan oleh sistem Anda. Hal ini dapat membatasi fungsi fitur keamanan { -brand-short-name }.
 can-sandbox-content = Sandbox Proses Konten
 can-sandbox-media = Media Plugin Sandboxing
 content-sandbox-level = Tingkat Proses Konten Sandbox
@@ -315,16 +270,8 @@ launcher-process-status-0 = Diaktifkan
 launcher-process-status-1 = Dinonaktifkan karena kegagalan
 launcher-process-status-2 = Dinonaktifkan secara paksa
 launcher-process-status-unknown = Status tak diketahui
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Dinonaktifkan oleh eksperimen
-fission-status-experiment-treatment = Diaktifkan oleh eksperimen
 fission-status-disabled-by-e10s-env = Dinonaktifkan oleh lingkungan
 fission-status-enabled-by-env = Diaktifkan oleh lingkungan
 fission-status-disabled-by-env = Dinonaktifkan oleh lingkungan
@@ -333,7 +280,6 @@ fission-status-disabled-by-default = Dinonaktifkan secara baku
 fission-status-enabled-by-user-pref = Diaktifkan oleh pengguna
 fission-status-disabled-by-user-pref = Dinonaktifkan oleh pengguna
 fission-status-disabled-by-e10s-other = E10s dinonaktifkan
-fission-status-enabled-by-rollout = Diaktifkan dengan peluncuran bertahap
 async-pan-zoom = Geser/Perbesaran Asinkron
 apz-none = tidak ada
 wheel-enabled = input wheel diaktifkan
@@ -342,30 +288,27 @@ drag-enabled = penyeretan bilah penggulung aktif
 keyboard-enabled = papan tik diaktifkan
 autoscroll-enabled = gulir otomatis diaktifkan
 zooming-enabled = pinch-zoom halus diaktifkan
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = input wheel asinkron dinonaktifkan karena preferensi yang tidak didukung: { $preferenceKey }
 touch-warning = input sentuh asinkron dinonaktifkan karena preferensi yang tidak didukung: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Tidak Aktif
 policies-active = Aktif
 policies-error = Galat
-
-## Printing section
-
 support-printing-title = Pencetakan
 support-printing-troubleshoot = Pemecahan Masalah
 support-printing-clear-settings-button = Bersihkan setelan cetak tersimpan
 support-printing-modified-settings = Pengaturan cetak yang diubah
 support-printing-prefs-name = Nama
 support-printing-prefs-value = Nilai
-
-## Normandy sections
-
+support-remote-settings-title = Pengaturan Jarak Jauh
+support-remote-settings-status = Status
+support-remote-settings-status-ok = Oke
+support-remote-settings-status-broken = Tidak berfungsi
+support-remote-settings-last-check = Pemeriksaan terakhir
+support-remote-settings-local-timestamp = Stempel waktu lokal
+support-remote-settings-sync-history = Riwayat
+support-remote-settings-sync-history-status = Status
+support-remote-settings-sync-history-datetime = Tanggal
+support-remote-settings-sync-history-infos = Info
 support-remote-experiments-title = Eksperimen Jarak Jauh
 support-remote-experiments-name = Nama
 support-remote-experiments-branch = Cabang Eksperimen
@@ -373,3 +316,13 @@ support-remote-experiments-see-about-studies = Lihat <a data-l10n-name="support-
 support-remote-features-title = Fitur Jarak Jauh
 support-remote-features-name = Nama
 support-remote-features-status = Status
+pointing-device-mouse = Mouse
+pointing-device-touchscreen = Layar Sentuh
+pointing-device-pen-digitizer = Digitizer Pen
+pointing-device-none = Tidak ada alat penunjuk
+content-analysis-title = Analisis Konten (DLP)
+content-analysis-active = Aktif
+content-analysis-connected-to-agent = Tersambung dengan Agen
+content-analysis-agent-path = Jalur Agen
+content-analysis-agent-failed-signature-verification = Verifikasi Tanda Tangan Agen Gagal
+content-analysis-request-count = Jumlah Permintaan

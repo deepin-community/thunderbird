@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Bar Dewislen
     .accesskey = D
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Gosodiadau
     .accesskey = G
 menu-addons-and-themes =
     .label = Ychwanegion a Themâu
     .accesskey = Y
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Allforio ar gyfer Symudol…
+    .accesskey = S
 menu-help-help-title =
     .label = Cymorth
     .accesskey = C
 menu-help-get-help =
     .label = Derbyn Cymorth
     .accesskey = D
-menu-help-explore-features =
-    .label = Edrych ar y Nodweddion
-    .accesskey = E
 menu-help-get-release-help =
     .label = Cael Cymorth gyda { -brand-short-name }
     .accesskey = C
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = Ynghylch { -brand-short-name }
     .accesskey = Y
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] G
            *[other] o
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Gadael { -brand-shorter-name }
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Gadael { -brand-full-name }
            *[other] Gadael { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Sbam
     .tooltiptext = Marcio'r negeseuon hyn fel sbam
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Dad-ddileu
     .tooltiptext = Dad-ddileu'r negeseuon hyn
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Trwsio Amgodio Testun
     .accesskey = T
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Penyn Paen Ffolder
     .accesskey = P
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Pennyn Rhestrau Negeseuon
     .accesskey = P
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Bar Offer Mannau
     .accesskey = B
-
-## File
-
 file-new-email-account =
     .label = Cyfrif E-bost…
     .accesskey = C

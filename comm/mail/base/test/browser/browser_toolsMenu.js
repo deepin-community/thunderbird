@@ -6,7 +6,7 @@ const { MessageGenerator } = ChromeUtils.importESModule(
   "resource://testing-common/mailnews/MessageGenerator.sys.mjs"
 );
 
-/** @type MenuData */
+/** @type {MenuData} */
 const toolsMenuData = {
   tasksMenuMail: { hidden: true },
   addressBook: {},
@@ -26,6 +26,7 @@ const toolsMenuData = {
   deleteJunk: { disabled: true },
   menu_import: {},
   menu_export: {},
+  menu_exportmobile: {},
   manageKeysOpenPGP: {},
   devtoolsMenu: {},
   devtoolsToolbox: {},

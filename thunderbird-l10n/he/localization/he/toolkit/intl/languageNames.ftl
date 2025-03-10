@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = אפאר
 language-name-ab = אבחזית
 language-name-ach = אקצ׳ולי
@@ -117,11 +113,11 @@ language-name-ltg = לטגלית
 language-name-lu = לובה־קטנגה
 language-name-lv = לטבית
 language-name-mai = מאיטילי
-language-name-meh = מיסטק של דרום־מערב טלקסיאקו
+language-name-meh = מישטק של דרום־מערב טלקסיאקו
 language-name-mg = מלגאשית
 language-name-mh = שפת איי מרשל
 language-name-mi = מאורית
-language-name-mix = מיסטק של מיסטפק
+language-name-mix = מישטק של מישטפק
 language-name-mk = מקדונית
 language-name-ml = מליאלאם
 language-name-mn = מונגולית

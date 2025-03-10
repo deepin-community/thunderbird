@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Apie jūsų teises
 rights-intro = „{ -brand-full-name }“ yra laisvoji atviroji programa, kuriama bendruomenės, apimančios tūkstančius žmonių iš viso pasaulio. Keletas dalykų, kuriuos turėtumėte žinoti:
 rights-intro-point-1 = Jums leidžiama naudotis „{ -brand-short-name }“ programa, vadovaujantis <a data-l10n-name="mozilla-public-license-link">„Mozilla“ viešąja licencija (Mozilla Public License)</a>. Ši licencija leidžia naudotis „{ -brand-short-name }“ programa, ją dauginti ir platinti.  Be to, galite laisvai modifikuoti programos pirminius tekstus. Licencija nedraudžia platinti ir jūsų modifikuotų programos versijų.

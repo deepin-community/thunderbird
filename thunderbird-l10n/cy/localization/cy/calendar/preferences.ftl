@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Calendr
 calendar-title-reminder = Atgoffwyr
 calendar-title-notification = Hysbysiadau
@@ -9,10 +5,8 @@ calendar-title-category = Categorïau
 dateformat-label =
     .value = Fformat Testun Dyddiad:
     .accesskey = F
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Hir: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Byr: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Gofyn cyn dileu digwyddiadau a thasgau
     .accesskey = G
-accessibility-legend = Hygyrchedd
-accessibility-colors-label =
-    .label = Mireinio lliwiau ar gyfer hygyrchedd
-    .accesskey = M
 reminder-legend = Pan fydd Disgwyl Atgoffwr:
 reminder-play-checkbox =
     .label = Canu nodyn

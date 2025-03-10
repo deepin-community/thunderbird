@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Wotzjewić…
     .accesskey = o
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nowe konto
 appmenu-new-account-panel =
     .label = Nowe konto
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Nowu e-mejl wobstarać
-    .accesskey = m
-appmenu-new-mail-account =
-    .label = Eksistowaca e-mejl
-    .accesskey = E
 appmenu-new-email-account =
     .label = E-mejl
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Diskusijna skupina
     .accesskey = D
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Nowy adresnik
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Nowy LDAP-adresnik
     .accesskey = P
-
-## Create
-
 appmenu-create-panel-title =
     .title = Wutworić
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Kontakt
     .accesskey = K
-
-## Open
-
 appmenu-open-file-panel =
     .label = Z dataje wočinić
     .accesskey = d
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Protyka…
     .accesskey = r
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Napohlad
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Pismowu wulkosć powjetšić
 appmenuitem-font-size-reduce =
     .tooltiptext = Pismowu wulkosć pomjeńšić
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Pismowu wulkosć wróćo stajić
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Nastroje
 appmenu-tools-panel =
@@ -147,6 +114,9 @@ appmenu-tools-import =
     .accesskey = I
 appmenu-tools-export =
     .label = Eksportować
+    .accesskey = E
+appmenu-export-for-mobile =
+    .label = Eksport za mobilny grat
     .accesskey = E
 appmenu-tools-message-search =
     .label = Powěsće pytać
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Wuwiwarske nastroje
     .accesskey = W
-
-## Help
-
 appmenu-help-panel-title =
     .title = Pomoc
 appmenu-help-get-help =
     .label = Pomoc wobstarać
     .accesskey = P
-appmenu-help-explore-features =
-    .label = Funkcije wuslědźić
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = Pomoc za { -brand-short-name } dóstać
     .accesskey = P
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Wo { -brand-short-name }
     .accesskey = o
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Aktualizaciju { -brand-shorter-name } sćahnyć
 appmenuitem-banner-update-available =

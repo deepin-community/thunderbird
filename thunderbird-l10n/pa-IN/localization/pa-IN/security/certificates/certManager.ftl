@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certmgr-title =
     .title = ਸਰਟੀਫਕੇਟ ਮੈਨੇਜਰ
 certmgr-tab-mine =
@@ -98,28 +94,14 @@ pkcs12-unknown-err-restore = ਅਣਜਾਣ ਕਾਰਨਾਂ ਕਰਕੇ  PK
 pkcs12-unknown-err-backup = PKCS #12 ਬੈਕਅੱਪ ਫਾਈਲ ਬਣਾਉਣ ਲਈ ਅਣਜਾਣ ਕਾਰਨਾਂ ਕਰਕੇ ਫੇਲ੍ਹ ਹੈ।
 pkcs12-unknown-err = PKCS #12 ਓਪਰੇਸ਼ਨ ਅਣਜਾਣ ਕਾਰਨਾਂ ਕਰਕੇ ਫੇਲ੍ਹ ਹੈ।
 pkcs12-info-no-smartcard-backup = ਇੱਕ ਹਾਰਡਵੇਅਰ ਸੁਰੱਖਿਆ ਜੰਤਰ ਜਿਵੇਂ ਕਿ ਸਮਾਰਟ ਕਾਰਡ ਆਦਿ ਤੋਂ ਬੈਕਅੱਪ ਲੈਣਾ ਸੰਭਵ ਨਹੀਂ ਹੈ।
-pkcs12-dup-data = ਸਰਟੀਫਿਕੇਟ ਅਤੇ ਪ੍ਰਾਈਵੇਟ ਕੁੰਜੀ ਸੁਰੱਖਿਆ ਜੰਤਰ ਉੱਤੇ ਪਹਿਲਾਂ ਹੀ ਮੌਜੂਦ ਹੈ।
-
-## PKCS#12 file dialogs
-
+pkcs12-dup-data = ਸਰਟੀਫਿਕੇਟ ਅਤੇ ਪ੍ਰਾਈਵੇਟ ਕੁੰਜੀ ਸੁਰੱਖਿਆ ਡਿਵਾਈਸ ਉੱਤੇ ਪਹਿਲਾਂ ਹੀ ਮੌਜੂਦ ਹੈ।
 choose-p12-backup-file-dialog = ਬੈਕਅੱਪ ਲਈ ਫਾਈਲ ਨਾਂ
 file-browse-pkcs12-spec = PKCS12 ਫਾਈਲਾਂ
 choose-p12-restore-file-dialog = ਇੰਪੋਰਟ ਕਰਨ ਲਈ ਸਰਟੀਫਿਕੇਟ ਦਾ ਫਾਈਲ
-
-## Import certificate(s) file dialog
-
 file-browse-certificate-spec = ਸਰਟੀਫਿਕੇਟ ਫਾਈਲਾਂ
 import-ca-certs-prompt = CA ਸਰਟੀਫਿਕੇਟ  ਰੱਖਣ ਵਾਲੀ ਫਾਈਲ ਇੰਪੋਰਟ ਕਰਨ ਲਈ ਚੁਣੋ
 import-email-cert-prompt = ਕਿਸੇ ਦੇ ਈਮੇਲ ਸਰਟੀਫਿਕੇਟ ਰੱਖਣ ਵਾਲੀ ਫਾਈਲ ਇੰਪੋਰਟ ਕਰਨ ਲਈ ਚੁਣੋ
-
-## For editing certificates trust
-
-# Variables:
-#   $certName: the name of certificate
 edit-trust-ca = ਸਰਟੀਫਕੇਟ"{ $certName }" ਸਰਟੀਫਿਕੇਟ ਆਥਰਟੀ (CA) ਉਪਲੱਬਧ ਕਰਵਾਉਂਦਾ ਹੈ
-
-## For Deleting Certificates
-
 delete-user-cert-title =
     .title = ਆਪਣਾ ਸਰਟੀਫਕੇਟ ਨੂੰ ਹਟਾਓ
 delete-user-cert-confirm = ਕੀ ਤੁਸੀਂ ਇਹ ਸਰਟੀਫਿਕੇਟ ਹਟਾਉਣ ਦੀ ਪੁਸ਼ਟੀ ਕਰਦੇ ਹੋ?
@@ -136,26 +118,13 @@ delete-email-cert-title =
     .title = ਈ-ਮੇਲ ਸਰਟੀਫਿਕੇਟ ਨੂੰ ਹਟਾਓ
 delete-email-cert-confirm = ਕੀ ਤੁਸੀਂ ਇਹ ਲੋਕਾਂ ਦੇ ਈਮੇਲ ਸਰਟੀਫਿਕੇਟ ਹਟਾਉਣੇ ਚਾਹੁੰਦੇ ਹੋ?
 delete-email-cert-impact = ਜੇ ਤੁਸੀਂ ਇੱਕ ਵਿਅਕਤੀ ਦਾ ਈਮੇਲ ਸਰਟੀਫਿਕੇਟ ਹਟਾ ਦਿੱਤਾ ਤਾਂ ਤੁਸੀਂ ਉਸ ਵਿਅਕਤੀ ਨੂੰ ਇਕ੍ਰਿਪਟ ਕਰਕੇ ਈਮੇਲ ਨਹੀਂ ਭੇਜ ਸਕੋਗੇ।
-# Used for semi-uniquely representing a cert.
-#
-# Variables:
-#   $serialNumber : the serial number of the cert in AA:BB:CC hex format.
 cert-with-serial =
     .value = ਲੜੀ ਨੰਬਰ ਨਾਲ ਸਰਟੀਫਿਕੇਟ: { $serialNumber }
-# Used to indicate that the user chose not to send a client authentication certificate to a server that requested one in a TLS handshake.
 send-no-client-certificate = ਕੋਈ ਕਲਾਈਂਟ ਸਰਟੀਫਿਕੇਟ ਨਾ ਭੇਜੋ
-# Used when no cert is stored for an override
 no-cert-stored-for-override = (ਸੰਭਾਲਿਆ ਨਹੀਂ ਹੈ)
-# When a certificate is unavailable (for example, it has been deleted or the token it exists on has been removed).
 certificate-not-available = (ਨਾ-ਉਪਲੱਬਧ)
-
-## Used to show whether an override is temporary or permanent
-
 permanent-override = ਪੱਕਾ
 temporary-override = ਆਰਜ਼ੀ
-
-## Add Security Exception dialog
-
 add-exception-branded-warning = ਤੁਸੀਂ { -brand-short-name } ਵਲੋਂ ਇਹ ਸਾਇਟ ਦੀ ਪਛਾਣ ਨੂੰ ਲਗਭੱਗ ਅਣਡਿੱਠਾ ਕਰਨ ਜਾ ਰਹੇ ਹੋ।
 add-exception-invalid-header = ਇਹ ਸਾਈਟ ਨੇ ਖੁਦ ਨੂੰ ਗਲਤ ਜਾਣਕਾਰੀ ਨਾਲ ਪਛਾਣਨ ਦੀ ਕੋਸ਼ਿਸ਼ ਕੀਤੀ ਹੈ।
 add-exception-domain-mismatch-short = ਗਲਤ ਸਾਇਟ
@@ -170,9 +139,6 @@ add-exception-checking-short = ਜਾਣਕਾਰੀ ਨੂੰ ਚੈੱਕ ਕ�
 add-exception-checking-long = ਇਹ ਸਾਇਟ ਦੀ ਪਛਾਣ ਕਰਨ ਦੀ ਕੋਸ਼ਿਸ਼ ਜਾਰੀ…
 add-exception-no-cert-short = ਕੋਈ ਜਾਣਕਾਰੀ ਉਪਲੱਬਧ ਨਹੀਂ ਹੈ
 add-exception-no-cert-long = ਇਸ ਸਾਇਟ ਤੋਂ ਪਛਾਣ ਸਰਟੀਫਿਕੇਟ ਲੈਣ ਲਈ ਅਸਮਰੱਥ ਹੈ।
-
-## Certificate export "Save as" and error dialogs
-
 save-cert-as = ਸਰਟੀਫਿਕੇਟ ਫਾਈਲ ਵਿੱਚ ਸੰਭਾਲੋ
 cert-format-base64 = X.509 ਸਰਟੀਫਿਕੇਟ (PEM)
 cert-format-base64-chain = ਚੇਨ ਨਾਲ X.509 ਸਰਟੀਫਿਕੇਟ (PEM)

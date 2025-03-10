@@ -1,21 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = დამატებების მმართველი
 search-header =
     .placeholder = addons.mozilla.org საიტზე მოძიება
     .searchbuttonlabel = ძიება
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
 list-empty-get-extensions-message = იხილეთ გაფართოებები და თემები, <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-dictionaries-message = ლექსიკონებისთვის, იხილეთ <a data-l10n-name="get-extensions">{ $domain }</a>
 list-empty-get-language-packs-message = ენის კრებულებისთვის, იხილეთ <a data-l10n-name="get-extensions">{ $domain }</a>
-
-##
-
 list-empty-installed =
     .value = ამ სახის არცერთი დამატება არ გაქვთ დაყენებული
 list-empty-available-updates =
@@ -57,13 +46,9 @@ detail-update-automatic =
 detail-update-manual =
     .label = გამორთვა
     .tooltiptext = არ დაყენდეს განახლებები ავტომატურად
-# Used as a description for the option to allow or block an add-on in private windows.
 detail-private-browsing-label = პირად ფანჯრებში გაშვება
-# Some add-ons may elect to not run in private windows by setting incognito: not_allowed in the manifest.  This
-# cannot be overridden by the user.
 detail-private-disallowed-label = არაა დაშვებული პირად ფანჯრებში
 detail-private-disallowed-description2 = ეს გაფართოება არ გაეშვება პირადი თვალიერებისას. <a data-l10n-name="learn-more">ვრცლად</a>
-# Some special add-ons are privileged, run in private windows automatically, and this permission can't be revoked
 detail-private-required-label = საჭიროებს პირად ფანჯრებთან წვდომას
 detail-private-required-description2 = ამ გაფართოებას ექნება წვდომა თქვენს მოქმედებებზე ინტერნეტში პირადი თვალიერებისას. <a data-l10n-name="learn-more">ვრცლად</a>
 detail-private-browsing-on =
@@ -147,22 +132,13 @@ addon-category-recent-updates-title =
 addon-category-sitepermission = საიტის ნებართვები
 addon-category-sitepermission-title =
     .title = საიტის ნებართვები
-# String displayed in about:addons in the Site Permissions section
-# Variables:
-#  $host (string) - DNS host name for which the webextension enables permissions
 addon-sitepermission-host = ნებართვები საიტისთვის { $host }
-
-## These are global warnings
-
-extensions-warning-safe-mode = ყველა დამატება გამორთულია უსაფრთხო რეჟიმის მიერ.
-extensions-warning-check-compatibility = დამატებების თავსებადობის შემოწმება გამორთულია. შესაძლოა, არათავსებადი დამატებები გქონდეთ.
 extensions-warning-safe-mode2 =
     .message = ყველა დამატება გამორთულია უსაფრთხო რეჟიმის მიერ.
 extensions-warning-check-compatibility2 =
     .message = დამატებების თავსებადობის შემოწმება გამორთულია. შესაძლოა, არათავსებადი დამატებები გქონდეთ.
 extensions-warning-check-compatibility-button = ჩართვა
     .title = დამატებების თავსებადობის შემოწმების ჩართვა
-extensions-warning-update-security = დამატების განახლების უსაფრთხოების შემოწმება გამორთულია. განახლებამ შესაძლოა, ზიანი მოგაყენოთ.
 extensions-warning-update-security2 =
     .message = დამატების განახლების უსაფრთხოების შემოწმება გამორთულია. განახლებამ შესაძლოა, ზიანი მოგაყენოთ.
 extensions-warning-update-security-button = ჩართვა
@@ -170,56 +146,34 @@ extensions-warning-update-security-button = ჩართვა
 extensions-warning-imported-addons2 =
     .message = გთხოვთ დაასრულოთ გადმოტანილი გაფართოების ჩადგმა – { -brand-short-name }.
 extensions-warning-imported-addons-button = გაფართოებების ჩაყენება
-
-## Strings connected to add-on updates
-
 addon-updates-check-for-updates = განახლებების შემოწმება
     .accesskey = შ
 addon-updates-view-updates = ბოლო განახლებების ნახვა
     .accesskey = ბ
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = დამატებების თვითგანახლება
     .accesskey = ვ
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = ყველა დამატების თვითგანახლებაზე დაბრუნება
     .accesskey = დ
 addon-updates-reset-updates-to-manual = ყველა დამატებაზე, ხელით განახლების მითითება
     .accesskey = ხ
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = დამატებების განახლება
 addon-updates-installed = დამატებები განახლებულია.
 addon-updates-none-found = განახლებები ვერ მოიძებნა
 addon-updates-manual-updates-found = ხელმისაწვდომი განახლებების ნახვა
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = დამატების დაყენება ფაილის მეშვეობით…
     .accesskey = ფ
 addon-install-from-file-dialog-title = დამატებების შერჩევა დასაყენებლად
 addon-install-from-file-filter-name = დამატებები
 addon-open-about-debugging = დამატებების გამართვა
     .accesskey = გ
-
-## Extension shortcut management
-
-# This is displayed in the page options menu
 addon-manage-extensions-shortcuts = გაფართოებების ღილაკების მართვა
     .accesskey = ღ
 shortcuts-no-addons = არცერთი გაფართოება არ გაქვთ ჩართული.
 shortcuts-no-commands = სწრაფი ღილაკები არ აქვს შემდეგ გაფართოებებს:
 shortcuts-input =
     .placeholder = სწრაფი ღილაკის აკრეფა
+shortcuts-remove-button =
+    .aria-label = მალსახმობის მოცილება
 shortcuts-browserAction2 = ხელსაწყოთა ზოლზე ღილაკის ამოქმედება
 shortcuts-pageAction = გვერდზე მოქმედების ჩართვა
 shortcuts-sidebarAction = გვერდითა ზოლის გამოჩენა/დამალვა
@@ -228,23 +182,10 @@ shortcuts-modifier-other = გამოყენებული იყოს Ctr
 shortcuts-invalid = არასწორი შერჩევა
 shortcuts-letter = აკრიფეთ ასონიშანი
 shortcuts-system = ვერ გადაეწერება სწრაფ ღილაკს, რომელსაც { -brand-short-name } იყენებს
-# String displayed in warning label when there is a duplicate shortcut
 shortcuts-duplicate = განმეორებული მალსახმობი
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
-shortcuts-duplicate-warning-message = { $shortcut } მალსახმობის სახით გამოიყენება ერთზე მეტ შემთხვევაში. განმეორებულმა მალსახმობებმა შესაძლოა, მოულოდნელი შედეგები წარმოშვას.
-# String displayed when a keyboard shortcut is already assigned to more than one add-on
-# Variables:
-#   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message2 =
     .message = { $shortcut } მალსახმობის სახით გამოიყენება ერთზე მეტ შემთხვევაში. განმეორებულმა მალსახმობებმა შესაძლოა, მოულოდნელი შედეგები წარმოშვას.
-# String displayed when a keyboard shortcut is already used by another add-on
-# Variables:
-#   $addon (string) - Name of the add-on
 shortcuts-exists = უკვე იყენებს { $addon }
-# Variables:
-#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
        *[other] გამოჩნდეს { $numberToShow } კიდევ
@@ -252,59 +193,30 @@ shortcuts-card-expand-button =
 shortcuts-card-collapse-button = ნაკლების ჩვენება
 header-back-button =
     .title = უკან გადასვლა
-
-## Recommended add-ons page
-
-# Explanatory introduction to the list of recommended add-ons. The action word
-# ("recommends") in the final sentence is a link to external documentation.
-discopane-intro =
-    გაფართოებები ბრაუზერისთვის ერთგვარი პროგრამებია, რომლებიც საშუალებას გაძლევთ
-    დაიცვათ პაროლები, ჩამოტვირთოთ ვიდეოები, მოიძიოთ საყიდლები, შეზღუდოთ
-    მომაბეზრებელი რეკლამები, შეცვალოთ იერსახე და კიდევ უამრავი რამ.
-    ეს პატარა პროგრამული ნაწილები ხშირ შემთხვევაში შექმნილია გარეშე პირების მიერ.
-    აქ მოცემულია ისინი, რომელთაც { -brand-product-name } <a data-l10n-name="learn-more-trigger">გირჩევთ</a>
-    მეტი უსაფრთხოებისთვის, წარმადობისა და შესაძლებლობებისთვის.
-# Notice to make user aware that the recommendations are personalized.
-discopane-notice-recommendations =
-    შემოთავაზებების ნაწილი მორგებულია თქვენზე. ითვალისწინებს თქვენ მიერ
-    დაყენებულ სხვა გაფართოებებს, პროფილის პარამეტრებსა და გამოყენების სიხშირეს.
-# Notice to make user aware that the recommendations are personalized.
+discopane-intro2 =
+    გაფართოებებითა და გაფორმებებით შეგიძლიათ მეტად მოირგოთ { -brand-product-name }. საშუალებას გაძლევთ, გააუმჯობესოთ პირადულობა,
+    შედეგიანობა, ფაილებით სარგებლობა, შეამკოთ { -brand-product-name } სურვილისამებრ და გააკეთოთ უამრავი რამ. ეს მცირე პროგრამები უმეტესად გარეშე პირების შექმნილია. იხილეთ მათგან საუკეთესო, რომელთაც  <a data-l10n-name="learn-more-trigger">გთავაზობთ</a> { -brand-product-name }
+    მათი გამორჩეულობის გამო უსაფრთხოების, წარმადობისა და შესაძლებლობების კუთხით.
 discopane-notice-recommendations2 =
     .message =
         შემოთავაზებების ნაწილი მორგებულია თქვენზე. ითვალისწინებს თქვენ მიერ
         დაყენებულ სხვა გაფართოებებს, პროფილის პარამეტრებსა და გამოყენების სიხშირეს.
 discopane-notice-learn-more = ვრცლად
 privacy-policy = პირადულობის დებულება
-# Refers to the author of an add-on, shown below the name of the add-on.
-# Variables:
-#   $author (string) - The name of the add-on developer.
 created-by-author = შემქმნელი <a data-l10n-name="author">{ $author }</a>
-# Shows the number of daily users of the add-on.
-# Variables:
-#   $dailyUsers (number) - The number of daily users.
 user-count = მომხმარებელი: { $dailyUsers }
 install-extension-button = დაემატოს { -brand-product-name }
 install-theme-button = თემის ჩადგმა
-# The label of the button that appears after installing an add-on. Upon click,
-# the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = მართვა
 find-more-addons = სხვა დამატებების მონახვა
 find-more-themes = სხვა თემების მოძიება
-# This is a label for the button to open the "more options" menu, it is only
-# used for screen readers.
 addon-options-button =
     .aria-label = დამატებითი პარამეტრები
-
-## Add-on actions
-
 report-addon-button = საჩივარი
 remove-addon-button = მოცილება
-# The link will always be shown after the other text.
 remove-addon-disabled-button = ვერ მოცილდება <a data-l10n-name="link">რატომ?</a>
 disable-addon-button = ამორთვა
 enable-addon-button = ჩართვა
-# This is used for the toggle on the extension card, it's a checkbox and this
-# is always its label.
 extension-enable-addon-button-label =
     .aria-label = ჩართვა
 preferences-addon-button =
@@ -334,37 +246,15 @@ addon-detail-version-label = ვერსია
 addon-detail-last-updated-label = ბოლო განახლება
 addon-detail-homepage-label = მთავარი გვერდი
 addon-detail-rating-label = შეფასება
-# Message for add-ons with a staged pending update.
-install-postponed-message = ეს გაფართოება განახლდება, როცა { -brand-short-name } ხელახლა გაეშვება.
-# Message for add-ons with a staged pending update.
 install-postponed-message2 =
     .message = ეს გაფართოება განახლდება, როცა { -brand-short-name } ხელახლა გაეშვება.
 install-postponed-button = განახლება ახლავე
-# The average rating that the add-on has received.
-# Variables:
-#   $rating (number) - A number between 0 and 5. The translation should show at most one digit after the comma.
-five-star-rating =
-    .title = { NUMBER($rating, maximumFractionDigits: 1) } შეფასება 5-იდან
-# This string is used to show that an add-on is disabled.
-# Variables:
-#   $name (string) - The name of the add-on
 addon-name-disabled = { $name } (გამორთული)
-# The number of reviews that an add-on has received on AMO.
-# Variables:
-#   $numberOfReviews (number) - The number of reviews received
 addon-detail-reviews-link =
     { $numberOfReviews ->
         [one] { $numberOfReviews } მიმოხილვა
        *[other] { $numberOfReviews } მიმოხილვა
     }
-
-## Pending uninstall message bar
-
-# Variables:
-#   $addon (string) - Name of the add-on
-pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> მოცილებულია.
-# Variables:
-#   $addon (string) - Name of the add-on
 pending-uninstall-description2 =
     .message = { $addon } მოცილებულია.
 pending-uninstall-undo-button = დაბრუნება
@@ -374,73 +264,39 @@ addon-detail-updates-radio-on = ჩართ.
 addon-detail-updates-radio-off = გამორთ.
 addon-detail-update-check-label = განახლებებზე შემოწმება
 install-update-button = განახლება
-# aria-label associated to the updates row to help screen readers to announce the group
-# of input controls being entered.
 addon-detail-group-label-updates =
     .aria-label = { addon-detail-updates-label }
-# This is the tooltip text for the private browsing badge in about:addons. The
-# badge is the private browsing icon included next to the extension's name.
-addon-badge-private-browsing-allowed2 =
+addon-badge-private-browsing-allowed3 =
     .title = დაშვებულია პირად ფანჯრებში
-    .aria-label = { addon-badge-private-browsing-allowed2.title }
 addon-detail-private-browsing-help = დაშვების შემთხვევაში, გაფართოებას წვდომა ექნება თქვენს მოქმედებებზე პირად ფანჯრებში. <a data-l10n-name="learn-more">ვრცლად</a>
 addon-detail-private-browsing-allow = დაშვება
 addon-detail-private-browsing-disallow = აკრძალვა
-# aria-label associated to the private browsing row to help screen readers to announce the group
-# of input controls being entered.
 addon-detail-group-label-private-browsing =
     .aria-label = { detail-private-browsing-label }
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-# Used as a description for the option to allow or block an add-on on quarantined domains.
 addon-detail-quarantined-domains-label = გაშვება შეზღუდულ საიტზე
-# Used as help text part of the quarantined domains UI controls row.
 addon-detail-quarantined-domains-help = როცა ნებადართულია, გაფართოებას ექნება წვდომა საიტებზე, რომელთაც ზღუდავს { -vendor-short-name }. დართეთ ნება მხოლოდ სანდო გაფართოებას.
-# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
 addon-detail-quarantined-domains-allow = ნებართვა
 addon-detail-quarantined-domains-disallow = აკრძალვა
-# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
 addon-detail-group-label-quarantined-domains =
     .aria-label = { addon-detail-quarantined-domains-label }
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-addon-badge-recommended2 =
+addon-badge-recommended3 =
     .title = { -brand-product-name } მხოლოდ იმ გაფართოებებს გირჩევთ, რომლებიც აკმაყოფილებს უსაფრთხოებისა და წარმადობის მაღალ მოთხოვნებს.
-    .aria-label = { addon-badge-recommended2.title }
-# We hard code "Mozilla" in the string below because the extensions are built
-# by Mozilla and we don't want forks to display "by Fork".
-addon-badge-line3 =
+addon-badge-line4 =
     .title = Mozilla-ს მიერ შექმნილი ოფიციალური გაფართოება. სრულად აკმაყოფილებს უსაფრთხოებისა და წარმადობის მოთხოვნებს.
-    .aria-label = { addon-badge-line3.title }
-addon-badge-verified2 =
+addon-badge-verified3 =
     .title = მოცემული გაფართოება შემოწმებულია და აკმაყოფილებს უსაფრთხოებისა და წარმადობის სათანადო მოთხოვნებს.
-    .aria-label = { addon-badge-verified2.title }
-
-##
-
 available-updates-heading = ხელმისწვდომი განახლებები
 recent-updates-heading = ბოლო განახლებები
 release-notes-loading = იტვირთება...
 release-notes-error = სამწუხაროდ, ვერსიის მონაცემების ჩვენებისას მოხდა შეცდომა.
-addon-permissions-empty = გაფართოება არ ითხოვს რამე ნებართვას
+addon-permissions-empty2 = გაფართოება არ ითხოვს რამე ნებართვას.
 addon-permissions-required = მოთხოვნილი ნებართვები ძირითადი შესაძლებლობებისთვის:
 addon-permissions-optional = მოთხოვნილი ნებართვები დამატებითი შესაძლებლობებისთვის:
 addon-permissions-learnmore = ვრცლად ნებართვების შესახებ
 recommended-extensions-heading = შემოთავაზებული გაფართოებები
 recommended-themes-heading = შემოთავაზებული თემები
-# Variables:
-#   $hostname (string) - Host where the permissions are granted
 addon-sitepermissions-required = მოცემული შესაძლებლობებით აღიჭურვება <span data-l10n-name="hostname">{ $hostname }</span>:
-# A recommendation for the Firefox Color theme shown at the bottom of the theme
-# list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = შემოქმედებით უნარებს ფლობთ? <a data-l10n-name="link">საკუთარის ასაწყობად გამოიყენეთ Firefox Color.</a>
-
-## Page headings
-
 extension-heading = გაფართოებების მართვა
 theme-heading = თემების მართვა
 plugin-heading = მოდულების მართვა
@@ -455,41 +311,28 @@ addons-heading-search-input =
     .placeholder = addons.mozilla.org საიტზე მოძიება
 addon-page-options-button =
     .title = ხელსაწყოები ყველა დამატებისთვის
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (string) - Application version.
-details-notification-incompatible = { $name } არათავსებადია { -brand-short-name } { $version } ვერსიასთან.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } არათავსებადია { -brand-short-name } { $version } ვერსიასთან.
-details-notification-incompatible-link = ვრცლად
-details-notification-unsigned-and-disabled = ვერ დასტურდება, რომ { -brand-short-name } შეძლებს გამოიყენოს { $name }, ამიტომ გამორთულია.
 details-notification-unsigned-and-disabled2 =
     .message = ვერ დასტურდება, რომ { -brand-short-name } შეძლებს გამოიყენოს { $name }, ამიტომ გამორთულია.
-details-notification-unsigned-and-disabled-link = ვრცლად
-details-notification-unsigned = ვერ დასტურდება, რომ { -brand-short-name } შეძლებს აამუშაოს { $name }. სიფრთხილით გამოიყენეთ.
 details-notification-unsigned2 =
     .message = ვერ დასტურდება, რომ { -brand-short-name } შეძლებს აამუშაოს { $name }. სიფრთხილით გამოიყენეთ.
-details-notification-unsigned-link = ვრცლად
-details-notification-blocked = { $name } გამორთულია უსაფრთხოების მიზნით ან არამდგრადობის გამო.
-details-notification-blocked2 =
-    .message = { $name } გამორთულია უსაფრთხოების მიზნით ან არამდგრადობის გამო.
-details-notification-blocked-link = ვრცლად
-details-notification-softblocked = { $name } მიჩნეულია არამდგრადად და საფრთხის შემცველად.
-details-notification-softblocked2 =
-    .message = { $name } მიჩნეულია არამდგრადად და საფრთხის შემცველად.
-details-notification-softblocked-link = ვრცლად
-details-notification-gmp-pending = { $name } მალე ჩაიდგმება.
+details-notification-hard-blocked-extension =
+    .message = გაფართოება შეიზღუდა Mozilla-ს დებულებების დარღვევის გამო და ამორთულია.
+details-notification-hard-blocked-other =
+    .message = დამატება შეიზღუდა Mozilla-ს დებულებების დარღვევის გამო და ამორთულია.
+details-notification-blocked-link2 = ვრცლად
+details-notification-soft-blocked-extension-disabled =
+    .message = გაფართოება შეიზღუდა Mozilla-ს დებულებების დარღვევის გამო და ამორთულია. შეგიძლიათ ჩართოთ, მაგრამ სახიფათოა.
+details-notification-soft-blocked-extension-enabled =
+    .message = გაფართოება არღვევს Mozilla-ს დებულებებს. მისი გამოყენება შეიძლება სახიფათო იყოს.
+details-notification-soft-blocked-other-disabled =
+    .message = დამატება შეიზღუდა Mozilla-ს დებულებების დარღვევის გამო და ამორთულია. შეგიძლიათ ჩართოთ, მაგრამ სახიფათოა.
+details-notification-soft-blocked-other-enabled =
+    .message = დამატება არღვევს Mozilla-ს დებულებებს. მისი გამოყენება შეიძლება სახიფათო იყოს.
+details-notification-softblocked-link2 = ვრცლად
 details-notification-gmp-pending2 =
     .message = { $name } მალე ჩაიდგმება.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = ლიცენზიის შესახებ
 plugins-gmp-privacy-info = პირადი მონაცემების დაცვის დებულება
 plugins-openh264-name = OpenH264-ვიდეომშიფრავი, უზრუნველყოფს Cisco Systems, Inc.

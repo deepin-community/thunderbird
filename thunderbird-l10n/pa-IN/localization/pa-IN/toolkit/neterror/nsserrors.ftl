@@ -1,16 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਕਨੈਕਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ, ਕਿਉਂਕਿ SSL ਪਰੋਟੋਕਾਲ ਅਸਮਰੱਥ ਕੀਤਾ ਹੋਇਆ ਹੈ।
 psmerr-ssl2-disabled = ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਕਨੈਕਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ, ਕਿਉਂਕਿ ਸਾਇਟ SSL ਪਰੋਟੋਕਾਲ ਦਾ ਪੁਰਾਣਾ, ਗ਼ੈਰ-ਸੁਰੱਖਿਅਤ ਵਰਜ਼ਨ ਵਰਤ ਰਹੀ ਹੈ।
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     ਤੁਹਾਨੂੰ ਇੱਕ ਅਪ੍ਰਮਾਣਿਕ ਸਰਟੀਫਿਕੇਟ ਪ੍ਰਾਪਤ ਹੋਇਆ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਸਰਵਰ-ਪ੍ਰਬੰਧਕ ਜਾਂ ਈਮੇਲ ਪੱਤਰ-ਪ੍ਰੇਰਕ ਨਾਲ ਸੰਪਰਕ ਕਰੋ ਅਤੇ ਉਹਨਾਂ ਨੂੰ ਹੇਠ ਦਿੱਤੀ ਜਾਣਕਾਰੀ ਦਿਓ:
     
@@ -196,7 +185,7 @@ sec-error-unknown-critical-extension = ਸਰਟੀਫਿਕੇਟ ਵਿੱਚ 
 sec-error-old-crl = ਨਵਾਂ CRL ਤੁਹਾਡੇ ਮੌਜੂਦ ਦੇ ਬਾਅਦ 'ਚ ਨਹੀਂ ਹੈ।
 sec-error-no-email-cert = ਇੰਕ੍ਰਿਪਟ ਜਾਂ ਸਾਈਨ ਨਹੀਂ ਹੈ: ਤੁਹਾਡੇ ਕੋਲ ਹਾਲੇ ਈਮੇਲ ਸਰਟੀਫਿਕੇਟ ਨਹੀਂ ਹੈ।
 sec-error-no-recipient-certs-query = ਇੰਕ੍ਰਿਪਟ ਨਹੀਂ ਹੈ: ਤੁਹਾਡੇ ਕੋਲ ਪੱਤਰ ਲੈਣ ਵਾਲਿਆਂ ਵਿੱਚੋਂ ਹਰੇਕ ਲਈ ਸਰਟੀਫਿਕੇਟ ਨਹੀਂ ਹੈ।
-sec-error-not-a-recipient = ਡਿਸਕ੍ਰਿਪਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ: ਤੁਸੀਂ ਕੋਈ ਪ੍ਰਾਪਤਕਰਤਾ ਨਹੀਂ ਹੋ, ਜਾਂ ਮੇਲ ਖਾਂਦਾ ਸਰਟੀਫਿਕੇਟ ਅਤੇ ਨਿੱਜੀ ਕੁੰਜੀ ਨਹੀਂ ਲੱਭੀ।
+sec-error-not-a-recipient = ਡਿਸਕ੍ਰਿਪਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ: ਤੁਸੀਂ ਕੋਈ ਪ੍ਰਾਪਤਕਰਤਾ ਨਹੀਂ ਹੋ, ਜਾਂ ਮੇਲ ਖਾਂਦਾ ਸਰਟੀਫਿਕੇਟ ਅਤੇ ਪ੍ਰਾਈਵੇਟ ਕੁੰਜੀ ਨਹੀਂ ਲੱਭੀ।
 sec-error-pkcs7-keyalg-mismatch = ਡਿ-ਕ੍ਰਿਪਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ: ਕੁੰਜੀ ਐਲੋਗਰਿਥਮ ਤੁਹਾਡੇ ਸਰਟੀਫਿਕੇਟ ਨਾਲ ਮੇਲ ਨਹੀਂ ਖਾਂਦਾ ਹੈ।
 sec-error-pkcs7-bad-signature = ਦਸਤਖਤ ਜਾਂਚ ਫੇਲ੍ਹ ਹੋਈ: ਕੋਈ ਦਸਤਖਤੀ ਨਹੀਂ ਲੱਭਿਆ, ਬਹੁਤ ਸਾਰੇ ਦਸਤਖਤੀ ਮਿਲੇ ਜਾਂ ਗਲਤ ਜਾਂ ਨਿਕਾਰਾ ਡਾਟਾ।
 sec-error-unsupported-keyalg = ਗ਼ੈਰ-ਸਹਾਇਕ ਜਾਂ ਅਣਜਾਣ ਕੀ ਐਲਗੋਰਥਿਮ ਹੈ।
@@ -331,6 +320,7 @@ mozilla-pkix-error-invalid-integer-encoding = ਸਰਵਰ ਨੇ ਸਰਟੀ�
 mozilla-pkix-error-empty-issuer-name = ਸਰਵਰ ਨੇ ਇੱਕ ਖਾਲੀ ਜਾਰੀ ਕਰਨ ਵਾਲੇ ਵੱਖਰੇ ਨਾਂ ਦੇ ਨਾਲ ਸਰਟੀਫਿਕੇਟ ਪੇਸ਼ ਕੀਤਾ।
 mozilla-pkix-error-additional-policy-constraint-failed = ਇਸ ਸਰਟੀਫਿਕੇਟ ਨੂੰ ਪ੍ਰਮਾਣਿਤ ਕਰਨ ਵੇਲੇ ਇੱਕ ਵਾਧੂ ਨੀਤੀ ਰੁਕਾਵਟ ਅਸਫਲ ਹੋਈ।
 mozilla-pkix-error-self-signed-cert = ਸਰਟੀਫਿਕੇਟ ਉੱਤੇ ਖੁਦ ਦੇ ਦਸਤਖਤ ਕੀਤੇ ਜਾਣ ਕਰਕੇ ਸਰਟੀਫਿਕੇਟ ਭਰੋਸੇਯੋਗ ਨਹੀਂ ਹੈ।
+mozilla-pkix-error-issuer-no-longer-trusted = ਸਰਟੀਫਿਕੇਟ ਨੂੰ ਜਾਰੀ ਕਰਨ ਵਾਲੀ ਸਰਟੀਫਿਕੇਟ ਅਥਾਰਟੀ ਨੂੰ ਸਰਟੀਫਿਕੇਟ ਜਾਰੀ ਕੀਤੇ ਜਾਣ ਤੋਂ ਪਹਿਲਾਂ ਹੀ ਗ਼ੈਰ-ਭਰੋਸੇਯੋਗ ਕੀਤਾ ਗਿਆ ਹੈ।
 xp-java-remove-principal-error = ਪ੍ਰਿੰਸੀਪਲ ਹਟਾਇਆ ਨਹੀਂ ਜਾ ਸਕਿਆ
 xp-java-delete-privilege-error = ਅਧਿਕਾਰ ਹਟਾਏ ਨਹੀਂ ਜਾ ਸਕੇ
 xp-java-cert-not-exists-error = ਇਹ ਪ੍ਰਿੰਸੀਪਲ ਲਈ ਸਰਟੀਫਿਕੇਟ ਨਹੀਂ ਹੈ

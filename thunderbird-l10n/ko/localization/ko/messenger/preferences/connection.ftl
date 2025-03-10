@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = 제공 업체 사용
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (기본값)
     .tooltiptext = HTTPS를 통한 DNS 처리에 기본 URL 사용
@@ -14,6 +8,9 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = HTTPS를 통한 DNS를 해결하는 선호하는 URL을 입력
 connection-dns-over-https-custom-label = 사용자 정의
+connection-dialog-title = 연결 설정
+disable-extension-button = 확장 기능 비활성화
+proxy-settings-controlled-by-extension = <img data-l10n-name="extension-icon" alt="" /> { $name } 확장 기능이 { -brand-short-name }가 인터넷에 연결하는 방식을 제어합니다.
 connection-proxy-legend = 프록시 설정
 proxy-type-no =
     .label = 프록시 사용 안함
@@ -64,6 +61,7 @@ no-proxy-label =
     .value = 프록시 사용 안 함:
     .accesskey = n
 no-proxy-example = 예: .mozilla.or.kr, .net.nz 192.168.1.0/24
+connection-proxy-noproxy-localhost-desc-2 = localhost와 127.0.0.1/8, ::1에 대한 연결은 프록시를 사용하지 않습니다.
 proxy-password-prompt =
     .label = 비밀번호가 저장되어 있으면 인증시 묻지 않기
     .accesskey = i

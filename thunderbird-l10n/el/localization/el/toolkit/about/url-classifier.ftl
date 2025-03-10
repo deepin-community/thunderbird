@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Πληροφορίες URL Classifier
 url-classifier-search-title = Αναζήτηση
 url-classifier-search-result-title = Αποτελέσματα
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = Λειτουργικές μονάδες κατ
 url-classifier-debug-modules = Τρέχουσες λειτουργικές μονάδες καταγραφής
 url-classifier-debug-sbjs-modules = Αρχείο καταγραφής JS ασφαλούς περιήγησης
 url-classifier-debug-file = Τρέχον αρχείο καταγραφής
-
 url-classifier-trigger-update = Πρόκληση ενημέρωσης
 url-classifier-not-available = Μ/Δ
 url-classifier-disable-sbjs-log = Απενεργοποίηση αρχείου καταγραφής JS ασφαλούς περιήγησης
@@ -50,9 +45,5 @@ url-classifier-disabled = Ανενεργό
 url-classifier-updating = ενημέρωση
 url-classifier-cannot-update = αδυναμία ενημέρωσης
 url-classifier-success = επιτυχία
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = σφάλμα ενημέρωσης ({ $error })
 url-classifier-download-error = σφάλμα λήψης ({ $error })

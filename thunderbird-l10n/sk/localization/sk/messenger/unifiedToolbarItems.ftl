@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Pružná medzera
 search-bar-label = Hľadať
 toolbar-write-message-label = Nová
@@ -55,9 +48,9 @@ toolbar-next-unread =
 toolbar-next-label = Ďalšia
 toolbar-next =
     .title = Presunúť sa na nasledujúcu správu
-toolbar-junk-label = Spam
+toolbar-junk-label = Nevyžiadaná pošta
 toolbar-junk =
-    .title = Označiť vybrané správy ako nevyžiadané (SPAM)
+    .title = Označiť vybrané správy ako nevyžiadané
 toolbar-delete-label = Odstrániť
 toolbar-delete-title =
     .title = Odstrániť označené správy
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Importovať
 toolbar-import-contacts =
     .title = Importovať kontakty zo súboru
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Pridať lokálny adresár
 toolbar-new-address-book-popup-add-carddav-address-book =

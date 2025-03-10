@@ -1,8 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Barve strani in ozadja">
 <!ENTITY pageColors.label "Barve strani">
 <!ENTITY defaultColorsRadio.label "Privzete barve bralnika (ne nastavi barv za stran)">
@@ -11,7 +6,6 @@
 <!ENTITY customColorsRadio.label "Uporabi barve po meri:">
 <!ENTITY customColorsRadio.accessKey "m">
 <!ENTITY customColorsRadio.tooltip "Te nastavitve barv preglasijo nastavitve brskalnika pregledovalnika">
-
 <!ENTITY normalText.label "Običajno besedilo">
 <!ENTITY normalText.accessKey "O">
 <!ENTITY linkText.label "Besedilo povezave">

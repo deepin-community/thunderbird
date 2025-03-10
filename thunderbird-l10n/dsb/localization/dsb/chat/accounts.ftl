@@ -1,9 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 new-account-label = Nowe konto
-# Instant messaging account status window for Thunderbird
 accounts-window-title = Status za słanje powěsćow ned
 account-manager-new-account =
     .label = { new-account-label }
@@ -13,7 +8,6 @@ account-manager-close =
     .accesskey = Z
 account-manager-close-command =
     .key = a
-# This title must be short, displayed with a big font size
 account-manager-no-account-title = Hyšći njejo žedno konto konfigurěrowane
 account-manager-no-account-description = Klikniśo na tłocašk { new-account-label }, aby mógał { -brand-short-name } was pśez proces konfigurěrowanja konta wjasć.
 account-auto-sign-on =

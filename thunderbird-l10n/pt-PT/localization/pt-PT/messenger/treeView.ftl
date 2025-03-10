@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Caixa de verificação para selecionar a linha atual
     .title = Selecionar a linha atual
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Restaurar a linha atual
 tree-list-view-column-picker =
     .title = Selecione as colunas a mostrar
-tree-list-view-column-picker-restore =
-    .label = Restaurar ordem das colunas
 tree-list-view-row-thread-button =
     .title = Esta é uma mensagem em tópico
 tree-list-view-row-ignored-thread = Tópico ignorado

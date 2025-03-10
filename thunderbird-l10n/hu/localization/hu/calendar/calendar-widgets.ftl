@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Jelenleg az összes naptár le van tiltva. Engedélyezzen egy meglévő naptárt, vagy adjon hozzá egy újat az események létrehozásához és szerkesztéséhez.
 calendar-deactivated-notification-tasks = Jelenleg az összes naptár le van tiltva. Engedélyezzen egy meglévő naptárt, vagy adjon hozzá egy újat a feladatok létrehozásához és szerkesztéséhez.
 calendar-notifications-label = Közelgő események értesítéseinek megtekintése
 calendar-add-notification-button =
     .label = Értesítés hozzáadása
-
-## Side panel
-
 calendar-list-header = Naptárak
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = A(z) „{ $calendarName }” naptár elnémítva
 calendar-enable-button = Engedélyezés
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = A(z) „{ $calendarName }” naptár beállításai
 calendar-import-new-calendar = Új naptár…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Az összes naptár újratöltése és a módosítások szinkronizálása
 calendar-new-event-primary-button = Új esemény
 calendar-new-task-primary-button = Új feladat
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Előző nap
     .accesskey = n
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Több hét
     .title = Átváltás többheti nézetre
 calendar-view-toggle-month = Hónap
     .title = Átváltás havi nézetre
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = A naptár elrendezési lehetőségei
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Munkanapok meghatározása
 calendar-show-tasks-calendar-option =
     .label = Feladatok megjelenítése a naptárban
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Előző nap
     .accesskey = E

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 language-name-aa = Afar
 language-name-ab = Abcaso
 language-name-ach = Acioli
@@ -214,4 +210,3 @@ language-name-za = Zhuang
 language-name-zam = Zapoteco di Miahuatlán
 language-name-zh = Cinese
 language-name-zu = Zulu
-

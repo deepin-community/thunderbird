@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Odczytywanie i zmienianie zakładek
 webext-perms-description-browserSettings = Odczytywanie i zmienianie ustawień przeglądarki
 webext-perms-description-browsingData = Usuwanie ostatniej historii przeglądania, ciasteczek i powiązanych danych
@@ -30,4 +21,7 @@ webext-perms-description-sessions = Dostęp do ostatnio zamkniętych kart
 webext-perms-description-tabs = Dostęp do kart przeglądarki
 webext-perms-description-tabHide = Ukrywanie i wyświetlanie kart przeglądarki
 webext-perms-description-topSites = Dostęp do historii przeglądania
+webext-perms-description-userScripts = Zezwalaj niezweryfikowanym skryptom zewnętrznym na dostęp do danych użytownika
 webext-perms-description-webNavigation = Dostęp do aktywności przeglądarki podczas nawigacji
+webext-perms-extra-warning-userScripts-long = Niezweryfikowane skrypty mogą stwarzać zagrożenia bezpieczeństwa i prywatności, na przykład wykonując szkodliwy kod albo śledząc działania użytkownika w Internecie. Uruchamiaj skrypty wyłącznie z rozszerzeń i innych źródeł, którym ufasz.
+webext-perms-extra-warning-userScripts-short = Niezweryfikowane skrypty mogą stwarzać zagrożenia bezpieczeństwa i prywatności. Uruchamiaj skrypty wyłącznie z rozszerzeń i innych źródeł, którym ufasz.

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (chưa đặt)
 failed-pp-change = Không thể thay đổi mật khẩu chính.
@@ -21,7 +17,6 @@ set-password-new-password = Nhập mật khẩu mới:
 set-password-reenter-password = Nhập lại mật khẩu mới:
 set-password-meter = Độ an toàn mật khẩu
 set-password-meter-loading = Đang tải
-primary-password-admin = Quản trị viên của bạn yêu cầu bạn phải đặt mật khẩu chính để lưu thông tin đăng nhập và mật khẩu.
 primary-password-required-by-policy = Tổ chức của bạn yêu cầu bạn phải đặt mật khẩu chính để lưu thông tin đăng nhập và mật khẩu.
 primary-password-description = Mật khẩu chính được sử dụng để bảo vệ một số thông tin nhạy cảm, như thông tin đăng nhập và mật khẩu, trên thiết bị này. Nếu bạn tạo mật khẩu chính, bạn sẽ được yêu cầu nhập mật khẩu một lần mỗi phiên khi { -brand-short-name } lấy thông tin đã lưu được bảo vệ bởi mật khẩu.
 primary-password-warning = Vui lòng đảm bảo rằng bạn nhớ mật khẩu chính bạn đã đặt. Nếu bạn quên mật khẩu chính, bạn sẽ không thể truy cập bất kỳ thông tin nào được bảo vệ bởi nó trên thiết bị này.

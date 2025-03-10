@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = Zapołožki čitać a změnić
 webext-perms-description-browserSettings = Nastajenja wobhladowaka čitać a změnić
 webext-perms-description-browsingData = Aktualnu přehladowansku historiju, placki a přisłušne daty zhašeć
@@ -30,4 +21,8 @@ webext-perms-description-sessions = Mějće přistup k njedawno začinjenym rajt
 webext-perms-description-tabs = Mějće přistup k rajtarkam wobhladowaka
 webext-perms-description-tabHide = Rajtarki wobhladowaka schować a pokazać
 webext-perms-description-topSites = Mějće přistup k přehladowanskej historiji
+webext-perms-description-trialML = Sćehńće a wuwjedźće Modele KI na swojim graće
+webext-perms-description-userScripts = Njepřepruwowanym skriptam třećich poskićowarjow přistup k wašim datam dowolić
 webext-perms-description-webNavigation = Mějće přistup k aktiwiće wobhladowaka za nawigaciju
+webext-perms-extra-warning-userScripts-long = Njepřepruwowane skripty móža rizika za wěstotu a priwatnosć być, hdyž na přikład škódny kode wuwjedu abo aktiwiće websydłow slěduja. Wuwjedźće jenož skripty z rozšěrjenjow abo žórłow, kotrymž dowěrjeće.
+webext-perms-extra-warning-userScripts-short = Njepřepruwowane skripty móža rizika za wěstotu a priwatnosć być. Wuwjedźće jenož skripty z rozšěrjenjow abo žórłow, kotrymž dowěrjeće.

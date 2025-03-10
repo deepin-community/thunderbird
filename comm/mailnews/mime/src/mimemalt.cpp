@@ -238,6 +238,7 @@ static int MimeMultipartAlternative_flush_children(MimeObject* obj,
                                                    do_display && display_part);
       MimeHeaders_free(malt->buffered_hdrs[i]);
       MimePartBufferDestroy(malt->part_buffers[i]);
+      PR_FREEIF(ct);
     }
     malt->pending_parts = 0;
   }
@@ -520,11 +521,8 @@ static int MimeMultipartAlternative_display_cached_part(
   else
 #endif /* MIME_DRAFTS */
 
-    status = MimePartBufferRead(
-        buffer,
-        /* The MimeConverterOutputCallback cast is to turn the
-         `void' argument into `MimeObject'. */
-        ((MimeConverterOutputCallback)body->clazz->parse_buffer), body);
+    status = MimePartBufferRead(buffer, body->clazz->parse_buffer,
+                                MimeClosure(MimeClosure::isMimeObject, body));
 
   if (status < 0) return status;
 

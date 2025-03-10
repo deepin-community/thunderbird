@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Tanca la sessió…
     .accesskey = T
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Compte nou
 appmenu-new-account-panel =
     .label = Compte nou
     .accesskey = n
-appmenu-create-new-mail-account =
-    .label = Obteniu un correu electrònic nou
-    .accesskey = O
-appmenu-new-mail-account =
-    .label = Correu electrònic existent
-    .accesskey = e
 appmenu-new-email-account =
     .label = Correu electrònic
     .accesskey = e
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Grup de discussió
     .accesskey = G
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Llibreta d'adreces nova
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Llibreta d'adreces LDAP
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Crea
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Contacte
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = Obre des d'un fitxer
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Calendari…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Visualitza
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Augmenta la mida de la lletra
 appmenuitem-font-size-reduce =
     .tooltiptext = Redueix la mida de la lletra
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } píxels
     .tooltiptext = Reinicia la mida de la lletra
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Eines
 appmenu-tools-panel =
@@ -163,17 +130,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Eines per a desenvolupadors
     .accesskey = E
-
-## Help
-
 appmenu-help-panel-title =
     .title = Ajuda
 appmenu-help-get-help =
     .label = Obteniu ajuda
     .accesskey = O
-appmenu-help-explore-features =
-    .label = Exploreu les funcions
-    .accesskey = f
 appmenu-help-get-release-help =
     .label = Obteniu ajuda sobre el { -brand-short-name }
     .accesskey = O
@@ -201,9 +162,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Quant al { -brand-short-name }
     .accesskey = Q
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = S'està baixant l'actualització del { -brand-shorter-name }
 appmenuitem-banner-update-available =

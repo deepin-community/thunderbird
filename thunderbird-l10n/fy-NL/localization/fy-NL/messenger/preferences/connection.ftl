@@ -1,11 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 connection-dns-over-https-url-resolver = Provider brûke
     .accesskey = r
-# Variables:
-#   $name (String) - Display name or URL for the DNS over HTTPS provider
 connection-dns-over-https-url-item-default =
     .label = { $name } (Standert)
     .tooltiptext = Standert URL brûke foar DNS oer HTTPS
@@ -14,15 +8,8 @@ connection-dns-over-https-url-custom =
     .accesskey = O
     .tooltiptext = Fier jo foarkars-URL yn foar DNS oer HTTPS
 connection-dns-over-https-custom-label = Oanpast
-connection-dialog-window2 =
-    .title = Ferbiningsynstellingen
 connection-dialog-title = Ferbiningsynstellingen
 disable-extension-button = Utwreiding útskeakelje
-# Variables:
-#   $name (String) - The extension that is controlling the proxy settings.
-#
-# The extension-icon is the extension's icon, or a fallback image. It should be
-# purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension = In útwreiding, <img data-l10n-name="extension-icon" alt="" />{ $name }, hat behear oer hoe’t { -brand-short-name } ferbining makket mei it ynternet.
 connection-proxy-legend = Proxy’s foar tagong ta it ynternet konfigurearje
 proxy-type-no =
@@ -74,7 +61,6 @@ no-proxy-label =
     .value = Gjin proxy foar:
     .accesskey = n
 no-proxy-example = Foarbyld: .mozilla.org, .net.nz, 192.168.1.0/24
-# Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)
 connection-proxy-noproxy-localhost-desc-2 = Ferbiningen mei localhost, 127.0.0.1/8 en ::1 gean nea fia in proxy.
 proxy-password-prompt =
     .label = Freegje net om autentikaasje as wachtwurd bewarre is

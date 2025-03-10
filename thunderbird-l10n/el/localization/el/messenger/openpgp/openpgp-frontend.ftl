@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 openpgp-manage-keys-openpgp-cmd =
     .label = Διαχείριση κλειδιών OpenPGP
     .accesskey = O
@@ -18,8 +14,6 @@ openpgp-ctx-verify-att =
     .label = Επαλήθευση υπογραφής
     .accesskey = Ε
 openpgp-has-sender-key = Το μήνυμα ισχυρίζεται ότι περιέχει το δημόσιο κλειδί OpenPGP του αποστολέα.
-# Variables:
-# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key = Προειδοποίηση: Το νέο δημόσιο κλειδί OpenPGP σε αυτό το μήνυμα διαφέρει από τα δημόσια κλειδιά που έχετε προηγουμένως αποδεχθεί για { $email }.
 openpgp-import-sender-key =
     .label = Εισαγωγή…
@@ -28,7 +22,6 @@ openpgp-search-keys-openpgp =
 openpgp-missing-signature-key = Αυτό το μήνυμα έχει υπογραφεί με ένα κλειδί που δεν έχετε ακόμα στη διάθεσή σας.
 openpgp-search-signature-key =
     .label = Ανακάλυψη…
-# Don't translate the terms "OpenPGP" and "MS-Exchange"
 openpgp-broken-exchange-opened = Αυτό είναι ένα μήνυμα OpenPGP που μάλλον έχει καταστραφεί από το MS-Exchange και δεν μπορεί να επιδιορθωθεί, επειδή άνοιξε από ένα τοπικό αρχείο. Αντιγράψτε το μήνυμα σε ένα φάκελο αλληλογραφίας για να δοκιμάσετε μια αυτόματη επιδιόρθωση.
 openpgp-broken-exchange-info = Αυτό είναι ένα μήνυμα OpenPGP που φαίνεται να έχει αλλοιώσει το MS-Exchange. Αν το περιεχόμενο του μηνύματος δεν εμφανίζεται όπως θα περιμένατε, μπορείτε να δοκιμάσετε μια αυτόματη επιδιόρθωση.
 openpgp-broken-exchange-repair =

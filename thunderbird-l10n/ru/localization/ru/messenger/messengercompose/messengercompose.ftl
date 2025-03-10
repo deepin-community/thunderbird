@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Send Format
-
 compose-send-format-menu =
     .label = Формат исходящей почты
     .accesskey = Ф
@@ -20,14 +13,8 @@ compose-send-html-menu-item =
 compose-send-plain-menu-item =
     .label = Только обычный текст
     .accesskey = о
-
-## Addressing widget
-
-#   $type (String) - the type of the addressing row
 remove-address-row-button =
     .title = Удалить поле { $type }
-#   $type (String) - the type of the addressing row
-#   $count (Number) - the number of address pills currently present in the addressing row
 address-input-type-aria-label =
     { $count ->
         [0] { $type }
@@ -35,22 +22,17 @@ address-input-type-aria-label =
         [few] { $type } с { $count } адресами, используйте клавишу «Стрелка влево», чтобы сфокусироваться на них.
        *[many] { $type } с { $count } адресами, используйте клавишу «Стрелка влево», чтобы сфокусироваться на них.
     }
-#   $email (String) - the email address
-#   $count (Number) - the number of address pills currently present in the addressing row
 pill-aria-label =
     { $count ->
         [one] { $email }, 1 из { $count }: нажмите Enter, чтобы изменить; Delete, чтобы удалить.
         [few] { $email }, 1 из { $count }: нажмите Enter, чтобы изменить; Delete, чтобы удалить.
        *[many] { $email }, 1 из { $count }: нажмите Enter, чтобы изменить; Delete, чтобы удалить.
     }
-#   $email (String) - the email address
 pill-tooltip-invalid-address = { $email } не является корректным адресом электронной почты
-#   $email (String) - the email address
 pill-tooltip-not-in-address-book = { $email } отсутствует в вашей адресной книге
 pill-action-edit =
     .label = Изменить адрес
     .accesskey = м
-#   $type (String) - the type of the addressing row, e.g. Cc, Bcc, etc.
 pill-action-select-all-sibling-pills =
     .label = Выбрать все адреса в { $type }
     .accesskey = ы
@@ -69,9 +51,6 @@ pill-action-move-bcc =
 pill-action-expand-list =
     .label = Развернуть список
     .accesskey = в
-
-## Attachment widget
-
 ctrl-cmd-shift-pretty-prefix =
     { PLATFORM() ->
         [macos] ⇧ ⌘{ " " }
@@ -98,14 +77,12 @@ context-menuitem-attach-files =
     .label = Вложить файл(ы)…
     .accesskey = ж
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key }
-# Note: Do not translate the term 'vCard'.
 context-menuitem-attach-vcard =
     .label = Моя vCard
     .accesskey = C
 context-menuitem-attach-openpgp-key =
     .label = Мой открытый ключ OpenPGP
     .accesskey = к
-#   $count (Number) - the number of attachments in the attachment bucket
 attachment-bucket-count-value =
     { $count ->
         [one] { $count } вложение
@@ -116,10 +93,6 @@ attachment-area-show =
     .title = Показать панель вложений ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
 attachment-area-hide =
     .title = Скрыть панель вложений ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
-
-## Variables:
-## $count (Number) - Number of files being dropped onto the composer.
-
 drop-file-label-attachment =
     { $count ->
         [one] Добавить как вложение
@@ -132,9 +105,6 @@ drop-file-label-inline =
         [few] Вставить в содержимое
        *[many] Вставить в содержимое
     }
-
-## Reorder Attachment Panel
-
 move-attachment-first-panel-button =
     .label = Переместить в начало
 move-attachment-left-panel-button =
@@ -146,9 +116,6 @@ move-attachment-last-panel-button =
 button-return-receipt =
     .label = Уведомление о прочтении
     .tooltiptext = Запросить уведомление о прочтении этого сообщения
-
-## Encryption
-
 encryption-menu =
     .label = Безопасность
     .accesskey = з
@@ -188,26 +155,15 @@ menu-view-certificates =
 menu-open-key-manager =
     .label = Менеджер ключей
     .accesskey = ж
-# Variables:
-# $addr (String) - Email address (which related to the currently selected
-#                  from address) which isn't set up to end-to-end encryption.
 openpgp-key-issue-notification-from = Вы не настроили отправку сообщений, зашифрованных сквозным методом, с адреса { $addr }.
-# Variables:
-# $addr (String) - Email address with key issues.
 openpgp-key-issue-notification-single = Для сквозного шифрования нужно решить проблему с ключом для { $addr }.
-# Variables:
-# $count (Number) - Number of recipients with key issues.
 openpgp-key-issue-notification-multi =
     { $count ->
         [one] Для сквозного шифрования нужно решить проблемы с ключами для { $count } получателя.
         [few] Для сквозного шифрования нужно решить проблемы с ключами для { $count } получателей.
        *[many] Для сквозного шифрования нужно решить проблемы с ключами для { $count } получателей.
     }
-# Variables:
-# $addr (String) - mail address with certificate issues.
 smime-cert-issue-notification-single = Для сквозного шифрования нужно решить проблему с сертификатом для { $addr }.
-# Variables:
-# $count (Number) - Number of recipients with certificate issues.
 smime-cert-issue-notification-multi =
     { $count ->
         [one] Для сквозного шифрования нужно решить проблемы с сертификатами для { $count } получателя.
@@ -227,59 +183,42 @@ can-encrypt-openpgp-notification = Возможно сквозное шифро�
 can-e2e-encrypt-button =
     .label = Шифровать
     .accesskey = ф
-
-## Addressing Area
-
 to-address-row-label =
     .value = Кому
-#   $key (String) - the shortcut key for this field
 show-to-row-main-menuitem =
     .label = Поле «Кому»
     .accesskey = м
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-# No acceltext should be shown.
-# The label should match the show-to-row-button text.
 show-to-row-extra-menuitem =
     .label = Кому
     .accesskey = м
-#   $key (String) - the shortcut key for this field
 show-to-row-button = Кому
     .title = Показать поле «Кому» ({ ctrl-cmd-shift-pretty-prefix }{ $key })
 cc-address-row-label =
     .value = Копия
-#   $key (String) - the shortcut key for this field
 show-cc-row-main-menuitem =
     .label = Поле «Копия»
     .accesskey = п
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-# No acceltext should be shown.
-# The label should match the show-cc-row-button text.
 show-cc-row-extra-menuitem =
     .label = Копия
     .accesskey = п
-#   $key (String) - the shortcut key for this field
 show-cc-row-button = Копия
     .title = Показать поле «Копия» ({ ctrl-cmd-shift-pretty-prefix }{ $key })
 bcc-address-row-label =
     .value = Скрытая копия
-#   $key (String) - the shortcut key for this field
 show-bcc-row-main-menuitem =
     .label = Поле «Скрытая копия»
     .accesskey = ы
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-# No acceltext should be shown.
-# The label should match the show-bcc-row-button text.
 show-bcc-row-extra-menuitem =
     .label = Скрытая копия
     .accesskey = ы
-#   $key (String) - the shortcut key for this field
 show-bcc-row-button = Скрытая копия
     .title = Показать поле «Скрытая копия» ({ ctrl-cmd-shift-pretty-prefix }{ $key })
 extra-address-rows-menu-button =
     .title = Другие отображаемые поля для адреса
 public-recipients-notice-single = У вашего сообщения есть видимый другим получатель. Вы можете избежать раскрытия получателя, используя вместо этого скрытую копию.
-# Variables:
-# $count (Number) - the count of addresses in the "To" and "Cc" fields.
 public-recipients-notice-multi =
     { $count ->
         [one] { $count } адресат в полях «Кому» и «Копия» увидит адреса друг друга. Вы можете избежать раскрытия адресатов, используя вместо этого «Скрытую копию».
@@ -293,7 +232,6 @@ many-public-recipients-ignore =
     .label = Позволить адресатам видеть адреса друг друга
     .accesskey = в
 many-public-recipients-prompt-title = Слишком много публичных адресатов
-#   $count (Number) - the count of addresses in the public recipients fields.
 many-public-recipients-prompt-msg =
     { $count ->
         [one] У вашего сообщения есть публичный адресат. Это может вызвать проблему с приватностью. Вы можете избежать раскрытия адресата, переместив его из «Кому»/«Копия» в «Скрытую копию».
@@ -302,122 +240,46 @@ many-public-recipients-prompt-msg =
     }
 many-public-recipients-prompt-cancel = Отменить отправку
 many-public-recipients-prompt-send = Всё равно отправить
-
-## Notifications
-
-# Variables:
-# $identity (string) - The name of the used identity, most likely an email address.
 compose-missing-identity-warning = Адрес электронной почты, соответствующий адресу в поле От:, не найден. Сообщение будет отправлено с использованием текущего адреса в поле От: и настроек адреса электронной почты { $identity }.
 encrypted-bcc-warning = При отправке зашифрованного сообщения получатели в поле «Скрытая копия» скрыты не полностью. Их могут идентифицировать все получатели.
 encrypted-bcc-ignore-button = Понятно
 auto-disable-e2ee-warning = Сквозное шифрование для этого сообщения было автоматически отключено.
-
-## Editing
-
-
-# Tools
-
 compose-tool-button-remove-text-styling =
     .tooltiptext = Удалить стиль текста
-
-## Filelink
-
-# A text used in a tooltip of Filelink attachments, whose account has been
-# removed or is unknown.
 cloud-file-unknown-account-tooltip = Выгружено в неизвестную учётную запись Filelink.
-
-# Placeholder file
-
-# Title for the html placeholder file.
-# $filename - name of the file
 cloud-file-placeholder-title = { $filename } - вложение на Filelink
-# A text describing that the file was attached as a Filelink and can be downloaded
-# from the link shown below.
-# $filename - name of the file
 cloud-file-placeholder-intro = Файл { $filename } был прикреплён в виде ссылки на Filelink. Его можно загрузить по указанной ниже ссылке.
-
-# Template
-
-# A line of text describing how many uploaded files have been appended to this
-# message. Emphasis should be on sharing as opposed to attaching. This item is
-# used as a header to a list, hence the colon.
-# Variables:
-# $count (Number) - Number of files.
 cloud-file-count-header =
     { $count ->
         [one] Я связал с этим сообщением { $count } файл:
         [few] Я связал с этим сообщением { $count } файла:
        *[many] Я связал с этим сообщением { $count } файлов:
     }
-# A text used in a footer, instructing the reader where to find additional
-# information about the used service provider.
-# $link (string) - html a-tag for a link pointing to the web page of the provider
 cloud-file-service-provider-footer-single = Узнать больше о { $link }.
-# A text used in a footer, instructing the reader where to find additional
-# information about the used service providers. Links for the used providers are
-# split into a comma separated list of the first n-1 providers and a single entry
-# at the end.
-# $firstLinks (string) - comma separated list of html a-tags pointing to web pages
-#                        of the first n-1 used providers
-# $lastLink (string) - html a-tag pointing the web page of the n-th used provider
 cloud-file-service-provider-footer-multiple = Узнать больше о { $firstLinks } и { $lastLink }.
-# Tooltip for an icon, indicating that the link is protected by a password.
 cloud-file-tooltip-password-protected-link = Ссылка защищена паролем
-# Used in a list of stats about a specific file
-# Service - the used service provider to host the file (Filelink Service: BOX.com)
-# Size - the size of the file (Size: 4.2 MB)
-# Link - the link to the file (Link: https://some.provider.com)
-# Expiry Date - stating the date the link will expire (Expiry Date: 12.12.2022)
-# Download Limit - stating the maximum allowed downloads, before the link becomes invalid
-#                  (Download Limit: 6)
 cloud-file-template-service-name = Служба Filelink:
 cloud-file-template-size = Размер:
 cloud-file-template-link = Ссылка:
 cloud-file-template-password-protected-link = Ссылка, защищённая паролем:
 cloud-file-template-expiry-date = Срок действия:
 cloud-file-template-download-limit = Лимит на загрузку:
-
-# Messages
-
 cloud-file-connection-error-title = Ошибка соединения
-# Variables:
-# $provider (string) - name of the online storage service that reported the error
 cloud-file-connection-error = { -brand-short-name } не в сети. Не удалось подключиться к { $provider }.
-# Variables:
-# $provider (string) - name of the online storage service that reported the error
-# $filename (string) - name of the file that was uploaded and caused the error
 cloud-file-upload-error-with-custom-message-title = Выгрузка { $filename } на { $provider } не удалась
 cloud-file-rename-error-title = При переименовании произошла ошибка
-# Variables:
-# $provider (string) - name of the online storage service that reported the error
-# $filename (string) - name of the file that was renamed and caused the error
 cloud-file-rename-error = При переименовании { $filename } на { $provider } возникла проблема.
-# Variables:
-# $provider (string) - name of the online storage service that reported the error
-# $filename (string) - name of the file that was renamed and caused the error
 cloud-file-rename-error-with-custom-message-title = Переименование { $filename } на { $provider } не удалось
-# Variables:
-# $provider (string) - name of the online storage service that reported the error
 cloud-file-rename-not-supported = { $provider } не поддерживает переименование уже выгруженных файлов.
 cloud-file-attachment-error-title = Ошибка вложения Filelink
-# Variables:
-# $filename (string) - name of the file that was renamed and caused the error
 cloud-file-attachment-error = Не удалось обновить вложение Filelink { $filename }, так как его локальный файл был перемещён или удалён.
 cloud-file-account-error-title = Ошибка учётной записи Filelink
-# Variables:
-# $filename (string) - name of the file that was renamed and caused the error
 cloud-file-account-error = Не удалось обновить вложение Filelink { $filename }, так как его учётная запись Filelink была удалена.
-
-## Link Preview
-
 link-preview-title = Предпросмотр ссылки
 link-preview-description = { -brand-short-name } может добавлять встроенный предпросмотр при вставке ссылок.
 link-preview-autoadd = По возможности автоматически добавлять предпросмотр ссылок
 link-preview-replace-now = Добавить предпросмотр ссылки для этой ссылки?
 link-preview-yes-replace = Да
-
-## Dictionary selection popup
-
 spell-add-dictionaries =
     .label = Добавить словари…
     .accesskey = л

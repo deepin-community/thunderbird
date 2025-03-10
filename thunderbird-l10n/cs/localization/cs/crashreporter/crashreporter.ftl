@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 crashreporter-branded-title =
     { -brand-short-name.case-status ->
         [with-cases] Hlášení pádů { -brand-short-name(case: "gen") }
@@ -24,8 +20,7 @@ crashreporter-error =
         [neuter] { -brand-short-name } zaznamenalo problém a spadlo. Hlášení pádu se bohužel nepodařilo odeslat.
        *[other] Aplikace { -brand-short-name } zaznamenala problém a spadla. Hlášení pádu se bohužel nepodařilo odeslat.
     }
-# $details (String) - the reason that a crash report cannot be submitted
-crashreporter-error-details = Podrobnosti: { $details }
+crashreporter-error-details-header = Podrobnosti:
 crashreporter-no-run-message = Tato aplikace je spuštěna po pádu jiné aplikace a jejím účelem je zaslat hlášení o pádu vývojářům aplikace. Není ji proto možné spustit samostatně.
 crashreporter-button-details = Podrobnosti…
 crashreporter-loading-details = Načítání…
@@ -57,22 +52,11 @@ crashreporter-button-restart =
     }
 crashreporter-button-ok = OK
 crashreporter-button-close = Zavřít
-# $id (String) - the crash id from the server, typically a UUID
 crashreporter-crash-identifier = ID pádu: { $id }
-# $url (String) - the url which the user can use to view the submitted crash report
 crashreporter-crash-details = Detaily tohoto pádu si lze prohlédnout na stránce { $url }.
-
-# Error strings
-
-crashreporter-error-minidump-analyzer = Nepodařilo se spustit minidump-analyzer
-# $path (String) - the file path
 crashreporter-error-opening-file = Nepodařilo se otevřít soubor ({ $path })
-# $path (String) - the file path
 crashreporter-error-loading-file = Nepodařilo se načíst soubor ({ $path })
-# $path (String) - the path
 crashreporter-error-creating-dir = Nepodařilo se vytvořit adresář ({ $path })
 crashreporter-error-no-home-dir = Chybějící domovský adresář
-# $from (String) - the source path
-# $to (String) - the destination path
 crashreporter-error-moving-path = Nepodařilo se přesunout z { $from } do { $to }
 crashreporter-error-version-eol = Nepodporovaná verze: hlášení jejích pádů už nejsou přijímána.

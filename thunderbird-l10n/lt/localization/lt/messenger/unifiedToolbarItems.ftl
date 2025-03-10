@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Kintamo pločio tarpas
 toolbar-write-message-label = Rašyti
 toolbar-write-message =
@@ -48,8 +41,6 @@ toolbar-junk-label = Brukalas
 toolbar-junk =
     .title = Pasirinktas pranešimas bus pažymėtas kaip brukalas
 toolbar-delete-label = Pašalinti
-toolbar-delete =
-    .title = Pašalinti pasirinktą pranešimą ar katalogą
 toolbar-compact-label = Suglaudinti
 toolbar-compact =
     .title = Sunaikinti pašalintus laiškus iš pažymėto aplanko

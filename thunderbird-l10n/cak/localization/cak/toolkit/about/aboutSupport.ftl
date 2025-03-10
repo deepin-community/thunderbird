@@ -1,10 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Etamab'äl richin yesol taq k'ayewal
 page-subtitle =   Pa re ruxaq re' k'o samajel etamab'äl chupam, ri nito'on we nawajo' nasöl jun k'ayewal. Richin nawïl kitzijol relik taq k'utunïk chi rij { -brand-short-name }, kab'etz'eton pa qa <a data-l10n-name="support-link">ruxaq k'amaya'l richin to'ïk</a>.
-
 crashes-title = Rutzijol taq sachoj
 crashes-id = Nimaläj rub'i' ri rutzijol
 crashes-send-date = Taqon
@@ -35,8 +30,6 @@ app-basics-version = Ruwäch
 app-basics-build-id = Nimaläj rub'i' molïk
 app-basics-distribution-id = Jachonïk ID
 app-basics-update-channel = Rub'ey taq k'exoj ruwäch
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Rucholajem K'exoj
@@ -44,20 +37,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Kinatab'al taq k'exoj ruwäch
 app-basics-show-update-history = Tik'ut Kinatab'al taq K'exoj
-# Represents the path to the binary used to start the application.
 app-basics-binary = Ruwinari Chokoy
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Rucholb'äl Ruwäch B'i'aj
        *[other] Rumolwuj Ruwäch B'i'aj
     }
-app-basics-enabled-plugins = Tzijon taq nak'ab'äl
 app-basics-build-config = Runuk'ulem Molïk
 app-basics-user-agent = Rub'anel ri winäq
 app-basics-os = OS
 app-basics-os-theme = Ruwachinel Samajel Q'inoj
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Xtzalq'omïx Rosetta
 app-basics-memory-use = Rokisaxik rupam rujolom
 app-basics-performance = Rub'eyal nisamäj
@@ -73,12 +62,7 @@ app-basics-location-service-key-google = Google K'ojlib'äl Ewan Rutzij Samaj
 app-basics-safebrowsing-key-google = Google Safebrowsing Key
 app-basics-key-mozilla = Mozilla k'ojlib'äl ewan rutzij samaj
 app-basics-safe-mode = Ütz rub'anikil
-
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
-
 show-dir-label =
     { PLATFORM() ->
         [macos] Tik'ut pe pan ilonel
@@ -108,9 +92,7 @@ graphics-gpu2-title = GPU #2
 graphics-decision-log-title = Runa'oj tz'ib'anïk
 graphics-crash-guards-title = Tzaqoj Chajïy q'ajon taq b'anikil
 graphics-workarounds-title = Tz'aqat taq soloj
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Rub'eyal Tzuwäch
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Ruk'ojlib'al Ajkematz'ib'
 place-database-title = Taq kik'ojlem cholxe'el tzij
 place-database-stats = Kimolob'a'
@@ -146,9 +128,6 @@ clear-startup-cache-label = Tiyuj rujumejyak tikirib'äl…
 startup-cache-dialog-title2 = ¿La nitikirisäx chik { -brand-short-name } richin yejosq'ïx ri rukache' tikirib'äl?
 startup-cache-dialog-body2 = Re man xtujäl ta ri runuk'ulem chuqa' man xkeruyüj ta ri taq k'amal.
 restart-button-label = Titikirisäx chik
-
-## Media titles
-
 audio-backend = Q'ojom Backend
 max-audio-channels = Nima'q taq b'ey
 sample-rate = Ajowan Q'ijun Tz'etb'äl
@@ -166,13 +145,7 @@ media-device-channels = Taq b'ey
 media-device-rate = Rajil
 media-device-latency = Rub'anikil k'o wi
 media-capabilities-title = Kisamaj K'oxom
-# List all the entries of the database.
 media-capabilities-enumerate = Ticholajïx cholxe'el
-
-## Codec support table
-
-##
-
 intl-title = Elniminïk & Tzalq'omanri'ïl
 intl-app-title = Kinuk'ulem Chokoy
 intl-locales-requested = K'utun taq Tzalq'omanïk
@@ -182,79 +155,42 @@ intl-locales-default = Tzalq'omanïk kan k'o wi
 intl-os-title = Samajel taq Q'inoj
 intl-os-prefs-system-locales = Kitzalq'omanik Q'inoj
 intl-regional-prefs = Aj wawe' taq Ajowab'äl
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Näj Ruchojmirisanem (Chromium Rub'eyal Samaj)
 remote-debugging-accepting-connections = Kek'ul taq okem
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Kitzijol taq sachoj richin ri ruk'isib'äl { $days } q'ij
        *[other] Kitzijol taq sachoj kichin ri ruk'isib'äl { $days } taq q'ij
     }
-
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] tik'o { $minutes } ch'utiramaj
        *[other] tik'o { $minutes } taq ch'utiramaj
     }
-
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] tik'o { $hours } ramaj
        *[other] tik'o { $hours } taq ramaj
     }
-
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] tik'o { $days } q'ij
        *[other] tik'o { $days } taq q'ij
     }
-
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Konojel ri taq rutzijol sachoj (tz'aqatisan { $reports } oyob'en sachoj pa ri ramaj jikib'an)
        *[other] Konojel ri taq rutzijol samaj (tz'aqatisan { $reports } oyob'en taq sachoj pa ri ramaj jikib'an)
     }
-
 raw-data-copied = Rukuta'm tzij wachib'en pa molwuj
 text-copied = Rucholajem tzij wachib'en pa molwuj
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Q'eleb'en rusamaj richin ri ruwäch awajchajinel wachib'alil.
 blocked-gfx-card = Q'eleb'en kisamajixik ch'utiwuj awachib'alil ruma man esolon ta taq ruk'ayewal ri ajchajinel.
 blocked-os-version = Q'eleb'en rusamaj richin ri ruwäch q'inoj asamaj.
 blocked-mismatched-version = Q'aton ruma ri jaloj ruwäch awajchajinel wachib'äl chi kikojol ri rutz'ib'axik chuqa' ri DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Q'eleb'en rusamaj richin ri ruwäch awajchajinel wachib'alil. Tatojtob'ej nak'ëx ri awajchajinel wachib'alil rik'in ri ruwäch { $driverVersion } o ri jun chik k'ak'a'.
-
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Taq ko'öl retab'al ClearType
-
 compositing = Ch'akulan
 hardware-h264 = Ch'akulakem H264 Relesaxik na'oj
 main-thread-no-omtc = nimaläj b'akoj, majun OMTC
@@ -262,14 +198,8 @@ yes = Ja'
 no = Manäq
 unknown = Man etaman ta ruwäch
 virtual-monitor-disp = Ruwa Tzuwäch Kemtzijil
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Xrïl
 missing = Sachon
-
 gpu-process-pid = GPUProcessPid
 gpu-process = GPUProcess
 gpu-description = Tzijoxikil
@@ -292,19 +222,11 @@ webgl2-renderer = WebGL 2 runuk'uwachinel chajinel
 webgl2-version = WebGL 2 Ruwa chajinel
 webgl2-driver-extensions = WebGL 2 taq ruk'amal chajinel
 webgl2-extensions = WebGL 2 taq ruk'amal
-
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Pa ri rucholajem q'atoj ruma k'ayewal etaman kiwa: <a data-l10n-name="bug-link">{ $bugNumber }</a>
-
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Q'ëq cholb'äl: rub'itz'ib' sachoj { $failureCode }
-
 d3d11layers-crash-guard = D3D11 Chojmirisanel
 glcontext-crash-guard = OpenGL
 wmfvpxvideo-crash-guard = WMF VPX Silowachib'äl Ewanel Rusik'ixik
-
 reset-on-next-restart = K'a xtitzolïx na ri Rutikirisaxik chik
 gpu-process-kill-button = Tik'isb'ëx ri GPU Tajin
 gpu-device-reset = Titzij chik Okisaxel
@@ -314,10 +236,8 @@ content-uses-tiling = Tokisäx Ch'utiwäch (Rupam)
 off-main-thread-paint-enabled = Off Nïm Rub'ey Rachwinäq Tzijon
 off-main-thread-paint-worker-count = Off Main Thread Painting Worker Tajiläx
 target-frame-rate = Retal Ruchi' Rub'ey:
-
 min-lib-versions = Ch'uti'n ruwäch oyob'en
 loaded-lib-versions = Ruwäch tajin nokisäx
-
 has-seccomp-bpf = Seccomp-BPF (Ruq'inoj chayunel taq oyonïk)
 has-seccomp-tsync = Ruximojri'ïl wachinel Seccomp
 has-user-namespaces = Ruk'ojlemal kib'i' winäq
@@ -330,28 +250,17 @@ sandbox-proc-type-content = rupam
 sandbox-proc-type-file = rupam yakb'äl
 sandbox-proc-type-media-plugin = q'ojom nak'ab'äl
 sandbox-proc-type-data-decoder = sik'inel tzij
-
 startup-cache-title = Rukache' Tikirib'äl
 startup-cache-disk-cache-path = Rub'ey Rukache' Seteb'äl
 startup-cache-ignore-disk-cache = Tirepüx Rukache' Seteb'äl
 startup-cache-found-disk-cache-on-init = Rukache' Seteb'äl Xilitäj toq Xtikirisäx
 startup-cache-wrote-to-disk-cache = Xtz'ib'äx chi re ri Rukache' Seteb'äl
-
 launcher-process-status-0 = Tzijon
 launcher-process-status-1 = Xchup ruma sachoj
 launcher-process-status-2 = Xb'an chi xchup
 launcher-process-status-unknown = Man etaman ta täq rub'anikil
-
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Xchup ruma ri tojtob'enel
-fission-status-experiment-treatment = Xtzij ruma ri tojtob'enel
 fission-status-disabled-by-e10s-env = Xchup ruma ri k'ojlib'äl
 fission-status-enabled-by-env = Xtzij ruma ri k'ojlib'äl
 fission-status-disabled-by-env = Xchup ruma ri k'ojlib'äl
@@ -360,7 +269,6 @@ fission-status-disabled-by-default = Xchup wi pe
 fission-status-enabled-by-user-pref = Xtzij ruma ri okisanel
 fission-status-disabled-by-user-pref = Xchup ruma ri okisanel
 fission-status-disabled-by-e10s-other = E10s chupun
-
 async-pan-zoom = Asynchronous Pan/Zoom
 apz-none = majun
 wheel-enabled = xuya' q'ij xok ri seton
@@ -369,35 +277,21 @@ drag-enabled = chupul ruqirirexik rukajtz'ik q'axanel
 keyboard-enabled = tzijon pitz'b'äl
 autoscroll-enabled = tzijon autoscroll
 zooming-enabled = xtz'ij rusum eqal ch'opoj
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = xchuputäj ri rokitz'ib' seton meximojri'ïl ruma chi ri pref man nuköch' ta: { $preferenceKey }
 touch-warning = xchuputäj ri rokitz'ib' chapoj meximojri'ïl ruma chi ri pref man nuköch' ta: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Chupül
 policies-active = Tzijïl
 policies-error = Sachoj
-
-## Printing section
-
 support-printing-title = Nitz'ajb'äx
 support-printing-troubleshoot = Kisolik taq k'ayewal
 support-printing-clear-settings-button = Tiyuj kinuk'ulem yakon taq tz'ajb'anïk
 support-printing-modified-settings = Kinuk'ulem jalon taq tz'ajb'anïk
 support-printing-prefs-name = B'i'aj
 support-printing-prefs-value = Retal
-
-## Normandy sections
-
 support-remote-experiments-title = Näj Solna'oj
 support-remote-experiments-name = B'i'aj
 support-remote-experiments-branch = Solna'oj Branch
 support-remote-experiments-see-about-studies = Titz'et <a data-l10n-name="support-about-studies-link">about:studies</a> richin ch'aqa' etamab'äl, achi'el chuqa' rub'eyal yechup junilal taq tojtob'enel o richin nichup { -brand-short-name } richin nusamajij re ruwäch tojtob'enel ri chwa'q kab'ij.
-
 support-remote-features-title = Näj taq B'anikil
 support-remote-features-name = B'i'aj
 support-remote-features-status = B'anikil

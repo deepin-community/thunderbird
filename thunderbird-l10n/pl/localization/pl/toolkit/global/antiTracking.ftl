@@ -1,3 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+btp-warning-tracker-classified =
+    { $gracePeriodSeconds ->
+        [one] Witryna „{ $siteHost }” została sklasyfikowana jako przekierowujący element śledzący. Jeśli nie zostanie aktywowana przez użytkownika w ciągu następnej sekundy, jej stan zostanie usunięty.
+        [few] Witryna „{ $siteHost }” została sklasyfikowana jako przekierowujący element śledzący. Jeśli nie zostanie aktywowana przez użytkownika w ciągu następnych { $gracePeriodSeconds } sekund, jej stan zostanie usunięty.
+       *[many] Witryna „{ $siteHost }” została sklasyfikowana jako przekierowujący element śledzący. Jeśli nie zostanie aktywowana przez użytkownika w ciągu następnych { $gracePeriodSeconds } sekund, jej stan zostanie usunięty.
+    }
+btp-warning-tracker-purged = Stan witryny „{ $siteHost }” został ostatnio usunięty, ponieważ została sklasyfikowana jako przekierowujący element śledzący.

@@ -1,28 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar strings
-
-
-## Search bar
-
 search-bar-placeholder = Pesquisar…
-
-## Unified toolbar context menu
-
 customize-menu-customize =
     .label = Personalizar...
-
-# Unified toolbar get messages button context menu
-
 toolbar-get-all-messages-menuitem =
     .label = Obter todas as novas mensagens
     .accesskey = g
-
-## Unified Toolbar customization
-
 customize-space-tab-mail = Correio
     .title = Correio
 customize-space-tab-addressbook = Livro de Endereços
@@ -43,9 +24,3 @@ customize-button-style-text-only-option = Apenas texto
 customize-cancel = Cancelar
 customize-save = Guardar
 customize-palette-calendar-specific-title = Disponível apenas para o Espaço do Calendário
-
-## Unified toolbar customization palette context menu
-
-
-## Unified toolbar customization target context menu
-

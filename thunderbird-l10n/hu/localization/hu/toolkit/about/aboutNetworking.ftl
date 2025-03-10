@@ -1,14 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = Hálózatkezelés névjegye
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = HTTP-gyorsítótár törlése
 about-networking-sockets = Foglalatok
 about-networking-dns = DNS
 about-networking-dns-clear-cache-button = DNS-gyorsítótár törlése
-about-networking-dns-trr-url = DoH URL
+about-networking-dns-trr-url = DoH webcím
 about-networking-dns-trr-mode = DoH mód
 about-networking-dns-suffix = DNS utótag
 about-networking-websockets = WebSocketek
@@ -57,13 +53,6 @@ about-networking-rcwn-cache-slow = A gyorsítótár hányszor volt lassú
 about-networking-rcwn-cache-not-slow = A gyorsítótár hányszor nem volt lassú
 about-networking-networkid = Hálózati azonosító
 about-networking-networkid-id = Hálózati azonosító
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = Ez az oldal átkerült az <a data-l10n-name="about-logging-url">about:logging</a> oldalra.
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = A kapcsolat él
 about-networking-networkid-status-known = A kapcsolat állapota ismert
-
-##
-

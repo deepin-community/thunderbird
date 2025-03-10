@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Allgofnodi…
     .accesskey = A
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Cyfrif Newydd
 appmenu-new-account-panel =
     .label = Cyfrif Newydd
     .accesskey = C
-appmenu-create-new-mail-account =
-    .label = Cael E-bost Newydd
-    .accesskey = E
-appmenu-new-mail-account =
-    .label = E-bost Cyfredol
-    .accesskey = b
 appmenu-new-email-account =
     .label = E-bost
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Grŵp Newyddion
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Llyfr Cyfeiriadau Newydd
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = Llyfr Cyfeiriadau LDAP
     .accesskey = D
-
-## Create
-
 appmenu-create-panel-title =
     .title = Creu
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Cysylltiad
     .accesskey = y
-
-## Open
-
 appmenu-open-file-panel =
     .label = Agor o Ffeil
     .accesskey = A
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Calendr…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Golwg
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Cynyddu Maint Ffont
 appmenuitem-font-size-reduce =
     .tooltiptext = Lleihau Maint Ffont
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Ailosod Maint Ffont
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Offer
 appmenu-tools-panel =
@@ -147,6 +114,9 @@ appmenu-tools-import =
     .accesskey = M
 appmenu-tools-export =
     .label = Allforio
+    .accesskey = A
+appmenu-export-for-mobile =
+    .label = Allforio ar gyfer Symudol
     .accesskey = A
 appmenu-tools-message-search =
     .label = Chwilio drwy'r Negeseuon
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Offer Datblygwyr
     .accesskey = O
-
-## Help
-
 appmenu-help-panel-title =
     .title = Cymorth
 appmenu-help-get-help =
     .label = Derbyn Cymorth
     .accesskey = D
-appmenu-help-explore-features =
-    .label = Edrych ar y Nodweddion
-    .accesskey = E
 appmenu-help-get-release-help =
     .label = Cael Cymorth gyda { -brand-short-name }
     .accesskey = C
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Ynghylch { -brand-short-name }
     .accesskey = Y
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Wrthi'n llwytho diweddariad { -brand-shorter-name } i lawr
 appmenuitem-banner-update-available =

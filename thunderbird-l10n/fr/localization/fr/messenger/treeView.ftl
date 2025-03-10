@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Case à cocher pour sélectionner ou désélectionner la ligne courante
     .title = Sélectionner la ligne courante
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Restaurer la ligne courante
 tree-list-view-column-picker =
     .title = Choisir les colonnes à afficher
-tree-list-view-column-picker-restore =
-    .label = Rétablir l’ordre des colonnes
 tree-list-view-column-picker-restore-default-columns =
     .label = Restaurer les colonnes par défaut
 tree-list-view-row-thread-button =

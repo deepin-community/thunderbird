@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = { $identity } үшін жеке OpenPGP кілтін қосу
-key-wizard-button =
-    .buttonlabelaccept = Жалғастыру
-    .buttonlabelhelp = Артқа өту
 key-wizard-dialog =
     .buttonlabelaccept = Жалғастыру
     .buttonlabelextra1 = Артқа
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = GnuPG арқылы сыртқы кілтті пайдалану (мысалы, смарт картадан)
     .accesskey = й
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP кілтін генерациялау
 openpgp-keygen-secret-protection = Құпия кілт қорғанысы
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = Сіздің кілтіңіз кем дегенд�
 openpgp-keygen-ongoing = Кілт генерациясы жүріп жатыр!
 openpgp-keygen-error-core = OpenPGP негізгі қызметін инициализациялау мүмкін емес
 openpgp-keygen-error-failed = OpenPGP кілтін жасау күтпеген жерден сәтсіз аяқталды
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP кілті сәтті жасалды, бірақ { $key } кілтінің кері шақыруын алу мүмкін болмады.
 openpgp-keygen-abort-title = Кілт генерациясын тоқтату керек пе?
 openpgp-keygen-abort = OpenPGP кілтін жасау қазір орындалуда, одан бас тартқыңыз келетініне сенімдісіз бе?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = ‘{ $identity }’ үшін ашық және құпия кілтті жасау керек пе?
-
-## Import Key section
-
 openpgp-import-key-title = Бар болып тұрған жеке OpenPGP кілтін импорттау
 openpgp-import-key-legend = Бұрын қор көшірмесі жасалған файлды таңдаңыз.
 openpgp-import-key-description = Басқа OpenPGP бағдарламалық қамтамасымен жасалған жеке кілттерді импорттауға болады.
 openpgp-import-key-info = Басқа бағдарламалық қамтама жеке кілтті өз кілтіңіз, құпия кілт, жабық кілт немесе кілттер жұбы сияқты балама терминдер арқылы сипаттауы мүмкін.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] { -brand-short-name } импорттауға болатын { $count } кілтті тапты.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = Жеке кілттер ретінде қар�
 openpgp-import-keep-passphrases =
     .label = Импортталған құпия кілттер үшін кілттік фразамен қорғанысты сақтау
 openpgp-passphrase-prompt-title = Кілттік фраза керек
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Келесі кілтті босату ашу үшін кілттік фразаны енгізіңіз: { $key }
 openpgp-import-key-button =
     .label = Импорттау үшін файлды таңдау…
     .accesskey = т
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = Бұл кілтті жеке кілт ретінде қарастыру
 gnupg-file = GnuPGфайлдары
 import-error-file-size = <b>Қате!</b> 5 МБ-тан асатын файлдарға қолдау жоқ.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Қате!</b> Файлды импорттау сәтсіз аяқталды. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Қате!</b> Кілттерді импорттау сәтсіз аяқталды. { $error }
 openpgp-import-identity-label = Жеке мәліметтер
 openpgp-import-fingerprint-label = Баспасы
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Бит
 openpgp-import-key-props =
     .label = Кілт қасиеттері
     .accesskey = К
-
-## External Key section
-
 openpgp-external-key-title = Сыртқы GnuPG кілті
 openpgp-external-key-description = Кілт анықтағышын енгізу арқылы сыртқы GnuPG кілтін баптаңыз
 openpgp-external-key-info = Оған қоса, сәйкес ашық кілтті импорттау және қабылдау үшін Кілттер басқарушысы қолданбасын пайдалану керек.

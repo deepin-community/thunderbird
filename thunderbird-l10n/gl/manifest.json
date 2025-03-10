@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-gl@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: Galego (Galician)",
   "description": "Thunderbird Language Pack for Galego (gl) – Galician",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "gl": {
-      "version": "20240930174514",
+      "version": "20250227153523",
       "chrome_resources": {
         "alerts": "chrome/gl/locale/gl/alerts/",
         "autoconfig": "chrome/gl/locale/gl/autoconfig/",

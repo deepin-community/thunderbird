@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Информация о сторонних модулях
 third-party-section-title = Список сторонних модулей в { -brand-short-name }
 third-party-intro = На этой странице отображены сторонние модули, которые были внедрены в ваш { -brand-short-name }. Любой модуль, не подписанный Microsoft или { -vendor-short-name }, считается сторонним.
@@ -41,15 +37,6 @@ third-party-button-reload = Перезагрузить с системной и�
     .title = Перезагрузить с системной информацией
 third-party-button-open =
     .title = Открыть расположение файла…
-third-party-button-to-block =
-    .title = Заблокировать этот модуль
-    .aria-label = Заблокировать этот модуль
-third-party-button-to-unblock =
-    .title = В настоящее время заблокирован. Щёлкните, чтобы разблокировать его.
-    .aria-label = В настоящее время заблокирован. Щёлкните, чтобы разблокировать его.
-third-party-button-to-unblock-disabled =
-    .title = В настоящее время отмечен как заблокированный, хотя список блокировки отключён для этого запуска { -brand-short-name }. Щёлкните, чтобы разблокировать его.
-    .aria-label = В настоящее время отмечен как заблокированный, хотя список блокировки отключён для этого запуска { -brand-short-name }. Щёлкните, чтобы разблокировать его.
 third-party-button-to-block-module = Заблокировать этот модуль
     .title = Заблокировать этот модуль
     .aria-label = Заблокировать этот модуль

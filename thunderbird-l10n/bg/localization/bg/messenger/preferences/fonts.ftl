@@ -1,12 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 fonts-dialog-title = Шрифтове
-fonts-window-close =
-    .key = w
-# Variables:
-#   $name {string, "Arial"} - Name of the default font
 fonts-label-default =
     .label = Стандартен ({ $name })
 fonts-label-default-unnamed =
@@ -17,10 +9,6 @@ fonts-language-legend =
 fonts-proportional-label =
     .value = Пропорционален:
     .accesskey = П
-
-## Languages
-
-# Note: Translate "Latin" as the name of Latin (Roman) script, not as the name of the Latin language.
 font-language-group-latin =
     .label = Латински
 font-language-group-japanese =
@@ -79,9 +67,6 @@ font-language-group-sinhala =
     .label = Синхала
 font-language-group-tibetan =
     .label = Тибетски
-
-## Default font type
-
 default-font-serif =
     .label = Серифен
 default-font-sans-serif =
@@ -106,9 +91,6 @@ font-min-size-label =
     .accesskey = М
 min-size-none =
     .label = Няма
-
-## Fonts in message
-
 font-control-legend = Контрол на шрифта
 use-document-fonts-checkbox =
     .label = Писмата могат да използват други шрифтове
@@ -116,9 +98,6 @@ use-document-fonts-checkbox =
 use-fixed-width-plain-checkbox =
     .label = Използване на равноширок шрифт за съобщения с нормален текст
     .accesskey = ф
-
-## Language settings
-
 text-encoding-legend = Кодиране на текста
 text-encoding-description = Установява стандартно кодиране на текста за изпращана и получавана поща
 font-outgoing-email-label =

@@ -1,25 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = Sert
-
-## Error messages
-
 certificate-viewer-error-message = Me ei leidnud serdi andmeid või on sert vigane. Palun proovi uuesti.
 certificate-viewer-error-title = Midagi läks valesti.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = Algoritm
 certificate-viewer-certificate-authority = Sertifitseerimiskeskus
 certificate-viewer-cipher-suite = Šifrikomplekt
 certificate-viewer-common-name = Üldnimi
 certificate-viewer-email-address = E-posti aadress
-# Variables:
-#   $firstCertName (String) - Common Name for the displayed certificate
 certificate-viewer-tab-title = Sert - { $firstCertName }
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-country = Päritolumaa
 certificate-viewer-country = Riik
 certificate-viewer-curve = Kõver
@@ -32,7 +19,6 @@ certificate-viewer-id = ID
 certificate-viewer-key-exchange-group = Võtmevahetusgrupp
 certificate-viewer-key-id = Võtme ID
 certificate-viewer-key-size = Võtme suurus
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-locality = Asutamise asukoht
 certificate-viewer-locality = Lokaat
 certificate-viewer-location = Asukoht
@@ -52,7 +38,6 @@ certificate-viewer-qualifier = Kvalifikaator
 certificate-viewer-qualifiers = Kvalifikatsioonid
 certificate-viewer-required = Nõutud
 certificate-viewer-unsupported = &lt;toetamata&gt;
-# Inc. means Incorporated, e.g GitHub is incorporated in Delaware
 certificate-viewer-inc-state-province = Päritolu maakond
 certificate-viewer-state-province = Maakond
 certificate-viewer-sha-1 = SHA-1
@@ -81,40 +66,21 @@ certificate-viewer-authority-info-aia = SK info (AIA)
 certificate-viewer-certificate-policies = Sertifikaadi reeglid
 certificate-viewer-embedded-scts = Manustatud SCTd
 certificate-viewer-crl-endpoints = CRLi aadressid
-
-# This message is used as a row header in the Miscellaneous section.
-# The associated data cell contains links to download the certificate.
 certificate-viewer-download = Laadi alla
-# This message is used to replace boolean values (true/false) in several certificate fields, e.g. Certificate Authority
-# Variables:
-#   $boolean (String) - true/false value for the specific field
 certificate-viewer-boolean =
     { $boolean ->
         [true] Jah
        *[false] Ei
     }
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
 certificate-viewer-download-pem = PEM (sert)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (ahel)
     .download = { $fileName }-ahel.pem
-
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = See laiendus on märgitud kriitiliseks, mis tähendab, et kliendid peavad serdi tagasi lükkama, kui nad sellest aru ei saa.
 certificate-viewer-export = Ekspordi
     .download = { $fileName }.pem
-
-##
-
-# Label for a tab where we haven't found a better label:
 certificate-viewer-unknown-group-label = (tundmatu)
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = Sinu serdid
 certificate-viewer-tab-people = Inimesed
 certificate-viewer-tab-servers = Serverid

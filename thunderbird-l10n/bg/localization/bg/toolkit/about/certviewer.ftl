@@ -1,16 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 certificate-viewer-certificate-section-title = Сертификат
-
-## Error messages
-
 certificate-viewer-error-message = Не можахме да намерим информацията за сертификата или той е повреден. Моля, опитайте отново.
 certificate-viewer-error-title = Нещо се обърка.
-
-## Certificate information labels
-
 certificate-viewer-algorithm = Алгоритъм
 certificate-viewer-certificate-authority = Удостоверител на сертификати
 certificate-viewer-email-address = Имейл адрес
@@ -44,22 +34,16 @@ certificate-viewer-fingerprints = Отпечатъци
 certificate-viewer-basic-constraints = Основни ограничения
 certificate-viewer-key-usages = Основна употреба
 certificate-viewer-extended-key-usages = Разширена употреба
-
-## Variables:
-##   $fileName (String) - The file name to save the PEM data in, derived from the common name from the certificate being displayed.
-
+certificate-viewer-boolean =
+    { $boolean ->
+        [true] Да
+       *[false] не
+    }
 certificate-viewer-download-pem = PEM (сертификат)
     .download = { $fileName }.pem
 certificate-viewer-download-pem-chain = PEM (верига)
     .download = { $fileName }-chain.pem
-# The title attribute for Critical Extension icon
 certificate-viewer-critical-extension =
     .title = Това разширение е отбелязано като критично, което означава, че клиентите трябва да отхвърлят сертификата, ако не го разбират.
-
-##
-
-
-## Labels for tabs displayed in stand-alone about:certificate page
-
 certificate-viewer-tab-mine = Вашите сертификати
 certificate-viewer-tab-servers = Сървъри

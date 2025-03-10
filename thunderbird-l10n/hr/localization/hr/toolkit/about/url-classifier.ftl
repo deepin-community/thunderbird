@@ -1,15 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = Podaci URL klasifikatora
 url-classifier-search-title = Traži
 url-classifier-search-result-title = Rezultati
-# Variables:
-#   $uri (string) - URI of blocked page
 url-classifier-search-result-uri = URI: { $uri }
-# Variables:
-#   $list (string) - List of tables where the page is blocked
 url-classifier-search-result-list = Popis tablica: { $list }
 url-classifier-search-input = URL
 url-classifier-search-error-invalid-url = Neispravan URL
@@ -32,6 +24,8 @@ url-classifier-cache-pcache-entries = Broj pozitivnih unosa u predmemoriju
 url-classifier-cache-show-entries = Prikaži unose
 url-classifier-cache-entries = Zapisi predmemorije
 url-classifier-cache-prefix = Prefiks
+url-classifier-cache-ncache-expiry = Istek negativne predmemorije
+url-classifier-cache-pcache-expiry = Istek pozitivne predmemorije
 url-classifier-debug-title = Otklanjanje grešaka
 url-classifier-debug-module-btn = Postavi module zapisnika
 url-classifier-debug-file-btn = Postavi datoteku zapisnika
@@ -49,9 +43,5 @@ url-classifier-disabled = Onemogućeno
 url-classifier-updating = aktualiziranje
 url-classifier-cannot-update = nije moguće aktualizirati
 url-classifier-success = uspjeh
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = greška prilikom aktualiziranja ({ $error })
 url-classifier-download-error = greška prilikom preuzimanja ({ $error })

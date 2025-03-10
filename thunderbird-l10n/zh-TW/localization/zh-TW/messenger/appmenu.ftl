@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = 登出…
     .accesskey = O
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = 新增帳號
 appmenu-new-account-panel =
     .label = 新增帳號
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = 註冊新信箱
-    .accesskey = G
-appmenu-new-mail-account =
-    .label = 已有電子郵件信箱
-    .accesskey = E
 appmenu-new-email-account =
     .label = 電子郵件
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = 新聞群組
     .accesskey = N
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = 新增通訊錄
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP 通訊錄
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = 建立
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = 聯絡人
     .accesskey = C
-
-## Open
-
 appmenu-open-file-panel =
     .label = 開啟檔案
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = 行事曆…
     .accesskey = C
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = 檢視
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = 放大文字
 appmenuitem-font-size-reduce =
     .tooltiptext = 縮小文字
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = 重設字型大小
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = 工具
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = 匯出
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = 匯出至行動版
+    .accesskey = p
 appmenu-tools-message-search =
     .label = 搜尋訊息
     .accesskey = S
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = 開發者工具
     .accesskey = T
-
-## Help
-
 appmenu-help-panel-title =
     .title = 說明
 appmenu-help-get-help =
     .label = 取得幫助
     .accesskey = H
-appmenu-help-explore-features =
-    .label = 探索功能
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = { -brand-short-name } 使用說明
     .accesskey = R
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = 關於 { -brand-short-name }
     .accesskey = A
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = 正在下載 { -brand-shorter-name } 更新
 appmenuitem-banner-update-available =

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = 關閉
 preferences-doc-title2 = 設定
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sync
+pane-qr-export-title = 匯出至行動版
+category-qr-export =
+    .tooltiptext = 匯出至行動版
 general-language-and-appearance-header = 語言與外觀
 general-incoming-mail-header = 收到的郵件
 general-files-and-attachment-header = 檔案與附件
@@ -50,8 +49,6 @@ collection-health-report =
     .label = 允許 { -brand-short-name } 傳送技術與互動資料給 { -vendor-short-name }
     .accesskey = r
 collection-health-report-link = 了解更多
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = 進行編譯設定時，已停用了資料回報功能
 collection-backlogged-crash-reports =
     .label = 允許 { -brand-short-name } 為您傳送先前紀錄下的錯誤報告
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = 重新啟動 { -brand-short-name } 來套用變更
 confirm-messenger-language-change-button = 套用並重新啟動
 update-setting-write-failure-title = 儲存更新偏好設定時發生錯誤
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } 遇到錯誤，並未儲存此變更。請注意: 調整此更新偏好設定，需要能夠寫入下列檔案的權限。您或您的系統管理員可以透過授予使用者此檔案的完整控制權，來解決本問題。
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = 更新中
 update-in-progress-message = 您希望 { -brand-short-name } 使用此更新繼續嗎？
 update-in-progress-ok-button = 捨棄 (&D)
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = 繼續 (&C)
 account-button = 帳號設定
 open-addons-sidebar-button = 附加元件與佈景主題
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = 請在下方輸入您的 Windows 登入帳號密碼才能建立主控密碼。這個動作是為了保護您的登入資訊安全。
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = 建立主控密碼
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = 新增 OpenSearch 搜尋引擎
 add-opensearch-provider-text = 請輸入要新增的 OpenSearch 搜尋引擎網址。可使用 OpenSearch 描述檔的網址，或是該引擎的自動探索網址。
 adding-opensearch-provider-failed-title = OpenSearch 搜尋引擎新增失敗
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = 無法新增 { $url } 的 OpenSearch 搜尋引擎。
 minimize-to-tray-label =
     .label = 最小化 { -brand-short-name } 時，移動到工具列
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = 立刻檢查…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = 收件回執…
     .accesskey = R
 update-app-legend = { -brand-short-name } 更新
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = { $version } 版
 allow-description = 讓 { -brand-short-name }:
 automatic-updates-label =
@@ -244,7 +217,7 @@ check-updates-label =
     .label = 自動檢查更新，但讓我選擇要不要安裝
     .accesskey = C
 update-history-button =
-    .label = 顯示更新記錄
+    .label = 顯示更新紀錄
     .accesskey = p
 use-service =
     .label = 在背景服務當中安裝更新
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = b
 compact-folder-size =
     .value = MB 時壓實重整所有郵件匣
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = 最多使用
     .accesskey = U
 use-cache-after = MB 磁碟空間存放快取資料
-
-##
-
 smart-cache-label =
     .label = 停用自動快取管理
     .accesskey = v
@@ -304,7 +269,6 @@ color-options-button =
     .label = 色彩…
     .accesskey = C
 display-width-legend = 純文字郵件
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = 顯示表情符號圖片
     .accesskey = e
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = 在行內檢視附件
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = 在顯示
     .accesskey = d
 seconds-label = 秒之後
-
-##
-
 open-msg-label =
     .value = 開啟郵件於:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = 在移動或刪除郵件時關閉訊息視窗/分頁
     .accesskey = C
-display-name-label =
-    .value = 顯示名稱:
 address-display-legend = 郵件清單
 address-display-description = 偏好的地址顯示格式：
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = 顯示通訊錄裡設定的名字
     .accesskey = S
-
-## Compose Tab
-
+table-layout-legend = 表格檢視
+table-layout-horizontal-scroll-label =
+    .label = 允許水平捲動
+    .accesskey = h
+conversation-view-legend = 對話畫面
+conversation-view-checkbox-label =
+    .label = 開啟對話畫面
+    .accesskey = c
+conversation-view-checkbox-description = 基於 Gloda 的實驗性功能，使用風險請自行承擔
+label-experiment = 實驗中
+account-hub-legend = 帳號中心
+account-hub-checkbox-label =
+    .label = 到新版帳號中心註冊帳號
+    .accesskey = C
+account-hub-checkbox-description = 新郵件帳號建立流程（實驗中）
 forward-label =
     .value = 轉寄郵件時:
     .accesskey = F
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = 加入副檔名
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = 每隔
     .accesskey = A
 auto-save-end = 分鐘自動儲存
-
-##
-
 warn-on-send-accel-key =
     .label = 用快速鍵發送郵件時需要確認
     .accesskey = C
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = 尋找更多供應商…
 cloud-account-description = 新增雲端檔案鏈結儲存服務
-
-## Privacy Tab
-
 mail-content = 郵件內容
 remote-content-label =
     .label = 允許在訊息中顯示遠端內容
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = 顯示 Cookie…
     .accesskey = S
-do-not-track-label =
-    .label = 傳送「Do Not Track」訊號，告訴網站您不想被追蹤
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = 告訴網站不要銷售或分享我的資料
     .accesskey = n
-dnt-learn-more-button =
-    .value = 了解更多
+do-not-track-removal = 我們不再支援「Do Not Track」訊號
 passwords-description = { -brand-short-name } 可以幫您記住所有帳號的密碼。
 passwords-button =
     .label = 已存密碼…
@@ -571,7 +528,6 @@ primary-password-description = 主控密碼可以保護您的密碼，但在每�
 primary-password-label =
     .label = 使用主控密碼
     .accesskey = U
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = 需要裝置登入才能填寫與管理密碼
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = 您目前使用 FIPS 模式。FIPS 模式需要有主控密碼。
 forms-master-pw-fips-desc = 密碼變更失敗
 junk-description = 設定您的預設垃圾郵件處理方式。可以到「帳號設定」調整各個帳號自己的處理方式。
-junk-label =
-    .label = 當標示郵件為垃圾信時:
-    .accesskey = W
 junk-marked-label =
     .label = 當郵件被標示為垃圾郵件時：
     .accesskey = W
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = 刪除它
     .accesskey = D
-junk-read-label =
-    .label = 標示垃圾郵件為已讀
-    .accesskey = M
 junk-read-description = 將郵件標示為已讀
 junk-read-manual-label =
     .label = 當手動標示為垃圾信時
@@ -647,9 +597,6 @@ email-e2ee-auto-off =
 email-e2ee-auto-off-notify =
     .label = 加密被自動停用時顯示通知
 email-e2ee-automatism-post = 撰寫郵件時，可能會因手動開啟或關閉加密，而忽略自動做出的決定。註：回覆加密訊息時，總是會自動開啟加密。
-
-## Chat Tab
-
 startup-label =
     .value = 當 { -brand-short-name } 啟動時:
     .accesskey = S
@@ -657,20 +604,10 @@ offline-label =
     .label = 保持我的聊天帳號離線
 auto-connect-label =
     .label = 自動連線到我的聊天帳號
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = 讓我的聯絡人在超過
     .accesskey = I
 idle-time-label = 分鐘沒有使用後知道我正在閒置
-
-##
-
 away-message-label =
     .label = 並將我的狀態設定為不在電腦前，且加上此狀態訊息:
     .accesskey = a
@@ -732,41 +669,21 @@ no-preview-description = 此佈景主題無效，或無法使用（停用了附�
 chat-variant-label =
     .value = 設計風格:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = 搜尋選項
-
-## Settings UI Search Results
-
 search-results-header = 搜尋結果
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] 抱歉！沒有「<span data-l10n-name="query"></span>」的選項搜尋結果。
        *[other] 抱歉！沒有「<span data-l10n-name="query"></span>」的設定搜尋結果。
     }
 search-results-help-link = 需要幫忙嗎？請到 <a data-l10n-name="url">{ -brand-short-name } 技術支援</a>
-
-## Sync Tab
-
 sync-signedout-caption = 把 Web 隨身帶著走
 sync-signedout-description = 在您所有裝置間同步帳號設定、通訊錄、行事曆、附加元件與各種選項。
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = 登入進行同步…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = 「{ $userEmail }」未驗證。
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = 請登入以重新連線到「{ $userEmail }」
 sync-pane-resend-verification = 重寄驗證信
 sync-pane-sign-in = 登入
@@ -796,3 +713,45 @@ synced-acount-item-filters = 篩選器
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = 在您所有裝置間同步電子郵件帳號、通訊錄、行事曆、與身份設定資料。
 sync-disconnected-turn-on-sync = 開啟同步…
+qr-export-pane-header = 將帳號匯出至 { -brand-product-name } 行動版使用
+qr-export-description = 透過產生 QR Code，快速將您的帳號設定從桌面版轉移到行動版。選擇要包含的帳號、確認是否要轉移密碼，然後用行動裝置掃描 QR Code。快速、安全、簡單。
+qr-export-get-app = 還沒有安裝 { -brand-product-name } 行動版嗎？<a data-l10n-name="app-link">到 Google Play 下載</a>
+qr-export-create = 建立 QR Code 來匯出您的帳號
+qr-export-select-accounts = 選擇要匯出的帳號：
+qr-export-no-accounts = 沒有看到您的所有帳號嗎？某些帳號可能因不受 { -brand-product-name } for Android 支援而已被停用。<a data-l10n-name="account-support-link">技術支援</a>
+qr-export-accounts-legend = 電子郵件帳號
+qr-export-select-all-accounts = 選擇全部
+qr-export-security-legend = 安全性
+qr-export-include-passwords = 包含所有帳號的密碼
+qr-export-oauth-warning = 您的某些帳號使用的認證方式，在行動裝置使用時可能需要重新驗證。在此過程中您可能需要再次輸入密碼。
+qr-export-security-hint = 掃描接下來出現的 QR Code，即可安全地轉移電子郵件地址、密碼等帳號設定。在此過程中我們不會收集、儲存或分享任何此類資料。資料僅在您的裝置間直接移轉。
+qr-export-security-warning = 為了資料安全，請確保您處於家中、公司等私人場所再進行掃描，並且只掃描產生自可信任裝置的 QR Code。
+qr-export-start-export = 匯出
+qr-export-scan-progress =
+    { $count ->
+       *[other] 第 { $step } 個，共 { $count } 個 QR Code
+    }
+qr-export-scan-description =
+    { $count ->
+       *[other] 在行動裝置使用 { -brand-product-name } 掃描 QR Code
+    }
+qr-export-scan-step1 = 於您的行動裝置開啟 { -brand-product-name }
+qr-export-scan-step2 = 開啟設定
+qr-export-scan-step3 = 選擇<strong>匯入設定</strong>
+qr-export-scan-step4-revision = 點擊<strong>掃描 QR Code</strong>並且掃描這組 QR Code
+qr-export-back = 上一步
+qr-export-next = 下一步
+qr-export-done = 完成
+qr-export-summary-description = 已匯出帳號，請到您的行動裝置繼續操作。
+qr-export-summary-title = 匯出摘要：
+qr-export-summary-qr-count =
+    { $count ->
+       *[other] 產生 { $count } 個 QR Code
+    }
+qr-export-summary-accounts =
+    { $count ->
+       *[other] 匯出 { $count } 個帳號：
+    }
+qr-export-summary-passwords-included = 包含密碼
+qr-export-summary-passwords-excluded = 不包含密碼
+qr-export-more-accounts = 匯出更多帳號

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 about-networking-title = ネットワーク通信
 about-networking-http = HTTP
 about-networking-http-clear-cache-button = HTTP キャッシュを消去
@@ -57,12 +53,6 @@ about-networking-rcwn-cache-slow = キャッシュ遅滞カウント
 about-networking-rcwn-cache-not-slow = キャッシュ非遅滞カウント
 about-networking-networkid = ネットワーク ID
 about-networking-networkid-id = ネットワーク ID
-# Note: do not translate about:logging, as it is a URL.
 about-networking-moved-about-logging = このページは <a data-l10n-name="about-logging-url">about:logging</a> へ移動しました。
-
-## Link is intended as "network link"
-
 about-networking-networkid-is-up = リンクアップ
 about-networking-networkid-status-known = リンク状態が既知
-
-##

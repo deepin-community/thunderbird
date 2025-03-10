@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Үшінші жақты модуль ақпараты
 third-party-section-title = { -brand-short-name } ішіндегі үшінші жақты модульдер тізімі
 third-party-intro =
@@ -44,19 +40,6 @@ third-party-button-reload = Жүйе ақпаратымен қайта жүкт�
     .title = Жүйе ақпаратымен қайта жүктеу
 third-party-button-open =
     .title = Файл орналасуын ашу…
-third-party-button-to-block =
-    .title = Бұл модульді блоктау
-    .aria-label = Бұл модульді блоктау
-third-party-button-to-unblock =
-    .title = Қазіргі уақытта блокталған. Оны блоктан шығару үшін басыңыз.
-    .aria-label = Қазіргі уақытта блокталған. Оны блоктан шығару үшін басыңыз.
-third-party-button-to-unblock-disabled =
-    .title =
-        Қазіргі уақытта блокталған деп белгіленген, бірақ бұғаттау тізімі бұл { -brand-short-name }
-        іске қосылуы үшін сөндірілген. Оны блоктаудан босату үшін басыңыз.
-    .aria-label =
-        Қазіргі уақытта блокталған деп белгіленген, бірақ бұғаттау тізімі бұл { -brand-short-name }
-        іске қосылуы үшін сөндірілген. Оны блоктаудан босату үшін басыңыз.
 third-party-button-to-block-module = Бұл модульді блоктау
     .title = Бұл модульді блоктау
     .aria-label = Бұл модульді блоктау

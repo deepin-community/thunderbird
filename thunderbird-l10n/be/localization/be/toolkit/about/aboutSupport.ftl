@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Звесткі для вырашэння праблемаў
 page-subtitle =
     Гэта старонка змяшчае тэхнічныя звесткі, якія могуць быць карыснымі, калі
@@ -41,8 +37,6 @@ app-basics-version = Версія
 app-basics-build-id = ID зборкі
 app-basics-distribution-id = ID дыстрыбутыва
 app-basics-update-channel = Канал абнаўлення
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Каталог абнаўлення
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Гісторыя абнаўленняў
 app-basics-show-update-history = Паказаць гісторыю абнаўленняў
-# Represents the path to the binary used to start the application.
 app-basics-binary = Двайковы файл праграмы
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Дырэкторыя профілю
        *[other] Папка профілю
     }
-app-basics-enabled-plugins = Уключаныя плагіны
 app-basics-build-config = Канфігурацыя зборкі
 app-basics-user-agent = Дзеяч карыстальніка
 app-basics-os = АС
 app-basics-os-theme = Тэма АС
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Выкарыстанне памяці
 app-basics-performance = Прадукцыйнасць
@@ -82,9 +72,6 @@ app-basics-safe-mode = Абаронены рэжым
 app-basics-memory-size = Памер памяці (RAM)
 app-basics-disk-available = Даступнае месца на дыску
 app-basics-pointing-devices = Указальныя прылады
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Журнал рашэнняў
 graphics-crash-guards-title = Адключаныя магчымасці абаронцы ад падзенняў
 graphics-workarounds-title = Абыходныя шляхі
 graphics-device-pixel-ratios = Піксельныя суадносіны вокнаў
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Аконны пратакол
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Працоўнае асяроддзе
 place-database-title = База звестак месцаў
 place-database-stats = Статыстыка
@@ -156,9 +141,6 @@ clear-startup-cache-label = Ачысціць кэш запуску…
 startup-cache-dialog-title2 = Перазапусціць { -brand-short-name }, каб ачысціць кэш запуску?
 startup-cache-dialog-body2 = Гэта не зменіць вашы налады і не выдаліць пашырэнні.
 restart-button-label = Перазапусціць
-
-## Media titles
-
 audio-backend = Аудыё-падсістэма
 max-audio-channels = Макс. колькасць каналаў
 sample-rate = Пераважная частата дыскрэтызацыі
@@ -177,11 +159,7 @@ media-device-rate = Частата
 media-device-latency = Затрымка
 media-capabilities-title = Медыя-магчымасці
 media-codec-support-info = Інфармацыя аб падтрымцы кодэкаў
-# List all the entries of the database.
 media-capabilities-enumerate = Пералічыць базу дадзеных
-
-## Codec support table
-
 media-codec-support-sw-decoding = Праграмнае дэкадаванне
 media-codec-support-hw-decoding = Апаратнае дэкадаванне
 media-codec-support-codec-name = Назва кодэка
@@ -189,26 +167,13 @@ media-codec-support-supported = Падтрымліваецца
 media-codec-support-unsupported = Не падтрымліваецца
 media-codec-support-error = Інфармацыя аб падтрымцы кодэкаў недаступная. Паўтарыце спробу пасля прайгравання мультымедыйнага файла.
 media-codec-support-lack-of-extension = Усталяваць пашырэнне
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Інфармацыя аб модулях дэшыфравання змесціва
 media-key-system-name = Назва сістэмы ключа
 media-video-robustness = Надзейнасць відэа
 media-audio-robustness = Надзейнасць аўдыя
 media-cdm-capabilities = Магчымасці
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Незашыфраваны старт (Clear Lead)
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Сумяшчальны з HDCP 2.2
-
-##
-
 intl-title = Інтэрнацыяналізацыя і лакалізацыя
 intl-app-title = Налады праграмы
 intl-locales-requested = Запытаная лакалізацыі
@@ -218,56 +183,33 @@ intl-locales-default = Прадвызначаная лакалізацыя
 intl-os-title = Аперацыйная сістэма
 intl-os-prefs-system-locales = Сістэмныя лакалізацыі
 intl-regional-prefs = Рэгіянальныя налады
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Аддаленая адладка (пратакол Chromium)
 remote-debugging-accepting-connections = Прыём злучэнняў
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Справаздачы пра крахі за { $days } апошні дзень
         [few] Справаздачы пра крахі за { $days } апошнія дні
        *[many] Справаздачы пра крахі за { $days } апошніх дзён
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } хвіліна таму
         [few] { $minutes } хвіліны таму
        *[many] { $minutes } хвілінаў таму
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } гадзіна таму
         [few] { $hours } гадзіны таму
        *[many] { $hours } гадзінаў таму
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } дзень таму
         [few] { $days } дні таму
        *[many] { $days } дзён таму
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Усе справаздачы пра крахі (уключаючы { $reports } адкладзены крах у дадзеным перыядзе)
@@ -276,18 +218,11 @@ pending-reports =
     }
 raw-data-copied = Сырыя дадзеныя скапіяваны ў буфер абмену
 text-copied = Тэкст скапіяваны ў буфер абмену
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Блакавана для вашай версіі графічнага кіроўцы.
 blocked-gfx-card = Блакавана для вашай графічнай карты праз нявырашыныя праблемы кіроўцы.
 blocked-os-version = Блакавана для вашай версіі аперацыйнай сістэмы.
 blocked-mismatched-version = Заблакавана з-за несупадзення версіі графічнага драйвера паміж рэестрам і DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Блакавана для вашай версіі графічнага кіроўцы. Паспрабуйце абнавіць ваш графічны кіровец да версіі { $driverVersion } або навейшай.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Параметры ClearType
 compositing = Кампазітынг
 support-font-determination = Інфармацыя пра адладку бачнасці шрыфтоў
@@ -297,11 +232,6 @@ yes = Так
 no = Не
 unknown = Невядома
 virtual-monitor-disp = Адлюстраванне віртуальнага манітора
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Знойдзены
 missing = Адсутнічае
 gpu-process-pid = GPUProcessPid
@@ -328,11 +258,7 @@ webgl2-driver-extensions = WebGL 2 - Пашырэнні драйвера
 webgl2-extensions = WebGL 2 - Пашырэнні
 webgpu-default-adapter = Стандартны адаптар WebGPU
 webgpu-fallback-adapter = Рэзервовы адаптар WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Заблакавана з-за вядомых праблем: <a data-l10n-name="bug-link">апісанне { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = У спісе блакавання; код памылкі { $failureCode }
 d3d11layers-crash-guard = Кампазітар D3D11
 glcontext-crash-guard = OpenGL
@@ -352,8 +278,6 @@ has-seccomp-bpf = Seccomp-BPF (Фільтраванне сістэмных вы�
 has-seccomp-tsync = Seccomp Thread Synchronization
 has-user-namespaces = Прасторы імён карыстальніка
 has-privileged-user-namespaces = Прасторы імён карыстальніка для прывілеяваных працэсаў
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Гэтая функцыя не дазволена ў вашай сістэме. Гэта можа абмежаваць функцыі бяспекі { -brand-short-name }.
 can-sandbox-content = Пясочніца змястоўных працэсаў
 can-sandbox-media = Пясочніца медыя-плагінаў
@@ -374,16 +298,8 @@ launcher-process-status-0 = Уключана
 launcher-process-status-1 = Адключана з-за збою
 launcher-process-status-2 = Прымусова адключана
 launcher-process-status-unknown = Невядомы статус
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Адключана эксперыментам
-fission-status-experiment-treatment = Уключана эксперыментам
 fission-status-disabled-by-e10s-env = Адключана асяроддзем
 fission-status-enabled-by-env = Уключана асяроддзем
 fission-status-disabled-by-env = Адключаны асяроддзем
@@ -392,7 +308,6 @@ fission-status-disabled-by-default = Тыпова адключана
 fission-status-enabled-by-user-pref = Уключаны карыстальнікам
 fission-status-disabled-by-user-pref = Адключана карыстальнікам
 fission-status-disabled-by-e10s-other = E10s адключаны
-fission-status-enabled-by-rollout = Уключана паэтапным разгортваннем
 async-pan-zoom = Асінхроннае павелічэнне/маштаб
 apz-none = няма
 wheel-enabled = увод колца ўключаны
@@ -401,34 +316,20 @@ drag-enabled = захоп стужкі пракруткі ўключаны
 keyboard-enabled = клавіятура ўключана
 autoscroll-enabled = аўтапракрутка ўключана
 zooming-enabled = уключана плаўнае маштабаванне шчыпком
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = асінхронны ўвод колца выключаны з-за непадтрыманага настаўлення: { $preferenceKey }
 touch-warning = асінхронны пальцавы ўвод выключаны з-за непадтрыманага настаўлення: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Неактыўна
 policies-active = Актыўна
 policies-error = Памылка
-
-## Printing section
-
 support-printing-title = Друк
 support-printing-troubleshoot = Вырашэнне праблем
 support-printing-clear-settings-button = Ачысціць захаваныя налады друку
 support-printing-modified-settings = Змененыя параметры друку
 support-printing-prefs-name = Назва
 support-printing-prefs-value = Значэнне
-
-## Remote Settings sections
-
 support-remote-settings-title = Аддаленыя налады
 support-remote-settings-status = Статус
 support-remote-settings-status-ok = OK
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Не працуе
 support-remote-settings-last-check = Апошняя праверка
 support-remote-settings-local-timestamp = Метка мясцовага часу
@@ -436,9 +337,6 @@ support-remote-settings-sync-history = Гісторыя
 support-remote-settings-sync-history-status = Статус
 support-remote-settings-sync-history-datetime = Дата
 support-remote-settings-sync-history-infos = Інфармацыя
-
-## Normandy sections
-
 support-remote-experiments-title = Аддаленыя эксперыменты
 support-remote-experiments-name = Назва
 support-remote-experiments-branch = Галіна эксперыменту
@@ -446,19 +344,10 @@ support-remote-experiments-see-about-studies = Гл. <a data-l10n-name="support-
 support-remote-features-title = Аддаленыя функцыі
 support-remote-features-name = Назва
 support-remote-features-status = Стан
-
-## Pointing devices
-
 pointing-device-mouse = Мыш
 pointing-device-touchscreen = Сенсарны экран
 pointing-device-pen-digitizer = Дыгітайзер пяра
 pointing-device-none = Няма ўказальных прылад
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Аналіз змесціва (DLP)
 content-analysis-active = Дзейны
 content-analysis-connected-to-agent = Злучана з агентам

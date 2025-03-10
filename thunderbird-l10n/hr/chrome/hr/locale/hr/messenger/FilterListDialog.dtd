@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "Filteri poruka">
 <!ENTITY nameColumn.label "Naziv filtera">
 <!ENTITY activeColumn.label "Omogućen">
@@ -36,6 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "b">
 <!ENTITY helpButton.label "Pomoć">
 <!ENTITY helpButton.accesskey "P">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Pretraži filtere prema imenu…">
-

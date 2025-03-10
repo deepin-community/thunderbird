@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-calendar-uri-redirect-window =
-    .title = 日历 URI 重定向
 calendar-uri-redirect-window-title = 日历 URI 重定向
 calendar-uri-redirect-description =
     服务器正在重定向日历“{ $calendarName }”的 URI。

@@ -1,26 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Account Hub
-### Account hub is where user can setup new accounts in Thunderbird.
-
-
-## Header
-
 account-hub-brand = { -brand-full-name }
 account-hub-welcome-line = Welcome to <span data-l10n-name="brand-name">{ -brand-full-name }</span>
 account-hub-title = Account Hub
-
-## Footer
-
 account-hub-release-notes = Release notes
 account-hub-support = Support
 account-hub-donate = Donate
-
-## Initial setup page
-
 account-hub-email-setup-button = Email Account
     .title = Set up an email account
 account-hub-calendar-setup-button = Calendar
@@ -35,12 +18,7 @@ account-hub-newsgroup-setup-button = Newsgroup
     .title = Set up a newsgroup account
 account-hub-import-setup-button = Import
     .title = Import a backed up profile
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 account-hub-sync-button = Sign in to Sync…
-
-## Email page
-
-account-hub-email-title = Set up your email account
 account-hub-add-email-title = Add Your Account
 account-hub-manually-configure-email-title = Set Up Account Configuration
 account-hub-email-cancel-button = Cancel
@@ -51,17 +29,19 @@ account-hub-email-finish-button = Finish
 account-hub-email-manually-configure-button = Configure Manually
 account-hub-email-continue-button = Continue
 account-hub-email-confirm-button = Confirm
-account-hub-incoming-server-legend = Incoming server
-account-hub-outgoing-server-legend = Outgoing server
+account-hub-result-incoming-server-legend = Incoming server
+    .title = Incoming server
+account-hub-result-outgoing-server-legend = Outgoing server
+    .title = Outgoing server
 account-hub-protocol-label = Protocol
-account-hub-hostname-label = Hostname
+account-hub-result-hostname-label = Hostname
+    .title = Hostname
+account-hub-result-authentication-label = Authentication
+    .title = Authentication
 account-hub-port-label = Port
     .title = Set the port number to 0 for autodetection
 account-hub-auto-description = { -brand-short-name } will attempt to auto-detect fields that are left blank.
 account-hub-ssl-label = Connection security
-
-## Incoming/Outgoing SSL Authentication options
-
 account-hub-ssl-autodetect-option =
     .label = Autodetect
 account-hub-ssl-no-authentication-option =
@@ -70,15 +50,13 @@ account-hub-ssl-cleartext-password-option =
     .label = Normal password
 account-hub-ssl-encrypted-password-option =
     .label = Encrypted password
-
-## Incoming/Outgoing SSL options
-
 account-hub-ssl-noencryption-option =
     .label = None
 account-hub-auth-no-authentication-option =
     .label = No Authentication
 account-hub-auth-label = Authentication method
-account-hub-username-label = Username
+account-hub-result-username-label = Username
+    .title = Username
 account-hub-name-label = Full name
     .accesskey = n
 account-hub-adding-account-title = Adding Account
@@ -97,3 +75,28 @@ account-hub-email-enter-password = Enter your email account password
 account-hub-email-sync-accounts = Sync your calendars and address books
 account-hub-test-configuration = Test
 account-hub-add-new-email = Add another email
+account-hub-result-imap-description = Keep your folders and emails synced on your server
+account-hub-result-pop-description = Keep your folders and emails on your computer
+account-hub-result-ews-shortname = Exchange
+account-hub-result-ews-description = Use Microsoft Exchange Web Services to sync your folders and emails
+account-hub-result-ews-text = Server
+account-hub-result-recommended-label = Recommended
+account-hub-edit-configuration = Edit configuration
+account-hub-config-success = Configuration found in Mozilla ISPDB
+account-hub-password-info = Your credentials will only be stored locally on your computer
+account-hub-sync-success = Thunderbird found some connected services
+account-hub-sync-failure = Thunderbird was unable to find connected services
+account-hub-unable-to-sync-accounts = Thunderbird was unable to connect the selected services
+account-hub-email-added-success = Email account connected successfully
+account-hub-config-test-success = Configuration settings valid
+account-hub-select-all = Select all
+account-hub-deselect-all = Deselect all
+account-hub-sync-accounts-selected =
+    { $count ->
+        [one] { $count } selected
+       *[other] { $count } selected
+    }
+account-hub-no-address-books = No address books found
+account-hub-no-calendars = No calendars found
+account-hub-email-added-success-links-title = Explore options for security and personalization:
+account-hub-signature-link = Email signature

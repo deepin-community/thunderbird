@@ -65,14 +65,21 @@ registerCleanupFunction(function () {
   });
 });
 
+/**
+ * @param {TreeView} list - The "cards" list.
+ */
 async function waitForCardsListReady(list) {
-  Assert.ok(list, "The cardList should exists after opening an address book.");
+  Assert.ok(
+    !!list,
+    "The card list should exist after opening an address book."
+  );
   if (list.isReady) {
     return;
   }
   const eventName = "_treerowbufferfillAbListReady";
   list._rowBufferReadyEvent = new CustomEvent(eventName);
   await BrowserTestUtils.waitForEvent(list, eventName);
+  await new Promise(resolve => list.ownerGlobal.requestAnimationFrame(resolve));
 }
 
 async function openAddressBookWindow() {
@@ -209,7 +216,7 @@ async function createMailingListWithUI(mlParent, mlName) {
   abListDocument.getElementById("ListName").value = mlName;
   abListDocument.querySelector("dialog").getButton("accept").click();
 
-  const list = mlParent.childNodes.find(list => list.dirName == mlName);
+  const list = mlParent.childNodes.find(child => child.dirName == mlName);
 
   Assert.ok(list, "a new list was created");
 
@@ -322,6 +329,7 @@ async function checkPlaceholders(expectedVisible = []) {
 
 /**
  * Simulate a right-click on an item in the books list.
+ *
  * @param {integer} index - The index of the row to simulate a right-click on.
  * @param {string} [idToActivate] - If given, the ID of a menu item to activate
  *   when the menu opens. In this case the function will not return until the
@@ -351,6 +359,7 @@ async function showBooksContext(index, idToActivate) {
 
 /**
  * Simulate a right-click on an item in the cards list.
+ *
  * @param {integer} index - The index of the row to simulate a right-click on.
  * @param {string} [idToActivate] - If given, the ID of a menu item to activate
  *   when the menu opens. In this case the function will not return until the
@@ -379,6 +388,7 @@ async function showCardsContext(index, idToActivate) {
 /**
  * Set or clear the value in the search box, and wait for the view to change.
  * Then check the list of cards or the placeholder is correct.
+ *
  * @param {string} searchString - The value to enter in the search box. If
  *   falsy, clear the search box.
  * @param {nsIAbCard[]} expectedCards - The cards that should be displayed
@@ -411,6 +421,7 @@ async function doSearch(searchString, ...expectedCards) {
 
 /**
  * Opens the sort pop-up and activates one of the items.
+ *
  * @param {string} name - The name attribute of the item to activate.
  * @param {string} value - The value attribute of the item to activate.
  */
@@ -434,6 +445,7 @@ async function showSortMenu(name, value) {
 
 /**
  * Opens the table header menu and activates one of the menu items.
+ *
  * @param {string} name - The name attribute of the item to activate.
  * @param {string} value - The value attribute of the item to activate.
  */

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (non défini)
 failed-pp-change = Impossible de changer le mot de passe principal.
@@ -21,7 +17,6 @@ set-password-new-password = Saisissez le nouveau mot de passe :
 set-password-reenter-password = Saisissez-le à nouveau :
 set-password-meter = Mesure de la qualité du mot de passe
 set-password-meter-loading = Chargement
-primary-password-admin = Votre administrateur exige que vous ayez un mot de passe principal défini pour enregistrer les identifiants et les mots de passe.
 primary-password-required-by-policy = Votre organisation exige que vous ayez un mot de passe principal défini pour enregistrer les identifiants et les mots de passe.
 primary-password-description = Un mot de passe principal sert à protéger sur cet appareil des informations sensibles comme les identifiants et les mots de passe. Si vous en créez un, il vous sera demandé de le saisir une fois par session lorsque { -brand-short-name } accède aux informations enregistrées qui sont protégées par ce mot de passe.
 primary-password-warning = Faites attention à ne pas oublier le mot de passe principal. Si vous l’oubliez, vous n’aurez plus accès aux informations qu’il protège sur cet appareil.

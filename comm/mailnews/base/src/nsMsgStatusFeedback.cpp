@@ -20,6 +20,7 @@
 #include "nsMsgDBFolder.h"
 #include "mozilla/Components.h"
 #include "nsMsgUtils.h"
+#include "nsMsgProgress.h"
 
 #define MSGFEEDBACK_TIMER_INTERVAL 500
 
@@ -153,14 +154,6 @@ nsMsgStatusFeedback::ShowStatusString(const nsAString& aStatus) {
 }
 
 NS_IMETHODIMP
-nsMsgStatusFeedback::SetStatusString(const nsAString& aStatus) {
-  nsCOMPtr<nsIMsgStatusFeedback> jsStatusFeedback(
-      do_QueryReferent(mJSStatusFeedbackWeak));
-  if (jsStatusFeedback) jsStatusFeedback->SetStatusString(aStatus);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
 nsMsgStatusFeedback::ShowProgress(int32_t aPercentage) {
   // If the percentage hasn't changed...OR if we are going from 0 to 100% in one
   // step then don't bother....just fall out....
@@ -235,25 +228,35 @@ NS_IMETHODIMP nsMsgStatusFeedback::OnStatus(nsIRequest* request,
     if (server) server->GetPrettyName(accountName);
   }
 
-  // forming the status message
-  nsCOMPtr<nsIStringBundleService> sbs =
-      mozilla::components::StringBundle::Service();
-  NS_ENSURE_TRUE(sbs, NS_ERROR_UNEXPECTED);
-  nsString str;
-  rv = sbs->FormatStatusMessage(aStatus, aStatusArg, str);
-  NS_ENSURE_SUCCESS(rv, rv);
+  nsString msg;
+  nsAutoString host;
+  host.Append(aStatusArg);
+  if (aStatus == NS_OK) {
+    // Already formatted message.
+    if (!aStatusArg) {
+      return NS_ERROR_FAILURE;  // No message to format
+    }
+    msg.Assign(aStatusArg);
+  } else {
+    rv = FormatStatusMessage(aStatus, host, msg);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
 
   // prefixing the account name to the status message if status message isn't
   // blank and doesn't already contain the account name.
   nsString statusMessage;
-  if (!str.IsEmpty() && str.Find(accountName) == kNotFound) {
+  if (!msg.IsEmpty() && msg.Find(accountName) == kNotFound) {
     nsCOMPtr<nsIStringBundle> bundle;
+    nsCOMPtr<nsIStringBundleService> sbs =
+        mozilla::components::StringBundle::Service();
+    NS_ENSURE_TRUE(sbs, NS_ERROR_UNEXPECTED);
+
     rv = sbs->CreateBundle(MSGS_URL, getter_AddRefs(bundle));
-    AutoTArray<nsString, 2> params = {accountName, str};
+    AutoTArray<nsString, 2> params = {accountName, msg};
     rv = bundle->FormatStringFromName("statusMessage", params, statusMessage);
     NS_ENSURE_SUCCESS(rv, rv);
   } else {
-    statusMessage.Assign(str);
+    statusMessage.Assign(msg);
   }
   return ShowStatusString(statusMessage);
 }

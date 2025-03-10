@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = ブックマークの読み取りと変更
 webext-perms-description-browserSettings = ブラウザー設定の読み取りと変更
 webext-perms-description-browsingData = 最近の閲覧履歴、Cookie および関連データの消去
@@ -30,4 +21,8 @@ webext-perms-description-sessions = 最近閉じたタブへのアクセス
 webext-perms-description-tabs = ブラウザーのタブへのアクセス
 webext-perms-description-tabHide = ブラウザーのタブの表示状態の変更
 webext-perms-description-topSites = 閲覧履歴へのアクセス
+webext-perms-description-trialML = ユーザーの端末で AI モデルのダウンロードと実行
+webext-perms-description-userScripts = 未検証のサードパーティースクリプトにユーザーデータへのアクセスを許可
 webext-perms-description-webNavigation = ナビゲーション中のブラウザーアクティビティへのアクセス
+webext-perms-extra-warning-userScripts-long = 有害なコードやウェブサイトでの行動を追跡するコードなど、未検証のスクリプトはユーザーの安全とプライバシーに危険を及ぼす可能性があります。拡張機能や信頼できるソースからのスクリプト以外は実行しないでください。
+webext-perms-extra-warning-userScripts-short = 未検証のスクリプトはユーザーの安全とプライバシーに危険を及ぼす可能性があります。拡張機能や信頼できるソースからのスクリプト以外は実行しないでください。

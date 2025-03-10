@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = Închide căutarea și lista de evenimente
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = Denumire calendar
     .tooltiptext = Sortează după denumirea calendarului
 calendar-event-listing-column-category =
     .label = Categorie
     .tooltiptext = Sortează după categorie
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = Terminat
     .tooltiptext = Sortează după finalizare
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = Titlu
     .tooltiptext = Sortează după titlu
-
-## Interval dropdown options
-
 calendar-event-listing-interval-calendar-month =
     .label = Evenimente în această lună a calendarului
 calendar-event-listing-interval-current-view =

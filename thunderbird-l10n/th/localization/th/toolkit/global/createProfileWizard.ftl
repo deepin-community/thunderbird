@@ -1,13 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 create-profile-window2 =
     .title = ตัวช่วยสร้างโปรไฟล์
     .style = min-width: 45em; min-height: 32em;
-
-## First wizard page
-
 create-profile-first-page-header2 =
     { PLATFORM() ->
         [macos] หน้าแนะนำ
@@ -21,9 +14,6 @@ profile-creation-explanation-4 =
         [macos] เพื่อเริ่มสร้างโปรไฟล์ของคุณ คลิก ดำเนินการต่อ
        *[other] เพื่อเริ่มสร้างโปรไฟล์ของคุณ คลิก ถัดไป
     }
-
-## Second wizard page
-
 create-profile-last-page-header2 =
     { PLATFORM() ->
         [macos] หน้าสรุป

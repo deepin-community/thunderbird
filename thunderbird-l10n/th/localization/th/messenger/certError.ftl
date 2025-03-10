@@ -1,3 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+cert-error-domain-mismatch = ใบรับรองสำหรับ { $hostname } ไม่ถูกต้องสำหรับเซิร์ฟเวอร์นั้น มีบางคนอาจจะพยายามแอบอ้างเป็นเซิร์ฟเวอร์นั้น และคุณไม่ควรที่จะดำเนินการต่อ
+cert-error-expired = ใบรับรองสำหรับ { $hostname } หมดอายุแล้วเมื่อ { $not-after }
+cert-error-not-yet-valid = ใบรับรองสำหรับ { $hostname } จะใช้ไม่ได้จนกว่าจะถึง { $not-before }
+cert-error-untrusted-default = ใบรับรองสำหรับ { $hostname } ไม่ได้มาจากแหล่งที่น่าเชื่อถือ

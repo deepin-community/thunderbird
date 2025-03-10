@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Perihal Hak Anda
 rights-intro = { -brand-full-name } adalah perisian percuma dan sumber terbuka, dibina oleh komuniti yang terdiri daripada ribuan penyumbang dari seluruh dunia. Ada beberapa perkara yang anda perlu tahu:
 rights-intro-point-1 = { -brand-short-name } disediakan untuk anda di bawah terma <a data-l10n-name="mozilla-public-license-link">Lesen Awam Mozilla</a>. Ini bermakna anda boleh guna, salin dan edarkan { -brand-short-name } kepada pihak lain.  Anda juga dialu-alukan untuk mengubahsuai kod sumber { -brand-short-name } untuk memenuhi keperluan anda. Lesen Umum Mozilla juga memberikan anda hak untuk mengedarkan versi yang diubah suai.

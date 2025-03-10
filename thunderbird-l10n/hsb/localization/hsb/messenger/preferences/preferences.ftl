@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Začinić
 preferences-doc-title2 = Nastajenja
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sync
+pane-qr-export-title = Eksport za mobilny grat
+category-qr-export =
+    .tooltiptext = Eksport za mobilny grat
 general-language-and-appearance-header = Rěč a zwonkowne
 general-incoming-mail-header = Dochadźace mejlki
 general-files-and-attachment-header = Dataje a přiwěški
@@ -50,8 +49,6 @@ collection-health-report =
     .label = { -brand-short-name } zmóžnić, techniske a interakciske daty na { -vendor-short-name } pósłać
     .accesskey = t
 collection-health-report-link = Dalše informacije
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Datowe rozprawjenje je znjemóžnjene za tutu programowu konfiguraciju
 collection-backlogged-crash-reports =
     .label = { -brand-short-name } dowolić, njewobdźěłane spadowe rozprawy we wašim mjenje pósłać
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Startujće { -brand-short-name } znowa. zo byšće tute změny nałožił
 confirm-messenger-language-change-button = Nałožić a znowa startować
 update-setting-write-failure-title = Zmylk při składowanju aktualizowanskich nastajenjow
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } je na zmylk storčił a njeje tutu změnu składował. Dźiwajće na to, zo sej tute aktualizowanske nastajenje pisanske prawo za slědowacu dataju wužaduje. Wy abo systemowy administrator móžetej zmylk porjedźić, hdyž wužiwarskej skupinje połnu kontrolu nad tutej dataju datej.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Aktualizacija běži
 update-in-progress-message = Chceće, zo { -brand-short-name } z tutej aktualizaciju pokročuje?
 update-in-progress-ok-button = &Zaćisnyć
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Dale
 account-button = Kontowe nastajenja
 open-addons-sidebar-button = Přidatki a drasty
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Zapodajće swoje přizjewjenske daty Windows, zo byšće hłowne hesło wutworił. To wěstotu wašich kontow škita.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = Hłowne hesło wutworić
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = Poskićowarja OpenSearch přidać
 add-opensearch-provider-text = Zapodajće URL poskićowarja OpenSearch, kotryž so ma přidać. Wužiwajće pak direktny URL wopisanskeje dataje OpenSearch pak URL, hdźež hodźi so awtomatisce namakać.
 adding-opensearch-provider-failed-title = Přidawanje  poskićowarja OpenSearch njeje so poradźiło
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = Njeje móžno było, poskićowarja OpenSearch za { $url } přidać.
 minimize-to-tray-label =
     .label = Hdyž { -brand-short-name } je miniměrowany, přesuńće jón do žłobika.
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Nětko kontrolować…
     .accesskey = N
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Wobkrućenja přijeća…
     .accesskey = k
 update-app-legend = Aktualizacije { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Wersija { $version }
 allow-description = { -brand-short-name } zmóžnić:
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = r
 compact-folder-size =
     .value = MB dohromady
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Hač k
     .accesskey = H
 use-cache-after = MB tačeloweho ruma za pufrowak wužiwać
-
-##
-
 smart-cache-label =
     .label = Awtomatiske rjadowanje pufrowaka přepisać
     .accesskey = m
@@ -304,7 +269,6 @@ color-options-button =
     .label = Barby…
     .accesskey = B
 display-width-legend = Powěsće luteho teksta
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Emotikony jako wobrazy zwobraznić
     .accesskey = E
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Přiwěški inline pokazać
     .accesskey = P
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Po zwobraznjenju za
     .accesskey = z
 seconds-label = sekundow
-
-##
-
 open-msg-label =
     .value = Powěsće wočinić w:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Powěsćowe wokno/Powěsćowy rajtark při přesuwanju abo hašenju začinić
     .accesskey = P
-display-name-label =
-    .value = Pokazowane mjeno:
 address-display-legend = Lisćina powěsćow
 address-display-description = Preferowany adresowy pokazowanski format:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Jenož zwobraznjenske mjeno za ludźi w adresniku pokazać
     .accesskey = J
-
-## Compose Tab
-
+table-layout-legend = Tabelowy napohlad
+table-layout-horizontal-scroll-label =
+    .label = Horicontalne kulenje dowolić
+    .accesskey = H
+conversation-view-legend = Rozmołwny napohlad
+conversation-view-checkbox-label =
+    .label = Rozmołwny napohlad zmóžnić
+    .accesskey = R
+conversation-view-checkbox-description = Eksperimentelna funkcija, kotraž na Gloda bazuje, wužiwajće ju na swoje riziko
+label-experiment = Eksperimentelne
+account-hub-legend = Kontowy centrum
+account-hub-checkbox-label =
+    .label = Konta w nowym kontowym centrumje załožić
+    .accesskey = c
+account-hub-checkbox-description = Eksperimentelny wotběh załoženja noweho e-mejloweho konta
 forward-label =
     .value = Powěsće dale sposrědkować:
     .accesskey = d
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = Sufiks datajowemu mjenu přidać
     .accesskey = f
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Awtomatisce składować kóžde
     .accesskey = s
 auto-save-end = mjeńšin
-
-##
-
 warn-on-send-accel-key =
     .label = Wobkrućić, hdyž so tastowa skrótšenka za słanje powěsće wužiwa
     .accesskey = t
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Dalšich poskićowarjow namakać…
 cloud-account-description = Nowu składowansku słužbu Filelink přidać
-
-## Privacy Tab
-
 mail-content = E-mejlowy wobsah
 remote-content-label =
     .label = Zdaleny wobsah w powěsćach dowolić
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Placki pokazać…
     .accesskey = c
-do-not-track-label =
-    .label = Websydłam signal “Njeslědować” pósłać, zo nochceće, zo wone was slěduja
-    .accesskey = s
-dnt-learn-more-button =
-    .value = Dalše informacije
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Websydłam zdźělić, zo nimaja moje daty předać abo dźělić
+    .accesskey = z
+do-not-track-removal = Hižo njepodpěrujemy signal „Njeslědować“
 passwords-description = { -brand-short-name } móže hesła za wšě waše konta składować.
 passwords-button =
     .label = Składowane hesła…
@@ -571,7 +528,6 @@ primary-password-description = Hłowne hesło škita wšě waše hesła, ale dyr
 primary-password-label =
     .label = Hłowne hesło wužiwać
     .accesskey = H
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Gratowe přizjewjenje za wupjelnjenje a rjadowanje hesłow žadać
 primary-password-button =
@@ -580,9 +536,6 @@ primary-password-button =
 forms-primary-pw-fips-title = Sće tuchwilu we FIPS-modusu. FIPS sej hłowne hesło žada.
 forms-master-pw-fips-desc = Změnjenje hesła njeje so poradźiło
 junk-description = Nastajće swoje standardne nastajenja za čaporowu e-mejl. Nastajenja čaporoweje e-mejle specifiske za konto dadźa so w Kontowych nastajenjach konfigurować.
-junk-label =
-    .label = Hdyž so powěsće jako čapor markěruja:
-    .accesskey = H
 junk-marked-label =
     .label = Hdyž so powěsće jako čapor markěruja:
     .accesskey = H
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Je zhašeć
     .accesskey = z
-junk-read-label =
-    .label = Powěsće, kotrež su čapor, jako přečitane markěrować
-    .accesskey = P
 junk-read-description = Powěsće jako přečitane markěrować
 junk-read-manual-label =
     .label = Hdyž so manuelnje jako čapor markěruja
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Awtomatiske rozsudy dadźa so přepisać, hdyž so zaklučowanje manuelnje zmóžnja abo znjemóžnja, mjeztym zo powěsć pisaće.
     Pokaz: Zaklučowanje so přeco awtomatisce zmóžnja, hdyž na zaklučowanu powěsć wotmołwjeće.
-
-## Chat Tab
-
 startup-label =
     .value = Hdyž { -brand-short-name } startuje:
     .accesskey = s
@@ -661,20 +608,10 @@ offline-label =
     .label = Chatowe konto offline wostajić
 auto-connect-label =
     .label = Chatowe konta awtomatisce zwjazać
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Kontakty informować, zo sym potom
     .accesskey = i
 idle-time-label = mjeńšin preč
-
-##
-
 away-message-label =
     .label = a stajće mój status na Preč z tutej statusowej powěsću:
     .accesskey = P
@@ -736,41 +673,21 @@ no-preview-description = Tuta drasta płaćiwa njeje abo njeje tuchwilu k dispoz
 chat-variant-label =
     .value = Warianta:
     .accesskey = W
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = W nastajenjach pytać
-
-## Settings UI Search Results
-
 search-results-header = Pytanske wuslědki
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Bohužel žane wuslědki w nastajenjach za “<span data-l10n-name="query"></span>” njejsu.
        *[other] Bohužel žane wuslědki w nastajenjach za “<span data-l10n-name="query"></span>” njejsu.
     }
 search-results-help-link = Trjebaće pomoc? Wopytajće <a data-l10n-name="url">Pomoc za { -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Wzmiće swój web sobu
 sync-signedout-description = Synchronizujće swoje konta, adresniki, protyki, přidatki a nastajenja mjez wšěmi wašimi gratami.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Pola Sync přizjewić…
 sync-pane-header = Synchronizować
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = „{ $userEmail }“ njeje přepruwowana.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Prošu přizjewće so, zo byšće znowa „{ $userEmail }“ zwjazał
 sync-pane-resend-verification = Wobkrućenje znowa pósłać
 sync-pane-sign-in = Přizjewić
@@ -800,3 +717,57 @@ synced-acount-item-filters = Filtry
 synced-acount-item-keys = OpenPGP - S/MIME
 sync-disconnected-text = Synchronizujće swoje e-mejlowe konta, adresniki, protyki a identity mjez wšěmi wašimi gratami.
 sync-disconnected-turn-on-sync = Synchronizaciju zmóžnić…
+qr-export-pane-header = Konta do mobilneho { -brand-product-name } eksportować
+qr-export-description = Generěrujće kod QR, zo byšće swoje kontowe nastajenja spěšnje wot desktopa do mobilneho grata přenošował. Wubjerće, kotre konta maja so zapřijeć, rozsudźće, hač chceće  swoje hesło přenošować a skenujće kod ze swojim mobilnym gratom. Spěšny, wěsty a lochki.
+qr-export-get-app = Nimaće hišće { -brand-product-name } na mobilnym graće? <a data-l10n-name="app-link">Wobstarajće sej jón na Google Play</a>
+qr-export-create = Wutworće kod QR, zo byšće swoje konta eksportował
+qr-export-select-accounts = Wubjerće konta, kotrež so maja eksportować:
+qr-export-no-accounts = Njewidźiće wšě konta? Někotre konta su snano znjemóžnjene, dokelž so wot { -brand-product-name } za Android njepodpěruja. <a data-l10n-name="account-support-link">Podpěra</a>
+qr-export-accounts-legend = E-mejlowe konta
+qr-export-select-all-accounts = Wšě wubrać
+qr-export-security-legend = Wěstota
+qr-export-include-passwords = Wšě kontowe hesła zapřijeć
+qr-export-oauth-warning = Někotre z wašich kontow metodu awtentifikacije wužiwaja, kotraž sej wospjetnu awtentifikaciju na mobilnych gratach wužaduje. Dyrbiće snano swoje hesła za tutón proces znowa zapodać.
+qr-export-security-hint = Hdyž slědowace kody QR skenujeće, so waše kontowe nastajenja – mjez nimi waša e-mejlowa adresa a waše hesło – wěsće přenošuja. Njehromadźimy, njeskładujemy abo njedźělimy tute daty za proces. Přenošowanje so direktnje mjez wašimi gratami stawa.
+qr-export-security-warning = Prošu zawěsćće za swoju wěstotu, zo sće w priwatnej wokolinje a skenujće jenož kody QR z dowěry hódnych žórłow.
+qr-export-start-export = Eksportować
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step } z { $count } koda QR
+        [two] { $step } z { $count } kodow QR
+        [few] { $step } z { $count } kodow QR
+       *[other] { $step } z { $count } kodow QR
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Skenujće kod QR z { -brand-product-name } na swojim mobilnym graće
+        [two] Skenujće kodaj QR z { -brand-product-name } na swojim mobilnym graće
+        [few] Skenujće kody QR z { -brand-product-name } na swojim mobilnym graće
+       *[other] Skenujće kody QR z { -brand-product-name } na swojim mobilnym graće
+    }
+qr-export-scan-step1 = Wočińće { -brand-product-name } na swojim mobilnym graće
+qr-export-scan-step2 = K nastajenjam
+qr-export-scan-step3 = Wubjerće <strong>importowe nastajenja</strong>
+qr-export-scan-step4-revision = Podótkńće so <strong>Kod QR skenować</strong> a dźeržće swój telefon nad tutón kod
+qr-export-back = Wróćo
+qr-export-next = Dale
+qr-export-done = Hotowo
+qr-export-summary-description = Konto su eksportowane. Dale na wašim mobilnym graće.
+qr-export-summary-title = Eksportowe zjeće:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } kod QR je so generěrował
+        [two] { $count } kodaj QR stej so generěrowałoj
+        [few] { $count } kody QR su so generěrowali
+       *[other] { $count } kodow QR je so generěrowało
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } konto je so eksportowało:
+        [two] { $count } konće stej so eksportowałoj:
+        [few] { $count } konta su so eksportowali:
+       *[other] { $count } kontow je so eksportowało:
+    }
+qr-export-summary-passwords-included = Hesła zapřijate
+qr-export-summary-passwords-excluded = Hesła wuzamknjene
+qr-export-more-accounts = Dalše konta eksportować

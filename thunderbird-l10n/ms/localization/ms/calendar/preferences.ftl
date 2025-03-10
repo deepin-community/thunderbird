@@ -1,14 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 dateformat-label =
     .value = Format Teks Tarikh:
     .accesskey = T
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Panjang: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Pendek: { $date }
 timezone-label =
@@ -95,12 +89,6 @@ previous-weeks-label =
     .value = Minggu terdahulu untuk dipaparkan:
     .accesskey = M
 todaypane-legend = Anak Tetingkap Hari ini
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = Bahagian Akan Datang memaparkan:
-    .accesskey = A
 event-task-legend = Acara dan Tugasan
 task-start-label =
     .value = Tarikh Mula:
@@ -125,10 +113,6 @@ task-due-label =
 edit-intab-label =
     .label = Edit acara dan tugasan di dalam tab, bukan di dalam tetingkap dialog.
     .accesskey = t
-accessibility-legend = Ketercapaian
-accessibility-colors-label =
-    .label = Mengoptimumkan warna untuk ketercapaian
-    .accesskey = w
 reminder-legend = Apabila Peringatan Genap Tempoh:
 reminder-play-checkbox =
     .label = Mainkan bunyian

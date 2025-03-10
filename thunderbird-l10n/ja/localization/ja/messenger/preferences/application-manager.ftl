@@ -1,9 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-app-manager-window-dialog2 =
-    .title = プログラムの詳細
 app-manager-dialog-title = プログラムの詳細
 remove-app-button =
     .label = 削除

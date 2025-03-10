@@ -1,18 +1,8 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 otr-auth =
     .title = Verifica la identitat del contacte
     .buttonlabelaccept = Verifica
-# Variables:
-#   $name (String) - the screen name of a chat contact person
 auth-title = Verifica la identitat de { $name }
-# Variables:
-#   $own_name (String) - the user's own screen name
 auth-your-fp-value = La vostra empremta digital, { $own_name }:
-# Variables:
-#   $their_name (String) - the screen name of a chat contact
 auth-their-fp-value = Empremta digital de { $their_name }:
 auth-question-received = Aquesta és la pregunta formulada pel vostre contacte:
 auth-yes =

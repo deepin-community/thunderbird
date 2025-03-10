@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = อ่านและปรับเปลี่ยนที่คั่นหน้า
 webext-perms-description-browserSettings = อ่านและปรับเปลี่ยนการตั้งค่าเบราว์เซอร์
 webext-perms-description-browsingData = ล้างประวัติการเรียกดู, คุกกี้ และข้อมูลที่เกี่ยวข้องล่าสุด
@@ -30,4 +21,8 @@ webext-perms-description-sessions = เข้าถึงแท็บที่�
 webext-perms-description-tabs = เข้าถึงแท็บของเบราว์เซอร์
 webext-perms-description-tabHide = ซ่อนและแสดงแท็บของเบราว์เซอร์
 webext-perms-description-topSites = เข้าถึงประวัติการเรียกดู
+webext-perms-description-trialML = ดาวน์โหลดและรันโมเดล AI บนอุปกรณ์ของคุณ
+webext-perms-description-userScripts = อนุญาตให้สคริปต์บุคคลที่สามที่ไม่ได้ยืนยันเข้าถึงข้อมูลของคุณ
 webext-perms-description-webNavigation = เข้าถึงกิจกรรมของเบราว์เซอร์ระหว่างการนำทาง
+webext-perms-extra-warning-userScripts-long = สคริปต์ที่ไม่ได้ยืนยันสามารถก่อให้เกิดความเสี่ยงด้านความปลอดภัยและความเป็นส่วนตัวได้ เช่น เรียกใช้โค้ดที่เป็นอันตราย หรือติดตามกิจกรรมบนเว็บไซต์ ให้เรียกใช้สคริปต์จากส่วนขยายหรือแหล่งที่มาที่คุณเชื่อถือเท่านั้น
+webext-perms-extra-warning-userScripts-short = สคริปต์ที่ไม่ได้ยืนยันสามารถก่อให้เกิดความเสี่ยงด้านความปลอดภัยและความเป็นส่วนตัวได้ ให้เรียกใช้สคริปต์จากส่วนขยายหรือแหล่งที่มาที่คุณเชื่อถือเท่านั้น

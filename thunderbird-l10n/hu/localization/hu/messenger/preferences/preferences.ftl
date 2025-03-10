@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Bezárás
 preferences-doc-title2 = Beállítások
@@ -25,6 +21,9 @@ category-calendar =
 pane-sync-title = Sync
 category-sync =
     .tooltiptext = Sync
+pane-qr-export-title = Exportálás mobilra
+category-qr-export =
+    .tooltiptext = Exportálás mobilra
 general-language-and-appearance-header = Nyelv és megjelenés
 general-incoming-mail-header = Bejövő levelek
 general-files-and-attachment-header = Fájlok és mellékletek
@@ -50,8 +49,6 @@ collection-health-report =
     .label = Engedélyezés, hogy a { -brand-short-name } műszaki és interakciós adatokat küldjön a { -vendor-short-name } számára
     .accesskey = r
 collection-health-report-link = További tudnivalók
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = Az adatjelentés le lett tiltották ennél az összeállítási konfigurációnál
 collection-backlogged-crash-reports =
     .label = A { -brand-short-name } a háttérben küldhet összeomlási jelentéseket az Ön nevében
@@ -72,10 +69,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Indítsa újra a { -brand-short-name }öt a változások érvényesítéséhez
 confirm-messenger-language-change-button = Alkalmaz és újraindítás
 update-setting-write-failure-title = Hiba történt a frissítési beállítások mentésekor
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     A { -brand-short-name } hibát észlelt, és nem mentette ezt a változtatást. Ne feledje, hogy ezen frissítési beállítás megadásához írási engedély szükségesen a lenti fájlon. Ön vagy a rendszergazdája megoldhatja a hibát azzal, hogy a Felhasználók csoportnak teljes jogosultságot ad a fájlhoz.
     
@@ -83,26 +76,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Frissítés folyamatban
 update-in-progress-message = Szeretné, hogy a { -brand-short-name } folytassa ezt a frissítést?
 update-in-progress-ok-button = &Elvetés
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Folytatás
 account-button = Fiókbeállítások
 open-addons-sidebar-button = Kiegészítők és témák
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Elsődleges jelszó létrehozásához írja be a Windows bejelentkezési hitelesítő adatait. Ez elősegíti a fiókjai biztonságának védelmét.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = elsődleges jelszó létrehozása
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +106,6 @@ remove-search-engine =
 add-opensearch-provider-title = OpenSearch szolgáltató hozzáadása
 add-opensearch-provider-text = Adja meg a hozzáadandó OpenSearch szolgáltató webcímét. Használja az OpenSearch leírófájl közvetlen webcímét, vagy adjon meg olyan webcímet, ahonnan automatikusan felderíthető.
 adding-opensearch-provider-failed-title = Az OpenSearch szolgáltató hozzáadása sikertelen
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = A cím alapján nem adható hozzá OpenSearch szolgáltató: { $url }.
 minimize-to-tray-label =
     .label = Ha a { -brand-short-name } minimalizálva van, áthelyezés a tálcára
@@ -214,8 +191,6 @@ always-check-default =
 check-default-button =
     .label = Ellenőrzés most…
     .accesskey = E
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Spotlight
@@ -233,8 +208,6 @@ return-receipts-button =
     .label = Tértivevények…
     .accesskey = T
 update-app-legend = { -brand-short-name } frissítések:
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Verzió: { $version }
 allow-description = A { -brand-short-name } megteheti:
 automatic-updates-label =
@@ -269,18 +242,10 @@ offline-compact-folder-automatically =
     .accesskey = e
 compact-folder-size =
     .value = MB összesen
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Legfeljebb
     .accesskey = L
 use-cache-after = MB hely a gyorsítótárnak
-
-##
-
 smart-cache-label =
     .label = Az automatikus gyorsítótár-kezelés felülbírálása
     .accesskey = a
@@ -304,7 +269,6 @@ color-options-button =
     .label = Színek…
     .accesskey = n
 display-width-legend = Normál szöveges levelek
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Hangulatjelek megjelenítése grafikaként
     .accesskey = H
@@ -372,17 +336,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Mellékletek soron belüli megtekintése
     .accesskey = M
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Megjelenítés után
     .accesskey = e
 seconds-label = másodperc
-
-##
-
 open-msg-label =
     .value = Üzenetek megnyitása:
 open-msg-tab =
@@ -397,8 +354,6 @@ open-msg-ex-window =
 close-move-delete =
     .label = Üzenetablak/-lap bezárása áthelyezéskor vagy törléskor
     .accesskey = z
-display-name-label =
-    .value = Megjelenítendő név:
 address-display-legend = Üzenetlista
 address-display-description = Előnyben részesített címmegjelenítési formátum:
 address-display-full =
@@ -413,9 +368,21 @@ address-display-name =
 condensed-addresses-label =
     .label = Csak a név megjelenítése a címjegyzékben szereplő személyeknél
     .accesskey = C
-
-## Compose Tab
-
+table-layout-legend = Táblázat nézet
+table-layout-horizontal-scroll-label =
+    .label = Vízszintes görgetés engedélyezése
+    .accesskey = V
+conversation-view-legend = Beszélgetési nézet
+conversation-view-checkbox-label =
+    .label = Beszélgetési nézet engedélyezése
+    .accesskey = B
+conversation-view-checkbox-description = Glodára épülő kísérleti funkció, saját felelősségre használja
+label-experiment = Kísérleti
+account-hub-legend = Fiókközpont
+account-hub-checkbox-label =
+    .label = Fiókok létrehozása az új fiókközpontban
+    .accesskey = l
+account-hub-checkbox-description = Kísérleti postafiók-létrehozási folyamat
 forward-label =
     .value = Levél továbbítása:
     .accesskey = L
@@ -426,17 +393,10 @@ as-attachment-label =
 extension-label =
     .label = Kiterjesztés hozzáadása a fájlnévhez
     .accesskey = K
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Automatikus mentés
     .accesskey = A
 auto-save-end = percenként
-
-##
-
 warn-on-send-accel-key =
     .label = Jóváhagyás kérése gyorsbillentyűvel végzett levélküldéskor
     .accesskey = J
@@ -527,9 +487,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = További szolgáltatók keresése…
 cloud-account-description = Adjon hozzá új óriásfájl-küldési tárolószolgáltatást
-
-## Privacy Tab
-
 mail-content = Levéltartalom
 remote-content-label =
     .label = Távoli tartalom engedélyezése az üzenetekben
@@ -558,11 +515,11 @@ third-party-visited =
 cookies-button =
     .label = Sütik megtekintése…
     .accesskey = t
-do-not-track-label =
-    .label = „Do Not Track” jelzés küldése a webhelyeknek, jelezve, hogy nem szeretné, hogy kövessék
+global-privacy-control-search = Global Privacy Control (GPC)
+global-privacy-control-description =
+    .label = Megmondás a webhelyeknek, hogy ne adják el vagy osszák meg az adatait
     .accesskey = n
-dnt-learn-more-button =
-    .value = További tudnivalók
+do-not-track-removal = Már nem támogatjuk a „Do Not Track” jelzést
 passwords-description = A { -brand-short-name } képes megjegyezni az összes fiók jelszavát.
 passwords-button =
     .label = Mentett jelszavak…
@@ -571,7 +528,6 @@ primary-password-description = Az elsődleges jelszó az összes jelszót védi.
 primary-password-label =
     .label = Elsődleges jelszó használata
     .accesskey = E
-# This operation requires the user to authenticate with the operating system (device sign-in)
 forms-os-reauth =
     .label = Az eszköz által biztosított bejelentkezés megkövetelése a jelszavak kitöltéséhez és kezeléséhez
 primary-password-button =
@@ -580,11 +536,8 @@ primary-password-button =
 forms-primary-pw-fips-title = Jelenleg FIPS-módban van. A FIPS-hez nem üres elsődleges jelszó szükséges.
 forms-master-pw-fips-desc = Sikertelen jelszóváltoztatás
 junk-description = Az alapértelmezett levélszemét-kezelés beállítása. A postafiókra jellemző levélszemét-kezelés beállításait a Postafiókok beállításai alatt végezheti el.
-junk-label =
-    .label = A levélszemét kézi megjelölésekor:
-    .accesskey = k
 junk-marked-label =
-    .label = Mikor lesznek az üzenetek levélszemétként megjelölve:
+    .label = Ha az üzenetek levélszemétként lettek megjelölve:
     .accesskey = l
 junk-move-label =
     .label = Áthelyezés a postafiók „Szemét” mappájába
@@ -592,9 +545,6 @@ junk-move-label =
 junk-delete-label =
     .label = Törlés
     .accesskey = T
-junk-read-label =
-    .label = A szemétként megjelölt levelek megjelölése olvasottként
-    .accesskey = o
 junk-read-description = Üzenetek olvasottnak jelölése
 junk-read-manual-label =
     .label = Kézi levélszemétnek jelölés esetén
@@ -651,9 +601,6 @@ email-e2ee-auto-off-notify =
 email-e2ee-automatism-post =
     Az automatikus döntések felülbírálhatók a titkosítás kézi be- vagy kikapcsolásával üzenetíráskor.
     Megjegyzés: a titkosítás mindig automatikusan be van kapcsolva, ha titkosított üzenetre válaszol.
-
-## Chat Tab
-
 startup-label =
     .value = A { -brand-short-name } indításakor:
     .accesskey = s
@@ -661,20 +608,10 @@ offline-label =
     .label = A csevegőfiókok kapcsolat nélküli módban legyenek
 auto-connect-label =
     .label = Automatikus csatlakozás a csevegőfiókokhoz
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Partnereim értesítése tétlen állapotomról
     .accesskey = P
 idle-time-label = perc tétlenség után
-
-##
-
 away-message-label =
     .label = Az állapotom beállítása távollevőre ezzel az üzenettel:
     .accesskey = A
@@ -736,41 +673,21 @@ no-preview-description = Ez a téma nem érvényes, vagy jelenleg nem érhető e
 chat-variant-label =
     .value = Változat:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Keresés a Beállításokban
-
-## Settings UI Search Results
-
 search-results-header = Találatok
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Elnézését, nincs találat a Beállítások közt erre: „<span data-l10n-name="query"></span>”.
        *[other] Elnézését, nincs találat a Beállítások közt erre: „<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Segítségre van szüksége? Látogasson el ide: <a data-l10n-name="url">{ -brand-short-name } támogatás</a>
-
-## Sync Tab
-
 sync-signedout-caption = Vigye magával a webet
 sync-signedout-description = Szinkronizálja fiókjait, címjegyzékeit, naptárait, kiegészítőit és beállításait minden eszközén.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Jelentkezzen be a szinkronizáláshoz…
 sync-pane-header = Sync
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = A(z) „{ $userEmail }” nincs ellenőrizve.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Jelentkezzen be a következő újracsatlakoztatásához: „{ $userEmail }”
 sync-pane-resend-verification = Ellenőrző e-mail újraküldése
 sync-pane-sign-in = Bejelentkezés
@@ -800,3 +717,49 @@ synced-acount-item-filters = Szűrők
 synced-acount-item-keys = OpenPGP – S/MIME
 sync-disconnected-text = Szinkronizálja e-mail-fiókjait, címjegyzékeit, naptárait és személyazonosságait minden eszközén.
 sync-disconnected-turn-on-sync = Szinkronizálás bekapcsolása…
+qr-export-pane-header = Fiókok exportálása a mobilos { -brand-product-name }be
+qr-export-description = Gyorsan vigye át fiókbeállításait az asztali gépéről mobilra egy QR-kód előállításával. Válassza ki a figyelembe veendő fiókokat, döntse el, hogy át akarja-e küldeni a jelszavát, és olvassa le a kódot a mobileszközével. Gyors, biztonságos és egyszerű.
+qr-export-get-app = Nincs még { -brand-product-name } a mobilján? <a data-l10n-name="app-link">Szerezze be a Google Playen</a>
+qr-export-create = Hozzon létre egy QR-kódot a fiókjai exportálásához
+qr-export-select-accounts = Válassza ki az exportálandó fiókokat:
+qr-export-no-accounts = Nem látja az összes fiókját? Előfordulhat, hogy egyes fiókok le lettek tiltva, mert az androidos { -brand-product-name } nem támogatja őket. <a data-l10n-name="account-support-link">Támogatás</a>
+qr-export-accounts-legend = Levelezőfiókok
+qr-export-select-all-accounts = Összes kijelölése
+qr-export-security-legend = Biztonság
+qr-export-include-passwords = Tartalmazza az összes fiókjelszót
+qr-export-oauth-warning = Egyes fiókok olyan hitelesítési módszert használnak, amely újrahitelesítést igényelhet a mobileszközén. Lehet, hogy újra meg kell adnia a jelszavait a folyamat során.
+qr-export-security-hint = A következő QR-kódok beolvasásával a fiókbeállítások – beleértve az e-mail-címét és a jelszavát – biztonságosan át lesznek víve. A folyamat során nem gyűjtjük, tároljuk és osztjuk meg ezeket az adatokat. Az átvitel közvetlenül az eszközei között történik.
+qr-export-security-warning = A biztonsága érdekében győződjön meg arról, hogy privát környezetben van, és csak megbízható forrásokból származó QR-kódokat olvas le.
+qr-export-start-export = Exportálás
+qr-export-scan-progress =
+    { $count ->
+        [one] { $step }. / { $count } QR-kód
+       *[other] { $step }. / { $count } QR-kód
+    }
+qr-export-scan-description =
+    { $count ->
+        [one] Olvassa le a QR-kódot a { -brand-product-name }del a mobileszközén
+       *[other] Olvassa le a QR-kódot a { -brand-product-name }del a mobileszközén
+    }
+qr-export-scan-step1 = Nyissa meg a { -brand-product-name }öt a mobileszközén
+qr-export-scan-step2 = Ugorjon a beállításokhoz
+qr-export-scan-step3 = Válassza a <strong>Beállítások importálása</strong> lehetőséget
+qr-export-scan-step4-revision = Koppintson a <strong>QR-kód leolvasása</strong> lehetőségre, és tartsa telefonját a kód felé
+qr-export-back = Vissza
+qr-export-next = Tovább
+qr-export-done = Kész
+qr-export-summary-description = A fiókok exportálva lettek. Folytassa a mobileszközén.
+qr-export-summary-title = Exportálási összefoglaló:
+qr-export-summary-qr-count =
+    { $count ->
+        [one] { $count } QR-kód előállítva
+       *[other] { $count } QR-kód előállítva
+    }
+qr-export-summary-accounts =
+    { $count ->
+        [one] { $count } fiók exportálva:
+       *[other] { $count } fiók exportálva:
+    }
+qr-export-summary-passwords-included = Tartalmazza a jelszavakat
+qr-export-summary-passwords-excluded = Nem tartalmaz jelszavakat
+qr-export-more-accounts = További fiókok exportálása

@@ -1,20 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-event-listing-close =
     .tooltiptext = 關閉搜尋事件與事件清單
-
-## Listing columns
-
 calendar-event-listing-column-calendar-name =
     .label = 行事曆名稱
     .tooltiptext = 依照日曆名稱排序
 calendar-event-listing-column-category =
     .label = 類別
     .tooltiptext = 依照分類排序
-# This label and tooltip is used for the column with the checkbox in the task
-# tree view, which indicates whether a task has been marked as completed.
 calendar-event-listing-column-completed =
     .label = 完成
     .tooltiptext = 依照是否完成排序
@@ -48,9 +39,6 @@ calendar-event-listing-column-time-until-due =
 calendar-event-listing-column-title =
     .label = 標題
     .tooltiptext = 依照標題排序
-
-## Interval dropdown options
-
 calendar-event-listing-interval-past =
     .label = 過去的事件
 calendar-event-listing-interval-calendar-month =
@@ -67,6 +55,8 @@ calendar-event-listing-interval-next-6-months =
     .label = 未來 6 個月內的事件
 calendar-event-listing-interval-next-12-months =
     .label = 未來 12 個月內的事件
+calendar-event-listing-interval-future =
+    .label = 所有未來的事件
 calendar-event-listing-interval-all =
     .label = 所有事件
 calendar-event-listing-interval-selected-day =

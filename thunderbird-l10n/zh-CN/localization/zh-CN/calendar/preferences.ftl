@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = 日历
 calendar-title-reminder = 提醒
 calendar-title-notification = 通知
@@ -9,10 +5,8 @@ calendar-title-category = 分类
 dateformat-label =
     .value = 日期格式
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = 长：{ $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = 短：{ $date }
 use-system-timezone-radio-button =

@@ -1,31 +1,24 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Traka izbornika
     .accesskey = T
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Postavke
     .accesskey = e
 menu-addons-and-themes =
     .label = Dodaci i teme
     .accesskey = a
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Izvoz za mobilne uređaje …
+    .accesskey = I
 menu-help-help-title =
     .label = Pomoć
     .accesskey = P
 menu-help-get-help =
     .label = Potraži pomoć
     .accesskey = P
-menu-help-explore-features =
-    .label = Istraži mogućnosti
-    .accesskey = m
+menu-help-get-release-help =
+    .label = Zatraži pomoć s aplikacijom { -brand-short-name }
+    .accesskey = Z
 menu-help-shortcuts =
     .label = Tipkovnički prečaci
     .accesskey = k
@@ -44,16 +37,12 @@ menu-help-enter-troubleshoot-mode =
 menu-help-exit-troubleshoot-mode =
     .label = Isključi način rada za rješavanje problema
     .accesskey = o
-menu-help-more-troubleshooting-info =
-    .label = Više informacija za rješavanje problema
-    .accesskey = m
 menu-help-troubleshooting-info =
     .label = Rješavanje problema
     .accesskey = R
 menu-help-about-product =
     .label = O { -brand-short-name }
     .accesskey = O
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,14 +54,16 @@ menu-quit =
             [windows] I
            *[other] I
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Zatvori { -brand-shorter-name }
+system-tray-menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Zatvori { -brand-full-name }
+           *[other] Zatvori { -brand-full-name }
+        }
 quit-app-shortcut =
     .key = Z
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Neželjena pošta
     .tooltiptext = Označi odabrane poruke kao neželjene
@@ -85,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Vrati obrisano
     .tooltiptext = Poništi brisanje odabranih poruka
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Ispravi kodiranje teksta
     .accesskey = v
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Zaglavlje okna mape
     .accesskey = m
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Zaglavlje popisa poruka
     .accesskey = p
@@ -121,12 +103,6 @@ mail-uidensity-label =
 mail-uidensity-compact =
     .label = Kompaktno
     .accesskey = K
-mail-uidensity-normal =
-    .label = Normalno
-    .accesskey = N
-mail-uidensity-touch =
-    .label = Za dodir
-    .accesskey = Z
 mail-uidensity-default =
     .label = Zadano
     .accesskey = d
@@ -136,9 +112,9 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Alatna traka zbijenosti
     .accesskey = s
-
-## File
-
+file-new-email-account =
+    .label = E-mail račun …
+    .accesskey = E
 file-new-newsgroup-account =
     .label = Račun interesnih grupa…
     .accesskey = n

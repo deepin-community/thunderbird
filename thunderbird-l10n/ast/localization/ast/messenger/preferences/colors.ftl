@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 colors-dialog-legend = Testu y fondu
 text-color-label =
     .value = Testu:
@@ -19,9 +15,6 @@ link-color-label =
 visited-link-color-label =
     .value = Enllaces visitaos:
     .accesskey = a
-underline-link-checkbox =
-    .label = Solliñar enllaces
-    .accesskey = S
 override-color-label =
     .value = Anular colores especificaos pol conteníu coles mios esbilles d'enriba:
     .accesskey = A

@@ -1,18 +1,7 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 addons-page-title = Pengurus Add-ons
 search-header =
     .placeholder = Cari di addons.mozilla.org
     .searchbuttonlabel = Cari
-
-## Variables
-##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
-
-
-##
-
 list-empty-installed =
     .value = Anda tidak mempunyai add-ons jenis ini yang dipasang
 list-empty-available-updates =
@@ -109,88 +98,36 @@ addon-category-available-updates-title =
 addon-category-recent-updates = Kemaskini Terkini
 addon-category-recent-updates-title =
     .title = Kemaskini Terkini
-
-## These are global warnings
-
-extensions-warning-safe-mode = Semua add-ons telah dinyahdayakan oleh mod selamat.
-extensions-warning-check-compatibility = Pemeriksaan kesesuaian add-on telah dinyahdayakan. Anda mungkin mempunyai add-on yang tidak sesuai.
 extensions-warning-safe-mode2 =
     .message = Semua add-ons telah dinyahdayakan oleh mod selamat.
 extensions-warning-check-compatibility2 =
     .message = Pemeriksaan kesesuaian add-on telah dinyahdayakan. Anda mungkin mempunyai add-on yang tidak sesuai.
 extensions-warning-check-compatibility-button = Dayakan
     .title = Dayakan semakan kesesuaian add-on
-extensions-warning-update-security = Semakan keselamatan kemaskini add-on telah dinyahdayakan. Anda mungkin terdedah kepada bahaya ketika mengemaskini.
 extensions-warning-update-security2 =
     .message = Semakan keselamatan kemaskini add-on telah dinyahdayakan. Anda mungkin terdedah kepada bahaya ketika mengemaskini.
 extensions-warning-update-security-button = Dayakan
     .title = Dayakan semakan keselamatan kemaskini add-on
-
-## Strings connected to add-on updates
-
 addon-updates-check-for-updates = Semak Kemaskini
     .accesskey = e
 addon-updates-view-updates = Papar Kemaskini Terbaru
     .accesskey = P
-
-# This menu item is a checkbox that toggles the default global behavior for
-# add-on update checking.
-
 addon-updates-update-addons-automatically = Kemaskini Add-ons secara Automatik
     .accesskey = A
-
-## Specific add-ons can have custom update checking behaviors ("Manually",
-## "Automatically", "Use default global behavior"). These menu items reset the
-## update checking behavior for all add-ons to the default global behavior
-## (which itself is either "Automatically" or "Manually", controlled by the
-## extensions-updates-update-addons-automatically.label menu item).
-
 addon-updates-reset-updates-to-automatic = Set semula Semua Add-ons untuk Kemaskini Automatik
     .accesskey = u
 addon-updates-reset-updates-to-manual = Set semula Semua Add-ons Untuk Kemaskini Manual
     .accesskey = n
-
-## Status messages displayed when updating add-ons
-
 addon-updates-updating = Mengemaskini add-on
 addon-updates-installed = Add-ons anda telah dikemaskini.
 addon-updates-none-found = Tiada kemaskini ditemui
 addon-updates-manual-updates-found = Papar Kemaskini Tersedia
-
-## Add-on install/debug strings for page options menu
-
 addon-install-from-file = Pasang Add-ons Dari Fail…
     .accesskey = I
 addon-install-from-file-dialog-title = Pilih add-on untuk dipasang
 addon-install-from-file-filter-name = Add-ons
 addon-open-about-debugging = Add-ons Nyahpepijat
     .accesskey = s
-
-## Extension shortcut management
-
-
-## Recommended add-ons page
-
-
-## Add-on actions
-
-
-## Pending uninstall message bar
-
-
-## "sites with restrictions" (internally called "quarantined") are special domains
-## where add-ons are normally blocked for security reasons.
-
-
-## This is the tooltip text for the recommended badges for an extension in about:addons. The
-## badge is a small icon displayed next to an extension when it is recommended on AMO.
-
-
-##
-
-
-## Page headings
-
 extension-heading = Urus ekstensi anda
 theme-heading = Urus tema anda
 plugin-heading = Urus plugin anda
@@ -200,40 +137,14 @@ addons-heading-search-input =
     .placeholder = Cari di addons.mozilla.org
 addon-page-options-button =
     .title = Alatan untuk semua add-on
-
-## Detail notifications
-## Variables:
-##   $name (string) - Name of the add-on.
-
-# Variables:
-#   $version (String): application version.
-details-notification-incompatible = { $name } tidak serasi dengan { -brand-short-name } { $version }.
-# Variables:
-#   $version (string) - Application version.
 details-notification-incompatible2 =
     .message = { $name } tidak serasi dengan { -brand-short-name } { $version }.
-details-notification-unsigned-and-disabled = { $name } tidak dapat disahkan untuk digunakan di { -brand-short-name } dan ia telah dinyahdayakan.
 details-notification-unsigned-and-disabled2 =
     .message = { $name } tidak dapat disahkan untuk digunakan di { -brand-short-name } dan ia telah dinyahdayakan.
-details-notification-unsigned-and-disabled-link = Maklumat Lanjut
-details-notification-unsigned = { $name } tidak dapat disahkan untuk digunakan di { -brand-short-name }. Teruskan dengan berhati-hati.
 details-notification-unsigned2 =
     .message = { $name } tidak dapat disahkan untuk digunakan di { -brand-short-name }. Teruskan dengan berhati-hati.
-details-notification-unsigned-link = Maklumat Lanjut
-details-notification-blocked = { $name } telah dinyahdayakan kerana isu keselamatan atau kestabilan.
-details-notification-blocked2 =
-    .message = { $name } telah dinyahdayakan kerana isu keselamatan atau kestabilan.
-details-notification-blocked-link = Maklumat Lanjut
-details-notification-softblocked = { $name } telah dikenalpasti sebagai punca dalam isu keselamatan dan kestabilan.
-details-notification-softblocked2 =
-    .message = { $name } telah dikenalpasti sebagai punca dalam isu keselamatan dan kestabilan.
-details-notification-softblocked-link = Maklumat Lanjut
-details-notification-gmp-pending = { $name } akan dipasang sebentar lagi.
 details-notification-gmp-pending2 =
     .message = { $name } akan dipasang sebentar lagi.
-
-## Gecko Media Plugins (GMPs)
-
 plugins-gmp-license-info = Maklumat lesen
 plugins-gmp-privacy-info = Maklumat Privasi
 plugins-openh264-name = Kodek Video OpenH264 disediakan oleh Cisco Systems, Inc.

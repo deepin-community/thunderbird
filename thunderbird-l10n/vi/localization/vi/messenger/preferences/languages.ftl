@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 languages-customize-moveup =
     .label = Di chuyển lên
     .accesskey = U
@@ -16,8 +12,6 @@ languages-customize-select-language =
 languages-customize-add =
     .label = Thêm
     .accesskey = A
-messenger-languages-window2 =
-    .title = Cài đặt ngôn ngữ { -brand-short-name }
 messenger-languages-dialog-title = Cài đặt ngôn ngữ { -brand-short-name }
 messenger-languages-description = { -brand-short-name } sẽ hiển thị ngôn ngữ mà bạn đã chọn làm mặc định và sẽ hiển thị ngôn ngữ khác nếu cần thiết được sắp xếp theo thứ tự mà chúng xuất hiện.
 messenger-languages-search = Tìm kiếm thêm ngôn ngữ...

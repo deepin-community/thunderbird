@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 print-setup =
     .title = ตั้งค่าหน้ากระดาษ
 custom-prompt-title = กำหนดเอง…
@@ -103,8 +99,6 @@ print-window =
     .title = กำลังพิมพ์
 print-complete =
     .value = การพิมพ์เสร็จสมบูรณ์
-# Variables
-# $percent (integer) - Number of printed percentage
 print-percent =
     .value = { $percent }%
 dialog-cancel-label = ยกเลิก

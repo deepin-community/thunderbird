@@ -1,21 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Չի ստացվում անվտանգ կապ հաստատել, քանի որ SSL պռոտոկոլը անջատված է:
 psmerr-ssl2-disabled = Չստացվեց հաստատել անվտանգ կապ, քանի որ սերվերը օգտագործում է հին, ոչ անվտանգ SSL պրոտոկոլ:
-
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Դուք ստացել եք սխալ վկայագիր: Կապնվեք սպասարկիչի կառավարիչի հետ կամ նամակ գրեք նրան և ուղարկեք հետևյալ տեղեկությունները.
     
     Ձեր վկայագիրը պարունակում է միևնույն սերիական համարը, ինչ մեկ այլ վկայագիր՝ տրված վկայագրման նույն կենտրոնի կողմից: Խնդրում ենք ստանալ նոր վկայագիր՝ իր բացառիկ համարով:
-
 ssl-error-export-only-server = Անհնար է ապահովել անվտանգ տեղեկության փոխանցում: Հանգույցը չի ապահովում բարձրաստիճան գաղտնագրում:
 ssl-error-us-only-server = Անհնար է ապահովել անվտանգ տեղեկության փոխանցում: Հանգույցը պահանջում է բարձրաստիճան գաղտնագրում, որը ապահովված չէ:
 ssl-error-no-cypher-overlap = Չի ստացվում անվտանգ տեղեկության փոխանակում հանգույցի հետ։ Չկա ընդհանուր գաղտնագրման հաշվեկրգ()եր։
@@ -25,7 +13,7 @@ ssl-error-bad-client = Սպասարկիչը հանդիպել է սխալ տվյ�
 ssl-error-bad-server = Սպասառուն հանդիպել է սխալ տվյալի սպասարկիչից:
 ssl-error-unsupported-certificate-type = Անընդունելի սերտիֆիկատի տեսակ:
 ssl-error-unsupported-version = Հանգույցը օգտագործում է անվտանգության կանխագրի անընդունելի տարբերակ:
-ssl-error-wrong-certificate = Չհաջողված սպասառուի վավերացումը` բանալիների տվյալների բազայուի անհատական բանալին  տարբերվում է սեռտիֆիկատների տվյալների բազայի հանրային բանալուց:
+ssl-error-wrong-certificate = Սպասառուի վավերացումը ձախողվեց. բանալիների տվյալների բազայի անձնական բանալին չի համընկնում արտոնագրերի տվյալների բազայի հանրային բանալու հետ:
 ssl-error-bad-cert-domain = Անհնար է ապահովել անվտանգ կապ հանգույցի հետ՝ հարցված դոմեին անունը չի համապատասխանում սպասարկիչի սերտիֆիկատում նշվածին:
 ssl-error-post-warning = Անվերականգնելի SSL սխալի կոդ։
 ssl-error-ssl2-disabled = Հանգույցը ապահովում է միայն SSL ի 2-րդ տարբերակը, որը տաղայնորեն կասեցված է:
@@ -152,7 +140,6 @@ ssl-error-no-supported-signature-algorithm = Կազմաձևված է չաջակ�
 ssl-error-unsupported-signature-algorithm = Peer, որը օգտագործում է ստորագրության և hash ալգորիթմի չաջակցվող ալգորիթմ:
 ssl-error-missing-extended-master-secret = Peer, որը փորձում է շարունակել՝ առանց ճիշտ extended_master_secret ընդլայնման:
 ssl-error-unexpected-extended-master-secret = Peer, որը փորձում է շարունակել անսպասելի extended_master_secret ընդլայնմամբ:
-
 sec-error-io = Մ/Ե սխալ տեղի ունեցավ անվտանգության ավտորիզացիայի ժամանակ:
 sec-error-library-failure = անվտանգության գրադարանի սխալ:
 sec-error-bad-data = անվտանգության գրադարան` ստացվել են վատ տվյալներ:
@@ -179,7 +166,7 @@ sec-error-duplicate-cert = Սերտիֆիկատը արդեն գոյությու�
 sec-error-duplicate-cert-name = Բեռնված սերտիֆիկատի անունը կրկնում է ձեր տվյալների բազայում գոյություն ունեցող սերտիֆիկատի անունը:
 sec-error-adding-cert = Տվյալների բազայում արտոնագրի ավելացման սխալ:
 sec-error-filing-key = Այս սերտիֆիկատի բանալու լցման սխալ:
-sec-error-no-key = Այս արտոնագրի գաղտնի բանալին չի գտնվել բանալիների բազայում:
+sec-error-no-key = Այս արտոնագրի անձնական բանալին չի գտնվել բանալիների բազայում
 sec-error-cert-valid = Այս սերտիֆիկատը գործող է:
 sec-error-cert-not-valid = Սերտիֆիկատը անվավեր է:
 sec-error-cert-no-response = Սերտիֆիկատի գրադարան՝ Չկա Պատասխան
@@ -198,7 +185,7 @@ sec-error-unknown-critical-extension = Սերտիֆիկատը պարունակո
 sec-error-old-crl = Նոր CRL-ը ավելի նոր չէ քան ընթացիկը:
 sec-error-no-email-cert = Գաղտնագրված չէ կամ ստորագրված չէ` դուք դեռ չունեք էլ. փոստի վկայագիր:
 sec-error-no-recipient-certs-query = Չգաղտնագրված` դուք չունեք վկայագիր բոլոր ստացողների համար:
-sec-error-not-a-recipient = Չի ստացվում ապակոդավորել` դուք չէ՜ք ստացողը,  կամ չեն գտնվում համապատասխան սերտիֆիկատը և բանալին:
+sec-error-not-a-recipient = Չի ստացվում ապակոդավորել. դուք չեք ստացողը, կամ համապատասխան արտոնագիրը և անձնական բանալին չեն գտնվում:
 sec-error-pkcs7-keyalg-mismatch = Չի ստացվում ապագաղտնագրել` բանալու ապագաղտնագրման ալգորիթմը չի համապատասխանում ձեր սերտիֆիկատին:
 sec-error-pkcs7-bad-signature = Ստորագրության ստուգումը տապալվեց` ստորագրություն չի գտնվել, չափից շատ ստորագրություններ, կամ անհամատեղելի և կամ վնասված տվյալ:
 sec-error-unsupported-keyalg = Անհայտ կամ չսպասարկվող բանալու ալգորիթմ:
@@ -235,10 +222,10 @@ sec-error-message-send-aborted = Հաղորդագրությունը չուղար
 sec-error-inadequate-key-usage = Արտոնագրի բանալու օգտագործումը անհամապատախան է գործողությունն իրագործելու համար:
 sec-error-inadequate-cert-type = Վկայագրի այս տեսակը չի հաստատվել ծրագրի համար:
 sec-error-cert-addr-mismatch = Վկայագրի ստորագրության հասցեն չի համախատասխանում հաղորդագրության էջագլխի հասցեին:
-sec-error-pkcs12-unable-to-import-key = Չստացվեց ներմուծել: Սխալ, անձնական բանալու ներմուծման փորձի ժամանակ:
+sec-error-pkcs12-unable-to-import-key = Չստացվեց ներմուծել: Սխալ փակ բանալու ներմուծման փորձի ժամանակ:
 sec-error-pkcs12-importing-cert-chain = Չի ստացվում ներմուծել: Սխալը տեղի է ունենում սերտիֆիկատի շղթայի ներմուծման ընթացքոմ:
 sec-error-pkcs12-unable-to-locate-object-by-name = Չի ստացվում ներմուծել: ՉԻ գտնվում սերտիֆիկատը կամ բանալին ըստ մականունի:
-sec-error-pkcs12-unable-to-export-key = Արտահանումը չհաջողվեց: Չստացվեց գտնել և արտահանել անհատական բանալին:
+sec-error-pkcs12-unable-to-export-key = Արտահանումը չհաջողվեց: Չստացվեց գտնել և արտահանել փակ բանալին:
 sec-error-pkcs12-unable-to-write = Արտահանումը չհաջողվեց: Չի հաջողվում գրել արտահանվող ֆայլ:
 sec-error-pkcs12-unable-to-read = Չստացվեց ներմուծել: Անհնար է կարդալ ներմուծվող ֆայլը:
 sec-error-pkcs12-key-database-not-initialized = Արտահանումը չհաջողվեց: Բանալիների տվյալների բազան վնասված է կամ ջնջված:
@@ -319,7 +306,6 @@ sec-error-locked-password = Գաղտնաբառը արգելափակված է։
 sec-error-unknown-pkcs11-error = Անհայտ PKCS #11 սխալ։
 sec-error-bad-crl-dp-url = Անվավեր կամ չաջակցվող URL՝ CRL տարածման կետի անվան մեջ:
 sec-error-cert-signature-algorithm-disabled = Վկայագիրը ստորագրվել է օգտագործելով ստորագրության հաշվեկարգ, որը անջատված է, որովհետև ապահով չէ։
-
 mozilla-pkix-error-key-pinning-failure = Սպասարկիչը օգտագործում է բանալու գամում, բայց ոչ վստահելի վկայագրի շղթա չի կարող կառուցվել, որը համապատասխանում է գամված կայմանը:
 mozilla-pkix-error-ca-cert-used-as-end-entity = Սպասարկիչը օգտագործում է վկայագիր՝ բազային պարունակներով ընդլայնման հատկորոշիչ որպես իսկորոշման վկայագիր: Ճիշտ թողարկված վկայագրի համար սա չպետ է որ խնդիր լինի:
 mozilla-pkix-error-inadequate-key-size = Սպասարկիչը ներկայացնում է վկայագիր՝ բանալու չափով, որը շատ փոքր է անվտանգ կապակցում հաստատելու համար:
@@ -334,11 +320,9 @@ mozilla-pkix-error-invalid-integer-encoding = Սպասարկիչը, որը պա�
 mozilla-pkix-error-empty-issuer-name = Սպասարկիչը ներկայացրել է վկայագիր՝ թողարկողին տարբերակող դատարկ անունով:
 mozilla-pkix-error-additional-policy-constraint-failed = Լրացուցիչ քաղաքականության խոչընդոտը ձախողվեց այս վկայագիրը վավերացնելիս:
 mozilla-pkix-error-self-signed-cert = Վկայագիրը վստահելի չէ, քանի որ այն ստորագրվել է իր իսկ կողմից:
-
 xp-java-remove-principal-error = Չկարողացա ջնջել պրինցիպալին
 xp-java-delete-privilege-error = Չկարողացավ ջնջել արտոնություննները
 xp-java-cert-not-exists-error = Այս պրինցիպալը չունի արտոնագիր
-
 xp-sec-fortezza-bad-card = Fortezza քարտը լավ չի ինիցիացվել: Խնդրեմ ջնջեք այն և վերադարձրեք տրամադրողին:
 xp-sec-fortezza-no-card = Չգտնվեց Fortezza -ի ոչ մի քարտ
 xp-sec-fortezza-none-selected = Ընտրված չէ Fortezza-ի որևէ քարտ

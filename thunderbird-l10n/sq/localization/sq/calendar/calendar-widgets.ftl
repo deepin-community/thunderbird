@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Krejt kalendarët janë hëpërhë të çaktivizuar. Që të krijoni dhe përpunoni akte, aktivizoni një kalendar ekzistues, ose shtoni një të ri.
 calendar-deactivated-notification-tasks = Krejt kalendarët janë hëpërhë të çaktivizuar. Që të krijoni dhe përpunoni punë, aktivizoni një kalendar ekzistues, ose shtoni një të ri.
 calendar-notifications-label = Shfaq njoftime për veprimtari të ardhshme
 calendar-add-notification-button =
     .label = Shtoni njoftim
-
-## Side panel
-
 calendar-list-header = Kalendarë
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = Kalendari { $calendarName } është heshtuar
 calendar-enable-button = Aktivizoje
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Mundësi kalendari { $calendarName }
 calendar-import-new-calendar = Kalendar i Ri…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Ringarkoni krejt kalendarët dhe njëkohësoni ndryshimet
 calendar-new-event-primary-button = Veprimtari e Re
 calendar-new-task-primary-button = Punë e Re
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Dita e Mëparshme
     .accesskey = s
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Shumëjavësh
     .title = Kaloni te pamje shumëjavëshe
 calendar-view-toggle-month = Muaj
     .title = Kaloni te pamje muaji
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Mundësi skeme kalendari
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Përcaktoni ditë pune
 calendar-show-tasks-calendar-option =
     .label = Shfaqni punë në kalendar
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Dita e Mëparshme
     .accesskey = m

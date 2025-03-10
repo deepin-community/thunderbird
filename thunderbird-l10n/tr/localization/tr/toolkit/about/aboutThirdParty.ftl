@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Üçüncü Taraf Modül Bilgileri
 third-party-section-title = { -brand-short-name } tarayıcısındaki üçüncü taraf modüllerin listesi
 third-party-intro =
@@ -46,15 +42,6 @@ third-party-button-reload = Sistem bilgisiyle yeniden yükle
     .title = Sistem bilgileriyle yeniden yükle
 third-party-button-open =
     .title = Dosya konumunu aç…
-third-party-button-to-block =
-    .title = Bu modülü engelle
-    .aria-label = Bu modülü engelle
-third-party-button-to-unblock =
-    .title = Engellenmiş durumda. Engeli kaldırmak için tıklayın.
-    .aria-label = Engellenmiş durumda. Engeli kaldırmak için tıklayın.
-third-party-button-to-unblock-disabled =
-    .title = Engellenmiş olarak işaretli, ancak bu { -brand-short-name } oturumu boyunca engelli listesi devre dışı bırakılmış. Engellemeyi kaldırmak için tıklayın.
-    .aria-label = Engellenmiş olarak işaretli, ancak bu { -brand-short-name } oturumu boyunca engelli listesi devre dışı bırakılmış. Engellemeyi kaldırmak için tıklayın.
 third-party-button-to-block-module = Bu modülü engelle
     .title = Bu modülü engelle
     .aria-label = Bu modülü engelle

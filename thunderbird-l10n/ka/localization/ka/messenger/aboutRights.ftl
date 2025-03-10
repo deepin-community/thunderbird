@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = თქვენი უფლებების შესახებ
 rights-intro = { -brand-full-name } უფასო, ღია წყაროს პროგრამაა, რომელიც შექმნილია ათასობით მონაწილის მიერ მსოფლიოს ყველა კუთხიდან. რამდენიმე რამ, რაც უნდა იცოდეთ:
 rights-intro-point-1 = { -brand-short-name } მოგეწოდებათ <a data-l10n-name="mozilla-public-license-link">Mozilla-ს საზოგადოებრივი ლიცენზიით</a>. ეს ნიშნავს, რომ შეგიძლიათ { -brand-short-name } გამოიყენოთ, გაამრავლოთ და გაავრცელოთ. ასევე, შეგიძლიათ შეცვალოთ პირველწყარო კოდი, რომლითაც შექმნილია { -brand-short-name }, თქვენი მოთხოვნების შესაბამისად. Mozilla-ს საზოგადოებრივი ლიცენზია ასევე გაძლევთ უფლებას თქვენი სახეცვლილი ვერსიების გავრცელების.

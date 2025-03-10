@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY AdvancedEditButton.label "Пашыранае рэдагаванне…">
 <!ENTITY AdvancedEditButton.accessKey "П">
 <!ENTITY AdvancedEditButton.tooltip "Дадаць або змяніць атрыбуты HTML, атрыбуты стылю ці JavaScript">
@@ -9,13 +5,5 @@
 <!ENTITY chooseFileButton.accessKey "В">
 <!ENTITY chooseFileLinkButton.label "Выбраць файл...">
 <!ENTITY chooseFileLinkButton.accessKey "В">
-
-<!ENTITY makeUrlRelative.label "Адносны URL">
-<!ENTITY makeUrlRelative.accessKey "А">
-<!ENTITY makeUrlRelative.tooltip "Змяніць адносны URL на абсалютны і наадварот. Перад гэтым дзеяннем вам спачатку трэба захаваць старонку.">
-
-<!-- Shared by Link and Image dialogs -->
-
-<!-- Shared by Link and Image dialogs -->
 <!ENTITY LinkURLEditField2.label "Enter a web page location, a local file, or select a Named Anchor or Heading from the field's context menu:">
 <!ENTITY LinkURLEditField2.accessKey "w">

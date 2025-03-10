@@ -1,22 +1,9 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-# DO NOT ADD THINGS OTHER THAN ERROR MESSAGES HERE.
-# This file gets parsed into a JS dictionary of all known error message ids in
-# gen_aboutneterror_codes.py . If we end up needing fluent attributes or
-# refactoring them in some way, the script will need updating.
-
 psmerr-ssl-disabled = Ezin da modu seguruan konektatu SSL protokoloa ezgaiturik dago eta.
 psmerr-ssl2-disabled = Ezin da modu seguruan konektatu guneak SSL protokoloaren bertsio zahar eta ez seguru ba erabiltzen du eta.
-
-# This is a multi-line message.
 psmerr-hostreusedissuerandserial =
     Ziurtagiri baliogabe bat jaso duzu. Jar zaitez harremanetan zerbitzariaren kudeatzailearekin edo dagokionari idatzi hurrengo argibideak emanaz:
     
     Zure ziurtagiriak ziurtagiri-autoritateak jaulkitako beste ziurtagiri baten serie-zenbaki berdina du. Mesedez lortu serie-zenbaki esklusiboa duen beste ziurtagiri bat.
-
 ssl-error-export-only-server = Ezin da modu seguruan komunikatu. Parekoak ez du maila altuko zifraketarik onartzen.
 ssl-error-us-only-server = Ezin da modu seguruan komunikatu. Parekoak onartzen ez den maila altuko zifraketa eskatzen du.
 ssl-error-no-cypher-overlap = Ezin da parekoarekin modu seguruan konektatu: ez dago zifraketa algoritmo bateraturik.
@@ -153,7 +140,6 @@ ssl-error-no-supported-signature-algorithm = Ez da onartutako TLS sinadura-algor
 ssl-error-unsupported-signature-algorithm = Onartzen ez den sinadura- eta hash-algoritmo konbinazioak erabili ditu pareak.
 ssl-error-missing-extended-master-secret = Parekoa berrekiten saiatu da extended_master_secret luzapen zuzenik gabe.
 ssl-error-unexpected-extended-master-secret = Parekoa berrekiten saiatu da espero gabeko extended_master_secret luzapenarekin.
-
 sec-error-io = S/I errore bat gertatu da segurtasun autorizazioan.
 sec-error-library-failure = segurtasun liburutegi akatsa.
 sec-error-bad-data = segurtasun liburutegia: datu okerrak jaso dira.
@@ -320,7 +306,6 @@ sec-error-locked-password = Pasahitza blokeatuta dago.
 sec-error-unknown-pkcs11-error = PKCS #11 errore ezezaguna.
 sec-error-bad-crl-dp-url = URL baliogabe edo onargabea CRL banaketaren puntu-izenean.
 sec-error-cert-signature-algorithm-disabled = Segurua ez delako desgaituta dagoen sinadura-algoritmo bat erabiliz sinatu da ziurtagiria.
-
 mozilla-pkix-error-key-pinning-failure = Zerbitzariak gakoen ainguratzea erabiltzen du (HPKP) baina ezin da gako finkoekin bat datorren fidatzeko moduko ziurtagiri-katerik eraiki. Gakoen ainguratzeen bortxaketak ezin dira gainidatzi.
 mozilla-pkix-error-ca-cert-used-as-end-entity = Zerbitzariak oinarrizko murriztapenen hedapenak dituen eta ziurtagiri-autoritate gisa identifikatzen den ziurtagiria erabiltzen du. Hau ezin liteke gertatu ondo jaulkitako ziurtagiri batentzat.
 mozilla-pkix-error-inadequate-key-size = Zerbitzariak aurkeztu duen ziurtagiriaren gako-tamaina oso txikia da konexio segurua ezartzeko.
@@ -335,11 +320,10 @@ mozilla-pkix-error-invalid-integer-encoding = Zerbitzariak aurkeztu duen ziurtag
 mozilla-pkix-error-empty-issuer-name = Zerbitzariak aurkeztu duen ziurtagiriak jaulkitzailearen izen goren hutsa du.
 mozilla-pkix-error-additional-policy-constraint-failed = Politika-murriztapen gehigarri batek huts egin du ziurtagiri hau balidatzean.
 mozilla-pkix-error-self-signed-cert = Ziurtagiria ez da fidagarria bere buruak sinatzen duelako.
-
+mozilla-pkix-error-issuer-no-longer-trusted = Ziurtagiria jaulki duen ziurtagiri-autoritatea fidagaitza zen ziurtagiria jaulki aurretik.
 xp-java-remove-principal-error = Ezin da nagusia ezabatu
 xp-java-delete-privilege-error = Ezin da eskubidea ezabatu
 xp-java-cert-not-exists-error = Nagusiak ez du ziurtagiririk
-
 xp-sec-fortezza-bad-card = Fortezza txartela ez dago behar bezala hasieratuta. Kendu eta itzul iezaziozu jaulkitzaileari.
 xp-sec-fortezza-no-card = Ez da Fortezza txartelik aurkitu
 xp-sec-fortezza-none-selected = Ez da Fortezza txartelik hautatu

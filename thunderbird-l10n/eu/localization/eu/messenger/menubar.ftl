@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menu-barra
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Ezarpenak
     .accesskey = E
 menu-addons-and-themes =
     .label = Gehigarriak eta itxurak
     .accesskey = G
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Esportatu mugikorrera…
+    .accesskey = p
 menu-help-help-title =
     .label = Laguntza
     .accesskey = L
 menu-help-get-help =
     .label = Lortu laguntza
     .accesskey = L
-menu-help-explore-features =
-    .label = Eginbideak esploratu
-    .accesskey = E
 menu-help-get-release-help =
     .label = Lortu { -brand-short-name } laguntza
     .accesskey = L
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = { -brand-short-name }(r)i buruz
     .accesskey = b
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] I
            *[other] I
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = Irten { -brand-shorter-name }(e)tik
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] Irten { -brand-full-name }
            *[other] Irten { -brand-full-name }
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = I
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Zaborra
     .tooltiptext = Markatu aukeratutako mezua zabor bezala
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Desezabatu
     .tooltiptext = Desezabatu aukeratutako mezuak
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Konpondu testu kodeketa
     .accesskey = K
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Karpeta panelaren goiburua
     .accesskey = K
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = Mezu zerrendaren goiburua
     .accesskey = g
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Guneen tresna-barra
     .accesskey = G
-
-## File
-
 file-new-email-account =
     .label = Posta elektroniko kontua
     .accesskey = P

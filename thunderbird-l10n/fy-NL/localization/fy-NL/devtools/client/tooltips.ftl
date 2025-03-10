@@ -1,29 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Localization for Developer Tools tooltips.
-
 learn-more = <span data-l10n-name="link">Mear ynformaasje</span>
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain why
-## the property is not applied.
-## The variables are all passed from the same place, in `InactiveCssTooltipHelper#getTemplate`
-## (devtools/client/shared/widgets/tooltip/inactive-css-tooltip-helper.js#95)
-## Variables:
-##   $property (string) - A CSS property name e.g. "color".
-##   $display (string) - A CSS display value e.g. "inline-block".
-
 inactive-css-not-grid-or-flex-container = <strong>{ $property }</strong> hat gjin effekt op dit elemint omdat it gjin flexcontainer of gridcontainer is.
 inactive-css-not-grid-or-flex-container-or-multicol-container = <strong> { $property } </strong> hat gjin effekt op dit elemint, omdat it gjin flex-container, grid-container of in container mei mear kolommen is.
 inactive-css-not-multicol-container = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it gjin container mei meardere kolommen is.
@@ -38,7 +13,6 @@ inactive-css-first-line-pseudo-element-not-supported = <strong>{ $property }</st
 inactive-css-first-letter-pseudo-element-not-supported = <strong>{ $property }</strong> wurdt net stipe op ::first-letter-pseudo-eleminten
 inactive-css-placeholder-pseudo-element-not-supported = <strong>{ $property }</strong> wurdt net stipe op ::placeholder-pseudo-elementen.
 inactive-css-property-because-of-display = <strong>{ $property }</ strong> hat gjin effekt op dit elemint, omdat it in werjefte fan <strong>{ $display }</ strong> hat.
-inactive-css-not-display-block-on-floated = De wearde <strong>display</strong> is troch de engine yn <strong>block</strong> wizige, omdat it elemint <strong>floated</strong> is.
 inactive-css-not-display-block-on-floated-2 = De wearde <strong>display</strong> is troch de engine yn <strong>{ $display }</strong> wizige, omdat it elemint <strong>floated</strong> is.
 inactive-css-only-non-grid-or-flex-item = <strong>{ $property }</strong> hat gjin effekt, omdat it net brûkt wurde kin op grid- of flexitem.
 inactive-css-not-block = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat dit allinnich fan tapassing is op eleminten op bloknivo.
@@ -47,6 +21,7 @@ inactive-css-property-is-impossible-to-override-in-visited = It is net mooglik o
 inactive-css-position-property-on-unpositioned-box = <strong>{ $property }</strong> hat gjin effekt op dit elemint omdat it gjin posisjonearre elemint is.
 inactive-css-only-replaced-elements = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it allinnich op ferfongen eleminten tapast wurde kin.
 inactive-text-overflow-when-no-overflow = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat <strong>overflow:hidden</strong> net ynsteld is.
+inactive-css-no-size-containment = <strong>{ $property }</strong> hat gjin effekt op dit elemint omdat it gjin gruttebeheining hat.
 inactive-css-not-for-internal-table-elements = <strong>{ $property }</strong> hat gjin effekt op ynterne tabeleleminten.
 inactive-css-not-for-internal-table-elements-except-table-cells = <strong>{ $property }</strong> hat gjin effekt op ynterne tabeleleminten, útsein op tabelsellen.
 inactive-css-not-table = <strong>{ $property }</strong> hat gjin effekt op dit elemint omdat it gjin tabel is.
@@ -56,15 +31,8 @@ inactive-scroll-padding-when-not-scroll-container = <strong>{ $property }</stron
 inactive-css-border-image = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it net tapast wurde kin op ynterne tabeleleminten wêr <strong>border-collapse</strong> ynsteld is op <strong>collapse</strong> op it boppelizzende tabelelemint.
 inactive-css-resize = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it allinnich tapast wurde kin op eleminten mei in oare oerrinwearde as sichtber, en op bepaalde ferfongen eleminten, lykas tekstfjilden.
 inactive-css-ruby-element = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it in ruby-elemint is. De grutte wurdt bepaald troch de lettertypegrutte fan de rubytekst.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved.
-
 inactive-css-highlight-pseudo-elements-not-supported = <strong>{ $property }</strong> wurdt net stipe op markearre pseudo-eleminten.
 inactive-css-cue-pseudo-element-not-supported = <strong>{ $property }</strong> wurdt net stipe op ::cue-pseudo-elementen.
-# Variables:
-#   $lineCount (integer) - The number of lines the element has.
 inactive-css-text-wrap-balance-lines-exceeded =
     { $lineCount ->
         [one] <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it mear as { $lineCount } rigel befettet.
@@ -72,12 +40,6 @@ inactive-css-text-wrap-balance-lines-exceeded =
     }
 inactive-css-text-wrap-balance-fragmented = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat it fragmintearre is, d.w.s. de ynhâld is ferdield oer meardere kolommen of siden.
 inactive-css-no-width-height = <strong>{ $property }</strong> hat gjin effekt op dit elemint, omdat de breedte en hichte net ynsteld wurde kinne.
-
-## In the Rule View when a CSS property cannot be successfully applied we display
-## an icon. When this icon is hovered this message is displayed to explain how
-## the problem can be solved. CSS properties and values in <strong> tags should
-## not be translated.
-
 inactive-css-not-grid-or-flex-container-fix = Probearje <strong>display:grid</strong> of <strong>display:flex</strong> ta te foegjen. { learn-more }
 inactive-css-not-grid-or-flex-or-block-container-fix = Probearje <strong>display:grid</strong>, <strong>display:flex</strong> of <strong>display:block</strong> ta te foegjen. { learn-more }
 inactive-css-not-grid-or-flex-container-or-multicol-container-fix = Probearje <strong>display:grid</strong>, of <strong>display:flex</strong>, of <strong>colums:2</strong> ta te foegjen. { learn-more }
@@ -98,6 +60,7 @@ inactive-css-not-floated-fix = Probearje de eigenskip <strong>float</strong> ta 
 inactive-css-position-property-on-unpositioned-box-fix = Probearje de eigenskip <strong>position</strong> op wat oars as <strong>static</strong> yn te stellen. { learn-more }
 inactive-css-only-replaced-elements-fix = Soargje derfoar dat jo de eigenskip oan in ferfongen elemint tafoegje. { learn-more }
 inactive-text-overflow-when-no-overflow-fix = Probearje <strong>overflow:hidden</ strong> ta te foegjen. { learn-more }
+inactive-css-no-size-containment-fix = Probearje de property <strong>display</strong> op wat oars as <strong>none</strong>, <strong>contents</strong>, <strong>table</strong> of <strong>inline-table</strong> yn te stellen en soargje derfoar dat dizze net binnen in tabel of rubysegmint stiet. { learn-more }
 inactive-css-not-for-internal-table-elements-fix = Probearje de property <strong>display</strong> op wat oars as <strong>table-cell</strong>, <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row-group</strong> of <strong>table-footer-group</strong> yn te stellen. { learn-more }
 inactive-css-not-for-internal-table-elements-except-table-cells-fix = Probearje de property <strong>display</strong> op wat oars as <strong>table-column</strong>, <strong>table-row</strong>, <strong>table-column-group</strong>, <strong>table-row-group</strong> of <strong>table-footer-group</strong> yn te stellen. { learn-more }
 inactive-css-not-table-fix = Probearje <strong>display:flex</strong> of <strong>display:inline-table</strong> ta te foegjen. { learn-more }
@@ -109,14 +72,6 @@ inactive-css-resize-fix = Probearje <strong>overflow</strong> yn te stellen op i
 inactive-css-ruby-element-fix = Probearje de <strong>lettertypegrutte</strong> fan de rubytekst te wizigjen. { learn-more }
 inactive-css-text-wrap-balance-lines-exceeded-fix = Probearje it oantal rigels te ferminderjen. { learn-more }
 inactive-css-text-wrap-balance-fragmented-fix = Mij it splitsen fan de ynhâld fan it elemint, byg. troch de kolommen fuort te smiten of troch <strong>page-break-inside:avoid</strong> te brûken. { learn-more }
-
-## In the Rule View when a CSS property may have compatibility issues with other browsers
-## we display an icon. When this icon is hovered this message is displayed to explain why
-## the property is incompatible and the platforms it is incompatible on.
-## Variables:
-##   $property (string) - A CSS declaration name e.g. "-moz-user-select" that can be a platform specific alias.
-##   $rootProperty (string) - A raw CSS property name e.g. "user-select" that is not a platform specific alias.
-
 css-compatibility-default-message = <strong> { $property } </strong> wurdt net stipe yn de folgjende browsers:
 css-compatibility-deprecated-experimental-message = <strong>{ $property }</strong> wie in eksperimintele property dy’t neffens de W3C-standerts no ferâldere is. Hy wurdt net stipe yn de folgjende browsers:
 css-compatibility-deprecated-experimental-supported-message = <strong>{ $property }</strong> wie in eksperimintele property dy’t neffens de W3C-standerts no ferâldere is.
@@ -125,10 +80,4 @@ css-compatibility-deprecated-supported-message = <strong>{ $property }</strong> 
 css-compatibility-experimental-message = <strong>{ $property }</strong> is in eksperimintele property. Hy wurdt net stipe yn de folgjende browsers:
 css-compatibility-experimental-supported-message = <strong>{ $property }</strong> is in eksperimintele property.
 css-compatibility-learn-more-message = <span data-l10n-name="link">Mear ynfo</span> oer <strong>{ $rootProperty }</strong>
-
-## In the Rule View when a rule selector can causes issues, we display an icon.
-## When this icon is hovered one or more of those messages are displayed to explain what
-## the issue are.
-
-# :has() should not be translated
 css-selector-warning-unconstrained-has = Dizze selector brûkt ûnbeheind <strong>:has()</strong>, dat stadich wêze kin

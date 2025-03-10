@@ -1,23 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-deactivated-notification-events = Todos los calendarios están deshabilitados en este momento. Habilite un calendario existente o agregue uno nuevo para crear y editar eventos.
 calendar-deactivated-notification-tasks = Todos los calendarios están deshabilitados en este momento. Habilite un calendario existente o agregue uno nuevo para crear y editar eventos.
 calendar-notifications-label = Mostrar notificaciones para eventos futuros
 calendar-add-notification-button =
     .label = Agregar notificación
-
-## Side panel
-
 calendar-list-header = Calendarios
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-no-reminders-tooltip =
     .title = El calendario { $calendarName } ha sido silenciado
 calendar-enable-button = Habilitar
-# Variables:
-#  $calendarName (String) - Calendar name as given by the user
 calendar-list-item-context-button =
     .title = Opciones del calendario { $calendarName }
 calendar-import-new-calendar = Nuevo calendario…
@@ -26,9 +15,6 @@ calendar-refresh-calendars =
     .title = Recargar todos los calendarios y sincronizar cambios
 calendar-new-event-primary-button = Nuevo evento
 calendar-new-task-primary-button = Nueva tarea
-
-## Calendar navigation
-
 calendar-nav-button-prev-tooltip-day =
     .title = Día anterior
     .accesskey = n
@@ -69,9 +55,6 @@ calendar-view-toggle-multiweek = Multisemana
     .title = Cambiar a vista multisemana
 calendar-view-toggle-month = Mes
     .title = Cambiar a vista por mes
-
-## Menu on calendar control bar
-
 calendar-control-bar-menu-button =
     .title = Opciones de diseño del calendario
 calendar-find-events-menu-option =
@@ -82,9 +65,6 @@ calendar-define-workweek-option =
     .label = Definir días laborables
 calendar-show-tasks-calendar-option =
     .label = Mostrar tareas en calendario
-
-## Calendar Context Menu
-
 calendar-context-menu-previous-day =
     .label = Día anterior
     .accesskey = n

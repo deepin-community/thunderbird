@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ayarlanmadı)
 failed-pp-change = Ana parola değiştirilemedi.
@@ -21,7 +17,6 @@ set-password-new-password = Yeni parola:
 set-password-reenter-password = Yeni parola (tekrar):
 set-password-meter = Parola kalite ölçümü
 set-password-meter-loading = Yükleniyor
-primary-password-admin = Yöneticiniz, kullanıcı adlarını ve parolaları kaydetmek için bir ana parola belirlemenizi şart koşuyor.
 primary-password-required-by-policy = Kuruluşunuz kullanıcı adlarını ve parolaları kaydetmek için bir ana parola belirlemenizi şart koşuyor.
 primary-password-description = Ana parola; bu cihazdaki kullanıcı adları ve parolalarınız gibi hassas bilgileri korumak için kullanılır. Ana parola oluşturduktan sonra kayıtlı bilgilere ulaşmak istediğinizde { -brand-short-name } her oturumda bir kereliğine size ana parolayı soracaktır.
 primary-password-warning = Lütfen ana parolanızı unutmayacağınızdan emin olun. Ana parolanızı unutursanız, bu cihazda ana parolayla korunan hiçbir bilgiye erişemezsiniz.

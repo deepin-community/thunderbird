@@ -1,13 +1,5 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#   $identity (String) - the email address of the currently selected identity
 key-wizard-dialog-window =
     .title = Személyes OpenPGP-kulcs hozzáadása { $identity } számára
-key-wizard-button =
-    .buttonlabelaccept = Tovább
-    .buttonlabelhelp = Vissza
 key-wizard-dialog =
     .buttonlabelaccept = Folytatás
     .buttonlabelextra1 = Ugrás vissza
@@ -22,9 +14,6 @@ radio-import-key =
 radio-gnupg-key =
     .label = Külső kulcs használata GnuPG segítségével (például intelligens kártyáról)
     .accesskey = K
-
-## Generate key section
-
 openpgp-generate-key-title = OpenPGP kulcs előállítása
 openpgp-keygen-secret-protection = Titkos kulcs védelme
 radio-keygen-no-protection =
@@ -82,20 +71,14 @@ openpgp-keygen-short-expiry = A kulcsának legalább egy napig érvényesnek kel
 openpgp-keygen-ongoing = A kulcselőállítás már folyamatban van.
 openpgp-keygen-error-core = Az OpenPGP központi szolgáltatás előkészítése sikertelen
 openpgp-keygen-error-failed = Az OpenPGP-kulcs előállítása váratlanul sikertelen
-#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = A(z) OpenPGP-kulcs létrehozása sikeres, de nem sikerült megszerezni a(z) { $key } kulcs visszavonását.
 openpgp-keygen-abort-title = Megszakítja a kulcselőállítást?
 openpgp-keygen-abort = Az OpenPGP-kulcs előállítása jelenleg folyamatban van, biztos megszakítja?
-#   $identity (String) - the name and email address of the currently selected identity
 openpgp-key-confirm = Előállítja a nyilvános és titkos kulcsot { $identity } számára?
-
-## Import Key section
-
 openpgp-import-key-title = Meglévő személyes OpenPGP-kulcs importálása
 openpgp-import-key-legend = Válasszon egy korábbi biztonsági mentési fájlt.
 openpgp-import-key-description = Importálhat személyes kulcsokat más OpenPGP-t használó szoftverekből.
 openpgp-import-key-info = Más szoftverek másként nevezhetik a személyes kulcsot, például: saját kulcs, titkos kulcs, privát kulcs vagy kulcspár.
-#   $count (Number) - the number of keys found in the selected files
 openpgp-import-key-list-amount-2 =
     { $count ->
         [one] A { -brand-short-name } egy importálható kulcsot talált.
@@ -106,8 +89,6 @@ openpgp-import-key-list-caption = A személyes kulcsként kezeltként megjelölt
 openpgp-import-keep-passphrases =
     .label = A jelmondatos védelem megtartása az importált titkos kulcsoknál
 openpgp-passphrase-prompt-title = Jelmondat szükséges
-#   $key (String) - the id of the key being imported
-openpgp-passphrase-prompt = Írja be a jelmondatot a következő kulcs feloldásához: { $key }
 openpgp-import-key-button =
     .label = Válassza ki az importálandó fájlt…
     .accesskey = V
@@ -116,9 +97,7 @@ import-key-personal-checkbox =
     .label = E kulcs személyes kulcsként kezelése
 gnupg-file = GnuPG-fájlok
 import-error-file-size = <b>Hiba!</b> Az 5 MB-nál nagyobb fájlok nem támogatottak.
-#   $error (String) - the reported error from the failed key import method
 import-error-failed = <b>Hiba!</b> A fájl importálása sikertelen. { $error }
-#   $error (String) - the reported error from the failed key import method
 openpgp-import-keys-failed = <b>Hiba!</b> A kulcsok importálása sikertelen. { $error }
 openpgp-import-identity-label = Személyazonosság
 openpgp-import-fingerprint-label = Ujjlenyomat
@@ -127,9 +106,6 @@ openpgp-import-bits-label = Bitek
 openpgp-import-key-props =
     .label = Kulcs tulajdonságai
     .accesskey = K
-
-## External Key section
-
 openpgp-external-key-title = Külső GnuPG-kulcs
 openpgp-external-key-description = Kulső GnuPG-kulcs beállítása a kulcsazonosító megadásával
 openpgp-external-key-info = Továbbá a Kulcskezelő használatával kell importálnia és elfogadnia a megfelelő nyilvános kulcsot.

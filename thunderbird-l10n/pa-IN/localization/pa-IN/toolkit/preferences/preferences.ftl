@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (ਦਿੱਤਾ ਨਹੀਂ)
 failed-pp-change = ਮੁੱਖ ਪਾਸਵਰਡ ਬਦਲਣ ਲਈ ਅਸਮਰੱਥ ਹੈ।
@@ -21,7 +17,6 @@ set-password-new-password = ਨਵਾਂ ਪਾਸਵਰਡ ਦਿਓ:
 set-password-reenter-password = ਨਵਾਂ ਪਾਸਵਰਡ ਮੁੜ ਦਿਓ:
 set-password-meter = ਪਾਸਵਰਡ ਕੁਆਲਟੀ ਮੀਟਰ
 set-password-meter-loading = ਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ
-primary-password-admin = ਤੁਹਾਡੇ ਪਰਸ਼ਾਸ਼ਕ ਨੇ ਪਾਸਵਰਡ ਸੰਭਾਲਣ ਲਈ ਤੁਹਾਡੇ ਵਾਸਤੇ ਮੁੱਖ ਪਾਸਵਰਡ ਸੈੱਟ ਕਰਨਾ ਲਾਜ਼ਮੀ ਕੀਤਾ ਹੈ।
 primary-password-required-by-policy = ਤੁਹਾਡੇ ਸੰਗਠਨ ਨੇ ਲਾਜ਼ਮੀ ਕੀਤਾ ਹੈ ਕਿ ਲਾਗਇਨ ਅਤੇ ਪਾਸਵਰਡ ਸੰਭਾਲਣ ਵਾਸਤੇ ਤੁਸੀਂ ਮੁੱਖ ਪਾਸਵਰਡ ਸੈੱਟ ਕਰੋ।
 primary-password-description = ਮੁੱਖ ਪਾਸਵਰਡ ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਸੰਵੇਦਨਸ਼ੀਲ ਜਾਣਕਾਰੀ, ਜਿਵੇਂ ਕਿ ਲਾਗਇਨ ਤੇ ਪਾਸਵਰਡ ਆਦਿ ਨੂੰ ਸੰਭਾਲਣ ਲਈ ਵਰਤਿਆ ਜਾਦਾ ਹੈ। ਜੇਕਰ ਤੁਸੀਂ ਮੁੱਖ ਪਾਸਵਰਡ ਬਣਾਇਆ ਤਾਂ ਤੁਹਾਨੂੰ ਹਰੇਕ ਸ਼ੈਸ਼ਨ ਵਿੱਚ ਇੱਕ ਵਾਰ ਇਹ ਭਰਨ ਲਈ ਕਿਹਾ ਜਾਵੇਗਾ, ਜਦੋਂ { -brand-short-name } ਪਾਸਵਰਡ ਨਾਲ ਸੁਰੱਖਿਅਤ ਜਾਣਕਾਰੀ ਪ੍ਰਾਪਤ ਕਰਨ ਦੀ ਕੋਸ਼ਿਸ ਕਰੇਗਾ।
 primary-password-warning = ਇਹ ਪੱਕਾ ਕਰ ਲਵੋ ਕਿ ਤੁਹਾਨੂੰ ਆਪਣਾ ਮੁੱਖ ਪਾਸਵਰਡ ਯਾਦ ਹੈ। ਜੇਕਰ ਤੁਸੀਂ ਆਪਣਾ ਮੁੱਖ ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ ਤਾਂ ਤੁਸੀਂ ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਇਸ ਰਾਹੀਂ ਸੁਰੱਖਿਅਤ ਜਾਣਕਾਰੀ ਨੂੰ ਕਦੇ ਵੀ ਪ੍ਰਾਪਤ ਜਾਂ ਤਬਦੀਲ ਨਹੀਂ ਕਰ ਸਕਦੇ ਹੋ।

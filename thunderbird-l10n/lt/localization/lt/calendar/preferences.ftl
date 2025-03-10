@@ -1,17 +1,11 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Kalendorius
 calendar-title-reminder = Priminimai
 calendar-title-category = Kategorijos
 dateformat-label =
     .value = Datos formatas:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = ilgasis: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = trumpasis: { $date }
 timezone-label =
@@ -100,12 +94,6 @@ previous-weeks-label =
     .value = Rodyti praėjusių savaičių:
     .accesskey = y
 todaypane-legend = Šiandienos polangis
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = Skyriuje „Netrukus“ rodyti:
-    .accesskey = N
 event-task-legend = Įvykiai ir darbai
 default-length-label =
     .value = Numatytoji įvykio ir užduoties trukmė:
@@ -133,10 +121,6 @@ task-due-label =
 edit-intab-label =
     .label = Redaguoti įvykius ir darbus kortelėje, o ne dialogo lange.
     .accesskey = k
-accessibility-legend = Pritaikymas neįgaliesiems
-accessibility-colors-label =
-    .label = Optimizuoti spalvas turintiems regėjimo negalią
-    .accesskey = s
 reminder-legend = Atėjus priminimo laikui:
 reminder-play-checkbox =
     .label = Priminti garso signalu

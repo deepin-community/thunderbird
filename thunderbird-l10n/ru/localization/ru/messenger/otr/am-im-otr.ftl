@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 account-encryption =
     .label = Сквозное шифрование
 account-otr-label = Off-the-Record Messaging (OTR)
@@ -18,6 +14,4 @@ otr-require-encryption =
 otr-require-encryption-info = Если было запрошено сквозное шифрование, то сообщения в разговорах один на один не будут отправлены, если их не удалось зашифровать. Полученные незашифрованные сообщения не будет отображаться как часть обычного разговора и не будут заноситься в логи.
 otr-verify-nudge =
     .label = Всегда напоминать мне о проверке непроверенного контакта
-
 otr-not-yet-available = пока недоступно
-

@@ -35,7 +35,6 @@ class RemoteDragStartData;
 [ptr] native DataTransferPtr(mozilla::dom::DataTransfer);
 [ptr] native RemoteDragStartDataPtr(mozilla::dom::RemoteDragStartData);
 native EventMessage(mozilla::EventMessage);
-[ptr] native nsIWidgetPtr(nsIWidget);
 
 [scriptable, uuid(ebd6b3a2-af16-43af-a698-3091a087dd62), builtinclass]
 interface nsIDragService : nsISupports
@@ -115,7 +114,8 @@ interface nsIDragService : nsISupports
                                       in nsIArray aTransferableArray,
                                       in unsigned long aActionType,
                                       in DragEvent aDragEvent,
-                                      in DataTransferPtr aDataTransfer);
+                                      in DataTransferPtr aDataTransfer,
+                                      in Node aTargetContent);
 
   /**
     * In the parent process, returns the current drag session.  In content,

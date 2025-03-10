@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Samstiling
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Útskráning…
     .accesskey = k
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Nýr reikningur
 appmenu-new-account-panel =
     .label = Nýr reikningur
     .accesskey = N
-appmenu-create-new-mail-account =
-    .label = Fáðu nýjan tölvupóst
-    .accesskey = j
-appmenu-new-mail-account =
-    .label = Núverandi tölvupóstur
-    .accesskey = e
 appmenu-new-email-account =
     .label = Tölvupóstur
     .accesskey = p
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Fréttahópur
     .accesskey = h
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Ný nafnaskrá
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-nafnaskrá
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Búa til
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Tengiliður
     .accesskey = g
-
-## Open
-
 appmenu-open-file-panel =
     .label = Opna úr skrá
     .accesskey = O
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Dagatal…
     .accesskey = D
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Skoða
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Auka leturstærð
 appmenuitem-font-size-reduce =
     .tooltiptext = Minnka leturstærð
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size }px
     .tooltiptext = Endurstilla stærð leturs
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Verkfæri
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Flytja út
     .accesskey = F
+appmenu-export-for-mobile =
+    .label = Útflutningur fyrir farsíma
+    .accesskey = f
 appmenu-tools-message-search =
     .label = Leita í póstum
     .accesskey = p
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Forritunarverkfæri
     .accesskey = t
-
-## Help
-
 appmenu-help-panel-title =
     .title = Hjálp
 appmenu-help-get-help =
     .label = Fá aðstoð
     .accesskey = a
-appmenu-help-explore-features =
-    .label = Kanna eiginleika
-    .accesskey = e
 appmenu-help-get-release-help =
     .label = Fáðu aðstoð með { -brand-short-name }
     .accesskey = F
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = Um { -brand-short-name }
     .accesskey = m
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = Sæki { -brand-shorter-name } uppfærslu
 appmenuitem-banner-update-available =

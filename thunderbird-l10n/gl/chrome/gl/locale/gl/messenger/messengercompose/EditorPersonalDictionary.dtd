@@ -1,10 +1,4 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
-<!-- Window title -->
 <!ENTITY windowTitle.label "Dicionario persoal">
-
 <!ENTITY wordEditField.label "Nova palabra:">
 <!ENTITY wordEditField.accessKey "n">
 <!ENTITY AddButton.label "Engadir">
@@ -13,6 +7,5 @@
 <!ENTITY DictionaryList.accessKey "a">
 <!ENTITY RemoveButton.label "Eliminar">
 <!ENTITY RemoveButton.accessKey "E">
-
 <!ENTITY CloseButton.label "Pechar">
 <!ENTITY CloseButton.accessKey "P">

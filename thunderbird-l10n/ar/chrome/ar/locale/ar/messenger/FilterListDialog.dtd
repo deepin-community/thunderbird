@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY window.title "مرشِّحات الرسائِل">
 <!ENTITY nameColumn.label "اسم المرشِّح">
 <!ENTITY activeColumn.label "مُفعّل">
@@ -36,8 +32,5 @@
 <!ENTITY folderPickerPrefix.accesskey "م">
 <!ENTITY helpButton.label "مساعدة">
 <!ENTITY helpButton.accesskey "م">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "ابحث في المُرشّحات بالاسم…">
-
-
-

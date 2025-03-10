@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 url-classifier-title = ข้อมูลตัวจําแนก URL
 url-classifier-search-title = ค้นหา
 url-classifier-search-result-title = ผลลัพธ์
@@ -40,7 +36,6 @@ url-classifier-debug-sb-modules = โมดูลรายการบันท�
 url-classifier-debug-modules = โมดูลรายการบันทึกปัจจุบัน
 url-classifier-debug-sbjs-modules = รายการบันทึก JS การเรียกดูแบบปลอดภัย
 url-classifier-debug-file = ไฟล์รายการบันทึกปัจจุบัน
-
 url-classifier-trigger-update = กระตุ้นการอัปเดต
 url-classifier-not-available = ไม่มี
 url-classifier-disable-sbjs-log = ปิดใช้งานรายการบันทึก JS การเรียกดูแบบปลอดภัย
@@ -50,9 +45,5 @@ url-classifier-disabled = ปิดใช้งานอยู่
 url-classifier-updating = กำลังอัปเดต
 url-classifier-cannot-update = ไม่สามารถอัปเดต
 url-classifier-success = สำเร็จ
-
-## Variables
-##   $error (string) - Error message
-
 url-classifier-update-error = ข้อผิดพลาดการอัปเดต ({ $error })
 url-classifier-download-error = ข้อผิดพลาดการดาวน์โหลด ({ $error })

@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Table
-
 tree-list-view-row-select =
     .alt = Kontrol-laukia txandakatzeko uneko errenkada aukeratua
     .title = Hautatu uneko errenkada
@@ -17,8 +10,6 @@ tree-list-view-row-restore =
     .title = Leheneratu uneko errenkada
 tree-list-view-column-picker =
     .title = Hautatu bistaratzeko zutabeak
-tree-list-view-column-picker-restore =
-    .label = Berrezarri zutabeen ordena
 tree-list-view-column-picker-restore-default-columns =
     .label = Berrezarri zutabe lehenetsiak
 tree-list-view-row-thread-button =

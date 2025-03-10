@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Informação para resolução de problemas
 page-subtitle =
     Esta página contém informação técnica que pode ser útil para quando estiver
@@ -41,8 +37,6 @@ app-basics-version = Versão
 app-basics-build-id = ID da compilação
 app-basics-distribution-id = ID de distribuição
 app-basics-update-channel = Canal de atualização
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Diretório de atualizações
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Histórico de atualizações
 app-basics-show-update-history = Mostrar histórico de atualizações
-# Represents the path to the binary used to start the application.
 app-basics-binary = Binário da aplicação
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Diretório do perfil
        *[other] Pasta do perfil
     }
-app-basics-enabled-plugins = Plugins ativados
 app-basics-build-config = Configuração da compilação
 app-basics-user-agent = Agente do utilizador
 app-basics-os = SO
 app-basics-os-theme = Tema do sistema operativo
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Utilização da memória
 app-basics-performance = Desempenho
@@ -82,9 +72,6 @@ app-basics-safe-mode = Modo de segurança
 app-basics-memory-size = Tamanho da Memória (RAM)
 app-basics-disk-available = Espaço em disco disponível
 app-basics-pointing-devices = Dispositivos Apontadores
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Registo de decisões
 graphics-crash-guards-title = Funcionalidades desativadas do Crash Guard
 graphics-workarounds-title = Alternativas
 graphics-device-pixel-ratios = Proporções de Píxeis da Janela do Dispositivo
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Protocolo de janela
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Ambiente gráfico
 place-database-title = Base de dados de locais
 place-database-stats = Estatísticas
@@ -156,9 +141,6 @@ clear-startup-cache-label = Limpar cache de arranque ...
 startup-cache-dialog-title2 = Reiniciar o { -brand-short-name } para limpar a cache de inicialização?
 startup-cache-dialog-body2 = Isto não irá mudar as suas configurações nem irá remover as extensões.
 restart-button-label = Reiniciar
-
-## Media titles
-
 audio-backend = Backend de áudio
 max-audio-channels = Máximo de canais
 sample-rate = Taxa de amostras preferida
@@ -177,11 +159,7 @@ media-device-rate = Taxa
 media-device-latency = Latência
 media-capabilities-title = Recursos de media
 media-codec-support-info = Informações de suporte do codec
-# List all the entries of the database.
 media-capabilities-enumerate = Enumeração de base de dados
-
-## Codec support table
-
 media-codec-support-sw-decoding = Descodificação por Software
 media-codec-support-hw-decoding = Descodificação por Hardware
 media-codec-support-codec-name = Nome do Codec
@@ -189,26 +167,13 @@ media-codec-support-supported = Suportado
 media-codec-support-unsupported = Não suportado
 media-codec-support-error = Informações de suporte de codec indisponíveis. Tente novamente após reproduzir um ficheiro de multimédia.
 media-codec-support-lack-of-extension = Instalar extensão
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Informação dos módulos de desencriptação de conteúdo
 media-key-system-name = Nome do sistema de chaves
 media-video-robustness = Robustez do vídeo
 media-audio-robustness = Robustez do áudio
 media-cdm-capabilities = Capacidades
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Início limpo
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Compatível com HDCP 2.2
-
-##
-
 intl-title = Internacionalização e idioma
 intl-app-title = Definições da aplicação
 intl-locales-requested = Idiomas solicitados
@@ -218,52 +183,29 @@ intl-locales-default = Idioma predefinido
 intl-os-title = Sistema operativo
 intl-os-prefs-system-locales = Idiomas do sistema
 intl-regional-prefs = Preferências regionais
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Depuração remota (Protocolo do Chromium)
 remote-debugging-accepting-connections = A aceitar ligações
 remote-debugging-url = Endereço
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Relatórios de falha para { $days } dia
        *[other] Relatórios de falha para os últimos { $days } dias
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } minuto atrás
        *[other] { $minutes } minutos atrás
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } hora atrás
        *[other] { $hours } horas atrás
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } dia atrás
        *[other] { $days } dias atrás
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Todos os relatórios de falha (incluindo { $reports } relatório pendente de um dado intervalo de tempo)
@@ -271,18 +213,11 @@ pending-reports =
     }
 raw-data-copied = Dados em bruto copiados para a área de transferência
 text-copied = Texto copiado para a área de transferência
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Bloqueado para a sua versão do controlador gráfico.
 blocked-gfx-card = Bloqueado para a sua placa gráfica devido a um problema no controlador.
 blocked-os-version = Bloqueado para a sua versão do sistema operativo.
 blocked-mismatched-version = Bloqueado por não correspondência do registo e DLL para a sua versão do controlador gráfico.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Bloqueado para a sua versão do controlador gráfico. Tente atualizar o controlador da sua placa gráfica para a versão { $driverVersion } ou mais recente.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Parâmetros ClearType
 compositing = Composição
 support-font-determination = Informação de depuração de visibilidade de tipo de letra
@@ -292,11 +227,6 @@ yes = Sim
 no = Não
 unknown = Desconhecido
 virtual-monitor-disp = Ecrã virtual
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Encontrada
 missing = Em falta
 gpu-process-pid = GPUProcessPid
@@ -323,11 +253,7 @@ webgl2-driver-extensions = Extensões do controlador WebGL 2
 webgl2-extensions = Extensões WebGL 2
 webgpu-default-adapter = Adaptador WebGPU predefinido
 webgpu-fallback-adapter = Adaptador WebGPU de recurso
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Bloqueado devido a problemas conhecidos: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Na lista de bloqueio; código de falha { $failureCode }
 d3d11layers-crash-guard = Compositor D3D11
 glcontext-crash-guard = OpenGL
@@ -347,8 +273,6 @@ has-seccomp-bpf = Seccomp-BPF (Filtro de chamada do sistema)
 has-seccomp-tsync = Sincronização de threads Seccomp
 has-user-namespaces = Espaço de nomes do utilizador
 has-privileged-user-namespaces = Espaço de nomes do utilizador para processos privilegiados
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Esta funcionalidade não é permitida pelo seu sistema. Isto pode restringir as funcionalidades de segurança do { -brand-short-name }.
 can-sandbox-content = Sandboxing do processo de conteúdo
 can-sandbox-media = Sandboxing do plugin multimédia
@@ -369,16 +293,8 @@ launcher-process-status-0 = Ativado
 launcher-process-status-1 = Desativado devido a falha
 launcher-process-status-2 = Desativado forçadamente
 launcher-process-status-unknown = Estado desconhecido
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Desativado por experimento
-fission-status-experiment-treatment = Ativado por experimento
 fission-status-disabled-by-e10s-env = Desativado pelo ambiente
 fission-status-enabled-by-env = Ativado pelo ambiente
 fission-status-disabled-by-env = Desativada pelo ambiente
@@ -387,7 +303,6 @@ fission-status-disabled-by-default = Desativado por predefinição
 fission-status-enabled-by-user-pref = Ativado pelo utilizador
 fission-status-disabled-by-user-pref = Desativado pelo utilizador
 fission-status-disabled-by-e10s-other = E10 desativados
-fission-status-enabled-by-rollout = Ativado para disponibilização por fases
 async-pan-zoom = Deslocamento panorâmico/zoom assíncronos
 apz-none = nenhum
 wheel-enabled = introdução com roda ativada
@@ -396,34 +311,20 @@ drag-enabled = arrasto da barra de deslocamento ativado
 keyboard-enabled = teclado ativado
 autoscroll-enabled = auto-deslocamento ativado
 zooming-enabled = beliscar para zoom suave ativado
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = introdução assíncrona com roda desativada devido a preferência não suportada: { $preferenceKey }
 touch-warning = introdução assíncrona com toque desativada devido a preferência não suportada: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Inativas
 policies-active = Ativas
 policies-error = Erro
-
-## Printing section
-
 support-printing-title = Impressão
 support-printing-troubleshoot = Resolução de problemas
 support-printing-clear-settings-button = Limpar configurações de impressão guardadas
 support-printing-modified-settings = Configurações de impressão modificadas
 support-printing-prefs-name = Nome
 support-printing-prefs-value = Valor
-
-## Remote Settings sections
-
 support-remote-settings-title = Definições remotas
 support-remote-settings-status = Estado
 support-remote-settings-status-ok = Ok
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Não está a funcionar
 support-remote-settings-last-check = Última verificação
 support-remote-settings-local-timestamp = Marca temporal local
@@ -431,9 +332,6 @@ support-remote-settings-sync-history = Histórico
 support-remote-settings-sync-history-status = Estado
 support-remote-settings-sync-history-datetime = Data
 support-remote-settings-sync-history-infos = Informações
-
-## Normandy sections
-
 support-remote-experiments-title = Experiências remotas
 support-remote-experiments-name = Nome
 support-remote-experiments-branch = Ramo experimental
@@ -441,19 +339,10 @@ support-remote-experiments-see-about-studies = Consulte <a data-l10n-name="suppo
 support-remote-features-title = Funcionalidades remotas
 support-remote-features-name = Nome
 support-remote-features-status = Estado
-
-## Pointing devices
-
 pointing-device-mouse = Rato
 pointing-device-touchscreen = Ecrã tátil
 pointing-device-pen-digitizer = Caneta Digitalizadora
 pointing-device-none = Sem dispositivos apontadores
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Análise de conteúdo (DLP)
 content-analysis-active = Ativa
 content-analysis-connected-to-agent = Ligado ao agente

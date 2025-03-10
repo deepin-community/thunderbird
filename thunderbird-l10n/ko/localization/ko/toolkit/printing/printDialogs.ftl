@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 print-setup =
     .title = 페이지 설정
 custom-prompt-title = 사용자 지정…
@@ -103,9 +99,6 @@ print-window =
     .title = 인쇄 중
 print-complete =
     .value = 인쇄가 완료되었습니다.
-
-# Variables
-# $percent (integer) - Number of printed percentage
 print-percent =
     .value = { $percent }%
 dialog-cancel-label = 취소

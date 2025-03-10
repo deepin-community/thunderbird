@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 password-not-set =
     .value = (не установлен)
 failed-pp-change = Не удалось изменить основной пароль.
@@ -21,7 +17,6 @@ set-password-new-password = Введите новый пароль:
 set-password-reenter-password = Повторите ввод пароля:
 set-password-meter = Уровень качества пароля
 set-password-meter-loading = Загрузка
-primary-password-admin = Ваш администратор требует установить основной пароль для сохранения логинов и паролей.
 primary-password-required-by-policy = Ваша организация требует установить Основной пароль для сохранения логинов и паролей.
 primary-password-description = Основной пароль используется для защиты некоторой личной информации, такой как логины и пароли, на этом устройстве. Если вы создадите основной пароль, вам нужно будет вводить его один раз в каждой сессии, когда { -brand-short-name } понадобится сохранённая информация, защищённая этим паролем.
 primary-password-warning = Убедитесь, что запомнили основной пароль, который установили. Если вы забудете свой основной пароль, то больше не сможете получить доступ к информации, защищённой им на этом устройстве.

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = 排障信息
 page-subtitle =
     本页面包含的技术信息在您寻求解决方法时或许能帮上忙。
@@ -41,8 +37,6 @@ app-basics-version = 版本
 app-basics-build-id = 版本 ID
 app-basics-distribution-id = 发行 ID
 app-basics-update-channel = 更新通道
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] 更新目录
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = 更新历史
 app-basics-show-update-history = 显示更新历史
-# Represents the path to the binary used to start the application.
 app-basics-binary = 应用程序二进制文件
 app-basics-profile-dir =
     { PLATFORM() ->
-        [linux] 配置文件夹
-       *[other] 配置文件夹
+        [linux] 配置文件文件夹
+       *[other] 配置文件文件夹
     }
-app-basics-enabled-plugins = 已启用的插件
 app-basics-build-config = 构建配置
 app-basics-user-agent = 用户代理
 app-basics-os = 操作系统
 app-basics-os-theme = 操作系统主题
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = 由 Rosetta 转译
 app-basics-memory-use = 内存使用
 app-basics-performance = 性能
@@ -82,9 +72,6 @@ app-basics-safe-mode = 安全模式
 app-basics-memory-size = 内存大小（RAM）
 app-basics-disk-available = 磁盘可用空间
 app-basics-pointing-devices = 定点设备
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = 决策日志
 graphics-crash-guards-title = 被崩溃守卫禁用的功能
 graphics-workarounds-title = 变通方法
 graphics-device-pixel-ratios = 窗口设备像素比
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = 窗口协议
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = 桌面环境
 place-database-title = Places 数据库
 place-database-stats = 统计信息
@@ -156,9 +141,6 @@ clear-startup-cache-label = 清除启动缓存...
 startup-cache-dialog-title2 = 要重启 { -brand-short-name } 以清除启动缓存吗？
 startup-cache-dialog-body2 = 将不会更改您的设置或移除扩展。
 restart-button-label = 重启
-
-## Media titles
-
 audio-backend = 音频后端
 max-audio-channels = 最大声道
 sample-rate = 首选采样率
@@ -176,12 +158,8 @@ media-device-channels = 声道
 media-device-rate = 采样率
 media-device-latency = 延迟
 media-capabilities-title = 媒体能力
-media-codec-support-info = 解码器支持信息
-# List all the entries of the database.
+media-codec-support-info = 编解码器支持信息
 media-capabilities-enumerate = 枚举数据库
-
-## Codec support table
-
 media-codec-support-sw-decoding = 软件解码
 media-codec-support-hw-decoding = 硬件解码
 media-codec-support-codec-name = 编解码器名称
@@ -189,26 +167,13 @@ media-codec-support-supported = 已支持
 media-codec-support-unsupported = 不支持
 media-codec-support-error = 无法获取编解码器支持信息，请在播放媒体文件后重试。
 media-codec-support-lack-of-extension = 安装扩展
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = 内容解密模块信息
 media-key-system-name = 密钥系统名称
 media-video-robustness = 视频稳定性
 media-audio-robustness = 音频稳定性
 media-cdm-capabilities = 功能
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = 不加密的前导段
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = 兼容 HDCP 2.2
-
-##
-
 intl-title = 国际化与本地化
 intl-app-title = 应用程序设置
 intl-locales-requested = 要求的语言环境
@@ -217,52 +182,22 @@ intl-locales-supported = 应用程序语言环境
 intl-locales-default = 默认语言环境
 intl-os-title = 操作系统
 intl-os-prefs-system-locales = 系统语言环境
-intl-regional-prefs = 地区偏好
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
+intl-regional-prefs = 区域偏好
 remote-debugging-title = 远程调试（Chromium 协议）
 remote-debugging-accepting-connections = 接受连接
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days = 近 { $days } 天的崩溃报告
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes = { $minutes } 分钟前
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours = { $hours } 小时前
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days = { $days } 天前
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports = 全部崩溃报告（包括 { $reports } 个待上传的指定时间范围内的崩溃）
 raw-data-copied = 原始数据已复制到剪贴板
 text-copied = 文本已复制到剪贴板
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = 因您的显卡驱动版本而无法启用。
 blocked-gfx-card = 因您显卡驱动的未解决的问题而无法启用。
 blocked-os-version = 因您的操作系统版本而无法启用。
 blocked-mismatched-version = 因您的注册表与 DLL 中的显卡驱动程序版本号不相符而无法启用。
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = 因您的显卡驱动版本而无法启用。请尝试更新您的显卡驱动程序至版本 { $driverVersion } 或更新的版本。
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType 参数
 compositing = 合成
 support-font-determination = 字体可见性调试信息
@@ -272,11 +207,6 @@ yes = 是
 no = 否
 unknown = 未知
 virtual-monitor-disp = 虚拟显示器
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = 存在
 missing = 缺失
 gpu-process-pid = GPUProcessPid
@@ -303,11 +233,7 @@ webgl2-driver-extensions = WebGL 2 驱动程序扩展
 webgl2-extensions = WebGL 2 扩展
 webgpu-default-adapter = WebGPU 默认显卡
 webgpu-fallback-adapter = WebGPU 备用显卡
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = 由于已知问题，被列入屏蔽列表：<a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = 已列入黑名单；故障代码 { $failureCode }
 d3d11layers-crash-guard = D3D11 合成器
 glcontext-crash-guard = OpenGL
@@ -327,8 +253,6 @@ has-seccomp-bpf = Seccomp-BPF（系统调用过滤）
 has-seccomp-tsync = Seccomp 线程同步
 has-user-namespaces = 用户命名空间
 has-privileged-user-namespaces = 用于特权进程的用户命名空间
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } - 您的系统不允许此功能，可能限制 { -brand-short-name } 的安全功能发挥作用。
 can-sandbox-content = 内容进程沙盒化
 can-sandbox-media = 媒体插件沙盒化
@@ -349,16 +273,8 @@ launcher-process-status-0 = 启用
 launcher-process-status-1 = 因故障而禁用
 launcher-process-status-2 = 强制禁用
 launcher-process-status-unknown = 未知状态
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = 通过实验禁用
-fission-status-experiment-treatment = 通过实验启用
 fission-status-disabled-by-e10s-env = 被环境禁用
 fission-status-enabled-by-env = 由环境启用
 fission-status-disabled-by-env = 被环境禁用
@@ -367,7 +283,6 @@ fission-status-disabled-by-default = 默认禁用
 fission-status-enabled-by-user-pref = 由用户启用
 fission-status-disabled-by-user-pref = 被用户禁用
 fission-status-disabled-by-e10s-other = 已禁用 E10s
-fission-status-enabled-by-rollout = 通过分阶段推出启用
 async-pan-zoom = 异步平移/缩放
 apz-none = 无
 wheel-enabled = 滚轮输入已启用
@@ -376,34 +291,20 @@ drag-enabled = 滚动条拖动已启用
 keyboard-enabled = 键盘已启用
 autoscroll-enabled = 自动滚动已启用
 zooming-enabled = 已启用平滑手势缩放
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = 因为不支持的首选项: { $preferenceKey }，已禁用异步滚轮输入
 touch-warning = 因为不支持的首选项: { $preferenceKey }，已禁用异步触摸输入
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = 未激活
 policies-active = 已激活
 policies-error = 错误
-
-## Printing section
-
 support-printing-title = 打印
 support-printing-troubleshoot = 故障排除
 support-printing-clear-settings-button = 清除保存的打印设置
 support-printing-modified-settings = 修改过的打印设置
 support-printing-prefs-name = 名称
 support-printing-prefs-value = 值
-
-## Remote Settings sections
-
 support-remote-settings-title = 远程设置
 support-remote-settings-status = 状态
 support-remote-settings-status-ok = 确定
-# Status when synchronization is not working.
 support-remote-settings-status-broken = 未生效
 support-remote-settings-last-check = 上次检查
 support-remote-settings-local-timestamp = 本地时间戳
@@ -411,9 +312,6 @@ support-remote-settings-sync-history = 历史
 support-remote-settings-sync-history-status = 状态
 support-remote-settings-sync-history-datetime = 日期
 support-remote-settings-sync-history-infos = 信息
-
-## Normandy sections
-
 support-remote-experiments-title = 远程实验
 support-remote-experiments-name = 名称
 support-remote-experiments-branch = 实验分支
@@ -421,19 +319,10 @@ support-remote-experiments-see-about-studies = 欲详细了解，请参见 <a da
 support-remote-features-title = 远程功能
 support-remote-features-name = 名称
 support-remote-features-status = 状态
-
-## Pointing devices
-
 pointing-device-mouse = 鼠标
 pointing-device-touchscreen = 触摸屏
 pointing-device-pen-digitizer = 数位板
 pointing-device-none = 无定点设备
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = 内容分析（DLP）
 content-analysis-active = 已启用
 content-analysis-connected-to-agent = 已与程序连接

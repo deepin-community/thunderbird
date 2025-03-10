@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Каляндар
 calendar-title-reminder = Напамінкі
 calendar-title-notification = Апавяшчэнні
@@ -9,10 +5,8 @@ calendar-title-category = Катэгорыі
 dateformat-label =
     .value = Тэкставы фармат даты:
     .accesskey = Д
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Поўны: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Сціслы: { $date }
 use-system-timezone-radio-button =
@@ -76,6 +70,9 @@ midnight-label =
     .label = Поўнач
 noon-label =
     .label = Поўдзень
+location-checkbox =
+    .label = Паказваць месца
+    .accesskey = П
 number-of-weeks-label =
     .value = Паказваць тыдняў (з улікам папярэдніх тыдняў):
     .accesskey = з

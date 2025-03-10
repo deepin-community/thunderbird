@@ -1,31 +1,21 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 toolbar-context-menu-menu-bar =
     .toolbarname = Menü çubuğu
     .accesskey = M
-
-## Tools Menu
-
 menu-tools-settings =
     .label = Ayarlar
     .accesskey = A
 menu-addons-and-themes =
     .label = Eklentiler ve temalar
     .accesskey = E
-
-## Help Menu
-
+menu-export-for-mobile =
+    .label = Mobil cihazlar için dışa aktar…
+    .accesskey = M
 menu-help-help-title =
     .label = Yardım
     .accesskey = Y
 menu-help-get-help =
     .label = Yardım al
     .accesskey = Y
-menu-help-explore-features =
-    .label = Özellikleri keşfet
-    .accesskey = Ö
 menu-help-get-release-help =
     .label = { -brand-short-name } hakkında yardım al
     .accesskey = r
@@ -53,7 +43,6 @@ menu-help-troubleshooting-info =
 menu-help-about-product =
     .label = { -brand-short-name } hakkında
     .accesskey = a
-# These menu-quit strings are only used on Windows and Linux.
 menu-quit =
     .label =
         { PLATFORM() ->
@@ -65,7 +54,6 @@ menu-quit =
             [windows] ı
            *[other] ı
         }
-# This menu-quit-mac string is only used on macOS.
 menu-quit-mac =
     .label = { -brand-shorter-name } uygulamasından çık
 system-tray-menu-quit =
@@ -74,14 +62,8 @@ system-tray-menu-quit =
             [windows] { -brand-full-name } uygulamasından çık
            *[other] { -brand-full-name } uygulamasından çık
         }
-# Localization note: Do not translate unless your locale's keyboard layout
-# does not include this key, as it determines the keyboard shortcut for
-# shutting down the application.
 quit-app-shortcut =
     .key = Q
-
-## Mail Toolbar
-
 toolbar-junk-button =
     .label = Gereksiz
     .tooltiptext = Seçili iletileri gereksiz olarak işaretle
@@ -94,21 +76,12 @@ toolbar-delete-button =
 toolbar-undelete-button =
     .label = Silmeyi geri al
     .tooltiptext = Seçili iletileri silmeyi geri al
-
-## View
-
 menu-view-repair-text-encoding =
     .label = Metin kodlamasını onar
     .accesskey = M
-
-## View / Folders
-
 menu-view-folders-toggle-header =
     .label = Klasör bölmesi başlığı
     .accesskey = K
-
-## View / Layout
-
 menu-view-toggle-thread-pane-header =
     .label = İleti listesi başlığı
     .accesskey = e
@@ -139,9 +112,6 @@ mail-uidensity-relaxed =
 menu-spaces-toolbar-button =
     .label = Sekme araç çubuğu
     .accesskey = S
-
-## File
-
 file-new-email-account =
     .label = E-posta hesabı…
     .accesskey = E

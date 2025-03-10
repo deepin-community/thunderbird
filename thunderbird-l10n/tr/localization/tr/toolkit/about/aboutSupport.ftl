@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Sorun giderme bilgileri
 page-subtitle =
     Bu sayfa, bir sorunu gidermeye çalışırken işinize yarayabilecek teknik bilgiler içerir.
@@ -41,8 +37,6 @@ app-basics-version = Sürüm
 app-basics-build-id = Yapı numarası
 app-basics-distribution-id = Dağıtım kimliği
 app-basics-update-channel = Güncelleme kanalı
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Güncelleme dizini
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Güncelleme geçmişi
 app-basics-show-update-history = Güncelleme geçmişini göster
-# Represents the path to the binary used to start the application.
 app-basics-binary = Çalıştırılabilir uygulama dosyası
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Profil dizini
        *[other] Profil klasörü
     }
-app-basics-enabled-plugins = Devredeki yan uygulamalar
 app-basics-build-config = Yapılandırma
 app-basics-user-agent = Kullanıcı istemcisi
 app-basics-os = İşletim sistemi
 app-basics-os-theme = İşletim sistemi teması
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Rosetta Translated
 app-basics-memory-use = Bellek kullanımı
 app-basics-performance = Performans
@@ -82,9 +72,6 @@ app-basics-safe-mode = Güvenli kip
 app-basics-memory-size = Bellek boyutu (RAM)
 app-basics-disk-available = Kullanılabilir disk alanı
 app-basics-pointing-devices = İşaretleme aygıtları
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Karar günlüğü
 graphics-crash-guards-title = Çökme koruyucusu tarafından kapatılan özellikler
 graphics-workarounds-title = Çözümler
 graphics-device-pixel-ratios = Pencere cihaz piksel oranları
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Pencere protokolü
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Masaüstü ortamı
 place-database-title = Places veritabanı
 place-database-stats = İstatistikler
@@ -156,9 +141,6 @@ clear-startup-cache-label = Başlangıç önbelleğini temizle…
 startup-cache-dialog-title2 = Başlangıç önbelleğini temizlemek için { -brand-short-name } yeniden başlatılsın mı?
 startup-cache-dialog-body2 = Bu işlem, ayarlarınızı değiştirmez ve uzantılarınızı kaldırmaz.
 restart-button-label = Yeniden başlat
-
-## Media titles
-
 audio-backend = Ses arka ucu
 max-audio-channels = En fazla kanal
 sample-rate = Tercih edilen örnekleme hızı
@@ -177,11 +159,7 @@ media-device-rate = Hız
 media-device-latency = Gecikme
 media-capabilities-title = Çoku ortam yetenekleri
 media-codec-support-info = Codec destek bilgileri
-# List all the entries of the database.
 media-capabilities-enumerate = Veritabanını numaralandır
-
-## Codec support table
-
 media-codec-support-sw-decoding = Yazılımsal çözme
 media-codec-support-hw-decoding = Donanımsal çözme
 media-codec-support-codec-name = Codec adı
@@ -189,26 +167,13 @@ media-codec-support-supported = Destekleniyor
 media-codec-support-unsupported = Desteklenmiyor
 media-codec-support-error = Codec destek bilgisi mevcut değil. Bir medya dosyasını oynattıktan sonra tekrar deneyin.
 media-codec-support-lack-of-extension = Uzantı yükle
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = İçerik çözme modülleri bilgileri
 media-key-system-name = Anahtar sistemi adı
 media-video-robustness = Video sağlamlığı
 media-audio-robustness = Ses sağlamlığı
 media-cdm-capabilities = Yetenekler
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Clear Lead
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = HDCP 2.2 uyumlu
-
-##
-
 intl-title = Uluslararasılaştırma ve yerelleştirme
 intl-app-title = Uygulama ayarları
 intl-locales-requested = İstenen diller
@@ -218,52 +183,29 @@ intl-locales-default = Varsayılan dil
 intl-os-title = İşletim sistemi
 intl-os-prefs-system-locales = Sistem dilleri
 intl-regional-prefs = Bölgesel tercihler
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Uzaktan hata ayıklama (Chromium protokolü)
 remote-debugging-accepting-connections = Bağlantılar kabul ediliyor mu?
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Son { $days } günün çökme raporları
        *[other] Son { $days } günün çökme raporları
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } dakika önce
        *[other] { $minutes } dakika önce
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } saat önce
        *[other] { $hours } saat önce
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } gün önce
        *[other] { $days } gün önce
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Tüm çökme raporları (belirtilen zaman aralığındaki { $reports } bekleyen çökme dahil)
@@ -271,18 +213,11 @@ pending-reports =
     }
 raw-data-copied = Ham veriler panoya kopyalandı
 text-copied = Metin panoya kopyalandı
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Grafik kartı sürücüsü sürümünüz için engellenmiştir.
 blocked-gfx-card = Çözülemeyen sürücü sorunları nedeniyle grafik kartınız için engellenmiştir.
 blocked-os-version = İşletim sistemi sürümünüz için engellenmiştir.
 blocked-mismatched-version = Kayıt defteriyle DLL arasındaki grafik sürücüsü uyumsuzluğunuz nedeniyle engellendi.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Grafik kartı sürücüsü sürümünüz için engellenmiştir. Grafik kartı sürücünüzü { $driverVersion } veya daha yeni bir sürüme güncellemeyi deneyin.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = ClearType parametreleri
 compositing = Çizici
 support-font-determination = Yazı tipi görünürlüğü hata ayıklama bilgileri
@@ -292,11 +227,6 @@ yes = Evet
 no = Hayır
 unknown = Bilinmiyor
 virtual-monitor-disp = Sanal monitör ekranı
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Bulundu
 missing = Eksik
 gpu-process-pid = GPUProcessPid
@@ -323,11 +253,7 @@ webgl2-driver-extensions = WebGL 2 sürücü uzantıları
 webgl2-extensions = WebGL 2 uzantıları
 webgpu-default-adapter = Varsayılan WebGPU bağdaştırıcısı
 webgpu-fallback-adapter = Yedek WebGPU bağdaştırıcısı
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Bilinen sorunlar nedeniyle engellendi: <a data-l10n-name="bug-link">bug { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Engellendi. Hata kodu { $failureCode }
 d3d11layers-crash-guard = D3D11 compositor
 glcontext-crash-guard = OpenGL
@@ -347,8 +273,6 @@ has-seccomp-bpf = Seccomp-BPF (sistem çağrısı filtreleme)
 has-seccomp-tsync = Seccomp işlem senkronizasyonu
 has-user-namespaces = Kullanıcı isim uzayları
 has-privileged-user-namespaces = Ayrıcalıklı işlemler için kullanıcı isim uzayları
-# Variables
-# $status (string) - Boolean value of hasUserNamespaces (should only be false when support-user-namespaces-unavailable is used)
 support-user-namespaces-unavailable = { $status } — Sisteminiz bu özelliğe izin vermiyor. Bu durum { -brand-short-name } tarayıcısının güvenlik özelliklerini kısıtlayabilir.
 can-sandbox-content = İçerik işlemi sandbox’ı
 can-sandbox-media = Ortam yan uygulaması sandbox’ı
@@ -369,16 +293,8 @@ launcher-process-status-0 = Etkin
 launcher-process-status-1 = Hata nedeniyle devre dışı
 launcher-process-status-2 = Zorla devre dışı bırakıldı
 launcher-process-status-unknown = Bilinmeyen durum
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Deney tarafından kapatıldı
-fission-status-experiment-treatment = Deney tarafından açıldı
 fission-status-disabled-by-e10s-env = Ortam tarafından kapatıldı
 fission-status-enabled-by-env = Ortam tarafından açıldı
 fission-status-disabled-by-env = Ortam tarafından kapatıldı
@@ -387,7 +303,6 @@ fission-status-disabled-by-default = varsayılan olarak kapalı
 fission-status-enabled-by-user-pref = kullanıcı tarafından açıldı
 fission-status-disabled-by-user-pref = Kullanıcı tarafından kapatıldı
 fission-status-disabled-by-e10s-other = E10s devre dışı
-fission-status-enabled-by-rollout = Aşamalı dağıtımla etkinleştirildi
 async-pan-zoom = Asenkron kaydır/yakınlaştır
 apz-none = yok
 wheel-enabled = tekerlek girdisi etkin
@@ -396,34 +311,20 @@ drag-enabled = kaydırma çubuğu sürükleme etkin
 keyboard-enabled = klavye etkin
 autoscroll-enabled = otomatik kaydırma etkin
 zooming-enabled = yumuşak pinch-zoom etkin
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = desteklenmeyen tercih nedeniyle asenkron tekerlek girdisi devre dışı bırakıldı: { $preferenceKey }
 touch-warning = desteklenmeyen tercih nedeniyle asenkron dokunma girdisi devre dışı bırakıldı: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Pasif
 policies-active = Aktif
 policies-error = Hata
-
-## Printing section
-
 support-printing-title = Yazdırma
 support-printing-troubleshoot = Sorun giderme
 support-printing-clear-settings-button = Kayıtlı yazdırma ayarlarını temizle
 support-printing-modified-settings = Değiştirilmiş yazdırma ayarları
 support-printing-prefs-name = Ad
 support-printing-prefs-value = Değer
-
-## Remote Settings sections
-
 support-remote-settings-title = Uzak ayarlar
 support-remote-settings-status = Durum
 support-remote-settings-status-ok = Tamam
-# Status when synchronization is not working.
 support-remote-settings-status-broken = Çalışmıyor
 support-remote-settings-last-check = Son kontrol
 support-remote-settings-local-timestamp = Yerel zaman damgası
@@ -431,9 +332,6 @@ support-remote-settings-sync-history = Geçmiş
 support-remote-settings-sync-history-status = Durum
 support-remote-settings-sync-history-datetime = Tarih
 support-remote-settings-sync-history-infos = Bilgiler
-
-## Normandy sections
-
 support-remote-experiments-title = Uzak deneyler
 support-remote-experiments-name = Adı
 support-remote-experiments-branch = Deney kolu
@@ -441,19 +339,10 @@ support-remote-experiments-see-about-studies = Daha fazla bilgi için <a data-l1
 support-remote-features-title = Uzak özellikler
 support-remote-features-name = Adı
 support-remote-features-status = Durum
-
-## Pointing devices
-
 pointing-device-mouse = Fare
 pointing-device-touchscreen = Dokunmatik ekran
 pointing-device-pen-digitizer = Kalem sayısallaştırıcı
 pointing-device-none = İşaretleme aygıtı yok
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = İçerik analizi (DLP)
 content-analysis-active = Etkin
 content-analysis-connected-to-agent = İstemciye bağlanıldı

@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 close-button =
     .aria-label = Cerrar
 preferences-doc-title2 = Ajustes
@@ -50,8 +46,6 @@ collection-health-report =
     .label = Permitir a { -brand-short-name } enviar datos técnicos y de interacción a { -vendor-short-name }
     .accesskey = P
 collection-health-report-link = Saber más
-# This message is displayed above disabled data sharing options in developer builds
-# or builds with no Telemetry support available.
 collection-health-report-disabled = El reporte de datos está deshabilitado para esta configuración de compilación
 collection-backlogged-crash-reports =
     .label = Permitir a { -brand-short-name } enviar reportes de fallas pasadas en su nombre
@@ -72,10 +66,6 @@ manage-messenger-languages-button =
 confirm-messenger-language-change-description = Reiniciar { -brand-short-name } para aplicar estos cambios
 confirm-messenger-language-change-button = Aplicar y reiniciar
 update-setting-write-failure-title = Error al guardar las preferencias de actualización
-# Variables:
-#   $path (String) - Path to the configuration file
-# The newlines between the main text and the line containing the path is
-# intentional so the path is easier to identify.
 update-setting-write-failure-message =
     { -brand-short-name } encontró un error y no guardó este cambio. Ten en cuenta que la configuración de esta preferencia de actualización requiere permiso para escribir en el archivo que se encuentra a continuación. Es posible que tú o un administrador del sistema puedan resolver el error otorgando el control total de este archivo al grupo de Usuarios.
     
@@ -83,26 +73,12 @@ update-setting-write-failure-message =
 update-in-progress-title = Actualización en progreso
 update-in-progress-message = ¿Quieres que { -brand-short-name } continúe con esta actualización?
 update-in-progress-ok-button = &Descartar
-# Continue is the cancel button so pressing escape or using a platform standard
-# method of closing the UI will not discard the update.
 update-in-progress-cancel-button = &Continuar
 account-button = Configuración de la cuenta
 open-addons-sidebar-button = Complementos y temas
-
-## OS Authentication dialog
-
-# This message can be seen by trying to add a Primary Password.
 primary-password-os-auth-dialog-message-win = Para crear una contraseña principal, proporciona los datos de acceso de Windows. Esto ayuda a proteger la seguridad de las cuentas.
-# This message can be seen by trying to add a Primary Password.
-# The macOS strings are preceded by the operating system with "Thunderbird is trying to "
-# and includes subtitle of "Enter password for the user "xxx" to allow this." These
-# notes are only valid for English. Please test in your locale.
 primary-password-os-auth-dialog-message-macosx = crear una contraseña principal
-# Don't change this label.
 master-password-os-auth-dialog-caption = { -brand-full-name }
-
-## General Tab
-
 focus-search-shortcut =
     .key = f
 focus-search-shortcut-alt =
@@ -127,8 +103,6 @@ remove-search-engine =
 add-opensearch-provider-title = Agregar proveedor de OpenSearch
 add-opensearch-provider-text = Ingresa la URL del proveedor de OpenSearch para agregar. Utiliza la URL directa del archivo de descripción de OpenSearch o una URL donde se pueda descubrir automáticamente.
 adding-opensearch-provider-failed-title = No se pudo agregar el proveedor OpenSearch
-# Variables:
-# $url (String) - URL an OpenSearch provider was requested for.
 adding-opensearch-provider-failed-text = No se pudo agregar el proveedor de OpenSearch para { $url }.
 minimize-to-tray-label =
     .label = Mover { -brand-short-name } a la bandeja cuando es minimizado
@@ -214,8 +188,6 @@ always-check-default =
 check-default-button =
     .label = Verificar ahora…
     .accesskey = a
-# Note: This is the search engine name for all the different platforms.
-# Platforms that don't support it should be left blank.
 search-engine-name =
     { PLATFORM() ->
         [macos] Destacar
@@ -233,8 +205,6 @@ return-receipts-button =
     .label = Acuses de recibo…
     .accesskey = R
 update-app-legend = Actualizaciones de { -brand-short-name }
-# Variables:
-#   $version (String): version of Thunderbird, e.g. 68.0.1
 update-app-version = Versión { $version }
 allow-description = Permitir que { -brand-short-name }
 automatic-updates-label =
@@ -269,18 +239,10 @@ offline-compact-folder-automatically =
     .accesskey = a
 compact-folder-size =
     .value = MB en total
-
-## Note: The entities use-cache-before and use-cache-after appear on a single
-## line in preferences as follows:
-## use-cache-before [ textbox for cache size in MB ] use-cache-after
-
 use-cache-before =
     .value = Utilizar hasta
     .accesskey = U
 use-cache-after = MB de espacio para el caché
-
-##
-
 smart-cache-label =
     .label = Anular la administración automática de caché
     .accesskey = A
@@ -304,7 +266,6 @@ color-options-button =
     .label = Colores…
     .accesskey = C
 display-width-legend = Mensajes de texto plano
-# Note : convert-emoticons-label 'Emoticons' are also known as 'Smileys', e.g. :-)
 convert-emoticons-label =
     .label = Mostrar emoticones como gráficos
     .accesskey = e
@@ -372,17 +333,10 @@ mark-read-no-delay =
 view-attachments-inline =
     .label = Ver archivos adjuntos en línea
     .accesskey = V
-
-## Note: This will concatenate to "After displaying for [___] seconds",
-## using (mark-read-delay) and a number (seconds-label).
-
 mark-read-delay =
     .label = Después de mostrar para
     .accesskey = d
 seconds-label = segundos
-
-##
-
 open-msg-label =
     .value = Abrir mensajes en:
 open-msg-tab =
@@ -397,14 +351,9 @@ open-msg-ex-window =
 close-move-delete =
     .label = Cerrar ventana/pestaña de mensaje al mover o borrar
     .accesskey = C
-display-name-label =
-    .value = Nombre para mostrar:
 condensed-addresses-label =
     .label = Mostrar solo el nombre para mostrar de las personas en mi libreta de direcciones
     .accesskey = S
-
-## Compose Tab
-
 forward-label =
     .value = Reenviar mensajes:
     .accesskey = R
@@ -415,17 +364,10 @@ as-attachment-label =
 extension-label =
     .label = agregar extensión al nombre del archivo
     .accesskey = e
-
-## Note: This will concatenate to "Auto Save every [___] minutes",
-## using (auto-save-label) and a number (auto-save-end).
-
 auto-save-label =
     .label = Autoguardar cada
     .accesskey = A
 auto-save-end = minutos
-
-##
-
 warn-on-send-accel-key =
     .label = Confirmar cuando se usen atajos de teclados para enviar mensajes
     .accesskey = C
@@ -516,9 +458,6 @@ remove-cloud-account =
 find-cloud-providers =
     .value = Encontrar más proveedores…
 cloud-account-description = Agregar un nuevo servicio de almacenamiento Filelink
-
-## Privacy Tab
-
 mail-content = Contenido del correo
 remote-content-label =
     .label = Permitir contenido remoto en mensajes
@@ -544,25 +483,9 @@ third-party-never =
     .label = Nunca
 third-party-visited =
     .label = De sitios visitados
-keep-label =
-    .value = Mantener hasta:
-    .accesskey = M
-keep-expire =
-    .label = expiran
-keep-close =
-    .label = cierra { -brand-short-name }
-keep-ask =
-    .label = preguntarme cada vez
 cookies-button =
     .label = Mostrar cookies…
     .accesskey = S
-do-not-track-label =
-    .label = Enviar a los sitios web una señal de “No Rastrear” para decir que no quieres ser rastreado
-    .accesskey = n
-learn-button =
-    .label = Saber más
-dnt-learn-more-button =
-    .value = Saber más
 passwords-description = { -brand-short-name } puede recordar contraseñas para todas tus cuentas.
 passwords-button =
     .label = Contraseñas guardadas…
@@ -577,18 +500,12 @@ primary-password-button =
 forms-primary-pw-fips-title = En este momento se utiliza el modo FIPS. FIPS requiere una contraseña principal no vacía.
 forms-master-pw-fips-desc = El cambio de la contraseña ha fallado
 junk-description = Configuración predeterminada de correo basura. Las configuraciones específicas de cada cuenta deben ser realizadas en configuración de cuentas.
-junk-label =
-    .label = Cuando marco mensajes como basura:
-    .accesskey = W
 junk-move-label =
     .label = Moverlos a la carpeta de correo basura
     .accesskey = o
 junk-delete-label =
     .label = Eliminarlos
     .accesskey = E
-junk-read-label =
-    .label = Marcar mensajes determinados para ser basura como leídos
-    .accesskey = M
 junk-log-label =
     .label = Habilitar el registro del filtro de basura adaptativo
     .accesskey = E
@@ -622,9 +539,6 @@ certificate-button =
 security-devices-button =
     .label = Dispositivos de seguridad…
     .accesskey = D
-
-## Chat Tab
-
 startup-label =
     .value = Cuando { -brand-short-name } inicie:
     .accesskey = s
@@ -632,20 +546,10 @@ offline-label =
     .label = Mantener mis cuentas de chat sin conexión
 auto-connect-label =
     .label = Conectar mis cuentas de chat automáticamente
-
-## Note: idle-label is displayed first, then there's a field where the user
-## can enter a number, and itemTime is displayed at the end of the line.
-## The translations of the idle-label and idle-time-label parts don't have
-## to mean the exact same thing as in English; please try instead to
-## translate the whole sentence.
-
 idle-label =
     .label = Informar a mis contactos que estoy inactivo después de
     .accesskey = I
 idle-time-label = minutos de inactividad
-
-##
-
 away-message-label =
     .label = y establecer mi estado como Ausente con el siguiente mensaje de estado:
     .accesskey = A
@@ -707,41 +611,21 @@ no-preview-description = Este tema no es válido o no está actualmente disponib
 chat-variant-label =
     .value = Variante:
     .accesskey = V
-# This is used to determine the width of the search field in about:preferences,
-# in order to make the entire placeholder string visible
-#
-# Please keep the placeholder string short to avoid truncation.
-#
-# Notice: The value of the `.style` attribute is a CSS string, and the `width`
-# is the name of the CSS property. It is intended only to adjust the element's width.
-# Do not translate.
 search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Buscar en ajustes
-
-## Settings UI Search Results
-
 search-results-header = Resultados de la búsqueda
-# `<span data-l10n-name="query"></span>` will be replaced by the search term.
 search-results-empty-message2 =
     { PLATFORM() ->
         [windows] ¡Lo sentimos! No hay resultados en la Configuración para “<span data-l10n-name="query"></span>”.
        *[other] ¡Lo sentimos! No hay resultados en los Ajustes para “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = ¿Necesitas ayuda? Visita el soporte de <a data-l10n-name="url">{ -brand-short-name }</a>
-
-## Sync Tab
-
 sync-signedout-caption = Lleva la Web contigo
 sync-signedout-description = Sincroniza tus cuentas, libretas de direcciones, calendarios, complementos, y ajustes en todos tus dispositivos.
-# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
 sync-signedout-account-signin-btn = Iniciar sesión para sincronizar...
 sync-pane-header = Sincronizar
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-pane-email-not-verified = “{ $userEmail }” no está verificado.
-# Variables:
-# $userEmail (String) - The email logged into Sync.
 sync-signedin-login-failure = Por favor, inicia sesión para volver a conectarte “{ $userEmail }”
 sync-pane-resend-verification = Enviar verificación de nuevo
 sync-pane-sign-in = Iniciar sesión

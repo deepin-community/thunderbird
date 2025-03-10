@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 archive-options-title = Архивтеу баптаулары
 archive-granularity-prefix-label = Хабарламаларды архивтеу кезінде, оларды қайда орналастыру:
 archive-flat =
@@ -20,10 +16,8 @@ recreate-inbox =
     .label = Кіріс бумасын қайта жасау
     .accesskey = й
 archive-example-label = Мысалы
-# This should match the default name for the "Archives" folder.
 archive-folder-name =
     .label = Архивтер
-# This should match the default name for the "Inbox" folder.
 inbox-folder-name =
     .label = Кіріс
 child-folder-name =

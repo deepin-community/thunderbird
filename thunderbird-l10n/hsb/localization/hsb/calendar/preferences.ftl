@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 calendar-title = Protyka
 calendar-title-reminder = Dopomnjeća
 calendar-title-notification = Zdźělenki
@@ -9,10 +5,8 @@ calendar-title-category = Kategorije
 dateformat-label =
     .value = Datumowy tekstowy format:
     .accesskey = D
-#   $date (String) - the formatted example date
 dateformat-long =
     .label = Dołhi: { $date }
-#   $date (String) - the formatted example date
 dateformat-short =
     .label = Krótki: { $date }
 use-system-timezone-radio-button =
@@ -138,10 +132,6 @@ edit-intab-label =
 prompt-delete-label =
     .label = Prašeć so, prjedy hač so podawki a nadawki zhašeja.
     .accesskey = P
-accessibility-legend = Bjezbarjernosć
-accessibility-colors-label =
-    .label = Barby za bjezbarjernosć optiměrować
-    .accesskey = B
 reminder-legend = Hdyž dopomnjeće je na rjedźe:
 reminder-play-checkbox =
     .label = Zynk wothrać

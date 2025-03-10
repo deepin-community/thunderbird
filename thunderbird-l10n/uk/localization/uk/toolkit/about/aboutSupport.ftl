@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 page-title = Інформація для усунення проблем
 page-subtitle =
     Ця сторінка містить технічну інформацію, що може стати в пригоді під час усунення проблем.
@@ -41,8 +37,6 @@ app-basics-version = Версія
 app-basics-build-id = ID збірки
 app-basics-distribution-id = ID дистрибутиву
 app-basics-update-channel = Канал оновлення
-# This message refers to the folder used to store updates on the device,
-# as in "Folder for updates". "Update" is a noun, not a verb.
 app-basics-update-dir =
     { PLATFORM() ->
         [linux] Тека оновлення
@@ -50,20 +44,16 @@ app-basics-update-dir =
     }
 app-basics-update-history = Історія оновлень
 app-basics-show-update-history = Показати історію оновлень
-# Represents the path to the binary used to start the application.
 app-basics-binary = Бінарний файл програми
 app-basics-profile-dir =
     { PLATFORM() ->
         [linux] Тека профілю
        *[other] Тека профілю
     }
-app-basics-enabled-plugins = Увімкнені плагіни
 app-basics-build-config = Конфігурація збірки
 app-basics-user-agent = User Agent
 app-basics-os = ОС
 app-basics-os-theme = Тема ОС
-# Rosetta is Apple's translation process to run apps containing x86_64
-# instructions on Apple Silicon. This should remain in English.
 app-basics-rosetta = Перекладено Rosetta
 app-basics-memory-use = Використання пам'яті
 app-basics-performance = Швидкодія
@@ -82,9 +72,6 @@ app-basics-safe-mode = Безпечний режим
 app-basics-memory-size = Обсяг пам'яті (RAM)
 app-basics-disk-available = Доступний простір на диску
 app-basics-pointing-devices = Вказівні пристрої
-# Variables:
-#   $value (number) - Amount of data being stored
-#   $unit (string) - The unit of data being stored (e.g. MB)
 app-basics-data-size = { $value } { $unit }
 show-dir-label =
     { PLATFORM() ->
@@ -116,9 +103,7 @@ graphics-decision-log-title = Журнал рішень
 graphics-crash-guards-title = Можливості, вимкнені захистом від збоїв
 graphics-workarounds-title = Способи обходу
 graphics-device-pixel-ratios = Піксельне співвідношення вікна пристрою
-# Windowing system in use on Linux (e.g. X11, Wayland).
 graphics-window-protocol = Віконний протокол
-# Desktop environment in use on Linux (e.g. GNOME, KDE, XFCE, etc).
 graphics-desktop-environment = Середовище робочого столу
 place-database-title = База даних Places
 place-database-stats = Статистика
@@ -156,9 +141,6 @@ clear-startup-cache-label = Очистити кеш запуску…
 startup-cache-dialog-title2 = Перезапустити { -brand-short-name } для очищення кешу запуску?
 startup-cache-dialog-body2 = Це не змінить ваші налаштування та не вилучить розширення.
 restart-button-label = Перезапустити
-
-## Media titles
-
 audio-backend = Обробка аудіо
 max-audio-channels = Максимальне число каналів
 sample-rate = Основна частота
@@ -177,11 +159,7 @@ media-device-rate = Частота
 media-device-latency = Затримка
 media-capabilities-title = Медіа-можливості
 media-codec-support-info = Інформація про підтримку кодеків
-# List all the entries of the database.
 media-capabilities-enumerate = Перерахувати базу даних
-
-## Codec support table
-
 media-codec-support-sw-decoding = Програмне декодування
 media-codec-support-hw-decoding = Апаратне декодування
 media-codec-support-codec-name = Назва кодека
@@ -189,26 +167,13 @@ media-codec-support-supported = Підтримується
 media-codec-support-unsupported = Не підтримується
 media-codec-support-error = Інформація про підтримку кодеків недоступна. Повторіть спробу після відтворення медіафайлу.
 media-codec-support-lack-of-extension = Встановити розширення
-
-## Media Content Decryption Modules (CDM)
-## See EME Spec for more explanation for following technical terms
-## https://w3c.github.io/encrypted-media/
-
 media-content-decryption-modules-title = Інформація про модулі дешифрування вмісту
 media-key-system-name = Назва ключової системи
 media-video-robustness = Надійність відео
 media-audio-robustness = Надійність аудіо
 media-cdm-capabilities = Можливості
-# Clear Lead isn't defined in the spec, which means the the first few seconds
-# are not encrypted. It allows playback to start without having to wait for
-# license response, improving video start time and user experience.
 media-cdm-clear-lead = Чистий початок
-# We choose 2.2 as this is the version which the video provider usually want to have in order to stream 4K video securely
-# HDCP version https://w3c.github.io/encrypted-media/#idl-def-hdcpversion
 media-hdcp-22-compatible = Сумісність з HDCP 2.2
-
-##
-
 intl-title = Інтернаціоналізація та локалізація
 intl-app-title = Налаштування програми
 intl-locales-requested = Запитані локалі
@@ -218,56 +183,33 @@ intl-locales-default = Типова локаль
 intl-os-title = Операційна система
 intl-os-prefs-system-locales = Системні локалі
 intl-regional-prefs = Регіональні налаштування
-
-## Remote Debugging
-##
-## The Firefox remote protocol provides low-level debugging interfaces
-## used to inspect state and control execution of documents,
-## browser instrumentation, user interaction simulation,
-## and for subscribing to browser-internal events.
-##
-## See also https://firefox-source-docs.mozilla.org/remote/
-
 remote-debugging-title = Віддалене налагодження (Протокол Chromium)
 remote-debugging-accepting-connections = Вхідні з'єднання
 remote-debugging-url = URL
-
-##
-
-# Variables
-# $days (Integer) - Number of days of crashes to log
 report-crash-for-days =
     { $days ->
         [one] Звіти за минулий { $days } день
         [few] Звіти за минулі { $days } дні
        *[many] Звіти за минулі { $days } днів
     }
-# Variables
-# $minutes (integer) - Number of minutes since crash
 crashes-time-minutes =
     { $minutes ->
         [one] { $minutes } хвилину тому
         [few] { $minutes } хвилини тому
        *[many] { $minutes } хвилин тому
     }
-# Variables
-# $hours (integer) - Number of hours since crash
 crashes-time-hours =
     { $hours ->
         [one] { $hours } годину тому
         [few] { $hours } години тому
        *[many] { $hours } годин тому
     }
-# Variables
-# $days (integer) - Number of days since crash
 crashes-time-days =
     { $days ->
         [one] { $days } день тому
         [few] { $days } дні тому
        *[many] { $days } днів тому
     }
-# Variables
-# $reports (integer) - Number of pending reports
 pending-reports =
     { $reports ->
         [one] Усі звіти про збої (за вказаний проміжок часу, включно з { $reports }, що очікує надсилання)
@@ -276,18 +218,11 @@ pending-reports =
     }
 raw-data-copied = Необроблені дані скопійовано в буфер
 text-copied = Текст скопійовано в буфер
-
-## The verb "blocked" here refers to a graphics feature such as "Direct2D" or "OpenGL layers".
-
 blocked-driver = Заблоковано для вашої версії графічного драйвера.
 blocked-gfx-card = Заблоковано для вашого графічного процесора через нерозв'язані проблеми з драйвером.
 blocked-os-version = Заблоковано для вашої версії операційної системи.
 blocked-mismatched-version = Заблоковано через невідповідність версії вашого графічного драйвера в реєстрі та DLL.
-# Variables
-# $driverVersion - The graphics driver version string
 try-newer-driver = Заблоковано для вашого графічного драйвера. Спробуйте оновити графічний драйвер до версії { $driverVersion } чи новішої.
-# "ClearType" is a proper noun and should not be translated. Feel free to leave English strings if
-# there are no good translations, these are only used in about:support
 clear-type-parameters = Параметри ClearType
 compositing = Композиція
 support-font-determination = Інформація про налагодження видимості шрифту
@@ -297,11 +232,6 @@ yes = Так
 no = Ні
 unknown = Невідомо
 virtual-monitor-disp = Відображення віртуального монітора
-
-## The following strings indicate if an API key has been found.
-## In some development versions, it's expected for some API keys that they are
-## not found.
-
 found = Знайдено
 missing = Відсутнє
 gpu-process-pid = GPUProcessPid
@@ -328,11 +258,7 @@ webgl2-driver-extensions = WebGL 2 - Розширення драйвера
 webgl2-extensions = WebGL 2 - Розширення
 webgpu-default-adapter = Стандартний адаптер WebGPU
 webgpu-fallback-adapter = Запасний адаптер WebGPU
-# Variables
-#   $bugNumber (string) - Bug number on Bugzilla
 support-blocklisted-bug = Заблоковано, у зв'язку з відомими проблемами: <a data-l10n-name="bug-link">звіт { $bugNumber }</a>
-# Variables
-# $failureCode (string) - String that can be searched in the source tree.
 unknown-failure = Заблоковано; код помилки { $failureCode }
 d3d11layers-crash-guard = Композитор D3D11
 glcontext-crash-guard = OpenGL
@@ -352,6 +278,7 @@ has-seccomp-bpf = Seccomp-BPF (Фільтрування системних ви�
 has-seccomp-tsync = Синхронізація потоку Seccomp
 has-user-namespaces = Користувацькі простори імен
 has-privileged-user-namespaces = Користувацькі простори імен для привілейованих процесів
+support-user-namespaces-unavailable = { $status } – ця функція не дозволена вашою системою. Це може обмежити функції безпеки { -brand-short-name }.
 can-sandbox-content = Пісочниця для процесу вмісту
 can-sandbox-media = Пісочниця для плагіна медіа
 content-sandbox-level = Рівень пісочниці процесів вмісту
@@ -371,16 +298,8 @@ launcher-process-status-0 = Увімкнено
 launcher-process-status-1 = Вимкнено через збій
 launcher-process-status-2 = Примусово вимкнено
 launcher-process-status-unknown = Невідомий стан
-# Variables
-# $remoteWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 multi-process-windows = { $remoteWindows }/{ $totalWindows }
-# Variables
-# $fissionWindows (integer) - Number of remote windows
-# $totalWindows (integer) - Number of total windows
 fission-windows = { $fissionWindows }/{ $totalWindows }
-fission-status-experiment-control = Вимкнено експериментом
-fission-status-experiment-treatment = Увімкнено експериментом
 fission-status-disabled-by-e10s-env = Вимкнено середовищем
 fission-status-enabled-by-env = Увімкнено середовищем
 fission-status-disabled-by-env = Вимкнено середовищем
@@ -389,7 +308,6 @@ fission-status-disabled-by-default = Вимкнено типово
 fission-status-enabled-by-user-pref = Увімкнено користувачем
 fission-status-disabled-by-user-pref = Вимкнено користувачем
 fission-status-disabled-by-e10s-other = E10s вимкнено
-fission-status-enabled-by-rollout = Увімкнено поетапним випуском
 async-pan-zoom = Асинхронне панорамування/зум
 apz-none = немає
 wheel-enabled = введення коліщатком увімкнено
@@ -398,30 +316,27 @@ drag-enabled = перетягування смуги прокручування 
 keyboard-enabled = клавіатура увімкнена
 autoscroll-enabled = авто-прокручування увімкнено
 zooming-enabled = smooth pinch-zoom увімкнено
-
-## Variables
-## $preferenceKey (string) - String ID of preference
-
 wheel-warning = асинхронне введення коліщатком вимкнене, через непідтримуваний параметр: { $preferenceKey }
 touch-warning = асинхронне сенсорне введення вимкнене, через непідтримуваний параметр: { $preferenceKey }
-
-## Strings representing the status of the Enterprise Policies engine.
-
 policies-inactive = Неактивні
 policies-active = Активні
 policies-error = Помилка
-
-## Printing section
-
 support-printing-title = Друк
 support-printing-troubleshoot = Усунення проблем
 support-printing-clear-settings-button = Очистити збережені налаштування друку
 support-printing-modified-settings = Змінені налаштування друку
 support-printing-prefs-name = Назва
 support-printing-prefs-value = Значення
-
-## Normandy sections
-
+support-remote-settings-title = Віддалені налаштування
+support-remote-settings-status = Стан
+support-remote-settings-status-ok = OK
+support-remote-settings-status-broken = Не працює
+support-remote-settings-last-check = Остання перевірка
+support-remote-settings-local-timestamp = Локальна позначка часу
+support-remote-settings-sync-history = Історія
+support-remote-settings-sync-history-status = Стан
+support-remote-settings-sync-history-datetime = Дата
+support-remote-settings-sync-history-infos = Відомості
 support-remote-experiments-title = Віддалені експерименти
 support-remote-experiments-name = Назва
 support-remote-experiments-branch = Гілка експерименту
@@ -429,19 +344,10 @@ support-remote-experiments-see-about-studies = Перегляньте <a data-l1
 support-remote-features-title = Віддалені функції
 support-remote-features-name = Назва
 support-remote-features-status = Стан
-
-## Pointing devices
-
 pointing-device-mouse = Миша
 pointing-device-touchscreen = Сенсорний екран
 pointing-device-pen-digitizer = Цифрові ручки
 pointing-device-none = Немає вказівних пристроїв
-
-## Content Analysis (DLP)
-
-# DLP stands for Data Loss Prevention, an industry term for external software
-# that enterprises can set up to prevent sensitive data from being transferred
-# to external websites.
 content-analysis-title = Аналіз вмісту (DLP)
 content-analysis-active = Активний
 content-analysis-connected-to-agent = Під'єднано до агента

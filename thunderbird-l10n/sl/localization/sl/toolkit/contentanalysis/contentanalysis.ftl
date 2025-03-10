@@ -1,41 +1,29 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 contentanalysis-alert-title = Analiza vsebine
-# Variables:
-#   $content - Description of the content being warned about, such as "clipboard" or "aFile.txt"
 contentanalysis-slow-agent-notification = Orodje za analizo vsebine potrebuje veliko časa za odgovor na vir "{ $content }"
 contentanalysis-slow-agent-dialog-header = Pregledovanje v teku
+contentanalysis-slow-agent-dialog-body-file = { $agent } pregleduje, ali je “{ $filename }” skladen s pravilniki vaše organizacije. To lahko traja nekaj časa.
+contentanalysis-slow-agent-dialog-body-clipboard = { $agent } pregleduje, ali je prilepljena vsebina skladna s pravilniki vaše organizacije. To lahko traja nekaj časa.
+contentanalysis-slow-agent-dialog-body-dropped-text = { $agent } pregleduje, ali je izbrisano besedilo skladno s pravilniki vaše organizacije. To lahko traja nekaj časa.
+contentanalysis-slow-agent-dialog-body-print = { $agent } pregleduje, ali je natisnjena vsebina skladna s pravilniki vaše organizacije. To lahko traja nekaj časa.
 contentanalysis-operationtype-clipboard = odložišče
 contentanalysis-operationtype-dropped-text = spuščeno besedilo
+contentanalysis-operationtype-print = natisni
+contentanalysis-customdisplaystring-description = naloži { $filename }
 contentanalysis-warndialogtitle = Ta vsebina morda ni varna
-# Variables:
-#   $content - Description of the content being warned about, such as "clipboard" or "aFile.txt"
 contentanalysis-warndialogtext = Vaša organizacija uporablja programsko opremo za preprečevanje izgube podatkov, ki je to vsebino prepoznala kot ne dovolj varno: { $content }. Jo želite kljub temu uporabiti?
 contentanalysis-warndialog-response-allow = Uporabi vsebino
 contentanalysis-warndialog-response-deny = Prekliči
 contentanalysis-notification-title = Analiza vsebine
-# Variables:
-#   $content - Description of the content being reported, such as "clipboard" or "aFile.txt"
-#   $response - The response received from the content analysis agent, such as "REPORT_ONLY"
 contentanalysis-genericresponse-message = Analiza vsebine je na vir { $content } odgovorila: { $response }
-# Variables:
-#   $content - Description of the content being blocked, such as "clipboard" or "aFile.txt"
 contentanalysis-block-message = Vaša organizacija uporablja programsko opremo za preprečevanje izgube podatkov, ki je blokirala to vsebino: { $content }.
-# Variables:
-#   $agent - The name of the DLP agent doing the analysis
-#   $content - Localized text describing the content being blocked, such as "Paste denied."
+contentanalysis-unspecified-error-message-content = Pri komunikaciji z { $agent } je prišlo do napake. { $content }
+contentanalysis-no-agent-connected-message-content = Povezava z { $agent } ni mogoča. { $content }
 contentanalysis-invalid-agent-signature-message-content = Preverjanje podpisa za { $agent } neuspešno. { $content }
-# Variables:
-#   $filename - Name of the file that was blocked, such as "aFile.txt"
 contentanalysis-error-message-upload-file = Nalaganje datoteke "{ $filename }" zavrnjeno.
 contentanalysis-error-message-dropped-text = Vlečenje in spuščanje zavrnjeno.
 contentanalysis-error-message-clipboard = Lepljenje zavrnjeno.
 contentanalysis-error-message-print = Tiskanje zavrnjeno.
 contentanalysis-block-dialog-title-upload-file = Za nalaganje te datoteke nimate dovoljenja
-# Variables:
-#   $filename - Name of the file that was blocked, such as "aFile.txt"
 contentanalysis-block-dialog-body-upload-file = Po pravilnikih o varstvu podatkov vaše organizacije nimate dovoljenja za nalaganje datoteke "{ $filename }". Za več informacij se obrnite na skrbnika.
 contentanalysis-block-dialog-title-clipboard = Za lepljenje te vsebine nimate dovoljenja
 contentanalysis-block-dialog-body-clipboard = Po pravilnikih o varstvu podatkov vaše organizacije nimate dovoljenja za lepljenje te vsebine. Za več informacij se obrnite na skrbnika.

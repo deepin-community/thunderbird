@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-### Unified Toolbar Item Label strings
-
 spacer-label = Khoảng cách linh động
 search-bar-label = Tìm kiếm
 toolbar-write-message-label = Viết thư
@@ -154,9 +147,6 @@ toolbar-create-list =
 toolbar-import-contacts-label = Nhập
 toolbar-import-contacts =
     .title = Nhập liên hệ từ tập tin
-
-## New Address Book popup items
-
 toolbar-new-address-book-popup-add-js-address-book =
     .label = Thêm sổ địa chỉ cục bộ
 toolbar-new-address-book-popup-add-carddav-address-book =

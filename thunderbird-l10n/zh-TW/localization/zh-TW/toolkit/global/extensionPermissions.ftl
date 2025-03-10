@@ -1,12 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Extension permission description keys are derived from permission names.
-## Permissions for which the message has been changed and the key updated
-## must have a corresponding entry in the `PERMISSION_L10N_ID_OVERRIDES` map.
-
 webext-perms-description-bookmarks = 讀取或修改書籤
 webext-perms-description-browserSettings = 讀取或修改瀏覽器設定
 webext-perms-description-browsingData = 清除最近的瀏覽紀錄、Cookie 等相關資料
@@ -30,4 +21,8 @@ webext-perms-description-sessions = 取得最近關閉的分頁
 webext-perms-description-tabs = 存取瀏覽器分頁
 webext-perms-description-tabHide = 隱藏或顯示瀏覽器分頁
 webext-perms-description-topSites = 取得瀏覽紀錄
+webext-perms-description-trialML = 下載 AI 模型，並在您的裝置上執行
+webext-perms-description-userScripts = 允許未驗證的第三方指令碼存取您的資料
 webext-perms-description-webNavigation = 在上網時了解瀏覽器行為狀態
+webext-perms-extra-warning-userScripts-long = 未經驗證的指令碼，可能會執行有害程式或追蹤您的上網行為，造成安全性與隱私風險。請只執行來自可信的擴充套件或來源的指令碼。
+webext-perms-extra-warning-userScripts-short = 未經驗證的指令碼，可能會造成安全性與隱私風險。請只執行來自可信的擴充套件或來源的指令碼。

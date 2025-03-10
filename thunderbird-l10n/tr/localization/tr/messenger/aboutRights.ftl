@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 rights-title = Haklarınız Hakkında
 rights-intro = { -brand-full-name }, dünya çapındaki binlerce kişiden oluşan bir topluluk tarafından geliştirilen özgür ve açık kaynaklı bir yazılımdır. Bilmeniz gereken birkaç şey var:
 rights-intro-point-1 = { -brand-short-name } <a data-l10n-name="mozilla-public-license-link">Mozilla Kamu Lisansı</a> altında dağıtılmaktadır. Yani { -brand-short-name } serbestçe kullanılabilir, kopyalanabilir ve başkalarına dağıtılabilir. Ayrıca ihtiyaçlarınıza göre { -brand-short-name } kaynak kodlarını değiştirmekte de özgürsünüz. Mozilla Kamu Lisansı, değiştirdiğiniz sürümleri dağıtma hakkını da size vermektedir.

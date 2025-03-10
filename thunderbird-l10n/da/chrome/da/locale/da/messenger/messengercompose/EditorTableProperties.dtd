@@ -1,7 +1,3 @@
-<!-- This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
-
 <!ENTITY tableWindow.title "Egenskaber for tabel">
 <!ENTITY applyButton.label "Anvend">
 <!ENTITY applyButton.accesskey "A">
@@ -35,7 +31,6 @@
 <!ENTITY tableCaptionRight.label "Til højre for tabellen">
 <!ENTITY tableCaptionNone.label "Ingen">
 <!ENTITY tableInheritColor.label "(Dæk ikke sidens baggrundsfarve)">
-
 <!ENTITY cellSelection.label "Det valgte">
 <!ENTITY cellSelectCell.label "Celle">
 <!ENTITY cellSelectRow.label "Række">
@@ -64,7 +59,6 @@
 <!ENTITY cellAlignJustify.label "Lige margen">
 <!ENTITY cellInheritColor.label "(Dæk ikke tabellens baggrundsfarve)">
 <!ENTITY cellUseCheckboxHelp.label "Brug afkrydsningsfelter til at bestemme hvilke egenskaber der gælder alle markerede celler">
-
 <!ENTITY size.label "Størrelse:">
 <!ENTITY pixels.label "pixler">
 <!ENTITY backgroundColor.label "Baggrundsfarve">

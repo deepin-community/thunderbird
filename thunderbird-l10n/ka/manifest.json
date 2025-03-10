@@ -4,16 +4,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ka@thunderbird.mozilla.org",
-      "strict_min_version": "128.0",
-      "strict_max_version": "128.*"
+      "strict_min_version": "136.0",
+      "strict_max_version": "136.*"
     }
   },
   "name": "Language: ქართული (Georgian)",
   "description": "Thunderbird Language Pack for ქართული (ka) – Georgian",
-  "version": "128.3.20240930.164946",
+  "version": "136.0.20250227.143050",
   "languages": {
     "ka": {
-      "version": "20240930174527",
+      "version": "20250227153517",
       "chrome_resources": {
         "alerts": "chrome/ka/locale/ka/alerts/",
         "autoconfig": "chrome/ka/locale/ka/autoconfig/",

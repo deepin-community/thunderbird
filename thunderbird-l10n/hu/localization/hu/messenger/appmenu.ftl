@@ -1,10 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-
-## Sync
-
 appmenu-sync-panel-title =
     .title = Sync
 appmenu-signin-panel =
@@ -27,20 +20,11 @@ appmenu-sync-settings =
 appmenu-sync-sign-out =
     .label = Kijelentkezés…
     .accesskey = K
-
-## New Account
-
 appmenu-new-account-panel-title =
     .title = Új fiók
 appmenu-new-account-panel =
     .label = Új fiók
     .accesskey = j
-appmenu-create-new-mail-account =
-    .label = Új e-mail-cím szerzése
-    .accesskey = s
-appmenu-new-mail-account =
-    .label = Meglévő e-mail-cím
-    .accesskey = M
 appmenu-new-email-account =
     .label = E-mail
     .accesskey = E
@@ -56,9 +40,6 @@ appmenu-new-feed =
 appmenu-new-newsgroup =
     .label = Hírcsoport
     .accesskey = r
-
-## New Account / Address Book
-
 appmenu-newab-panel-title =
     .title = Új címjegyzék
 appmenu-newab-panel =
@@ -73,9 +54,6 @@ appmenu-new-carddav =
 appmenu-new-ldap =
     .label = LDAP-címjegyzék
     .accesskey = L
-
-## Create
-
 appmenu-create-panel-title =
     .title = Létrehozás
 appmenu-create-panel =
@@ -93,9 +71,6 @@ appmenu-create-task =
 appmenu-create-contact =
     .label = Névjegy
     .accesskey = N
-
-## Open
-
 appmenu-open-file-panel =
     .label = Megnyitás fájlból
     .accesskey = M
@@ -107,9 +82,6 @@ appmenu-open-message =
 appmenu-open-calendar =
     .label = Naptár…
     .accesskey = N
-
-## View / Layout
-
 appmenu-view-panel-title =
     .title = Nézet
 appmenu-view-panel =
@@ -129,14 +101,9 @@ appmenuitem-font-size-enlarge =
     .tooltiptext = Betűméret növelése
 appmenuitem-font-size-reduce =
     .tooltiptext = Betűméret csökkentése
-# Variables:
-# $size (String) - The current font size.
 appmenuitem-font-size-reset =
     .label = { $size } px
     .tooltiptext = Betűméretre visszaállítása
-
-## Tools
-
 appmenu-tools-panel-title =
     .title = Eszközök
 appmenu-tools-panel =
@@ -148,6 +115,9 @@ appmenu-tools-import =
 appmenu-tools-export =
     .label = Exportálás
     .accesskey = E
+appmenu-export-for-mobile =
+    .label = Exportálás mobilra
+    .accesskey = p
 appmenu-tools-message-search =
     .label = Üzenetek keresése
     .accesskey = s
@@ -163,17 +133,11 @@ appmenu-tools-activity-manager =
 appmenu-tools-dev-tools =
     .label = Fejlesztői eszközök
     .accesskey = F
-
-## Help
-
 appmenu-help-panel-title =
     .title = Súgó
 appmenu-help-get-help =
     .label = Segítség kérése
     .accesskey = S
-appmenu-help-explore-features =
-    .label = Funkciók felfedezése
-    .accesskey = F
 appmenu-help-get-release-help =
     .label = Kapjon segítséget a { -brand-short-name }höz
     .accesskey = K
@@ -201,9 +165,6 @@ appmenu-help-troubleshooting-info =
 appmenu-help-about-product =
     .label = A { -brand-short-name } névjegye
     .accesskey = n
-
-## Application Update
-
 appmenuitem-banner-update-downloading =
     .label = { -brand-shorter-name }-frissítés letöltése
 appmenuitem-banner-update-available =

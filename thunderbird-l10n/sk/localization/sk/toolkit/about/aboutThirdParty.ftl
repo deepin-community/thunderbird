@@ -1,7 +1,3 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 third-party-page-title = Informácie o moduloch tretích strán
 third-party-section-title = Zoznam modulov tretích strán vo { -brand-short-name(case: "loc") }
 third-party-intro =
@@ -43,15 +39,6 @@ third-party-button-reload = Znova načítať so systémovými informáciami
     .title = Znova načítať so systémovými informáciami
 third-party-button-open =
     .title = Otvoriť umiestnenie súboru…
-third-party-button-to-block =
-    .title = Zablokovať tento modul
-    .aria-label = Zablokovať tento modul
-third-party-button-to-unblock =
-    .title = Momentálne zablokovaný. Kliknutím ho odblokujete.
-    .aria-label = Momentálne zablokovaný. Kliknutím ho odblokujete.
-third-party-button-to-unblock-disabled =
-    .title = Momentálne označený ako blokovaný, hoci zoznam blokovaných je pre túto reláciu { -brand-short-name(case: "gen") } zakázaný. Kliknutím modul odblokujete.
-    .aria-label = Modul je momentálne označený ako blokovaný, hoci zoznam blokovaných je pre túto reláciu { -brand-short-name(case: "gen") } zakázaný. Kliknutím modul odblokujete.
 third-party-button-to-block-module = Zablokovať tento modul
     .title = Zablokovať tento modul
     .aria-label = Zablokovať tento modul
